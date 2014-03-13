@@ -1,0 +1,42 @@
+{
+  "author": "admin <admin@esited.com>",
+  "name": "oose",
+  "description": "Object Oriented Storage Engine",
+  "version": "0.0.1",
+  "homepage": "http://oose.io/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eSited/oose.git"
+  },
+  "main": "app.js",
+  "keywords": [
+    "oose",
+    "storage",
+    "file system"
+  ],
+  "engines": {
+    "node": ">=0.10.0"
+  },
+  "dependencies": {
+    "cluster-master": "~0.2.0",
+    "object-manage": "~0.7.1",
+    "express": "~3.4.8",
+    "mkdirp": "~0.3.5"
+  },
+  "devDependencies": {
+    "grunt-concurrent": "~0.4.2",
+    "grunt-contrib-jshint": "~0.7.1",
+    "grunt-contrib-watch": "~0.5.3",
+    "grunt-mocha-test": "~0.8.1",
+    "grunt-nodemon": "~0.1.2",
+    "grunt-project-update": "~0.2.2",
+    "mocha": "~1.15.1",
+    "chai": "~1.8.1",
+    "jshint-stylish": "~0.1.3"
+  },
+  "scripts": {
+    "start": "grunt start",
+    "help": "grunt --help",
+    "test": "grunt test"
+  }
+}

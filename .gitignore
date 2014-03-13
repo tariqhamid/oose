@@ -1,0 +1,7 @@
+node_modules
+.idea
+.nodemonignore
+*.log
+log/*
+/data
+config.user.js
