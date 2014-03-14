@@ -7,6 +7,10 @@ config.load({
   serve: {
     port: 3000,
     dataRoot: './data/serve'
+  },
+  import: {
+    port: 3001,
+    dataRoot: './data/import'
   }
 })
 

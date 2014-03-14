@@ -1,5 +1,5 @@
 {
-  "author": "admin <admin@esited.com>",
+  "author": "SnailJS <developers@snailjs.org>",
   "name": "oose",
   "description": "Object Oriented Storage Engine",
   "version": "0.0.1",
@@ -21,7 +21,12 @@
     "cluster-master": "~0.2.0",
     "object-manage": "~0.7.1",
     "express": "~3.4.8",
-    "mkdirp": "~0.3.5"
+    "mkdirp": "~0.3.5",
+    "kue": "^0.7.5",
+    "mmmagic": "^0.3.6",
+    "temp": "^0.7.0",
+    "busboy": "^0.2.3",
+    "websocket-stream": "^0.5.0"
   },
   "devDependencies": {
     "grunt-concurrent": "~0.4.2",
