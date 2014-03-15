@@ -6,11 +6,13 @@ var config = new ObjectManage()
 config.load({
   serve: {
     port: 3000,
-    dataRoot: './data/serve'
+    dataRoot: './data/serve',
+    mcastAddr: '226.0.0.1'
   },
   import: {
     port: 3001,
-    dataRoot: './data/import'
+    dataRoot: './data/import',
+    mcastAddr: '226.0.0.2'
   }
 })
 
