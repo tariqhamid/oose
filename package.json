@@ -30,7 +30,9 @@
     "diskspace": "~0.1.5",
     "bencode": "~0.5.2",
     "command": "0.0.4",
-    "commander": "~2.1.0"
+    "commander": "~2.1.0",
+    "winston": "^0.7.2",
+    "windows-cpu": "^0.1.1"
   },
   "devDependencies": {
     "grunt-concurrent": "~0.4.2",
