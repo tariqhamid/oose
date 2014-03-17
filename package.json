@@ -32,9 +32,9 @@
     "command": "0.0.4",
     "commander": "~2.1.0",
     "winston": "^0.7.2",
-    "windows-cpu": "^0.1.1",
     "shortlink": "^1.0.6",
-    "ip": "^0.3.0"
+    "ip": "^0.3.0",
+    "buffer-crc32": "^0.2.1"
   },
   "devDependencies": {
     "grunt-concurrent": "~0.4.2",

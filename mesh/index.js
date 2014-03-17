@@ -5,6 +5,7 @@ var config = require('../config')
   , ds = require('diskspace')
   , bencode = require('bencode')
   , dgram = require('dgram')
+  , crc32 = require('buffer-crc32')
   , path = require('path')
   , shortlink = require('shortlink')
   , ip = require('ip')
@@ -63,9 +64,16 @@ server.bind(config.get('serve.port'),function(){
   server.addMembership(config.get('mesh.address'))
   server.setMulticastTTL(config.get('mesh.ttl'))
   server.on('message',function(buf){
+    var sum = buf.readInt32BE(0)
+    buf = buf.slice(4)
+    if(sum != crc32.signed(buf))
+      console.log("BAD CRC")
     var announce = bencode.decode(buf)
+    for(var k in announce)
+      if(Buffer.isBuffer(announce[k]))
+        announce[k] = announce[k].toString()
     //ignore ourselves
-    if(announce.hostname.toString() === config.get('hostname')) return
+    if(announce.hostname === config.get('hostname')) return
     logger.info(
       announce.hostname +
         ' posted a announce' +
@@ -98,7 +106,8 @@ client.bind(function(){
       message.free = parseInt(free,10) || 0
       message.sent = new Date().getTime()
       console.log(message)
-      var buf = bencode.encode(message)
+      var pkt = bencode.encode(message)
+      var buf = Buffer.concat([crc32(pkt),pkt])
       client.send(buf,0,buf.length,config.get('serve.port'),config.get('mesh.address'))
       setTimeout(sendAnnounce,config.get('mesh.interval'))
     })
