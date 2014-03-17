@@ -50,30 +50,26 @@ var cpuAverage = function(){
   return {idle: totalIdle / cpus.length,  total: totalTick / cpus.length}
 }
 var lastMeasure = cpuAverage()
-var getLoad = function(cb){
-  setTimeout(function(){
+var getLoad = function(){
     var thisMeasure = cpuAverage()
     var percentageCPU = 100 - ~~(100 * (thisMeasure.idle - lastMeasure.idle) / (thisMeasure.total - lastMeasure.total))
     lastMeasure = thisMeasure
-    cb(percentageCPU)
-  },100)
+    return percentageCPU
 }
 
 var sendAnnounce = function(){
   var message = {}
-  getLoad(function(load){
-    message.hostname = config.get('hostname')
-    message.load = load
-    var spacepath = path.resolve(config.get('serve.dataRoot'))
-    if('win32' === os.platform()) spacepath = spacepath.substr(0,1)
-    ds.check(spacepath,function(total,free){
-      message.free = parseInt(free,10) || 0
-      message.sent = new Date().getTime()
-      console.log(message)
-      var buf = bencode.encode(message)
-      client.send(buf,0,buf.length,config.get('serve.port'),config.get('mesh.address'))
-      setTimeout(sendAnnounce,config.get('mesh.interval'))
-    })
+  message.hostname = config.get('hostname')
+  message.load = getLoad()
+  var spacepath = path.resolve(config.get('serve.dataRoot'))
+  if('win32' === os.platform()) spacepath = spacepath.substr(0,1)
+  ds.check(spacepath,function(total,free){
+    message.free = parseInt(free,10) || 0
+    message.sent = new Date().getTime()
+    console.log(message)
+    var buf = bencode.encode(message)
+    client.send(buf,0,buf.length,config.get('serve.port'),config.get('mesh.address'))
+    setTimeout(sendAnnounce,config.get('mesh.interval'))
   })
 }
 
