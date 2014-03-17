@@ -1,14 +1,44 @@
 'use strict';
 var config = require('../config')
   , logger = require('../helpers/logger')
-  , program = require('commander')
   , os = require('os')
   , ds = require('diskspace')
   , bencode = require('bencode')
   , dgram = require('dgram')
   , path = require('path')
+  , shortlink = require('shortlink')
+  , ip = require('ip')
 
 //utility functions
+var getLocalIP = function(){
+  var int = os.networkInterfaces()
+  for(var i in int){
+    int[i].forEach(function(d){
+      if('IPv4' === d.family){
+        if(!ip.isLoopback(d.address)){
+          return d.address
+        }
+      }
+    })
+  }
+  return '127.0.0.1'
+}
+
+var swap32 = function swap32(val){
+  return ((val & 0xFF) << 24)
+    | ((val & 0xFF00) << 8)
+    | ((val >> 8) & 0xFF00)
+    | ((val >> 24) & 0xFF)
+}
+
+var session = {
+  ip: ip.toLong(getLocalIP()),
+  sig: (new Date().getTime()) & 0xffffffff
+}
+var getHostHandle = function(){
+  return shortlink.encode(Math.abs(swap32(session.ip) ^ session.sig) & 0xffffffff)
+}
+
 var cpuAverage = function(){
   var totalIdle = 0
     , totalTick = 0
@@ -36,18 +66,16 @@ server.bind(config.get('serve.port'),function(){
     var announce = bencode.decode(buf)
     //ignore ourselves
     if(announce.hostname.toString() === config.get('hostname')) return
-    if(program.verbose){
-      logger.info(
-        announce.hostname +
-          ' posted a announce' +
-          ' at ' + announce.sent +
-          ':[' +
-          'load:' + announce.load +
-          '/' +
-          'free:' + announce.free / 1024 +
-          ']'
-      )
-    }
+    logger.info(
+      announce.hostname +
+        ' posted a announce' +
+        ' at ' + announce.sent +
+        ':[' +
+        'load:' + announce.load +
+        '/' +
+        'free:' + announce.free / 1024 +
+        ']'
+    )
   })
 })
 
@@ -56,9 +84,13 @@ var client = dgram.createSocket('udp4')
 client.bind(function(){
   client.addMembership(config.get('mesh.address'))
   client.setMulticastTTL(config.get('mesh.ttl'))
+  var messageTemplate = {
+    hostname: config.get('hostname'),
+    hostkey: getHostHandle(),
+    sent: 0
+  }
   var sendAnnounce = function(){
-    var message = {}
-    message.hostname = config.get('hostname')
+    var message = messageTemplate
     message.load = getLoad()
     var spacepath = path.resolve(config.get('serve.dataRoot'))
     if('win32' === os.platform()) spacepath = spacepath.substr(0,1)
