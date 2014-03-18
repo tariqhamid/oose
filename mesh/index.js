@@ -54,18 +54,18 @@ var mServer = dgram.createSocket('udp4')
 mServer.bind(config.get('serve.port'),function(){
   mServer.addMembership(config.get('mesh.address'))
   mServer.setMulticastTTL(config.get('mesh.ttl'))
-  mServer.on('message',function(buf){
+  mServer.on('message',function(buf,rinfo){
     var sum = buf.readInt32BE(0)
     buf = buf.slice(4)
     if(sum != crc32.signed(buf)){
-      console.log("BAD CRC")
+      logger.warn("BAD CRC",rinfo)
       return
     }
     var announce = bencode.decode(buf)
     for(var k in announce)
       if(Buffer.isBuffer(announce[k]))
         announce[k] = announce[k].toString()
-    console.log(
+    logger.info(
       ((announce.handle === nodes[_self].handle) ? '[SELFIE] ' : '') +
       announce.handle +
         ' posted an announce' +
@@ -84,11 +84,11 @@ mServer.bind(config.get('serve.port'),function(){
 //setup unicast server (for direct messaging)
 var uServer = dgram.createSocket('udp4')
 uServer.bind(config.get('serve.port'),function(){
-  uServer.on('message',function(buf){
+  uServer.on('message',function(buf,rinfo){
     var sum = buf.readInt32BE(0)
     buf = buf.slice(4)
     if(sum != crc32.signed(buf)){
-      console.log("BAD CRC")
+      logger.warn("BAD CRC",rinfo)
       return
     }
     var pkt = bencode.decode(buf)
@@ -96,7 +96,7 @@ uServer.bind(config.get('serve.port'),function(){
       if(Buffer.isBuffer(pkt[k]))
         pkt[k] = pkt[k].toString()
     //ignore ourselves
-    if(pkt.hostname === config.get('hostname')) return
+    if(pkt.handle === nodes[_self].handle) return
   })
 })
 
