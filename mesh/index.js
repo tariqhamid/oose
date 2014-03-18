@@ -12,24 +12,17 @@ var config = require('../config')
 
 //utility functions
 var getLocalIP = function(){
+  var rv = '127.0.0.2'
   var int = os.networkInterfaces()
-  for(var i in int){
+  for(var i in int)
     int[i].forEach(function(d){
-      if('IPv4' === d.family){
-        if(!ip.isLoopback(d.address)){
-          return d.address
-        }
-      }
+      if(('IPv4' === d.family) && (!d.internal)) rv = d.address
     })
-  }
-  return '127.0.0.1'
+  return rv
 }
 
 var swap32 = function swap32(val){
-  return ((val & 0xFF) << 24)
-    | ((val & 0xFF00) << 8)
-    | ((val >> 8) & 0xFF00)
-    | ((val >> 24) & 0xFF)
+  return ((val & 0xFF) << 24) | ((val & 0xFF00) << 8) | ((val >> 8) & 0xFF00) | ((val >> 24) & 0xFF)
 }
 
 var session = {
@@ -58,12 +51,12 @@ var getLoad = function(){
   return percentageCPU
 }
 
-//setup server side (listener)
-var server = dgram.createSocket('udp4')
-server.bind(config.get('serve.port'),function(){
-  server.addMembership(config.get('mesh.address'))
-  server.setMulticastTTL(config.get('mesh.ttl'))
-  server.on('message',function(buf){
+//setup multicast server (listener)
+var mServer = dgram.createSocket('udp4')
+mServer.bind(config.get('serve.port'),function(){
+  mServer.addMembership(config.get('mesh.address'))
+  mServer.setMulticastTTL(config.get('mesh.ttl'))
+  mServer.on('message',function(buf){
     var sum = buf.readInt32BE(0)
     buf = buf.slice(4)
     if(sum != crc32.signed(buf))
@@ -87,11 +80,38 @@ server.bind(config.get('serve.port'),function(){
   })
 })
 
-//setup client side (announcer)
-var client = dgram.createSocket('udp4')
-client.bind(function(){
-  client.addMembership(config.get('mesh.address'))
-  client.setMulticastTTL(config.get('mesh.ttl'))
+//setup unicast server (for direct messaging)
+var uServer = dgram.createSocket('udp4')
+uServer.bind(config.get('serve.port'),function(){
+  uServer.on('message',function(buf){
+    var sum = buf.readInt32BE(0)
+    buf = buf.slice(4)
+    if(sum != crc32.signed(buf))
+      console.log("BAD CRC")
+    var announce = bencode.decode(buf)
+    for(var k in announce)
+      if(Buffer.isBuffer(announce[k]))
+        announce[k] = announce[k].toString()
+    //ignore ourselves
+    if(announce.hostname === config.get('hostname')) return
+    logger.info(
+      announce.hostname +
+        ' posted a announce' +
+        ' at ' + announce.sent +
+        ':[' +
+        'load:' + announce.load +
+        '/' +
+        'free:' + announce.free / 1024 +
+        ']'
+    )
+  })
+})
+
+//setup multicast client (announcer)
+var mClient = dgram.createSocket('udp4')
+mClient.bind(function(){
+  mClient.addMembership(config.get('mesh.address'))
+  mClient.setMulticastTTL(config.get('mesh.ttl'))
   var messageTemplate = {
     hostname: config.get('hostname'),
     hostkey: getHostHandle(),
@@ -101,6 +121,7 @@ client.bind(function(){
     var message = messageTemplate
     message.load = getLoad()
     var spacepath = path.resolve(config.get('serve.dataRoot'))
+    //Windows needs to call with only the drive letter
     if('win32' === os.platform()) spacepath = spacepath.substr(0,1)
     ds.check(spacepath,function(total,free){
       message.free = parseInt(free,10) || 0
@@ -108,7 +129,7 @@ client.bind(function(){
       console.log(message)
       var pkt = bencode.encode(message)
       var buf = Buffer.concat([crc32(pkt),pkt])
-      client.send(buf,0,buf.length,config.get('serve.port'),config.get('mesh.address'))
+      mClient.send(buf,0,buf.length,config.get('serve.port'),config.get('mesh.address'))
       setTimeout(sendAnnounce,config.get('mesh.interval'))
     })
   }
