@@ -11,27 +11,25 @@ var config = require('../config')
   , ip = require('ip')
 
 //utility functions
-var getLocalIP = function(){
-  var rv = '127.0.0.2'
-  var int = os.networkInterfaces()
-  for(var i in int)
-    int[i].forEach(function(d){
-      if(('IPv4' === d.family) && (!d.internal)) rv = d.address
-    })
-  return rv
-}
-
 var swap32 = function swap32(val){
   return ((val & 0xFF) << 24) | ((val & 0xFF00) << 8) | ((val >> 8) & 0xFF00) | ((val >> 24) & 0xFF)
 }
 
-var session = {
-  ip: ip.toLong(getLocalIP()),
+//stateful node registry
+var nodes = {}
+  , _self = config.get('hostname')
+nodes[_self] = {
+  ip: '127.0.0.2',
   sig: (new Date().getTime()) & 0xffffffff
 }
-var getHostHandle = function(){
-  return shortlink.encode(Math.abs(swap32(session.ip) ^ session.sig) & 0xffffffff)
-}
+var int = os.networkInterfaces()
+for(var i in int) int[i].some(function(d){
+  if(('IPv4' !== d.family) || (d.internal))
+    return false
+  nodes[_self].ip = d.address
+  return true
+})
+nodes[_self].handle = shortlink.encode(Math.abs(swap32(ip.toLong(nodes[_self].ip)) ^ nodes[_self].sig) & 0xffffffff)
 
 var cpuAverage = function(){
   var totalIdle = 0
@@ -59,21 +57,24 @@ mServer.bind(config.get('serve.port'),function(){
   mServer.on('message',function(buf){
     var sum = buf.readInt32BE(0)
     buf = buf.slice(4)
-    if(sum != crc32.signed(buf))
+    if(sum != crc32.signed(buf)){
       console.log("BAD CRC")
+      return
+    }
     var announce = bencode.decode(buf)
     for(var k in announce)
       if(Buffer.isBuffer(announce[k]))
         announce[k] = announce[k].toString()
-    //ignore ourselves
-    if(announce.hostname === config.get('hostname')) return
-    logger.info(
-      announce.hostname +
-        ' posted a announce' +
-        ' at ' + announce.sent +
-        ':[' +
+    console.log(
+      ((announce.handle === nodes[_self].handle) ? '[SELFIE] ' : '') +
+      announce.handle +
+        ' posted an announce' +
+        ' at ' + new Date(announce.sent).toLocaleTimeString() +
+        ' => [' +
+        'hostname:' + announce.hostname +
+        '|' +
         'load:' + announce.load +
-        '/' +
+        '|' +
         'free:' + announce.free / 1024 +
         ']'
     )
@@ -86,24 +87,16 @@ uServer.bind(config.get('serve.port'),function(){
   uServer.on('message',function(buf){
     var sum = buf.readInt32BE(0)
     buf = buf.slice(4)
-    if(sum != crc32.signed(buf))
+    if(sum != crc32.signed(buf)){
       console.log("BAD CRC")
-    var announce = bencode.decode(buf)
-    for(var k in announce)
-      if(Buffer.isBuffer(announce[k]))
-        announce[k] = announce[k].toString()
+      return
+    }
+    var pkt = bencode.decode(buf)
+    for(var k in pkt)
+      if(Buffer.isBuffer(pkt[k]))
+        pkt[k] = pkt[k].toString()
     //ignore ourselves
-    if(announce.hostname === config.get('hostname')) return
-    logger.info(
-      announce.hostname +
-        ' posted a announce' +
-        ' at ' + announce.sent +
-        ':[' +
-        'load:' + announce.load +
-        '/' +
-        'free:' + announce.free / 1024 +
-        ']'
-    )
+    if(pkt.hostname === config.get('hostname')) return
   })
 })
 
@@ -113,8 +106,8 @@ mClient.bind(function(){
   mClient.addMembership(config.get('mesh.address'))
   mClient.setMulticastTTL(config.get('mesh.ttl'))
   var messageTemplate = {
-    hostname: config.get('hostname'),
-    hostkey: getHostHandle(),
+    hostname: _self,
+    handle: nodes[_self].handle,
     sent: 0
   }
   var sendAnnounce = function(){
@@ -126,7 +119,6 @@ mClient.bind(function(){
     ds.check(spacepath,function(total,free){
       message.free = parseInt(free,10) || 0
       message.sent = new Date().getTime()
-      console.log(message)
       var pkt = bencode.encode(message)
       var buf = Buffer.concat([crc32(pkt),pkt])
       mClient.send(buf,0,buf.length,config.get('serve.port'),config.get('mesh.address'))
