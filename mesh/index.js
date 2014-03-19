@@ -57,7 +57,7 @@ mServer.bind(config.get('serve.port'),function(){
   mServer.on('message',function(buf,rinfo){
     var sum = buf.readInt32BE(0)
     buf = buf.slice(4)
-    if(sum != crc32.signed(buf)){
+    if(sum !== crc32.signed(buf)){
       logger.warn("BAD CRC",rinfo)
       return
     }
@@ -87,7 +87,7 @@ uServer.bind(config.get('serve.port'),function(){
   uServer.on('message',function(buf,rinfo){
     var sum = buf.readInt32BE(0)
     buf = buf.slice(4)
-    if(sum != crc32.signed(buf)){
+    if(sum !== crc32.signed(buf)){
       logger.warn("BAD CRC",rinfo)
       return
     }
