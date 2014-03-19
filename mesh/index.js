@@ -1,6 +1,7 @@
 'use strict';
 var config = require('../config')
   , logger = require('../helpers/logger')
+  , ObjectManage = require('object-manage')
   , os = require('os')
   , ds = require('diskspace')
   , bencode = require('bencode')
@@ -16,20 +17,25 @@ var swap32 = function swap32(val){
 }
 
 //stateful node registry
-var nodes = {}
+var nodes = new ObjectManage({})
   , _self = config.get('hostname')
-nodes[_self] = {
-  ip: '127.0.0.2',
-  sig: (new Date().getTime()) & 0xffffffff
-}
+nodes.set([_self,'ip'],'127.0.0.2')
+nodes.set([_self,'sig'],(new Date().getTime()) & 0xffffffff)
 var int = os.networkInterfaces()
 for(var i in int) int[i].some(function(d){
   if(('IPv4' !== d.family) || (d.internal))
     return false
-  nodes[_self].ip = d.address
+  nodes.set([_self,'ip'],d.address)
   return true
 })
-nodes[_self].handle = shortlink.encode(Math.abs(swap32(ip.toLong(nodes[_self].ip)) ^ nodes[_self].sig) & 0xffffffff)
+nodes.set([_self,'handle'],shortlink.encode(
+  Math.abs(
+    swap32(ip.toLong(nodes.get([_self,'ip'])))
+    ^
+    nodes.get([_self,'sig'])
+  )
+  & 0xffffffff
+))
 
 var cpuAverage = function(){
   var totalIdle = 0
@@ -58,26 +64,26 @@ mServer.bind(config.get('serve.port'),function(){
     var sum = buf.readInt32BE(0)
     buf = buf.slice(4)
     if(sum !== crc32.signed(buf)){
-      logger.warn("BAD CRC",rinfo)
+      logger.warn("BAD CRC: " + rinfo)
       return
     }
     var announce = bencode.decode(buf)
     for(var k in announce)
       if(Buffer.isBuffer(announce[k]))
         announce[k] = announce[k].toString()
+    //update nodes state in memory
+    nodes.set([announce.hostname,'handle'],announce.handle)
+    nodes.set([announce.hostname,'ip'],rinfo.address)
+    nodes.set([announce.hostname,'load'],announce.load)
+    nodes.set([announce.hostname,'free'],announce.free)
+    nodes.set([announce.hostname,'sent'],announce.sent)
     logger.info(
-      ((announce.handle === nodes[_self].handle) ? '[SELFIE] ' : '') +
+      ((announce.handle === nodes.get([_self,'handle'])) ? '[SELFIE] ' : '') +
       announce.handle +
-        ' posted an announce' +
-        ' at ' + new Date(announce.sent).toLocaleTimeString() +
-        ' => [' +
-        'hostname:' + announce.hostname +
-        '|' +
-        'load:' + announce.load +
-        '|' +
-        'free:' + announce.free / 1024 +
-        ']'
+      ' posted an announce' +
+      ' at ' + new Date(nodes.get([announce.hostname,'sent'])).toLocaleTimeString()
     )
+    logger.info(nodes.get())
   })
 })
 
@@ -88,7 +94,7 @@ uServer.bind(config.get('serve.port'),function(){
     var sum = buf.readInt32BE(0)
     buf = buf.slice(4)
     if(sum !== crc32.signed(buf)){
-      logger.warn("BAD CRC",rinfo)
+      logger.warn("BAD CRC: " + rinfo)
       return
     }
     var pkt = bencode.decode(buf)
@@ -96,7 +102,7 @@ uServer.bind(config.get('serve.port'),function(){
       if(Buffer.isBuffer(pkt[k]))
         pkt[k] = pkt[k].toString()
     //ignore ourselves
-    if(pkt.handle === nodes[_self].handle) return
+    if(pkt.handle === nodes.get([_self,'handle'])) return
   })
 })
 
@@ -107,18 +113,21 @@ mClient.bind(function(){
   mClient.setMulticastTTL(config.get('mesh.ttl'))
   var messageTemplate = {
     hostname: _self,
-    handle: nodes[_self].handle,
+    handle: nodes.get([_self,'handle']),
     sent: 0
   }
   var sendAnnounce = function(){
     var message = messageTemplate
-    message.load = getLoad()
+    nodes.set([_self,'sent'],new Date().getTime())
+    message.sent = nodes.get([_self,'sent'])
+    nodes.set([_self,'load'],getLoad())
+    message.load = nodes.get([_self,'load'])
     var spacepath = path.resolve(config.get('serve.dataRoot'))
     //Windows needs to call with only the drive letter
     if('win32' === os.platform()) spacepath = spacepath.substr(0,1)
     ds.check(spacepath,function(total,free){
-      message.free = parseInt(free,10) || 0
-      message.sent = new Date().getTime()
+      nodes.set([_self,'free'],parseInt(free,10) || 0)
+      message.free = nodes.get([_self,'free'])
       var pkt = bencode.encode(message)
       var buf = Buffer.concat([crc32(pkt),pkt])
       mClient.send(buf,0,buf.length,config.get('serve.port'),config.get('mesh.address'))

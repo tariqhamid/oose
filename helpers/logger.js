@@ -10,13 +10,10 @@ if(!fs.existsSync('./log')){
 
 var logger = new winston.Logger({
   transports: [
-    new winston.transports.File({ filename: './log/oose.log' })
+    new winston.transports.File({ filename: './log/oose.log' }),
+    new winston.transports.Console({ colorize: true, level: 'info'})
   ]
 })
 logger.cli()
 
-logger.addConsole = function(level){
-  logger.add(winston.transports.Console,{ level: level || 'info'})
-}
-logger.addConsole('info','warn')
 module.exports = logger
