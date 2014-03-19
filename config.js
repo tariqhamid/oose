@@ -10,7 +10,7 @@ config.load({
   mesh: {
     address: '226.0.0.1',
     ttl: 1,
-    interval: 1000
+    interval: 6000
   },
   serve: {
     port: 3000,
