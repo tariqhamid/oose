@@ -8,6 +8,7 @@ config.load({
   version: '0.0.1',
   hostname: os.hostname(),
   mesh: {
+    debug: false,
     address: '226.0.0.1',
     ttl: 1,
     interval: 6000

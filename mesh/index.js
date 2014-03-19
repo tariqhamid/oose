@@ -77,13 +77,13 @@ mServer.bind(config.get('serve.port'),function(){
     nodes.set([announce.hostname,'load'],announce.load)
     nodes.set([announce.hostname,'free'],announce.free)
     nodes.set([announce.hostname,'sent'],announce.sent)
-    logger.info(
-      ((announce.handle === nodes.get([_self,'handle'])) ? '[SELFIE] ' : '') +
+    if(config.get('mesh.debug') || (announce.handle !== nodes.get([_self,'handle']))) logger.info(
       announce.handle +
       ' posted an announce' +
-      ' at ' + new Date(nodes.get([announce.hostname,'sent'])).toLocaleTimeString()
+      ' at ' + new Date(nodes.get([announce.hostname,'sent'])).toLocaleTimeString() +
+        ((config.get('mesh.debug') && (announce.handle === nodes.get([_self,'handle']))) ? ' [SELFIE]' : '')
     )
-    logger.info(nodes.get())
+    if(config.get('mesh.debug')) logger.info(nodes.get())
   })
 })
 
