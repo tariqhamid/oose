@@ -83,7 +83,7 @@ mServer.bind(config.get('serve.port'),function(){
       ' at ' + new Date(nodes.get([announce.hostname,'sent'])).toLocaleTimeString() +
         ((config.get('mesh.debug') && (announce.handle === nodes.get([_self,'handle']))) ? ' [SELFIE]' : '')
     )
-    if(config.get('mesh.debug')) logger.info(nodes.get())
+    if(config.get('mesh.debug')) logger.info(require('util').inspect(nodes.get()))
   })
 })
 
