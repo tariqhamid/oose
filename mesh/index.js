@@ -22,12 +22,12 @@ var nodes = new ObjectManage({})
 nodes.set([_self,'ip'],'127.0.0.2')
 nodes.set([_self,'sig'],(new Date().getTime()) & 0xffffffff)
 var int = os.networkInterfaces()
-for(var i in int) int[i].some(function(d){
-  if(('IPv4' !== d.family) || (d.internal))
-    return false
-  nodes.set([_self,'ip'],d.address)
-  return true
-})
+  , filter = function(d){
+      if(('IPv4' !== d.family) || (d.internal)) return false
+      nodes.set([_self,'ip'],d.address)
+      return true
+    }
+for(var i in int) if(int.hasOwnProperty(i)) int[i].some(filter)
 nodes.set([_self,'handle'],shortlink.encode(
   Math.abs(
     swap32(ip.toLong(nodes.get([_self,'ip'])))
@@ -42,7 +42,7 @@ var cpuAverage = function(){
     , totalTick = 0
   var cpus = os.cpus()
   for(var i=0,len=cpus.length; i<len; i++){
-    for(var type in cpus[i].times) totalTick += cpus[i].times[type]
+    for(var type in cpus[i].times) if(cpus[i].times.hasOwnProperty(type)) totalTick += cpus[i].times[type]
     totalIdle += cpus[i].times.idle
   }
   return {idle: totalIdle / cpus.length,  total: totalTick / cpus.length}
@@ -64,12 +64,12 @@ mServer.bind(config.get('serve.port'),function(){
     var sum = buf.readInt32BE(0)
     buf = buf.slice(4)
     if(sum !== crc32.signed(buf)){
-      logger.warn("BAD CRC: " + rinfo)
+      logger.warn('BAD CRC: ' + rinfo)
       return
     }
     var announce = bencode.decode(buf)
     for(var k in announce)
-      if(Buffer.isBuffer(announce[k]))
+      if(announce.hasOwnProperty(k) && Buffer.isBuffer(announce[k]))
         announce[k] = announce[k].toString()
     //update nodes state in memory
     nodes.set([announce.hostname,'handle'],announce.handle)
@@ -94,15 +94,15 @@ uServer.bind(config.get('serve.port'),function(){
     var sum = buf.readInt32BE(0)
     buf = buf.slice(4)
     if(sum !== crc32.signed(buf)){
-      logger.warn("BAD CRC: " + rinfo)
+      logger.warn('BAD CRC: ' + rinfo)
       return
     }
     var pkt = bencode.decode(buf)
     for(var k in pkt)
-      if(Buffer.isBuffer(pkt[k]))
+      if(pkt.hasOwnProperty(k) && pkt.isBuffer(pkt[k]))
         pkt[k] = pkt[k].toString()
     //ignore ourselves
-    if(pkt.handle === nodes.get([_self,'handle'])) return
+    //if(pkt.handle === nodes.get([_self,'handle'])) return
   })
 })
 
