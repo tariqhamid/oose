@@ -99,7 +99,7 @@ uServer.bind(config.get('serve.port'),function(){
     }
     var pkt = bencode.decode(buf)
     for(var k in pkt)
-      if(pkt.hasOwnProperty(k) && pkt.isBuffer(pkt[k]))
+      if(pkt.hasOwnProperty(k) && Buffer.isBuffer(pkt[k]))
         pkt[k] = pkt[k].toString()
     //ignore ourselves
     //if(pkt.handle === nodes.get([_self,'handle'])) return
