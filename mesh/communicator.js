@@ -22,11 +22,17 @@ var encode = function(obj){
  * @param buf
  */
 var decode = function(buf){
-  var pkt = bencode.decode(buf)
-  for(var k in pkt)
-    if(pkt.hasOwnProperty(k) && Buffer.isBuffer(pkt[k]))
-      pkt[k] = pkt[k].toString()
-  return pkt
+  var sum = buf.readInt32BE(0)
+  buf = buf.slice(4)
+  if(sum !== crc32.signed(buf)){
+    return false
+  } else {
+    var pkt = bencode.decode(buf)
+    for(var k in pkt)
+      if(pkt.hasOwnProperty(k) && Buffer.isBuffer(pkt[k]))
+        pkt[k] = pkt[k].toString()
+    return pkt
+  }
 }
 
 /**
@@ -63,12 +69,10 @@ var Communicator = function(options){
       self.socket.setMulticastTTL(self.options.get('mcast.ttl'))
     }
     self.socket.on('message',function(buf,rinfo){
-      var sum = buf.readInt32BE(0)
-      buf = buf.slice(4)
-      if(sum !== crc32.signed(buf)){
+      var res = decode(buf)
+      if(false === res){
         self.emit('warning','BAD CRC: ' + rinfo)
       } else {
-        var res = decode(buf)
         res.rinfo = rinfo
         //run middleware
         async.eachSeries(self.middleware.receive,function(fn,next){fn(res,next)},function(err){
