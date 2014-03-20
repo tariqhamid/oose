@@ -68,12 +68,12 @@ var Communicator = function(options){
       if(sum !== crc32.signed(buf)){
         self.emit('warning','BAD CRC: ' + rinfo)
       } else {
-        var pkt = decode(buf)
-        pkt.rinfo = rinfo
+        var res = decode(buf)
+        res.rinfo = rinfo
         //run middleware
-        async.eachSeries(self.middleware.receive,function(fn,next){fn(pkt,next)},function(err){
+        async.eachSeries(self.middleware.receive,function(fn,next){fn(res,next)},function(err){
           if(err) self.emit('error',err)
-          else self.emit('receive',pkt)
+          else self.emit('receive',res)
         })
       }
     })
@@ -138,15 +138,15 @@ Communicator.prototype.send = function(payload,done){
   if('string' === typeof payload) payload = {message: payload}
   if('object' !== typeof payload) done('Invalid payload type, must be string or object')
   else {
-    var message = new ObjectManage(payload)
-    if(!message.exists('hostname')) message.set('hostname',self.options.get('hostname'))
-    if(!message.exists('handle')) message.set('handle',self.options.get('handle'))
-    if(!message.exists('sent')) message.set('sent',new Date().getTime())
+    var req = new ObjectManage(payload)
+    if(!req.exists('hostname')) req.set('hostname',self.options.get('hostname'))
+    if(!req.exists('handle')) req.set('handle',self.options.get('handle'))
+    if(!req.exists('sent')) req.set('sent',new Date().getTime())
     //run middleware
-    async.eachSeries(self.middleware.send,function(fn,next){fn(message,next)},function(err){
+    async.eachSeries(self.middleware.send,function(fn,next){fn(req,next)},function(err){
       if(err) done(err)
       else{
-        var buf = encode(message.get())
+        var buf = encode(req.get())
         self.socket.send(buf,0,buf.length,self.options.port,self.options.address,done)
       }
     })
@@ -154,3 +154,25 @@ Communicator.prototype.send = function(payload,done){
 }
 
 module.exports = Communicator
+
+/* USAGE EXAMPLE
+--------------------
+var announce = new Communicator({proto: 'mcast'})
+announce.use('send',function(req,next){
+  req.set('Powered-By','..l..')
+  next()
+})
+announce.use('receive',function(res,next){
+  if(res.exists('Powered-By')){
+    console.log('Powered by ' + res.get('Powered-By'))
+  }
+  next()
+})
+announce.on('receive',function(res){
+  util.inspect(res.get())
+})
+announce.on('error',function(err){
+  console.log('Something failed ' + err)
+})
+--------------------
+*/
