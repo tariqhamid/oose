@@ -4,4 +4,4 @@ node_modules
 *.log
 log/*
 /data
-config.user.js
+config.local.js
