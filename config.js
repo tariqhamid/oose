@@ -10,6 +10,7 @@ config.load({
   mesh: {
     debug: false,
     address: '226.0.0.1',
+    port: 3333,
     ttl: 1,
     interval: 6000
   },
@@ -17,7 +18,6 @@ config.load({
     port: 3000,
     dataRoot: './data/serve'
   },
-
   import: {
     port: 3001,
     dataRoot: './data/import'

@@ -37,6 +37,18 @@ nodes.set([_self,'handle'],shortlink.encode(
   & 0xffffffff
 ))
 
+//node registry helper functions
+var findNodeIP = function(where){
+  var n = nodes.get()
+    , rv = where
+  for(var hostname in n)
+    if(n.hasOwnProperty(hostname)){
+      if(where === hostname) rv = n[hostname].ip
+      if(where === n[hostname].handle) rv = n[hostname].ip
+    }
+  return rv
+}
+
 var cpuAverage = function(){
   var totalIdle = 0
     , totalTick = 0
@@ -57,7 +69,7 @@ var getLoad = function(){
 
 //setup multicast server (listener)
 var mServer = dgram.createSocket('udp4')
-mServer.bind(config.get('serve.port'),function(){
+mServer.bind(config.get('mesh.port'),function(){
   mServer.addMembership(config.get('mesh.address'))
   mServer.setMulticastTTL(config.get('mesh.ttl'))
   mServer.on('message',function(buf,rinfo){
@@ -87,9 +99,9 @@ mServer.bind(config.get('serve.port'),function(){
   })
 })
 
-//setup unicast server (for direct messaging)
+//setup unicast UDP server (for direct messaging)
 var uServer = dgram.createSocket('udp4')
-uServer.bind(config.get('serve.port'),function(){
+uServer.bind(config.get('mesh.port'),function(){
   uServer.on('message',function(buf,rinfo){
     var sum = buf.readInt32BE(0)
     buf = buf.slice(4)
@@ -130,9 +142,23 @@ mClient.bind(function(){
       message.free = nodes.get([_self,'free'])
       var pkt = bencode.encode(message)
       var buf = Buffer.concat([crc32(pkt),pkt])
-      mClient.send(buf,0,buf.length,config.get('serve.port'),config.get('mesh.address'))
+      mClient.send(buf,0,buf.length,config.get('mesh.port'),config.get('mesh.address'))
       setTimeout(sendAnnounce,config.get('mesh.interval'))
     })
   }
   sendAnnounce()
+})
+
+//setup unicast UDP client (replier)
+var uClient = dgram.createSocket('udp4')
+uClient.bind(function(){
+  uClient.sendResponse = function(where,payload){
+    var message = new ObjectManage(payload)
+    message.set('hostname',_self)
+    message.set('handle',nodes.get([_self,'handle']))
+    message.set('sent',new Date().getTime())
+    var pkt = bencode.encode(message)
+    var buf = Buffer.concat([crc32(pkt),pkt])
+    uClient.send(buf,0,buf.length,config.get('mesh.port'),findNodeIP(where))
+  }
 })
