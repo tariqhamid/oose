@@ -1,6 +1,7 @@
 'use strict';
 //mesh socket object
 var ObjectManage = require('object-manage')
+  , os = require('os')
   , bencode = require('bencode')
   , crc32 = require('buffer-crc32')
   , util = require('util')
@@ -59,7 +60,9 @@ var Communicator = function(options){
     udp4: function(){
       self.socket = dgram.createSocket('udp4')
     },
-    mcast: setup.udp4,
+    mcast: function(){
+      self.socket = dgram.createSocket('udp4')
+    },
     tcp4: function(){
       self.emit('error','TCP not yet supported')
     }
@@ -99,6 +102,7 @@ util.inherits(Communicator,EventEmitter)
  * @type {{proto: string, mcast: {address: null, ttl: number}, address: string, port: number}}
  */
 Communicator.prototype.optionSchema = {
+  hostname: os.hostname(),
   proto: 'udp4',
   mcast: {address: null, ttl: 1},
   address: '127.0.0.1',
@@ -167,15 +171,15 @@ Communicator.prototype.send = function(payload,done){
     if(!req.exists('sent')) req.set('sent',new Date().getTime())
     //run middleware
     async.eachSeries(self.middleware.send,
-      function(fn,next){fn(req,next)},
+      function(fn,next){fn(req.get(),next)},
       function(err){
         if(err) done(err)
-        else{
+        else {
           var buf = encode(req.get())
           self.socket.send(
             buf,0,buf.length,
-            self.options.port,
-            self.options.address,
+            self.options.get('port'),
+            self.options.get('address'),
             done
           )
         }
