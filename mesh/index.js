@@ -96,7 +96,11 @@ multiCast.useReceive(function(pkt){
   nodes.set([pkt.hostname,'load'],pkt.load)
   nodes.set([pkt.hostname,'free'],pkt.free)
   nodes.set([pkt.hostname,'latency'],
-    (pkt.sent - nodes.get([pkt.hostname,'sent'])) | 0
+    (
+      pkt.sent -
+      nodes.get([pkt.hostname,'sent']) -
+      config.get('mesh.interval')
+    )
   )
   nodes.set([pkt.hostname,'sent'],pkt.sent)
   if(
