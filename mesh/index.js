@@ -25,7 +25,6 @@ var swap32 = function swap32(val){
 var nodes = new ObjectManage({})
   , _self = config.get('hostname')
 nodes.set([_self,'ip'],'127.0.0.2')
-nodes.set([_self,'sig'],(new Date().getTime()) & 0xffffffff)
 var filter = function(d){
   if(('IPv4' !== d.family) || (d.internal)){ return false }
   nodes.set([_self,'ip'],d.address)
@@ -33,6 +32,7 @@ var filter = function(d){
 }
 var int = os.networkInterfaces()
 for(var i in int) { if(int.hasOwnProperty(i)) int[i].some(filter) }
+nodes.set([_self,'sig'],(new Date().getTime()) & 0xffffffff)
 nodes.set([_self,'handle'],shortlink.encode(
   Math.abs(
     swap32(ip.toLong(nodes.get([_self,'ip'])))
@@ -119,6 +119,7 @@ multiCast.useReceive(function(pkt){
 
 var sendAnnounce = function(){
   var message = {}
+  message.hostname = _self
   message.handle = nodes.get([_self,'handle'])
   nodes.set([_self,'load'],getLoad())
   message.load = nodes.get([_self,'load'])

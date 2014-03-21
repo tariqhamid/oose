@@ -76,6 +76,7 @@ var Communicator = function(options){
     if('mcast' === self.options.get('proto')){
       self.socket.addMembership(self.options.get('mcast.address'))
       self.socket.setMulticastTTL(self.options.get('mcast.ttl'))
+      self.options.set('address',self.options.get('mcast.address'))
     }
     self.socket.on('message',function(buf,rinfo){
       var res = decode(buf)
@@ -102,10 +103,9 @@ util.inherits(Communicator,EventEmitter)
  * @type {{proto: string, mcast: {address: null, ttl: number}, address: string, port: number}}
  */
 Communicator.prototype.optionSchema = {
-  hostname: os.hostname(),
   proto: 'udp4',
   mcast: {address: null, ttl: 1},
-  address: '127.0.0.1',
+  address: null,
   port: 3333
 }
 
@@ -166,8 +166,6 @@ Communicator.prototype.send = function(payload,done){
     done('Invalid payload type, must be string or object')
   } else {
     var req = new ObjectManage(payload)
-    if(!req.exists('hostname')) req.set('hostname',self.options.get('hostname'))
-    if(!req.exists('handle')) req.set('handle',self.options.get('handle'))
     if(!req.exists('sent')) req.set('sent',new Date().getTime())
     //run middleware
     async.eachSeries(self.middleware.send,
