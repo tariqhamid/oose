@@ -2,16 +2,13 @@
 /*jshint bitwise: false*/
 var config = require('../config')
   , logger = require('../helpers/logger')
+  , Communicator = require('../helpers/communicator')
   , ObjectManage = require('object-manage')
-  , Communicator = require('./communicator')
   , os = require('os')
-  , ds = require('diskspace')
-  , bencode = require('bencode')
-  , dgram = require('dgram')
-  , crc32 = require('buffer-crc32')
-  , path = require('path')
-  , shortlink = require('shortlink')
   , ip = require('ip')
+  , shortlink = require('shortlink')
+  , path = require('path')
+  , ds = require('diskspace')
 
 //utility functions
 var swap32 = function swap32(val){
