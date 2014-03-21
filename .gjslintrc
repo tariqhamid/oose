@@ -1,0 +1,4 @@
+--strict
+--summary
+--time
+--disable=2,6,10,11,100,120

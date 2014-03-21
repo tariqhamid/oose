@@ -3,23 +3,27 @@
 var ObjectManage = require('object-manage')
   , bencode = require('bencode')
   , crc32 = require('buffer-crc32')
-  , EventEmitter = require('events').EventEmitter
   , util = require('util')
   , dgram = require('dgram')
   , async = require('async')
+  , EventEmitter = require('events').EventEmitter
+
 
 /**
  * Encode an object to be sent
- * @param obj
+ * @param {object} obj
+ * @return {buffer}
  */
 var encode = function(obj){
   var pkt = bencode.encode(obj)
   return Buffer.concat([crc32(pkt),pkt])
 }
 
+
 /**
  * Decode a buffer and explode into an object
- * @param buf
+ * @param {buffer} buf
+ * @return {object} Decoded Object, or false on failure
  */
 var decode = function(buf){
   var sum = buf.readInt32BE(0)
@@ -35,10 +39,12 @@ var decode = function(buf){
   }
 }
 
+
+
 /**
  * Communicator constructor, accepts options
- * @param options
  * @constructor
+ * @param {object} options
  */
 var Communicator = function(options){
   var self = this
@@ -75,15 +81,18 @@ var Communicator = function(options){
       } else {
         res.rinfo = rinfo
         //run middleware
-        async.eachSeries(self.middleware.receive,function(fn,next){fn(res,next)},function(err){
-          if(err) self.emit('error',err)
-          else self.emit('receive',res)
-        })
+        async.eachSeries(self.middleware.receive,
+          function(fn,next){fn(res,next)},function(err){
+            if(err) self.emit('error',err)
+            else self.emit('receive',res)
+          }
+        )
       }
     })
   })
 }
 util.inherits(Communicator,EventEmitter)
+
 
 /**
  * Configuration Defaults
@@ -96,15 +105,21 @@ Communicator.prototype.optionSchema = {
   port: 3333
 }
 
+
+/**
+ * Middleware stacks
+ * @type {{send: Array, receive: Array}}
+ */
 Communicator.prototype.middleware = {
   send: [],
   receive: []
 }
 
+
 /**
- * Add send of receive middleware
- * @param position  Position of the middleware either send or receive
- * @param fn
+ * Add middleware
+ * @param {string} position  Position of the middleware either send or receive
+ * @param {function} fn
  */
 Communicator.prototype.use = function(position,fn){
   var self = this
@@ -116,44 +131,56 @@ Communicator.prototype.use = function(position,fn){
   self.middleware[position].push(fn)
 }
 
+
 /**
  * Shortcut to add send middleware
- * @param fn
+ * @param {function} fn
  */
 Communicator.prototype.useSend = function(fn){
   this.use('send',fn)
 }
 
+
 /**
  * Shortcut to add receive middleware
- * @param fn
+ * @param {function} fn
  */
 Communicator.prototype.useReceive = function(fn){
   this.use('receive',fn)
 }
 
+
 /**
  * Send a payload via the socket
- * @param payload  Message to be sent, either object or string
- * @param done  Callback when message is sent
+ * @param {object} payload Message to be sent, string input tolerated
+ * @param {function} done Callback when message is sent
  */
 Communicator.prototype.send = function(payload,done){
   var self = this
   if('string' === typeof payload) payload = {message: payload}
-  if('object' !== typeof payload) done('Invalid payload type, must be string or object')
-  else {
+  if('object' !== typeof payload){
+    done('Invalid payload type, must be string or object')
+  } else {
     var req = new ObjectManage(payload)
     if(!req.exists('hostname')) req.set('hostname',self.options.get('hostname'))
     if(!req.exists('handle')) req.set('handle',self.options.get('handle'))
     if(!req.exists('sent')) req.set('sent',new Date().getTime())
     //run middleware
-    async.eachSeries(self.middleware.send,function(fn,next){fn(req,next)},function(err){
-      if(err) done(err)
-      else{
-        var buf = encode(req.get())
-        self.socket.send(buf,0,buf.length,self.options.port,self.options.address,done)
+    async.eachSeries(self.middleware.send,
+      function(fn,next){fn(req,next)},
+      function(err){
+        if(err) done(err)
+        else{
+          var buf = encode(req.get())
+          self.socket.send(
+            buf,0,buf.length,
+            self.options.port,
+            self.options.address,
+            done
+          )
+        }
       }
-    })
+    )
   }
 }
 
