@@ -1,12 +1,11 @@
 'use strict';
 //mesh socket object
 var ObjectManage = require('object-manage')
-  , os = require('os')
+  , util = require('util')
+  , async = require('async')
+  , dgram = require('dgram')
   , bencode = require('bencode')
   , crc32 = require('buffer-crc32')
-  , util = require('util')
-  , dgram = require('dgram')
-  , async = require('async')
   , EventEmitter = require('events').EventEmitter
 
 
