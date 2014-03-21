@@ -95,6 +95,9 @@ multiCast.useReceive(function(pkt){
   nodes.set([pkt.hostname,'ip'],pkt.rinfo.address)
   nodes.set([pkt.hostname,'load'],pkt.load)
   nodes.set([pkt.hostname,'free'],pkt.free)
+  nodes.set([pkt.hostname,'latency'],
+    (pkt.sent - nodes.get([pkt.hostname,'sent'])) | 0
+  )
   nodes.set([pkt.hostname,'sent'],pkt.sent)
   if(
     config.get('mesh.debug') ||
@@ -105,6 +108,7 @@ multiCast.useReceive(function(pkt){
         ' posted an announce' +
         ' at ' +
         new Date(nodes.get([pkt.hostname,'sent'])).toLocaleTimeString() +
+        ' (latency ' + nodes.get([pkt.hostname,'latency']) + ')' +
         (
           (config.get('mesh.debug') &&
           (pkt.handle === nodes.get([_self,'handle']))
@@ -112,7 +116,7 @@ multiCast.useReceive(function(pkt){
         )
     )
   }
-  if(config.get('mesh.debug')){
+  if(config.get('mesh.debug') > 1){
     logger.info(os.EOL + require('util').inspect(nodes.get()))
   }
 })

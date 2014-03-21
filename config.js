@@ -8,7 +8,7 @@ config.load({
   version: '0.0.1',
   hostname: os.hostname(),
   mesh: {
-    debug: false,
+    debug: 0,
     address: '226.0.0.1',
     port: 3333,
     ttl: 1,
