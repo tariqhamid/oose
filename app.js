@@ -1,28 +1,29 @@
 'use strict';
 var cluster = require('cluster')
-  //, redis = require('./helpers/redis')
   , os = require('os')
-  , mesh = require('./mesh')
   , config = require('./config')
-  , serve = require('./serve')
-  , resolve = require('./resolve')
 
+//master startup
 if(cluster.isMaster){
   //start mesh for discovery and communication
-  mesh.start()
+  require('./mesh').start()
   var workers = config.get('workers') || os.cpus().length
+  console.log('Starting ' + workers + ' workers')
   //start workers
   for(var i=0; i < workers; i++){
     cluster.fork()
   }
-} else {
-  //worker startup
+}
+
+//worker startup
+if(cluster.isWorker){
+  console.log('Worker starting...')
   //start serve if its enabled
   if(config.get('serve.enabled')){
-    //serve.start()
+    require('./serve').start()
   }
   //start resolve if its enabled
   if(config.get('resolve.enabled')){
-    //resolve.start()
+    require('./resolve').start()
   }
 }
