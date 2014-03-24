@@ -20,15 +20,25 @@ var Collector = function(options){
   //setup options
   self.options = new ObjectManage(self.optionSchema)
   self.options.load(options)
-  self.socket = null
 
-  //run middleware
-  async.eachSeries(self.middleware.collect,
-    function(fn,next){fn(res,next)},function(err){
-      if(err) self.emit('error',err)
-      else self.emit('receive',res)
-    }
-  )
+  self.mainLoop = function(){
+    //run middleware
+    async.eachSeries(self.middleware.collect,
+      function(fn,next){fn(self.basket,next)},function(err){
+        if(err) self.emit('error',err)
+      }
+    )
+    async.eachSeries(self.middleware.process,
+      function(fn,next){fn(self.basket,next)},function(err){
+        if(err) self.emit('error',err)
+      }
+    )
+    async.eachSeries(self.middleware.store,
+      function(fn,next){fn(self.basket,next)},function(err){
+        if(err) self.emit('error',err)
+      }
+    )
+  }
 }
 util.inherits(Collector,EventEmitter)
 
@@ -38,7 +48,8 @@ util.inherits(Collector,EventEmitter)
  * @type {{proto: string, mcast: {address: null, ttl: number}, address: string, port: number}}
  */
 Collector.prototype.optionSchema = {
-  mainInterval: 1000
+  mainInterval: 1000,
+  basket: {}
 }
 
 
@@ -47,9 +58,9 @@ Collector.prototype.optionSchema = {
  * @type {{send: Array, receive: Array}}
  */
 Collector.prototype.middleware = {
-  collect: [],
-  process: [],
-  store: []
+  collect: {},
+  process: {},
+  store: {}
 }
 
 
