@@ -1,21 +1,28 @@
 'use strict';
-var mesh = require('./mesh')
+var cluster = require('cluster')
+  //, redis = require('./helpers/redis')
+  , os = require('os')
+  , mesh = require('./mesh')
   , config = require('./config')
   , serve = require('./serve')
   , resolve = require('./resolve')
 
-
-//start serve if its enabled
-if(config.get('serve.enabled')){
-  mesh.use(serve.annaounce())
-  serve.start()
+if(cluster.isMaster){
+  //start mesh for discovery and communication
+  mesh.start()
+  var workers = config.get('workers') || os.cpus().length
+  //start workers
+  for(var i=0; i < workers; i++){
+    cluster.fork()
+  }
+} else {
+  //worker startup
+  //start serve if its enabled
+  if(config.get('serve.enabled')){
+    //serve.start()
+  }
+  //start resolve if its enabled
+  if(config.get('resolve.enabled')){
+    //resolve.start()
+  }
 }
-
-//start resolve if its enabled
-if(config.get('resolve.enabled')){
-  mesh.use(resolve.announce())
-  resolve.start()
-}
-
-//start mesh for discovery and communication
-mesh.start()
