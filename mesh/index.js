@@ -121,6 +121,7 @@ multiCast.useReceive(function(pkt){
     logger.info(os.EOL + require('util').inspect(nodes.get()))
   }
 })
+var announceTimeout
 
 var sendAnnounce = function(){
   var message = {}
@@ -135,7 +136,7 @@ var sendAnnounce = function(){
     nodes.set([_self,'free'],parseInt(free,10) || 0)
     message.free = nodes.get([_self,'free'])
     multiCast.send(message,function(){
-      setTimeout(sendAnnounce,config.get('mesh.interval'))
+      announceTimeout = setTimeout(sendAnnounce,config.get('mesh.interval'))
     })
   })
 }
@@ -187,4 +188,13 @@ uClient.bind(function(){
   }
 })
 */
-sendAnnounce()
+exports.multiCast = multiCast
+exports.start = function(){
+  sendAnnounce()
+  console.log('Mesh started and announcement active')
+}
+exports.stop = function(){
+  if(announceTimeout)
+    clearTimeout(announceTimeout)
+}
+

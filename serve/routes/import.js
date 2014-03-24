@@ -1,11 +1,10 @@
 'use strict';
 var express = require('express')
   , fs = require('fs')
-  , config = require('../config')
+  , config = require('../../config')
   , mkdirp = require('mkdirp')
   , Busboy = require('busboy')
   , crypto = require('crypto')
-  , net = require('net')
   , websocket = require('websocket-stream')
   , app = express()
 

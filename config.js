@@ -15,6 +15,7 @@ config.load({
     interval: 6000
   },
   serve: {
+    enabled: false,
     port: 3000,
     dataRoot: './data/serve'
   },
@@ -25,7 +26,7 @@ config.load({
 })
 
 if(fs.existsSync('./config.local.js')){
-  config.load(require('./config.local.js'))
+  config.load(require(__dirname + '/config.local.js'))
 }
 
 module.exports = config
