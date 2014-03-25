@@ -1,92 +1,52 @@
 'use strict';
 var config = require('../config')
-  , program = require('commander')
-  , os = require('os')
+  , logger = require('../helpers/logger')
+  , Communicator = require('../helpers/communicator')
   , fs = require('fs')
+  , path = require('path')
   , mkdirp = require('mkdirp')
+  , readdirp = require('readdirp')
+  , es = require('event-stream')
+  , ObjectManage = require('object-manage')
+  , os = require('os')
   , ds = require('diskspace')
-  , bencode = require('bencode')
-  , dgram = require('dgram')
-
-//set defaults
-var DFL = {
-  dataRoot: config.get('serve.dataRoot') || './data/serve',
-  hostname: config.get('serve.hostname') || os.hostname(),
-  port: config.get('serve.port') || 3000,
-  mcastAddress: config.get('serve.mcastAddress') || '226.0.0.1',
-  mcastTTL: config.get('serve.mcastTTL') || 2,
-  mcastInterval: config.get('serve.mcastInterval') || 1000
-}
-
-//read command line overrides
-program
-  .version('0.0.1')
-  .option('-r, --dataRoot <storage path>','Set storage path, default [' + DFL.dataRoot + ']')
-  .option('-h, --hostname <hostname>','Set process hostname, default [' + DFL.hostname + ']')
-  .option('-p, --port <listen port>','Set listen port, default [' + DFL.port + ']')
-  .option('-m, --mcastAddress <multicast IP>','Set multicast IP, default [' + DFL.mcastAddress + ']')
-  .option('-t, --mcastTTL <TTL>','Set multicast TTL (1-255), default [' + DFL.mcastTTL + ']')
-  .option('-i, --mcastInterval <msec>','Set multicast announcement interval in milliseconds, default [' + DFL.mcastInterval + ']')
-  .option('-v, --verbose','Turn on logging of registrations')
-  .parse(process.argv)
-
-var dataRoot = program.dataRoot || DFL.dataRoot
-  , hostname = program.hostname || DFL.hostname
-  , port = program.port || DFL.port
-  , mcastAddress = program.mcastAddress || DFL.mcastAddress
-  , mcastInterval = program.mcastInterval || DFL.mcastInterval
-  , mcastTTL = program.mcastTTL || DFL.mcastTTL
 
 //make sure the root folder exists
-if(!fs.existsSync(dataRoot)){
-  mkdirp.sync(dataRoot)
+if(!fs.existsSync(config.get('serve.dataRoot'))){
+  mkdirp.sync(config.get('serve.dataRoot'))
 }
 
-//setup server side (listener)
-var server = dgram.createSocket('udp4')
-server.on('message',function(buf,rinfo){
-  var heartbeat = bencode.decode(buf)
-  //ignore ourselves
-  if(heartbeat.hostname.toString() === hostname) return
-  if(program.verbose){
-    console.log(
-      heartbeat.hostname +
-      ' posted a heartbeat' +
-      ' at ' + heartbeat.sent +
-      ':[' +
-      'load:' + heartbeat.load +
-      '/' +
-      'free:' + heartbeat.free / 1024 +
-      ']'
-    )
+//scan dataRoot
+var rdStream = readdirp({root: path.join(config.get('serve.dataRoot'))})
+rdStream.on('warn',function(err){
+  console.error('non-fatal error', err)
+  // optionally call stream.destroy() here in order to abort and cause 'close' to be emitted
+})
+rdStream.on('error',function(err){
+  console.error('fatal error', err)
+})
+rdStream.pipe(es.mapSync(function(entry){
+  return {path: entry.path, size: entry.stat.size}
+})).pipe(es.stringify()).pipe(process.stdout)
+console.log('done')
+//setup networking
+var udp = new Communicator({
+  proto: 'udp4',
+  port: config.get('serve.port'),
+  address: config.get('serve.address')
+})
+udp.useReceive(function(pkt){
+  if(pkt.cmd){
+    switch(pkt.cmd){
+    case 'GET':
+      //setup one-time-use TCP server, reply with URI
+      break
+    case 'PUT':
+      //setup one-time-use TCP listener, reply with URI
+      break
+    default:
+      logger.warn({msg:'UNKNOWN cmd',pkt:pkt})
+      break
+    }
   }
 })
-server.bind(port,function(){
-  server.addMembership(mcastAddress)
-  server.setMulticastTTL(mcastTTL)
-})
-
-
-//setup client side (announcer)
-var client = dgram.createSocket('udp4')
-client.bind(function(){
-  client.addMembership(mcastAddress)
-  client.setMulticastTTL(mcastTTL)
-})
-
-var sendHeartbeat = function(){
-  var message = {
-    hostname: hostname,
-    load: os.loadavg().toString()
-  }
-  ds.check(dataRoot,function(total,free,status){
-    message.free = free || 0
-    message.sent = new Date().getTime()
-    console.log(message)
-    var buf = bencode.encode(message)
-    client.send(buf,0,buf.length,port,mcastAddress)
-    setTimeout(sendHeartbeat,mcastInterval)
-  })
-}
-
-sendHeartbeat()
