@@ -23,11 +23,15 @@ if(cluster.isMaster){
   var jobs = kue.createQueue(config.get('kue.options'))
   //register job handlers
   jobs.process('hashInventory',require('./tasks/hashInventory'))
+  jobs.process('resolveSync',require('./tasks/resolveSync'))
   //fire off initial scan
-  jobs.create('hashInventory',{root: config.get('root')})
+  if(config.get('serve.enabled'))
+    jobs.create('hashInventory',{root: config.get('root')})
+  if(config.get('resolve.enabled'))
+    jobs.create('resolveSync',{hostname: config.get('hostname')})
+  //start workers
   var workers = config.get('workers') || os.cpus().length
   console.log('Starting ' + workers + ' workers')
-  //start workers
   for(var i=0; i < workers; i++){
     cluster.fork()
   }
