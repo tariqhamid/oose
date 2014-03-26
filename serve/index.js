@@ -4,25 +4,14 @@ var express = require('express')
   , redis = require('../helpers/redis')
   , fs = require('fs')
   , config = require('../config')
-
-var fileBySha1 = function(sha1){
-  var file = config.get('serve.root')
-  var parts = sha1.split('')
-  for(var i = 1; i <= parts.length; i++){
-    file = file + parts[i - 1]
-    if(i % 2 === 0){
-      file = file + '/'
-    }
-  }
-  return file
-}
+  , file = require('../helpers/file')
 
 app.get('/:sha1/:filename',function(req,res){
   var sha1 = req.params.sha1
   if(!sha1){
     res.send('Invalid path')
   } else {
-    var file = fileBySha1(sha1)
+    var path = file.pathFromSha1(sha1)
     redis.hget('hashInfo',sha1,function(err,stat){
       if(err){
         console.log(err)
@@ -30,7 +19,7 @@ app.get('/:sha1/:filename',function(req,res){
       } else {
         //convert stats to an object
         stat = JSON.parse(stat)
-        if(!fs.existsSync(file)){
+        if(!fs.existsSync(path)){
           res.status(404)
           res.send('File not found')
         } else {
@@ -44,7 +33,7 @@ app.get('/:sha1/:filename',function(req,res){
           res.set('Content-Length',stat.size)
           res.set('Content-Type',stat.type)
           //setup read stream from the file
-          var rs = fs.createReadStream(file)
+          var rs = fs.createReadStream(path)
           //update bytes sent
           rs.on('data',function(data){
             redis.hincrby('hashBytesSent',sha1,data.length)

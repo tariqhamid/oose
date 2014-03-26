@@ -1,6 +1,6 @@
 'use strict';
 var readdirp = require('readdirp')
-  , redis = require('../helpers/redis')
+  , file = require('file')
 
 //scan dataRoot
 module.exports = function(job,done){
@@ -9,10 +9,6 @@ module.exports = function(job,done){
   rdStream.on('error',console.error)
   rdStream.on('end',done)
   rdStream.on('data',function(entry){
-    var sha1 = entry.path
-    sha1.replace('/','')
-    sha1.replace('\\','')
-    redis.lpush('hashTable',sha1)
-    redis.hset('hashInfo',sha1,JSON.stringify(entry))
+    file.insertToRedis(file.sha1FromPath(entry.path))
   })
 }
