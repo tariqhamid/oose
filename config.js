@@ -8,6 +8,9 @@ config.load({
   version: '0.0.1',
   hostname: os.hostname(),
   root: './data',
+  balancer: {
+    enabled: null
+  },
   kue: {
     port: 3002,
     host: null,

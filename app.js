@@ -48,4 +48,8 @@ if(cluster.isWorker){
   if(config.get('resolve.enabled')){
     require('./resolve').start()
   }
+  //start the balanace
+  if(false !== config.get('balancer.enabled') && true === config.get('serve.enabled')){
+    require('./balancer').start()
+  }
 }
