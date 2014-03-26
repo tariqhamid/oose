@@ -10,8 +10,8 @@ var cluster = require('cluster')
 //master startup
 if(cluster.isMaster){
   //make sure the root folder exists
-  if(!fs.existsSync(config.get('serve.dataRoot'))){
-    mkdirp.sync(config.get('serve.dataRoot'))
+  if(!fs.existsSync(config.get('root'))){
+    mkdirp.sync(config.get('root'))
   }
   //start mesh for discovery and communication
   require('./mesh').start()
