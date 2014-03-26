@@ -1,52 +1,39 @@
 'use strict';
-var config = require('../config')
-  , logger = require('../helpers/logger')
-  , Communicator = require('../helpers/communicator')
+var express = require('express')
+  , app = express()
   , fs = require('fs')
-  , path = require('path')
-  , mkdirp = require('mkdirp')
-  , readdirp = require('readdirp')
-  , es = require('event-stream')
-  , ObjectManage = require('object-manage')
-  , os = require('os')
-  , ds = require('diskspace')
+  , config = require('../config')
 
-//make sure the root folder exists
-if(!fs.existsSync(config.get('serve.dataRoot'))){
-  mkdirp.sync(config.get('serve.dataRoot'))
+var fileBySha1 = function(sha1){
+  var file = config.get('serve.root')
+  var parts = sha1.split('')
+  for(var i = 1; i <= parts.length; i++){
+    file = file + parts[i - 1]
+    if(i % 2 === 0){
+      file = file + '/'
+    }
+  }
+  return file
 }
 
-//scan dataRoot
-var rdStream = readdirp({root: path.join(config.get('serve.dataRoot'))})
-rdStream.on('warn',function(err){
-  console.error('non-fatal error', err)
-  // optionally call stream.destroy() here in order to abort and cause 'close' to be emitted
-})
-rdStream.on('error',function(err){
-  console.error('fatal error', err)
-})
-rdStream.pipe(es.mapSync(function(entry){
-  return {path: entry.path, size: entry.stat.size}
-})).pipe(es.stringify()).pipe(process.stdout)
-console.log('done')
-//setup networking
-var udp = new Communicator({
-  proto: 'udp4',
-  port: config.get('serve.port'),
-  address: config.get('serve.address')
-})
-udp.useReceive(function(pkt){
-  if(pkt.cmd){
-    switch(pkt.cmd){
-    case 'GET':
-      //setup one-time-use TCP server, reply with URI
-      break
-    case 'PUT':
-      //setup one-time-use TCP listener, reply with URI
-      break
-    default:
-      logger.warn({msg:'UNKNOWN cmd',pkt:pkt})
-      break
+app.get('/:sha1/:filename',function(req,res){
+  var file = fileBySha1(req.params.sha1)
+  if(!fs.existsSync(file)){
+    res.status(404)
+    res.send('File not found')
+  } else {
+    if(req.query.download){
+      res.download(file)
+    } else {
+      res.sendFile(file)
     }
   }
 })
+
+exports.start = function(){
+  app.listen(config.get('serve.port'),config.get('serve.host'),function(err){
+    if(err) console.error('Failed to start serve: ' + err)
+    else console.log('Serve is started')
+  })
+  return app
+}
