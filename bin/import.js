@@ -1,6 +1,5 @@
 'use strict';
 var program = require('commander')
-  , redis = require(__dirname + '/../helpers/redis')
   , readdirp = require('readdirp')
   , fs = require('fs')
   , file = require(__dirname + '/../helpers/file')
@@ -26,38 +25,6 @@ var log = function(msg){
   if(program.verbose) console.log(msg)
 }
 
-var importFile = function(source,done){
-  if(!source) return done('No source provided for import ' + source)
-  file.sum(source,function(err,sha1){
-    if(err) return done(err)
-    redis.hexists('hashTable',sha1,function(err,exists){
-      var destination = file.pathFromSha1(sha1)
-      var fsExists = fs.existsSync(destination)
-      if(err) return done(err)
-      var fileWriteDone = function(err){
-        if(err) return done(err)
-        if(program.move) fs.unlink(source,done)
-        else done()
-      }
-      if(exists && fsExists){
-        log(source + ' already exists')
-        if(program.move) fs.unlink(source,done)
-        else done()
-      } else if(exists && !fsExists){
-        log(source + ' already exists in redis, but not the file system... fixing')
-        redis.hdel('hashTable',sha1)
-        file.write(source,sha1,fileWriteDone)
-      } else if(!exists && fs.existsSync){
-        log(source + ' does not exists in redis, but does on the file system... fixing')
-        file.insertToRedis(sha1,done)
-      } else {
-        log(source + ' does not exist, beginning import')
-        fs.write(source,sha1,fileWriteDone)
-      }
-    })
-  })
-}
-
 var importScan = function(){
   var sources = []
   log('Starting import scan')
@@ -72,7 +39,13 @@ var importScan = function(){
       sources,
       program.concurrency || os.cpus().length,
       function(source,next){
-        importFile(source,next)
+        file.fromPath(source,function(err){
+          if(err) next(err)
+          else {
+            if(program.move) fs.unlink(source,next)
+            else next()
+          }
+        })
       },
       function(err){
         if(err)

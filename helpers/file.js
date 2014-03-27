@@ -93,3 +93,29 @@ exports.fromReadable = function(readable,done){
   })
   readable.pipe(ws)
 }
+
+exports.fromPath = function(source,done){
+  if(!source) return done('No source provided for import ' + source)
+  exports.sum(source,function(err,sha1){
+    if(err) return done(err)
+    redis.hexists('hashTable',sha1,function(err,exists){
+      var destination = exports.pathFromSha1(sha1)
+      var fsExists = fs.existsSync(destination)
+      if(err) return done(err)
+      var fileWriteDone = function(err){
+        if(err) return done(err)
+        else done()
+      }
+      if(exists && fsExists){
+        done(source + ' already exists')
+      } else if(exists && !fsExists){
+        redis.hdel('hashTable',sha1)
+        exports.write(source,sha1,fileWriteDone)
+      } else if(!exists && fs.existsSync){
+        exports.insertToRedis(sha1,done)
+      } else {
+        exports.write(source,sha1,fileWriteDone)
+      }
+    })
+  })
+}
