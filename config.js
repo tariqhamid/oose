@@ -8,7 +8,7 @@ config.load({
   version: '0.0.1',
   hostname: os.hostname(),
   root: './data',
-  balancer: {
+  balance: {
     enabled: null
   },
   kue: {

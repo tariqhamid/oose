@@ -2,8 +2,8 @@
 /*jshint bitwise: false*/
 var config = require('../config')
   , logger = require('../helpers/logger')
+  , redis = require('../helpers/redis')
   , Communicator = require('../helpers/communicator')
-  , ObjectManage = require('object-manage')
   , os = require('os')
   , ip = require('ip')
   , shortlink = require('shortlink')
@@ -18,23 +18,74 @@ var swap32 = function swap32(val){
     ((val >> 24) & 0xFF)
 }
 
-//stateful node registry
-var nodes = new ObjectManage({})
-  , _self = config.get('hostname')
-nodes.set([_self,'ip'],'127.0.0.2')
+//stateful peer registry
+var peerRegistry = {
+  /**
+   * peerRegistry.set(hostname,key,value)
+   * @param {string} hostname Hostname the key/value apply to
+   * @param {string} key Key name to set
+   * @param {multiple} value Value for hostname/key pair
+   */
+  set: function(hostname,key,value){
+    if('stringstringstring' === (typeof hostname) + (typeof key) + (typeof value)){
+      redis.hset('peerRegistry:' + hostname,key,value)
+    }
+  },
+  /**
+   * peerRegistry.get(hostname,key)
+   * @param {string} hostname Hostname the key applies to
+   * @param {string} key Key name to get
+   * @return {multiple} Value as currently stored, or null
+   */
+  get: function(hostname,key){
+    if('stringstring' === (typeof hostname) + (typeof key)){
+      return redis.hget('peerRegistry:' + hostname,key)
+    }
+    return null
+  },
+  /**
+   * peerRegistry.dump()
+   * @return {object} Dump of current peerRegistry
+   */
+  dump: function(){
+    var rv = {}
+    redis.keys(['peerRegistry:*'], function(err,result){
+      if(err){ logger.warn('peerRegistry.dump/keys:',err) }
+      for(var e in result){
+        var entry = result[e]
+        redis.hkeys(entry,function(err,result){
+          if(err){ logger.warn('peerRegistry.dump/hkeys:',err) }
+          for(var k in result){
+            var key = result[k]
+            rv[entry][key] = redis.hget(entry,key)
+          }
+        })
+      }
+    })
+    return rv
+  }
+}
+//obtain our own IP
 var filter = function(d){
   if(('IPv4' !== d.family) || (d.internal)){ return false }
-  nodes.set([_self,'ip'],d.address)
+  peerRegistry.set(config.get('hostname'),'ip',d.address)
   return true
 }
 var int = os.networkInterfaces()
 for(var i in int) { if(int.hasOwnProperty(i)) int[i].some(filter) }
-nodes.set([_self,'sig'],(new Date().getTime()) & 0xffffffff)
-nodes.set([_self,'handle'],shortlink.encode(
+if(null === selfReg.ip){
+  logger.warn('Could not locate primary IP address')
+  peerRegistry.set(config.get('hostname'),'ip','127.0.0.2')
+}
+
+//set the random-ish signature for handle generation
+// note: this algorithm is completely made up
+peerRegistry.set(config.get('hostname'),'sig',(new Date().getTime()) & 0xffffffff)
+peerRegistry.set(config.get('hostname'),'handle',shortlink.encode(
   Math.abs(
-    swap32(ip.toLong(nodes.get([_self,'ip'])))
+    swap32(ip.toLong(peerRegistry.get(config.get('hostname'),'ip')))
     ^
-    nodes.get([_self,'sig'])
+    peerRegistry.get(config.get('hostname'),'sig')
   )
   & 0xffffffff
 ))
@@ -87,107 +138,59 @@ var multiCast = new Communicator({
   }
 })
 multiCast.useReceive(function(pkt){
-  //update nodes state in memory
-  nodes.set([pkt.hostname,'handle'],pkt.handle)
-  nodes.set([pkt.hostname,'ip'],pkt.rinfo.address)
-  nodes.set([pkt.hostname,'load'],pkt.load)
-  nodes.set([pkt.hostname,'free'],pkt.free)
-  nodes.set([pkt.hostname,'latency'],
-    (
-      pkt.sent -
-      nodes.get([pkt.hostname,'sent']) -
+  //update peers state in memory
+  peerRegistry.set(pkt.hostname,'latency',(
+    pkt.sent -
+      peerRegistry.get(pkt.hostname,'sent') -
       config.get('mesh.interval')
     )
   )
-  nodes.set([pkt.hostname,'sent'],pkt.sent)
+  peerRegistry.set(pkt.hostname,'sent',pkt.sent)
+  peerRegistry.set(pkt.hostname,'handle',pkt.handle)
+  peerRegistry.set(pkt.hostname,'ip',pkt.rinfo.address)
+  peerRegistry.set(pkt.hostname,'load',pkt.load)
+  peerRegistry.set(pkt.hostname,'free',pkt.free)
   if(
     config.get('mesh.debug') ||
-    (pkt.handle !== nodes.get([_self,'handle']))
+    (pkt.handle !== peerRegistry.get(pkt.hostname,'handle'))
   ){
     logger.info(
       pkt.handle +
         ' posted an announce' +
         ' at ' +
-        new Date(nodes.get([pkt.hostname,'sent'])).toLocaleTimeString() +
-        ' (latency ' + nodes.get([pkt.hostname,'latency']) + ')' +
+        new Date(peerRegistry.get(pkt.hostname,'sent')).toLocaleTimeString() +
+        ' (latency ' + peerRegistry.get(pkt.hostname,'latency') + ')' +
         (
           (config.get('mesh.debug') &&
-          (pkt.handle === nodes.get([_self,'handle']))
+          (pkt.handle === peerRegistry.get(config.get('hostname'),'handle'))
           ) ? ' [SELFIE]' : ''
         )
     )
   }
   if(config.get('mesh.debug') > 1){
-    logger.info(os.EOL + require('util').inspect(nodes.get()))
+    logger.info(os.EOL + require('util').inspect(peerRegistry.dump()))
   }
 })
 var announceTimeout
 
 var sendAnnounce = function(){
   var message = {}
-  message.hostname = _self
-  message.handle = nodes.get([_self,'handle'])
-  nodes.set([_self,'load'],getLoad())
-  message.load = nodes.get([_self,'load'])
+  message.hostname = config.get('hostname')
+  message.handle = peerRegistry.get(config.get('hostname'),'handle')
+  peerRegistry.set(config.get('hostname'),'load',getLoad())
+  message.load = peerRegistry.get(config.get('hostname'),'load')
   var spacepath = path.resolve(config.get('serve.dataRoot'))
   //Windows needs to call with only the drive letter
   if('win32' === os.platform()) spacepath = spacepath.substr(0,1)
   ds.check(spacepath,function(total,free){
-    nodes.set([_self,'free'],parseInt(free,10) || 0)
-    message.free = nodes.get([_self,'free'])
+    peerRegistry.set(pkt.hostname,'free',parseInt(free,10) || 0)
+    message.free = peerRegistry.get(pkt.hostname,'free')
     multiCast.send(message,function(){
       announceTimeout = setTimeout(sendAnnounce,config.get('mesh.interval'))
     })
   })
 }
-/*
-//setup unicast UDP server (for direct messaging)
-var uServer = dgram.createSocket('udp4')
-uServer.bind(config.get('mesh.port'),function(){
-  uServer.on('message',function(buf,rinfo){
-    var sum = buf.readInt32BE(0)
-    buf = buf.slice(4)
-    if(sum !== crc32.signed(buf)){
-      logger.warn('BAD CRC: ' + rinfo)
-      return
-    }
-    var pkt = bencode.decode(buf)
-    for(var k in pkt)
-      if(pkt.hasOwnProperty(k) && Buffer.isBuffer(pkt[k]))
-        pkt[k] = pkt[k].toString()
-    //ignore ourselves
-    if(pkt.handle === nodes.get([_self,'handle'])) return
-    if(pkt.cmd){
-      switch(pkt.cmd){
-      case 'ANNOUNCE':
-        uClient.sendPacket({})
-        /* falls through */
-/*
-      case 'LIST':
-        uClient.sendPacket({nodes: nodes.get()})
-        break;
-      default:
-        logger.warn({msg:'UNKNOWN cmd',pkt:pkt})
-        break;
-      }
-    }
-  })
-})
 
-//setup unicast UDP client (replier)
-var uClient = dgram.createSocket('udp4')
-uClient.bind(function(){
-  uClient.prototype.sendPacket = function(where,payload){
-    var message = new ObjectManage(payload)
-    message.set('hostname',_self)
-    message.set('handle',nodes.get([_self,'handle']))
-    message.set('sent',new Date().getTime())
-    var pkt = bencode.encode(message)
-    var buf = Buffer.concat([crc32(pkt),pkt])
-    uClient.send(buf,0,buf.length,config.get('mesh.port'),findNodeIP(where))
-  }
-})
-*/
 exports.multiCast = multiCast
 exports.start = function(){
   sendAnnounce()

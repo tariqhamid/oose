@@ -43,13 +43,14 @@ if(cluster.isWorker){
   //start serve if its enabled
   if(config.get('serve.enabled')){
     require('./serve').start()
+    require('./').start()
   }
   //start resolve if its enabled
   if(config.get('resolve.enabled')){
     require('./resolve').start()
   }
-  //start the balanace
-  if(false !== config.get('balancer.enabled') && true === config.get('serve.enabled')){
-    require('./balancer').start()
+  //start the balancing act
+  if(false !== config.get('balance.enabled') && true === config.get('serve.enabled')){
+    require('./balance').start()
   }
 }
