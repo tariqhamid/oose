@@ -7,21 +7,22 @@ var program = require('commander')
   , path = require('path')
   , config = require(__dirname + '/../config')
   , async = require('async')
+  , temp = require('temp')
+  , crypto = require('crypto')
+  , mkdirp = require('mkdirp')
   , os = require('os')
 
 program
   .version(config.get('version'))
-  .option('-r --root <s>','Root folder to import')
+  .usage('[options] <stdin>')
+  .option('-r --root <s>','Root folder to import, can be omitted to disable folder scanning')
+  .option('-p --port <n>','Port to listen on for tcp input, automatically enables daemon mode')
+  .option('-c --concurrency <n>','Change the number of concurrent imports, defaults to number of cpus')
   .option('-d --daemon','Causes import to act as a daemon and watch for files in root')
   .option('-m --move','Causes import to delete the source file on successful import')
-  .option('-c --concurrency','Change the number of concurrent imports, defaults to number of cpus')
+  .option('--no-stdin','Disable listening on stdin for data')
   .option('-v --verbose','Increase log output')
   .parse(process.argv)
-
-if(!program.root || !fs.existsSync(path.resolve(program.root))){
-  console.error('Root path not sent or does not exist')
-  process.exit()
-}
 
 var log = function(msg){
   if(program.verbose) console.log(msg)
@@ -88,8 +89,44 @@ var importScan = function(){
     sources.push(entry.fullPath)
   })
 }
-importScan()
+if(program.root && fs.existsSync(path.resolve(program.root))){
+  importScan()
+}
 
-//process.on('SIGINT',function(){
-//  console.log('Starting shutdown, waiting for existing imports to finish...')
-//})
+var stdin = function(){
+  var shasum = crypto.createHash('sha1')
+  var tmpDir = config.get('root') + '/tmp'
+  if(!fs.existsSync()) mkdirp.sync(tmpDir)
+  var tmp = temp.path({root: tmpDir})
+  var ws = fs.createWriteStream(tmp)
+  //listen on stdin
+  process.stdin.on('data',function(chunk){
+    shasum.update(chunk)
+  })
+  ws.on('finish',function(){
+    var sha1 = shasum.digest('hex')
+    redis.hexists('hashTable',sha1,function(err,exists){
+      var fsExists = fs.existsSync(file.pathFromSha1(sha1))
+      if(err) console.err(err)
+      else if(exists && fsExists){
+        console.log(sha1 + ' already exists')
+        process.exit()
+      } else {
+        file.write(tmp,sha1,function(err){
+          if(err) console.error(err)
+          else {
+            fs.unlink(tmp,function(err){
+              if(err) console.log(err)
+              else {
+                console.log(sha1 + ' received from stdin successfully')
+                process.exit()
+              }
+            })
+          }
+        })
+      }
+    })
+  })
+  process.stdin.pipe(ws)
+}
+if(!program.noStdin) stdin()
