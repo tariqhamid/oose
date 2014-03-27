@@ -64,7 +64,7 @@ exports.fromReadable = function(readable,done){
   var shasum = crypto.createHash('sha1')
   var tmpDir = config.get('root') + '/tmp'
   if(!fs.existsSync()) mkdirp.sync(tmpDir)
-  var tmp = temp.path({root: tmpDir})
+  var tmp = temp.path({dir: tmpDir})
   var ws = fs.createWriteStream(tmp)
   //listen on stdin
   readable.on('data',function(chunk){
@@ -75,21 +75,18 @@ exports.fromReadable = function(readable,done){
   ws.on('finish',function(){
     var sha1 = shasum.digest('hex')
     redis.hexists('hashTable',sha1,function(err,exists){
-      var fsExists = fs.existsSync(exports.pathFromSha1(sha1))
+      var destination = exports.pathFromSha1(sha1)
+      var fsExists = fs.existsSync(destination)
       if(err) done(err,sha1)
       else if(exists && fsExists){
         done(sha1 + ' already exists',sha1)
       } else {
-        exports.write(tmp,sha1,function(err){
-          if(err) done(err,sha1)
-          else {
-            fs.unlink(tmp,function(err){
-              if(err) done(err,sha1)
-              else {
-                done(null,sha1)
-              }
-            })
-          }
+        mkdirp.sync(path.dirname(destination))
+        fs.rename(tmp,destination,function(err){
+          if(err){
+            fs.unlinkSync(tmp)
+            done(err,sha1)
+          } else done(null,sha1)
         })
       }
     })
