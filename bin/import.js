@@ -7,9 +7,7 @@ var program = require('commander')
   , path = require('path')
   , config = require(__dirname + '/../config')
   , async = require('async')
-  , temp = require('temp')
-  , crypto = require('crypto')
-  , mkdirp = require('mkdirp')
+  , net = require('net')
   , os = require('os')
 
 program
@@ -93,40 +91,26 @@ if(program.root && fs.existsSync(path.resolve(program.root))){
   importScan()
 }
 
-var stdin = function(){
-  var shasum = crypto.createHash('sha1')
-  var tmpDir = config.get('root') + '/tmp'
-  if(!fs.existsSync()) mkdirp.sync(tmpDir)
-  var tmp = temp.path({root: tmpDir})
-  var ws = fs.createWriteStream(tmp)
-  //listen on stdin
-  process.stdin.on('data',function(chunk){
-    shasum.update(chunk)
+//read from stdin unless disabled
+if(!program.noStdin){
+  file.fromReadable(process.stdin,function(err,sha1){
+    if(err) console.log(err)
+    else console.log(sha1 + ' received from stdin successfully')
+    process.exist()
   })
-  ws.on('finish',function(){
-    var sha1 = shasum.digest('hex')
-    redis.hexists('hashTable',sha1,function(err,exists){
-      var fsExists = fs.existsSync(file.pathFromSha1(sha1))
-      if(err) console.err(err)
-      else if(exists && fsExists){
-        console.log(sha1 + ' already exists')
-        process.exit()
-      } else {
-        file.write(tmp,sha1,function(err){
-          if(err) console.error(err)
-          else {
-            fs.unlink(tmp,function(err){
-              if(err) console.log(err)
-              else {
-                console.log(sha1 + ' received from stdin successfully')
-                process.exit()
-              }
-            })
-          }
-        })
-      }
+}
+
+//setup tcp server if enabled
+var listen = function(port){
+  var server = net.createServer()
+  server.on('connection',function(socket){
+    file.fromReadable(socket,function(err,sha1){
+      if(err) console.log(err)
+      else console.log(sha1 + ' received from port ' + port + ' successfully')
     })
   })
-  process.stdin.pipe(ws)
+  server.listen(port,function(){
+    console.log('Listening on port ' + port)
+  })
 }
-if(!program.noStdin) stdin()
+if(program.port) listen(program.port)

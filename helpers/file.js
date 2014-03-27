@@ -5,6 +5,7 @@ var config = require('../config')
   , fs = require('fs')
   , mkdirp = require('mkdirp')
   , redis = require('./redis')
+  , temp = require('temp')
 
 exports.sum = function(path,done){
   var shasum = crypto.createHash('sha1')
@@ -57,4 +58,41 @@ exports.write = function(source,sha1,done){
     exports.insertToRedis(sha1,done)
   })
   rs.pipe(ws)
+}
+
+exports.fromReadable = function(readable,done){
+  var shasum = crypto.createHash('sha1')
+  var tmpDir = config.get('root') + '/tmp'
+  if(!fs.existsSync()) mkdirp.sync(tmpDir)
+  var tmp = temp.path({root: tmpDir})
+  var ws = fs.createWriteStream(tmp)
+  //listen on stdin
+  readable.on('data',function(chunk){
+    shasum.update(chunk)
+  })
+  readable.on('error',done)
+  ws.on('error',done)
+  ws.on('finish',function(){
+    var sha1 = shasum.digest('hex')
+    redis.hexists('hashTable',sha1,function(err,exists){
+      var fsExists = fs.existsSync(exports.pathFromSha1(sha1))
+      if(err) done(err,sha1)
+      else if(exists && fsExists){
+        done(sha1 + ' already exists',sha1)
+      } else {
+        exports.write(tmp,sha1,function(err){
+          if(err) done(err,sha1)
+          else {
+            fs.unlink(tmp,function(err){
+              if(err) done(err,sha1)
+              else {
+                done(null,sha1)
+              }
+            })
+          }
+        })
+      }
+    })
+  })
+  readable.pipe(ws)
 }
