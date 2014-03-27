@@ -27,8 +27,9 @@ var peerRegistry = {
    * @param {multiple} value Value for hostname/key pair
    */
   set: function(hostname,key,value){
-    if('stringstringstring' === (typeof hostname) + (typeof key) + (typeof value)){
+    if('stringstring' === (typeof hostname) + (typeof key)){
       redis.hset('peerRegistry:' + hostname,key,value)
+      logger.warn('set peerRegistry:' + hostname,key,value)
     }
   },
   /**
@@ -39,9 +40,13 @@ var peerRegistry = {
    */
   get: function(hostname,key){
     if('stringstring' === (typeof hostname) + (typeof key)){
-      return redis.hget('peerRegistry:' + hostname,key)
-    }
-    return null
+      logger.warn('get peerRegistry:' + hostname,key)
+      return redis.hget('peerRegistry:' + hostname,key,function(err,result){
+        if(err){ logger.warn('peerRegistry.get/hget:',err) }
+        logger.warn(result)
+        return result
+      })
+    } else return null
   },
   /**
    * peerRegistry.dump()
@@ -73,7 +78,7 @@ var filter = function(d){
 }
 var int = os.networkInterfaces()
 for(var i in int) { if(int.hasOwnProperty(i)) int[i].some(filter) }
-if(null === selfReg.ip){
+if('string' !== typeof (peerRegistry.get(config.get('hostname'),'ip'))){
   logger.warn('Could not locate primary IP address')
   peerRegistry.set(config.get('hostname'),'ip','127.0.0.2')
 }
@@ -183,8 +188,8 @@ var sendAnnounce = function(){
   //Windows needs to call with only the drive letter
   if('win32' === os.platform()) spacepath = spacepath.substr(0,1)
   ds.check(spacepath,function(total,free){
-    peerRegistry.set(pkt.hostname,'free',parseInt(free,10) || 0)
-    message.free = peerRegistry.get(pkt.hostname,'free')
+    peerRegistry.set(message.hostname,'free',parseInt(free,10) || 0)
+    message.free = peerRegistry.get(message.hostname,'free')
     multiCast.send(message,function(){
       announceTimeout = setTimeout(sendAnnounce,config.get('mesh.interval'))
     })
