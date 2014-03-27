@@ -1,6 +1,6 @@
 'use strict';
 var readdirp = require('readdirp')
-  , file = require('file')
+  , file = require('../helpers/file')
 
 //scan dataRoot
 module.exports = function(job,done){

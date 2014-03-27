@@ -4,5 +4,4 @@ node_modules
 *.log
 log/*
 /data
-/import
 config.local.js

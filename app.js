@@ -5,6 +5,7 @@ var cluster = require('cluster')
   , config = require('./config')
   , fs = require('fs')
   , mkdirp = require('mkdirp')
+  , logger = require('./helpers/logger')
 
 
 //master startup
@@ -14,7 +15,13 @@ if(cluster.isMaster){
     mkdirp.sync(config.get('root'))
   }
   //start mesh for discovery and communication
-  require('./mesh').start()
+  require('./mesh').start(function(){
+    console.log('Mesh started and announcement active')
+  })
+  //start the balancing act
+  if(false !== config.get('balance.enabled') && true === config.get('serve.enabled')){
+    require('./balance').start()
+  }
   //setup kue
   if(config.get('kue.port')){
     kue.app.set('title',config.get('kue.title') || 'OOSE Tasks')
@@ -32,25 +39,31 @@ if(cluster.isMaster){
   //start workers
   var workers = config.get('workers') || os.cpus().length
   console.log('Starting ' + workers + ' workers')
-  for(var i=0; i < workers; i++){
+  for(var i=1; i <= workers; i++){
+    logger.info('starting worker ' + i)
     cluster.fork()
   }
 }
 
 //worker startup
 if(cluster.isWorker){
-  console.log('Worker starting...')
+  logger.info('Worker starting...')
   //start serve if its enabled
   if(config.get('serve.enabled')){
-    require('./serve').start()
-    require('./').start()
+    require('./serve').start(function(){
+      logger.info('Serve listening on ' + (config.get('serve.host') || 'localhost') + ':' + config.get('serve.port'))
+    })
   }
   //start resolve if its enabled
   if(config.get('resolve.enabled')){
-    require('./resolve').start()
+    require('./resolve').start(function(){
+      logger.info('Resolve listening on ' + (config.get('resolve.host') || 'localhost') + ':' + config.get('resolve.port'))
+    })
   }
-  //start the balancing act
-  if(false !== config.get('balance.enabled') && true === config.get('serve.enabled')){
-    require('./balance').start()
+  //start tcp import
+  if(config.get('import.enabled')){
+    require('./import').start(function(){
+      logger.info('Import listening on ' + (config.get('import.host') || 'localhost') + ':' + config.get('import.port'))
+    })
   }
 }

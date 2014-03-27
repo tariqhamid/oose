@@ -13,9 +13,6 @@ app.get('/:sha1/:filename',function(req,res){
   })
 })
 
-exports.start = function(){
-  app.listen(config.get('resolve.port'),config.get('resolve.host'),function(err){
-    if(err) console.error('Failed to start resolve: ' + err)
-    else console.log('Resolve is started')
-  })
+exports.start = function(done){
+  app.listen(config.get('resolve.port'),config.get('resolve.host'),done)
 }

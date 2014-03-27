@@ -45,10 +45,6 @@ app.get('/:sha1/:filename',function(req,res){
   }
 })
 
-exports.start = function(){
-  app.listen(config.get('serve.port'),config.get('serve.host'),function(err){
-    if(err) console.error('Failed to start serve: ' + err)
-    else console.log('Serve is started')
-  })
-  return app
+exports.start = function(done){
+  app.listen(config.get('serve.port'),config.get('serve.host'),done)
 }

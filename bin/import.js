@@ -6,14 +6,12 @@ var program = require('commander')
   , path = require('path')
   , config = require(__dirname + '/../config')
   , async = require('async')
-  , net = require('net')
   , os = require('os')
 
 program
   .version(config.get('version'))
   .usage('[options] <stdin>')
   .option('-r --root <s>','Root folder to import, can be omitted to disable folder scanning')
-  .option('-p --port <n>','Port to listen on for tcp input, automatically enables daemon mode')
   .option('-c --concurrency <n>','Change the number of concurrent imports, defaults to number of cpus')
   .option('-d --daemon','Causes import to act as a daemon and watch for files in root')
   .option('-m --move','Causes import to delete the source file on successful import')
@@ -60,9 +58,7 @@ var importScan = function(){
     sources.push(entry.fullPath)
   })
 }
-if(program.root && fs.existsSync(path.resolve(program.root))){
-  importScan()
-}
+if(program.root && fs.existsSync(path.resolve(program.root))) importScan()
 
 //read from stdin unless disabled
 if(!program.noStdin){
@@ -72,18 +68,3 @@ if(!program.noStdin){
     process.exist()
   })
 }
-
-//setup tcp server if enabled
-var listen = function(port){
-  var server = net.createServer()
-  server.on('connection',function(socket){
-    file.fromReadable(socket,function(err,sha1){
-      if(err) console.log(err)
-      else console.log(sha1 + ' received from port ' + port + ' successfully')
-    })
-  })
-  server.listen(port,function(){
-    console.log('Listening on port ' + port)
-  })
-}
-if(program.port) listen(program.port)
