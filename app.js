@@ -16,11 +16,13 @@ if(cluster.isMaster){
   }
   //start mesh for discovery and communication
   require('./mesh').start(function(){
-    console.log('Mesh started and announcement active')
+    logger.info('Mesh started and announcing')
   })
   //start the balancing act
   if(false !== config.get('balance.enabled') && true === config.get('serve.enabled')){
-    require('./balance').start()
+    require('./balance').start(function(){
+      logger.info('Balancer started')
+    })
   }
   //setup kue
   if(config.get('kue.port')){

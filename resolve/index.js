@@ -16,3 +16,10 @@ app.get('/:sha1/:filename',function(req,res){
 exports.start = function(done){
   app.listen(config.get('resolve.port'),config.get('resolve.host'),done)
 }
+
+if(require.main === module){
+  exports.start(function(){
+    var logger = require('../helpers/logger')
+    logger.info('Resolve  started listening on port ' + config.get('serve.port'))
+  })
+}

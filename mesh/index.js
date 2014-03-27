@@ -91,3 +91,8 @@ exports.stop = function(){
     clearTimeout(announceTimeout)
 }
 
+if(require.main === module){
+  exports.start(function(){
+    logger.info('Mesh started and announcing')
+  })
+}

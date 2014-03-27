@@ -18,3 +18,10 @@ var listen = function(port,host,done){
 exports.start = function(done){
   listen(config.get('import.port'),config.get('import.host'),done)
 }
+
+if(require.main === module){
+  exports.start(function(){
+    var logger = require('../helpers/logger')
+    logger.info('Import  started listening on port ' + config.get('import.port'))
+  })
+}

@@ -73,7 +73,7 @@ Collector.prototype.start = function(interval){
     )
     setTimeout(run,interval)
   }
-  setTimeout(run,interval)
+  run()
 }
 
 /**
