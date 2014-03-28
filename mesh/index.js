@@ -43,6 +43,7 @@ multicast.useReceive(function(packet){
       redis.hgetall('peers:' + packet.hostname,function(err,oldPeer){
         if(err) logger.error(err)
         else {
+          if(!oldPeer) oldPeer = {}
           var peer = {}
           peer.latency = packet.sent - (oldPeer.sent || 0) - config.get('mesh.interval')
           if(peer.latency < 0) peer.latency = 0
