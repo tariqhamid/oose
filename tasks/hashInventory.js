@@ -8,7 +8,7 @@ var readdirp = require('readdirp')
 module.exports = function(job,done){
   var fileCount = 0
   logger.info('Starting task to build hash inventory')
-  var rdStream = readdirp({root: path.resolve(job.data.root) || path.resolve('./data')})
+  var rdStream = readdirp({root: path.resolve(job.data.root) || path.resolve('./data'), directoryFilter: ['!tmp']})
   rdStream.on('warn',console.error)
   rdStream.on('error',console.error)
   rdStream.on('end',function(){
