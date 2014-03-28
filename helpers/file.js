@@ -70,6 +70,12 @@ exports.fromReadable = function(readable,done){
   if(!fs.existsSync()) mkdirp.sync(tmpDir)
   var tmp = temp.path({dir: tmpDir})
   var ws = fs.createWriteStream(tmp)
+  var errorHandler = function(err,done){
+    fs.unlink(tmp,function(error){
+      if(error) err = err + ' failed to remove tmp file ' + error
+      done(err)
+    })
+  }
   //listen on stdin
   readable.on('data',function(chunk){
     shasum.update(chunk)
@@ -94,21 +100,11 @@ exports.fromReadable = function(readable,done){
       } else {
         mkdirp(destinationFolder,function(err){
           if(err){
-            err = 'Failed to create folder ' + destinationFolder + ' ' + err
-            fs.unlink(tmp,function(error){
-              if(error) err = err + ' failed to remove tmp file ' + error
-              done(err)
-            })
+            errorHandler('Failed to create folder ' + destinationFolder + ' ' + err,done)
           } else {
             fs.rename(tmp,destination,function(err){
-              if(err){
-                fs.unlink(tmp,function(error){
-                  if(error) err = err + ' failed to remove tmp file' + error
-                  done(err,sha1)
-                })
-              } else {
-                done(null,sha1)
-              }
+              if(err) errorHandler('Failed to rename ' + tmp + ' to ' + destination + ' ' + err,done)
+              else done(null,sha1)
             })
           }
         })
