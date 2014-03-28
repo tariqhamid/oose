@@ -70,7 +70,7 @@ exports.fromReadable = function(readable,done){
   var tmpDir = path.resolve(config.get('root') + '/tmp')
   if(!fs.existsSync()) mkdirp.sync(tmpDir)
   var tmp = temp.path({dir: tmpDir})
-  var ws = fs.createWriteStream(tmp)
+  var writable = fs.createWriteStream(tmp)
   var finish = function(err,sha1,exists){
     if(!exists) exists = false
     if(fs.existsSync(tmp)){
@@ -93,8 +93,8 @@ exports.fromReadable = function(readable,done){
     shasum.update(chunk)
   })
   readable.on('error',finish)
-  ws.on('error',finish)
-  ws.on('finish',function(){
+  writable.on('error',finish)
+  writable.on('finish',function(){
     var sha1 = shasum.digest('hex')
     redis.hlen(sha1,function(err,len){
       if(err) return finish(err,sha1)
@@ -112,7 +112,7 @@ exports.fromReadable = function(readable,done){
       })
     })
   })
-  readable.pipe(ws)
+  readable.pipe(writable)
 }
 
 exports.fromPath = function(source,done){
