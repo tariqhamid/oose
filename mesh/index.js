@@ -37,20 +37,21 @@ var multicast = new Communicator({
   }
 })
 multicast.useReceive(function(packet){
-  redis.hgetall(config.get('hostname'),function(err,selfPeer){
+  redis.hgetall('peers:' + config.get('hostname'),function(err,selfPeer){
     if(err) logger.error(err)
     else {
-      redis.hgetall(packet.hostname,function(err,oldPeer){
+      redis.hgetall('peers:' + packet.hostname,function(err,oldPeer){
         if(err) logger.error(err)
         else {
           var peer = {}
-          peer.latency = packet.sent - oldPeer.sent - config.get('mesh.interval')
+          peer.latency = packet.sent - (oldPeer.sent || 0) - config.get('mesh.interval')
+          if(peer.latency < 0) peer.latency = 0
           peer.sent = packet.sent
           peer.handle = packet.handle
           peer.ip = packet.rinfo.address
           peer.load = packet.load
           peer.free = packet.free
-          redis.hmset(packet.hostname,peer,function(err){
+          redis.hmset('peers:' + packet.hostname,peer,function(err){
             if(err) logger.error(err)
             logAnnounce(selfPeer,oldPeer,peer,packet)
           })
@@ -63,7 +64,7 @@ multicast.useReceive(function(packet){
 var announceTimeout
 
 var sendAnnounce = function(){
-  redis.hgetall(config.get('hostname'),function(err,peer){
+  redis.hgetall('peers:' + config.get('hostname'),function(err,peer){
     if(err) logger.error(err)
     else if(!peer){
       logger.warn('Announce delayed, peer not ready')

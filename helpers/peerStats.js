@@ -64,7 +64,7 @@ var populate = function(basket,next){
 }
 
 var save = function(basket,next){
-  redis.hmset(config.get('hostname'),basket,next)
+  redis.hmset('peers:' + config.get('hostname'),basket,next)
 }
 
 //node registry helper functions
