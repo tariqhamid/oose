@@ -46,12 +46,12 @@ app.get('/:sha1/:filename',function(req,res){
 })
 
 exports.start = function(done){
-  app.listen(config.get('serve.port'),config.get('serve.host'),done)
+  app.listen(config.get('export.port'),config.get('export.host'),done)
 }
 
 if(require.main === module){
   exports.start(function(){
     var logger = require('../helpers/logger')
-    logger.info('Serve  started listening on port ' + config.get('serve.port'))
+    logger.info('Export started listening on port ' + config.get('export.port'))
   })
 }
