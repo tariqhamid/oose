@@ -34,9 +34,7 @@ exports.pathFromSha1 = function(sha1){
 }
 
 exports.sha1FromPath = function(path){
-  path.replace('/','')
-  path.replace('\\','')
-  return path
+  return path.replace(/[^a-f0-9]+/gi,'')
 }
 
 exports.redisInsert = function(sha1,done){
