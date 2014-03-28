@@ -5,7 +5,7 @@ var express = require('express')
   , redis = require('../helpers/redis')
   , logger = require('../helpers/logger')
 
-app.get('/api/selectPeer',function(req,res){
+app.get('/api/nextPeer',function(req,res){
   redis.zrevrangebyscore('peerRank',100,0,function(err,peers){
     if(err) logger.error(err)
     if(!peers[0]){
