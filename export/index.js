@@ -26,14 +26,26 @@ app.get('/:sha1/:filename',function(req,res){
           //update hits
           redis.hincrby(sha1,'hits',1)
           //add attachment for a download
-          if(req.query.download){
+          if('string' === typeof req.query.download){
             res.set('Content-Disposition','attachment; filename=' + req.params.filename)
           }
           //set headers
-          res.set('Content-Length',stat.size)
+          res.set('Accept-Ranges','bytes')
           res.set('Content-Type',info.mimeType)
+          //byte range support
+          var range = {start: 0, end: stat.size - 1}
+          var rangeRaw = req.get('range')
+          if(rangeRaw){
+            var match = rangeRaw.match(/(\d+)-(\d*)/)
+            if(match[1]) range.start = parseInt(match[1],10)
+            if(match[2]) range.end = parseInt(match[2],10)
+            res.status(206)
+            res.set('Content-Range','bytes ' + range.start + '-' + range.end + '/' + stat.size)
+          }
+          //set content length here
+          res.set('Content-Length',(range.end - range.start) + 1)
           //setup read stream from the file
-          var rs = fs.createReadStream(path)
+          var rs = fs.createReadStream(path,range)
           //update bytes sent
           rs.on('data',function(data){
             redis.hincrby(sha1,'sent',data.length)

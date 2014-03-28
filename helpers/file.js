@@ -93,11 +93,14 @@ exports.fromReadable = function(readable,done){
       else done(null,sha1)
     }
   }
-  //listen on stdin
+
   readable.on('data',function(chunk){
     shasum.update(chunk)
   })
   readable.on('error',finish)
+  readable.on('close',function(){
+    writable.end()
+  })
   writable.on('error',finish)
   writable.on('finish',function(){
     var sha1 = shasum.digest('hex')
