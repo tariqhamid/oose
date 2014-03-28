@@ -4,6 +4,13 @@ var express = require('express')
   , config = require('../config')
   , redis = require('../helpers/redis')
 
+app.get('/api/selectPeer',function(req,res){
+  redis.hgetall(['peers:*'],function(err,peers){
+    console.log(peers)
+    res.json({status: 'ok', code: 0, peer: '127.0.0.1'})
+  })
+})
+
 app.get('/:sha1/:filename',function(req,res){
   var sha1 = req.param.sha1
   redis.hget('hashPeers',sha1,function(err,peers){
