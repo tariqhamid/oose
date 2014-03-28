@@ -24,10 +24,11 @@ exports.pathFromSha1 = function(sha1){
   var parts = sha1.split('')
   for(var i = 1; i <= parts.length; i++){
     file = file + parts[i - 1]
-    if(i % 2 === 0){
+    if(i % 2 === 0 && i !== 40){
       file = file + '/'
     }
   }
+  file = path.resolve(file)
   return file
 }
 
@@ -40,13 +41,13 @@ exports.sha1FromPath = function(path){
 exports.redisInsert = function(sha1,done){
   var destination = exports.pathFromSha1(sha1)
   fs.stat(destination,function(err,stat){
-    if(err) return done(err)
+    if(err) return done(err,sha1)
     redis.hmset(sha1,{
       'stat': JSON.stringify(stat),
       'copiesMin': config.get('copies.min'),
       'copiesMax': config.get('copies.max')
     })
-    done()
+    done(null,sha1)
   })
 }
 
@@ -70,45 +71,43 @@ exports.fromReadable = function(readable,done){
   if(!fs.existsSync()) mkdirp.sync(tmpDir)
   var tmp = temp.path({dir: tmpDir})
   var ws = fs.createWriteStream(tmp)
-  var errorHandler = function(err,done){
-    fs.unlink(tmp,function(error){
-      if(error) err = err + ' failed to remove tmp file ' + error
-      done(err)
-    })
+  var finish = function(err,sha1){
+    if(fs.existsSync(tmp)){
+      fs.unlink(tmp,function(error){
+        if(error){
+          if(err) err = err + ' failed to remove tmp file ' + error
+          else err = 'failed to remove tmp file ' + error
+        }
+        if(err) done(err,sha1)
+        else exports.redisInsert(sha1,done)
+      })
+    } else {
+      if(err) done(err,sha1)
+      else exports.redisInsert(sha1,done)
+    }
   }
   //listen on stdin
   readable.on('data',function(chunk){
     shasum.update(chunk)
   })
-  readable.on('error',done)
-  ws.on('error',function(err){
-    fs.unlink(tmp,function(error){
-      if(error) err = err + ' failed to remove temp file ' + error
-      done(err)
-    })
-  })
+  readable.on('error',finish)
+  ws.on('error',finish)
   ws.on('finish',function(){
     var sha1 = shasum.digest('hex')
     redis.hlen(sha1,function(err,len){
+      if(err) return finish(err,sha1)
       var exists = (len > 0)
       var destination = exports.pathFromSha1(sha1)
       var destinationFolder = path.dirname(destination)
       var fsExists = fs.existsSync(destination)
-      if(err) done(err,sha1)
-      else if(exists && fsExists){
-        done(sha1 + ' already exists',sha1)
-      } else {
-        mkdirp(destinationFolder,function(err){
-          if(err){
-            errorHandler('Failed to create folder ' + destinationFolder + ' ' + err,done)
-          } else {
-            fs.rename(tmp,destination,function(err){
-              if(err) errorHandler('Failed to rename ' + tmp + ' to ' + destination + ' ' + err,done)
-              else done(null,sha1)
-            })
-          }
+      if(exists && fsExists) return finish(sha1 + ' already exists',sha1)
+      mkdirp(destinationFolder,function(err){
+        if(err) return finish('Failed to create folder ' + destinationFolder + ' ' + err,sha1)
+        fs.rename(tmp,destination,function(err){
+          if(err) return finish('Failed to rename ' + tmp + ' to ' + destination + ' ' + err,sha1)
+          finish(null,sha1)
         })
-      }
+      })
     })
   })
   readable.pipe(ws)

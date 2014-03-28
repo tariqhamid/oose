@@ -8,8 +8,9 @@ var listen = function(port,host,done){
   var server = net.createServer()
   server.on('connection',function(socket){
     file.fromReadable(socket,function(err,sha1){
+      console.log(sha1 + ' received from port ' + port)
       if(err) console.log(err)
-      else console.log(sha1 + ' received from port ' + port + ' successfully')
+      else console.log('import of ' + sha1 + ' successful')
     })
   })
   server.listen(port,host,done)
