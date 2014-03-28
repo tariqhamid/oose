@@ -29,11 +29,11 @@ if(cluster.isMaster){
   }
   var jobs = kue.createQueue(config.get('kue.options'))
   //register job handlers
-  jobs.process('hashInventory',require('./tasks/hashInventory'))
+  jobs.process('inventory',require('./tasks/inventory'))
   jobs.process('prismSync',require('./tasks/prismSync'))
   //fire off initial scan
   if(config.get('export.enabled'))
-    jobs.create('hashInventory',{title: 'Build the initial hash table', root: config.get('root')}).save()
+    jobs.create('inventory',{title: 'Build the initial hash table', root: config.get('root')}).save()
   if(config.get('prism.enabled'))
     jobs.create('prismSync',{title: 'Sync or build the global hash table', hostname: config.get('hostname')}).save()
   //start workers

@@ -50,10 +50,10 @@ exports.redisInsert = function(sha1,done){
         copiesMin: config.get('copies.min'),
         copiesMax: config.get('copies.max')
       })
+      redis.sadd('inventory',sha1)
       done(null,sha1)
     })
   })
-
 }
 
 exports.write = function(source,sha1,done){
