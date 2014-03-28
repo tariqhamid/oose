@@ -2,15 +2,16 @@
 var net = require('net')
   , file = require('../helpers/file')
   , config = require('../config')
+  , logger = require('../helpers/logger')
 
 //setup tcp server if enabled
 var listen = function(port,host,done){
   var server = net.createServer()
   server.on('connection',function(socket){
     file.fromReadable(socket,function(err,sha1){
-      console.log(sha1 + ' received from port ' + port)
-      if(err) console.log(err)
-      else console.log('import of ' + sha1 + ' successful')
+      logger.info(sha1 + ' received from port ' + port)
+      if(err) logger.warn(err)
+      else logger.info(sha1 + ' imported successfully')
     })
   })
   server.listen(port,host,done)

@@ -71,7 +71,8 @@ exports.fromReadable = function(readable,done){
   if(!fs.existsSync()) mkdirp.sync(tmpDir)
   var tmp = temp.path({dir: tmpDir})
   var ws = fs.createWriteStream(tmp)
-  var finish = function(err,sha1){
+  var finish = function(err,sha1,exists){
+    if(!exists) exists = false
     if(fs.existsSync(tmp)){
       fs.unlink(tmp,function(error){
         if(error){
@@ -83,7 +84,8 @@ exports.fromReadable = function(readable,done){
       })
     } else {
       if(err) done(err,sha1)
-      else exports.redisInsert(sha1,done)
+      else if(!err && !exists) exports.redisInsert(sha1,done)
+      else done(null,sha1)
     }
   }
   //listen on stdin
@@ -100,7 +102,7 @@ exports.fromReadable = function(readable,done){
       var destination = exports.pathFromSha1(sha1)
       var destinationFolder = path.dirname(destination)
       var fsExists = fs.existsSync(destination)
-      if(exists && fsExists) return finish(sha1 + ' already exists',sha1)
+      if(exists && fsExists) return finish(null,sha1,true)
       mkdirp(destinationFolder,function(err){
         if(err) return finish('Failed to create folder ' + destinationFolder + ' ' + err,sha1)
         fs.rename(tmp,destination,function(err){
