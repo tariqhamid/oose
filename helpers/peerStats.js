@@ -14,14 +14,14 @@ var getDiskFree = function(basket,next){
   //Windows needs to call with only the drive letter
   if('win32' === os.platform()) root = root.substr(0,1)
   ds.check(root,function(total,free){
-    basket.free = parseInt(free,10) || 0
-    basket.total = parseInt(total,10) || 0
+    basket.diskFree = parseInt(free,10) || 0
+    basket.diskTotal = parseInt(total,10) || 0
     next()
   })
 }
 
 var lastMeasure
-var getLoad = function(basket,next){
+var getCPU = function(basket,next){
   var cpuAverage = function(){
     var totalIdle = 0
       , totalTick = 0
@@ -37,11 +37,20 @@ var getLoad = function(basket,next){
   if(!lastMeasure) lastMeasure = cpuAverage()
   var thisMeasure = cpuAverage()
   //figure percentage
-  basket.load = 100 - ~~ (
-    100 * ((thisMeasure.idle - lastMeasure.idle) / (thisMeasure.total - lastMeasure.total))
-  )
+  basket.cpuIdle = thisMeasure.idle - lastMeasure.idle
+  basket.cpuTotal = thisMeasure.total - lastMeasure.total
   //set this value for next use
   lastMeasure = thisMeasure
+  next()
+}
+
+var availableCapacity = function(basket,next){
+  basket.availableCapacity = Math.round(
+    (
+      (100 * (basket.cpuIdle / basket.cpuTotal)) +
+      (2 * (100 * (basket.diskFree / basket.diskTotal)))
+    ) / 3
+  )
   next()
 }
 
@@ -67,24 +76,10 @@ var save = function(basket,next){
   redis.hmset('peers:' + config.get('hostname'),basket,next)
 }
 
-//node registry helper functions
-/*
-var findNodeIP = function(where){
-  var n = nodes.get()
-    , rv = where
-  for(var hostname in n){
-    if(n.hasOwnProperty(hostname)){
-      if(where === hostname) rv = n[hostname].ip
-      if(where === n[hostname].handle) rv = n[hostname].ip
-    }
-  }
-  return rv
-}
-*/
-
 var peerStats = new Collector()
 peerStats.use(getDiskFree)
-peerStats.use(getLoad)
+peerStats.use(getCPU)
+peerStats.use('process',availableCapacity)
 peerStats.use('process',populate)
 peerStats.use('store',save)
 module.exports = peerStats

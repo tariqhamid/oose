@@ -49,8 +49,11 @@ multicast.useReceive(function(packet){
           peer.sent = packet.sent
           peer.handle = packet.handle
           peer.ip = packet.rinfo.address
-          peer.load = packet.load
-          peer.free = packet.free
+          peer.diskFree = packet.diskFree
+          peer.diskTotal = packet.diskTotal
+          peer.cpuIdle = packet.cpuIdle
+          peer.cpuTotal = packet.cpuTotal
+          peer.availableCapacity = packet.availableCapacity
           redis.hmset('peers:' + packet.hostname,peer,function(err){
             if(err) logger.error(err)
             logAnnounce(selfPeer,oldPeer,peer,packet)
@@ -73,8 +76,11 @@ var sendAnnounce = function(){
       var message = {}
       message.hostname = config.get('hostname')
       message.handle = peer.handle
-      message.load = peer.load
-      message.free = peer.free
+      message.diskFree = peer.diskFree
+      message.diskTotal = peer.diskTotal
+      message.cpuIdle = peer.cpuIdle
+      message.cpuTotal = peer.cpuTotal
+      message.availableCapacity = peer.availableCapacity
       multicast.send(message,function(){
         announceTimeout = setTimeout(sendAnnounce,config.get('mesh.interval'))
       })
