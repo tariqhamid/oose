@@ -50,22 +50,22 @@ if(cluster.isMaster){
 //worker startup
 if(cluster.isWorker){
   logger.info('Worker starting...')
-  //start serve if its enabled
-  if(config.get('serve.enabled')){
-    require('./serve').start(function(){
-      logger.info('Serve listening on ' + (config.get('serve.host') || 'localhost') + ':' + config.get('serve.port'))
+  //start tcp import
+  if(config.get('import.enabled')){
+    require('./import').start(function(){
+      logger.info('Import listening on ' + (config.get('import.host') || 'localhost') + ':' + config.get('import.port'))
+    })
+  }
+  //start export if its enabled
+  if(config.get('export.enabled')){
+    require('./export').start(function(){
+      logger.info('Export listening on ' + (config.get('export.host') || 'localhost') + ':' + config.get('export.port'))
     })
   }
   //start resolve if its enabled
   if(config.get('resolve.enabled')){
     require('./resolve').start(function(){
       logger.info('Resolve listening on ' + (config.get('resolve.host') || 'localhost') + ':' + config.get('resolve.port'))
-    })
-  }
-  //start tcp import
-  if(config.get('import.enabled')){
-    require('./import').start(function(){
-      logger.info('Import listening on ' + (config.get('import.host') || 'localhost') + ':' + config.get('import.port'))
     })
   }
 }

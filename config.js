@@ -38,14 +38,14 @@ config.load({
     ttl: 1,
     interval: 6000
   },
-  serve: {
-    enabled: false,
-    port: 3001,
-    host: null
-  },
   import: {
     enabled: false,
     port: 3002,
+    host: null
+  },
+  export: {
+    enabled: false,
+    port: 3001,
     host: null
   },
   resolve: {
