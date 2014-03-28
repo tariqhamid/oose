@@ -54,9 +54,12 @@ multicast.useReceive(function(packet){
           peer.cpuIdle = packet.cpuIdle
           peer.cpuTotal = packet.cpuTotal
           peer.availableCapacity = packet.availableCapacity
-          redis.hmset('peers:' + packet.hostname,peer,function(err){
+          redis.zadd('peerRank',packet.availableCapacity,packet.hostname,function(err){
             if(err) logger.error(err)
-            logAnnounce(selfPeer,oldPeer,peer,packet)
+            redis.hmset('peers:' + packet.hostname,peer,function(err){
+              if(err) logger.error(err)
+              logAnnounce(selfPeer,oldPeer,peer,packet)
+            })
           })
         }
       })
