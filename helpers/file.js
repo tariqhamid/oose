@@ -37,11 +37,15 @@ exports.sha1FromPath = function(path){
   return path
 }
 
-exports.insertToRedis = function(sha1,done){
+exports.redisInsert = function(sha1,done){
   var destination = exports.pathFromSha1(sha1)
-  fs.stat(destination,function(err,stats){
+  fs.stat(destination,function(err,stat){
     if(err) return done(err)
-    redis.hset('hashTable',sha1,JSON.stringify(stats))
+    redis.hmset(sha1,{
+      'stat': JSON.stringify(stat),
+      'copiesMin': config.get('copies.min'),
+      'copiesMax': config.get('copies.max')
+    })
     done()
   })
 }
@@ -55,7 +59,7 @@ exports.write = function(source,sha1,done){
   var ws = fs.createWriteStream(destination)
   ws.on('error',done)
   rs.on('end',function(){
-    exports.insertToRedis(sha1,done)
+    exports.redisInsert(sha1,done)
   })
   rs.pipe(ws)
 }
@@ -112,7 +116,7 @@ exports.fromPath = function(source,done){
         redis.hdel('hashTable',sha1)
         exports.write(source,sha1,fileWriteDone)
       } else if(!exists && fs.existsSync){
-        exports.insertToRedis(sha1,done)
+        exports.redisInsert(sha1,done)
       } else {
         exports.write(source,sha1,fileWriteDone)
       }

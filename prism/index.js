@@ -14,12 +14,12 @@ app.get('/:sha1/:filename',function(req,res){
 })
 
 exports.start = function(done){
-  app.listen(config.get('resolve.port'),config.get('resolve.host'),done)
+  app.listen(config.get('prism.port'),config.get('prism.host'),done)
 }
 
 if(require.main === module){
   exports.start(function(){
     var logger = require('../helpers/logger')
-    logger.info('Resolve  started listening on port ' + config.get('serve.port'))
+    logger.info('Prism  started listening on port ' + config.get('prism.port'))
   })
 }

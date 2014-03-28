@@ -9,6 +9,6 @@ module.exports = function(job,done){
   rdStream.on('error',console.error)
   rdStream.on('end',done)
   rdStream.on('data',function(entry){
-    file.insertToRedis(file.sha1FromPath(entry.path))
+    file.redisInsert(file.sha1FromPath(entry.path))
   })
 }

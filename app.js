@@ -18,12 +18,10 @@ if(cluster.isMaster){
   require('./mesh').start(function(){
     logger.info('Mesh started and announcing')
   })
-  //start the balancing act
-  if(false !== config.get('balance.enabled') && true === config.get('serve.enabled')){
-    require('./balance').start(function(){
-      logger.info('Balancer started')
-    })
-  }
+  //start the supervisor
+  require('./supervisor').start(function(){
+    logger.info('Supervisor started')
+  })
   //setup kue
   if(config.get('kue.port')){
     kue.app.set('title',config.get('kue.title') || 'OOSE Tasks')
@@ -63,9 +61,9 @@ if(cluster.isWorker){
     })
   }
   //start resolve if its enabled
-  if(config.get('resolve.enabled')){
-    require('./resolve').start(function(){
-      logger.info('Resolve listening on ' + (config.get('resolve.host') || 'localhost') + ':' + config.get('resolve.port'))
+  if(config.get('prism.enabled')){
+    require('./prism').start(function(){
+      logger.info('Prism listening on ' + (config.get('prism.host') || 'localhost') + ':' + config.get('prism.port'))
     })
   }
 }

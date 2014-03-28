@@ -20,6 +20,7 @@ var guessedIP = guessIP()
 
 var config = new ObjectManage()
 config.load({
+  //options
   version: '0.0.1',
   hostname: os.hostname(),
   ip: {
@@ -28,9 +29,11 @@ config.load({
     management: guessedIP
   },
   root: './data',
-  balance: {
-    enabled: null
+  copies: {
+    min: 2,
+    max: 2
   },
+  //services
   mesh: {
     debug: 0,
     address: '226.0.0.1',
@@ -48,7 +51,7 @@ config.load({
     port: 3001,
     host: null
   },
-  resolve: {
+  prism: {
     enabled: false,
     port: 3003,
     host: null
