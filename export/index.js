@@ -12,13 +12,13 @@ app.get('/:sha1/:filename',function(req,res){
     res.send('Invalid path')
   } else {
     var path = file.pathFromSha1(sha1)
-    redis.hget(sha1,'stat',function(err,stat){
+    redis.hgetall(sha1,function(err,info){
       if(err){
         console.log(err)
         res.send(err)
       } else {
         //convert stats to an object
-        stat = JSON.parse(stat)
+        var stat = JSON.parse(info.stat)
         if(!fs.existsSync(path)){
           res.status(404)
           res.send('File not found')
@@ -31,7 +31,7 @@ app.get('/:sha1/:filename',function(req,res){
           }
           //set headers
           res.set('Content-Length',stat.size)
-          res.set('Content-Type',stat.type)
+          res.set('Content-Type',info.mimeType)
           //setup read stream from the file
           var rs = fs.createReadStream(path)
           //update bytes sent

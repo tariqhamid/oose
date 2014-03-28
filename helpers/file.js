@@ -6,6 +6,7 @@ var config = require('../config')
   , mkdirp = require('mkdirp')
   , redis = require('./redis')
   , temp = require('temp')
+  , mmm = require('mmmagic')
 
 exports.sum = function(path,done){
   var shasum = crypto.createHash('sha1')
@@ -40,15 +41,21 @@ exports.sha1FromPath = function(path){
 
 exports.redisInsert = function(sha1,done){
   var destination = exports.pathFromSha1(sha1)
-  fs.stat(destination,function(err,stat){
+  var magic = new mmm.Magic(mmm.MAGIC_MIME_TYPE)
+  magic.detectFile(destination,function(err,mimeType){
     if(err) return done(err,sha1)
-    redis.hmset(sha1,{
-      'stat': JSON.stringify(stat),
-      'copiesMin': config.get('copies.min'),
-      'copiesMax': config.get('copies.max')
+    fs.stat(destination,function(err,stat){
+      if(err) return done(err,sha1)
+      redis.hmset(sha1,{
+        stat: JSON.stringify(stat),
+        mimeType: mimeType,
+        copiesMin: config.get('copies.min'),
+        copiesMax: config.get('copies.max')
+      })
+      done(null,sha1)
     })
-    done(null,sha1)
   })
+
 }
 
 exports.write = function(source,sha1,done){
