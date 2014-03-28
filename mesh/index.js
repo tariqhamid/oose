@@ -49,6 +49,7 @@ multicast.useReceive(function(packet){
           if(peer.latency < 0) peer.latency = 0
           peer.sent = packet.sent
           peer.handle = packet.handle
+          peer.hostname = packet.hostname
           peer.ip = packet.rinfo.address
           peer.diskFree = packet.diskFree
           peer.diskTotal = packet.diskTotal
