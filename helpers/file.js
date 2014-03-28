@@ -66,7 +66,7 @@ exports.write = function(source,sha1,done){
 
 exports.fromReadable = function(readable,done){
   var shasum = crypto.createHash('sha1')
-  var tmpDir = config.get('root') + '/tmp'
+  var tmpDir = path.resolve(config.get('root') + '/tmp')
   if(!fs.existsSync()) mkdirp.sync(tmpDir)
   var tmp = temp.path({dir: tmpDir})
   var ws = fs.createWriteStream(tmp)
@@ -75,22 +75,42 @@ exports.fromReadable = function(readable,done){
     shasum.update(chunk)
   })
   readable.on('error',done)
-  ws.on('error',done)
+  ws.on('error',function(err){
+    fs.unlink(tmp,function(error){
+      if(error) err = err + ' failed to remove temp file ' + error
+      done(err)
+    })
+  })
   ws.on('finish',function(){
     var sha1 = shasum.digest('hex')
-    redis.hexists('hashTable',sha1,function(err,exists){
+    redis.hlen(sha1,function(err,len){
+      var exists = (len > 0)
       var destination = exports.pathFromSha1(sha1)
+      var destinationFolder = path.dirname(destination)
       var fsExists = fs.existsSync(destination)
       if(err) done(err,sha1)
       else if(exists && fsExists){
         done(sha1 + ' already exists',sha1)
       } else {
-        mkdirp.sync(path.dirname(destination))
-        fs.rename(tmp,destination,function(err){
+        mkdirp(destinationFolder,function(err){
           if(err){
-            fs.unlinkSync(tmp)
-            done(err,sha1)
-          } else done(null,sha1)
+            err = 'Failed to create folder ' + destinationFolder + ' ' + err
+            fs.unlink(tmp,function(error){
+              if(error) err = err + ' failed to remove tmp file ' + error
+              done(err)
+            })
+          } else {
+            fs.rename(tmp,destination,function(err){
+              if(err){
+                fs.unlink(tmp,function(error){
+                  if(error) err = err + ' failed to remove tmp file' + error
+                  done(err,sha1)
+                })
+              } else {
+                done(null,sha1)
+              }
+            })
+          }
         })
       }
     })
