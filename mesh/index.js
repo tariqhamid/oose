@@ -39,6 +39,7 @@ var discoverTimeout
 var discoverSend = function(){
   var message = {}
   message.hostname = config.get('hostname')
+  message.port = config.get('mesh.port')
   multicast.send(message,function(){
     discoverTimeout = setTimeout(discoverSend,config.get('mesh.discoverInterval'))
   })
