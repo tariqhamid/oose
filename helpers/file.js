@@ -73,8 +73,11 @@ exports.redisInsert = function(sha1,done){
         mimeType: mimeType,
         copiesMin: config.get('copies.min'),
         copiesMax: config.get('copies.max')
+      },function(err){
+        if(!err){
+          redis.sadd('inventory',sha1)
+        }
       })
-      redis.sadd('inventory',sha1)
       done(null,sha1)
     })
   })
