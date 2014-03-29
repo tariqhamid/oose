@@ -10,7 +10,7 @@ var redis = require('../helpers/redis')
  */
 module.exports = function(job,done){
   job.log('Prism beginning to sync its master hash inventory')
-  redis.hkeys('peerList',function(err,peers){
+  redis.smembers('peerList',function(err,peers){
     if(err) return done(err)
     async.each(peers,function(hostname,next){
       redis.hgetall('peers:' + hostname,function(err,peer){
