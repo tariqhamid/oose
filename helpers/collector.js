@@ -10,34 +10,17 @@ var async = require('async')
  * @constructor
  */
 var Collector = function(){
+  var self = this
   EventEmitter.call(this)
+  self.middleware = {
+    collect: [],
+    process: [],
+    store: []
+  }
+  self.basket = {}
+  self.timeout = null
 }
 util.inherits(Collector,EventEmitter)
-
-
-/**
- * Basket to store the internal collector info
- * @type {{}}
- */
-Collector.prototype.basket = {}
-
-
-/**
- * Timeout used by the loop timer
- * @type {null}
- */
-Collector.prototype.timeout = null
-
-
-/**
- * Middleware stack
- * @type {{send: Array, receive: Array}}
- */
-Collector.prototype.middleware = {
-  collect: [],
-  process: [],
-  store: []
-}
 
 
 /**
@@ -63,22 +46,32 @@ Collector.prototype.use = function(position,fn){
 Collector.prototype.start = function(interval){
   var self = this
   var run = function(){
-    //run middleware
-    async.eachSeries(self.middleware.collect,function(fn,next){fn(self.basket,next)},function(err){
+    self.basket = {}
+    //collect
+    async.eachSeries(
+      self.middleware.collect,
+      function(fn,next){fn(self.basket,next)},
+      function(err){
         if(err) self.emit('error',err)
+        //process
+        async.eachSeries(
+          self.middleware.process,
+          function(fn,next){fn(self.basket,next)},
+          function(err){
+            if(err) self.emit('error',err)
+            //store
+            async.eachSeries(
+              self.middleware.store,
+              function(fn,next){fn(self.basket,next)},
+              function(err){
+                if(err) self.emit('error',err)
+                self.timeout = setTimeout(run,interval)
+              }
+            )
+          }
+        )
       }
     )
-    async.eachSeries(self.middleware.process,
-      function(fn,next){fn(self.basket,next)},function(err){
-        if(err) self.emit('error',err)
-      }
-    )
-    async.eachSeries(self.middleware.store,
-      function(fn,next){fn(self.basket,next)},function(err){
-        if(err) self.emit('error',err)
-      }
-    )
-    setTimeout(run,interval)
   }
   run()
 }

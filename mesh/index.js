@@ -20,7 +20,11 @@ var cmdBus = new Emitter()
 myStats.start(config.get('mesh.statInterval'))
 
 //start nextPeer selection
-nextPeer.start(config.get('mesh.nextPeerInterval'))
+setTimeout(function(){
+  logger.info('Starting next peer selection')
+  nextPeer.start(config.get('mesh.nextPeerInterval'))
+},config.get('mesh.announceInterval') * 2)
+
 
 //setup multicast discovery
 var multicast = new Communicator({
