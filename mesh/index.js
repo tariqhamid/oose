@@ -52,12 +52,11 @@ var discoverSend = function(){
 var announceLog = function(selfPeer,oldPeer,peer,packet){
   if(config.get('mesh.debug') || (packet.handle !== oldPeer.handle)){
     logger.info(
-        packet.handle +
-        ' posted an announce' +
-        ' at ' +
-        new Date(peer.sent).toLocaleTimeString() +
-        ' (latency ' + peer.latency + ')' +
-        (config.get('mesh.debug') && packet.handle === selfPeer.handle ? ' [SELFIE]' : '')
+      '[' + peer.handle + '] ' + packet.hostname +
+      ' (' + peer.ip + ':' + peer.meshPort + ')' +
+      ' posted an announce at ' + new Date(peer.sent).toLocaleTimeString() +
+      ' (latency ' + peer.latency + ')' +
+      (config.get('mesh.debug') && packet.handle === selfPeer.handle ? ' [SELFIE]' : '')
     )
   }
   if(config.get('mesh.debug') > 1){
