@@ -31,6 +31,7 @@ if(cluster.isMaster){
   //register job handlers
   jobs.process('inventory',require('./tasks/inventory'))
   jobs.process('prismSync',require('./tasks/prismSync'))
+  jobs.process('replicate',require('./tasks/replicate'))
   //fire off initial scan
   if(config.get('export.enabled'))
     jobs.create('inventory',{title: 'Build the initial hash table', root: config.get('root')}).save()

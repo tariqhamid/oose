@@ -185,6 +185,11 @@ Communicator.prototype.send = function(payload,done){
   }
 }
 
+
+/**
+ * Export module
+ * @type {Communicator}
+ */
 module.exports = Communicator
 
 /* USAGE EXAMPLE

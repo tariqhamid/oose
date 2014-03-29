@@ -1,6 +1,5 @@
 'use strict';
-var logger = require('../helpers/logger')
-//  , redis = require('../helpers/redis')
+var redis = require('../helpers/redis')
 
 
 /**
@@ -9,7 +8,13 @@ var logger = require('../helpers/logger')
  * @param {function} done
  */
 module.exports = function(job,done){
-  logger.info('Prism beginning to sync its master hash inventory')
-  //need to iterate peers here and then download the inventory somehow
-  done()
+  job.log('Prism beginning to sync its master hash inventory')
+  var rs = redis.zscan('peerRank')
+  rs.on('data',function(entry){
+    console.log(entry)
+  })
+  rs.on('error',done)
+  rs.on('close',function(){
+    done()
+  })
 }
