@@ -42,6 +42,10 @@ multicast.useReceive(function(packet){
     var stream = net.connect(packet.rinfo.port,packet.rinfo.address)
     stream.pipe(cmdBus.createStream()).pipe(stream)
     peerMap[packet.hostname] = {stream: stream, ip: packet.rinfo.address, port: packet.rinfo.port}
+  } else {
+    peerMap[packet.hostname] = {}
+    peerMap[packet.hostname].ip = packet.rinfo.address
+    peerMap[packet.hostname].port = packet.rinfo.port
   }
 })
 var discoverTimeout
@@ -83,7 +87,7 @@ cmdBus.on('announce',function(packet){
           peer.sent = packet.sent
           peer.handle = packet.handle
           peer.hostname = packet.hostname
-          peer.ip = peerMap[packet.hostname].ip
+          peer.ip = peerMap[packet.hostname] ? peerMap[packet.hostname].ip : ''
           peer.meshPort = packet.meshPort
           peer.diskFree = packet.diskFree
           peer.diskTotal = packet.diskTotal
