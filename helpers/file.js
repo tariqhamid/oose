@@ -144,9 +144,8 @@ exports.fromReadable = function(readable,done){
   writable.on('error',finish)
   writable.on('finish',function(){
     var sha1 = shasum.digest('hex')
-    redis.hlen(sha1,function(err,len){
+    redis.exists(sha1,function(err,exists){
       if(err) return finish(err,sha1)
-      var exists = (len > 0)
       var destination = exports.pathFromSha1(sha1)
       var destinationFolder = path.dirname(destination)
       var fsExists = fs.existsSync(destination)

@@ -56,6 +56,8 @@ multicast.useReceive(function(packet){
           peer.cpuIdle = packet.cpuIdle
           peer.cpuTotal = packet.cpuTotal
           peer.availableCapacity = packet.availableCapacity
+          peer.services = packet.services
+          redis.hset('peerList',packet.hostname,peer.handle)
           redis.zadd('peerRank',packet.availableCapacity,packet.hostname,function(err){
             if(err) logger.error(err)
             redis.hmset('peers:' + packet.hostname,peer,function(err){
@@ -86,6 +88,10 @@ var sendAnnounce = function(){
       message.cpuIdle = peer.cpuIdle
       message.cpuTotal = peer.cpuTotal
       message.availableCapacity = peer.availableCapacity
+      message.services = ''
+      if(config.get('import.enabled')) message.services += ',import'
+      if(config.get('export.enabled')) message.services += ',export'
+      if(config.get('prism.enabled')) message.services += ',prism'
       multicast.send(message,function(){
         announceTimeout = setTimeout(sendAnnounce,config.get('mesh.interval'))
       })

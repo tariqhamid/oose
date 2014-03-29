@@ -1,5 +1,6 @@
 'use strict';
 var redis = require('../helpers/redis')
+  , async = require('async')
 
 
 /**
@@ -9,12 +10,14 @@ var redis = require('../helpers/redis')
  */
 module.exports = function(job,done){
   job.log('Prism beginning to sync its master hash inventory')
-  var rs = redis.zscan('peerRank')
-  rs.on('data',function(entry){
-    console.log(entry)
-  })
-  rs.on('error',done)
-  rs.on('close',function(){
-    done()
+  redis.hkeys('peerList',function(err,peers){
+    if(err) return done(err)
+    async.each(peers,function(hostname,next){
+      redis.hgetall('peers:' + hostname,function(err,peer){
+        if(err) return done(err)
+        console.log(peer)
+        next()
+      })
+    },done)
   })
 }
