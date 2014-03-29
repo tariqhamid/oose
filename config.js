@@ -39,7 +39,8 @@ config.load({
     address: '226.0.0.1',
     port: 3000,
     ttl: 1,
-    interval: 6000
+    discoverInterval: 1000,
+    announceInterval: 5000
   },
   store: {
     enabled: false,

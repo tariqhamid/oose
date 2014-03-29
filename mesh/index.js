@@ -14,30 +14,11 @@ var config = require('../config')
 //setup the command bus
 var cmdBusPeers = {}
 var cmdBus = new Emitter()
-cmdBus.on('ping',function(packet){
-  logger.info('Command: ping, Data: ' + util.inspect(packet))
-})
 
 //start stats collection
 myStats.start(config.get('mesh.statInterval') || 1000)
 
-var logAnnounce = function(selfPeer,oldPeer,peer,packet){
-  if(config.get('mesh.debug') || (packet.handle !== oldPeer.handle)){
-    logger.info(
-      packet.handle +
-      ' posted an announce' +
-      ' at ' +
-      new Date(peer.sent).toLocaleTimeString() +
-      ' (latency ' + peer.latency + ')' +
-      (config.get('mesh.debug') && packet.handle === selfPeer.handle ? ' [SELFIE]' : '')
-    )
-  }
-  if(config.get('mesh.debug') > 1){
-    logger.info(os.EOL + util.inspect(peer))
-  }
-}
-
-//setup multicast networking
+//setup multicast discovery
 var multicast = new Communicator({
   proto: 'mcast',
   port: config.get('mesh.port'),
@@ -47,6 +28,39 @@ var multicast = new Communicator({
   }
 })
 multicast.useReceive(function(packet){
+  //connect to the nodes scuttlebutt
+  if(!cmdBusPeers[packet.hostname] && packet.hostname !== config.get('hostname')){
+    var stream = net.connect(packet.port,packet.rinfo.ip)
+    stream.pipe(cmdBus.createStream()).pipe(stream)
+    cmdBusPeers[packet.hostname] = stream
+  }
+})
+var discoverTimeout
+var discoverSend = function(){
+  var message = {}
+  message.hostname = config.get('hostname')
+  multicast.send(message,function(){
+    discoverTimeout = setTimeout(discoverSend,config.get('mesh.discoverInterval'))
+  })
+}
+
+var announceLog = function(selfPeer,oldPeer,peer,packet){
+  if(config.get('mesh.debug') || (packet.handle !== oldPeer.handle)){
+    logger.info(
+        packet.handle +
+        ' posted an announce' +
+        ' at ' +
+        new Date(peer.sent).toLocaleTimeString() +
+        ' (latency ' + peer.latency + ')' +
+        (config.get('mesh.debug') && packet.handle === selfPeer.handle ? ' [SELFIE]' : '')
+    )
+  }
+  if(config.get('mesh.debug') > 1){
+    logger.info(os.EOL + util.inspect(peer))
+  }
+}
+
+cmdBus.on('announce',function(packet){
   redis.hgetall('peers:' + config.get('hostname'),function(err,selfPeer){
     if(err) logger.error(err)
     else {
@@ -56,13 +70,12 @@ multicast.useReceive(function(packet){
           if(!oldPeer) oldPeer = {}
           //populate details
           var peer = {}
-          peer.latency = packet.sent - (oldPeer.sent || 0) - config.get('mesh.interval')
+          peer.latency = packet.sent - (oldPeer.sent || 0) - config.get('mesh.announceInterval')
           if(peer.latency < 0) peer.latency = 0
           peer.sent = packet.sent
           peer.handle = packet.handle
           peer.hostname = packet.hostname
           peer.meshPort = packet.meshPort
-          peer.ip = packet.rinfo.address
           peer.diskFree = packet.diskFree
           peer.diskTotal = packet.diskTotal
           peer.cpuIdle = packet.cpuIdle
@@ -75,12 +88,6 @@ multicast.useReceive(function(packet){
           }
           if(packet.services.indexOf('prism') > 0){
             peer.prismPort = packet.prismPort
-          }
-          //connect to the nodes scuttlebutt
-          if(!cmdBusPeers[peer.handle] && peer.handle !== selfPeer.handle){
-            var stream = net.connect(peer.meshPort,peer.ip)
-            stream.pipe(cmdBus.createStream()).pipe(stream)
-            cmdBusPeers[peer.handle] = stream
           }
           //save to redis
           redis.sadd('peerList',packet.hostname)
@@ -95,7 +102,7 @@ multicast.useReceive(function(packet){
                   hostname: packet.hostname
                 }).save()
               }
-              logAnnounce(selfPeer,oldPeer,peer,packet)
+              announceLog(selfPeer,oldPeer,peer,packet)
             })
           })
         }
@@ -105,16 +112,16 @@ multicast.useReceive(function(packet){
 })
 
 var announceTimeout
-
-var sendAnnounce = function(){
+var announceSend = function(){
   redis.hgetall('peers:' + config.get('hostname'),function(err,peer){
     if(err) logger.error(err)
     else if(!peer){
       logger.warn('Announce delayed, peer not ready')
-      announceTimeout = setTimeout(sendAnnounce,config.get('mesh.interval'))
+      announceTimeout = setTimeout(announceSend,config.get('mesh.announceInterval'))
     }
     else{
       var message = {}
+      message.sent = new Date().getTime()
       message.hostname = config.get('hostname')
       message.meshPort = config.get('mesh.port')
       message.handle = peer.handle
@@ -133,9 +140,8 @@ var sendAnnounce = function(){
         message.services += ',prism'
         message.prismPort = config.get('prism.port')
       }
-      multicast.send(message,function(){
-        announceTimeout = setTimeout(sendAnnounce,config.get('mesh.interval'))
-      })
+      cmdBus.emit('announce',message)
+      announceTimeout = setTimeout(announceSend,config.get('mesh.announceInterval'))
     }
   })
 }
@@ -164,13 +170,10 @@ exports.start = function(done){
   net.createServer(function(stream){
     stream.pipe(cmdBus.createStream()).pipe(stream)
   }).listen(config.get('mesh.port'))
-  sendAnnounce()
-  //just a test ping command
-  var pingPeer = function(){
-    exports.bus.emit('ping',{from: config.get('hostname')})
-    setTimeout(pingPeer,1000)
-  }
-  pingPeer()
+  //send out discovery packet
+  discoverSend()
+  //start announcing
+  announceSend()
   done()
 }
 
@@ -181,6 +184,8 @@ exports.start = function(done){
 exports.stop = function(){
   if(announceTimeout)
     clearTimeout(announceTimeout)
+  if(discoverTimeout)
+    clearTimeout(discoverTimeout)
 }
 
 if(require.main === module){
