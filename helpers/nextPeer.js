@@ -20,7 +20,7 @@ var selectPeer = function(basket,done){
           basket.handle = peer.handle
           basket.hostname = peer.hostname
           basket.ip = peer.ip
-          basket.port = peer.port
+          basket.port = peer.importPort
           done()
         }
       })
