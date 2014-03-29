@@ -7,16 +7,20 @@ var config = require('../config')
   , os = require('os')
   , util = require('util')
   , myStats = require('../helpers/peerStats')
+  , nextPeer = require('../helpers/nextPeer')
   , jobs = require('../helpers/jobs')
   , Emitter = require('scuttlebutt/events')
   , net = require('net')
 
 //setup the command bus
-var cmdBusPeers = {}
+var peerMap = {}
 var cmdBus = new Emitter()
 
 //start stats collection
-myStats.start(config.get('mesh.statInterval') || 1000)
+myStats.start(config.get('mesh.statInterval'))
+
+//start nextPeer selection
+nextPeer.start(config.get('mesh.nextPeerInterval'))
 
 //setup multicast discovery
 var multicast = new Communicator({
@@ -29,11 +33,11 @@ var multicast = new Communicator({
 })
 multicast.useReceive(function(packet){
   //connect to the nodes scuttlebutt
-  if(!cmdBusPeers[packet.hostname]){
+  if(!peerMap[packet.hostname]){
     logger.info('Setting up cmdBus connection to ' + packet.rinfo.address + ':' + packet.rinfo.port)
     var stream = net.connect(packet.rinfo.port,packet.rinfo.address)
     stream.pipe(cmdBus.createStream()).pipe(stream)
-    cmdBusPeers[packet.hostname] = stream
+    peerMap[packet.hostname] = {stream: stream, ip: packet.rinfo.address, port: packet.rinfo.port}
   }
 })
 var discoverTimeout
@@ -76,35 +80,41 @@ cmdBus.on('announce',function(packet){
           peer.sent = packet.sent
           peer.handle = packet.handle
           peer.hostname = packet.hostname
+          peer.ip = peerMap[packet.hostname].ip
           peer.meshPort = packet.meshPort
           peer.diskFree = packet.diskFree
           peer.diskTotal = packet.diskTotal
           peer.cpuIdle = packet.cpuIdle
           peer.cpuTotal = packet.cpuTotal
-          peer.availableCapacity = packet.availableCapacity
+          peer.availableCapacity = packet.availableCapacity || 0
           peer.services = packet.services
           if(packet.services.indexOf('store') > 0){
             peer.importPort = packet.importPort
             peer.exportPort = packet.exportPort
+            redis.sadd('storeList',packet.hostname,function(err){
+              if(err) logger.error('Couldnt save peer to storeList ' + err)
+            })
+            redis.zadd('peerRank',parseInt(peer.availableCapacity,10),packet.hostname,function(err){
+              if(err) logger.error('Couldnt add peer to peerRank ' + err)
+            })
           }
           if(packet.services.indexOf('prism') > 0){
             peer.prismPort = packet.prismPort
+            redis.sadd('prismList',packet.hostname,function(err){
+              if(err) logger.error('Coudlnt add peer to prismList ' + err)
+            })
           }
           //save to redis
-          redis.sadd('peerList',packet.hostname)
-          redis.zadd('peerRank',packet.availableCapacity,packet.hostname,function(err){
+          redis.hmset('peers:' + packet.hostname,peer,function(err){
             if(err) logger.error(err)
-            redis.hmset('peers:' + packet.hostname,peer,function(err){
-              if(err) logger.error(err)
-              //start a prism sync on the first one
-              if(config.get('prism.enabled') && packet.services.indexOf('store') > 0 && !oldPeer){
-                jobs.create('prismSync',{
-                  title: 'Sync or build the global hash table',
-                  hostname: packet.hostname
-                }).save()
-              }
-              announceLog(selfPeer,oldPeer,peer,packet)
-            })
+            //start a prism sync on the first one
+            if(config.get('prism.enabled') && packet.services.indexOf('store') > 0 && !oldPeer){
+              jobs.create('prismSync',{
+                title: 'Sync or build the global hash table',
+                hostname: packet.hostname
+              }).save()
+            }
+            announceLog(selfPeer,oldPeer,peer,packet)
           })
         }
       })

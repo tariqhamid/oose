@@ -40,6 +40,8 @@ config.load({
     port: 3000,
     ttl: 1,
     discoverInterval: 1000,
+    statInterval: 1000,
+    nextPeerInterval: 5000,
     announceInterval: 5000
   },
   store: {

@@ -3,24 +3,11 @@ var express = require('express')
   , app = express()
   , config = require('../config')
   , redis = require('../helpers/redis')
-  , logger = require('../helpers/logger')
 
 app.get('/api/nextPeer',function(req,res){
-  redis.zrevrangebyscore('peerRank',100,0,function(err,peers){
-    if(err) logger.error(err)
-    if(!peers[0]){
-      res.json({status: 'error', code: '2', message: 'No peers available'})
-    } else {
-      var hostname = peers[0]
-      redis.hgetall('peers:' + hostname,function(err,peer){
-        if(err) logger.error(err)
-        if(!hostname || !peer.ip){
-          res.json({status: 'error', code: '1', message: 'Failed to select next peer'})
-        } else {
-          res.json({status: 'ok', code: 0, hostname: hostname, ip: peer.ip})
-        }
-      })
-    }
+  redis.hgetall('nextPeer',function(err,peer){
+    if(err) return res.json({status: 'error', code: 1, message: err})
+    res.json({status: 'ok', code: 0, peer: peer})
   })
 })
 
