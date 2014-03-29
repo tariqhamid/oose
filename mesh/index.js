@@ -29,8 +29,9 @@ var multicast = new Communicator({
 })
 multicast.useReceive(function(packet){
   //connect to the nodes scuttlebutt
-  if(!cmdBusPeers[packet.hostname] && packet.hostname !== config.get('hostname')){
-    var stream = net.connect(packet.port,packet.rinfo.ip)
+  if(!cmdBusPeers[packet.hostname]){
+    logger.info('Setting up cmdBus connection to ' + packet.rinfo.address + ':' + packet.rinfo.port)
+    var stream = net.connect(packet.rinfo.port,packet.rinfo.address)
     stream.pipe(cmdBus.createStream()).pipe(stream)
     cmdBusPeers[packet.hostname] = stream
   }
@@ -39,7 +40,6 @@ var discoverTimeout
 var discoverSend = function(){
   var message = {}
   message.hostname = config.get('hostname')
-  message.port = config.get('mesh.port')
   multicast.send(message,function(){
     discoverTimeout = setTimeout(discoverSend,config.get('mesh.discoverInterval'))
   })
