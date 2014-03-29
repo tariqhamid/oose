@@ -38,7 +38,8 @@
     "async": "^0.2.10",
     "redis": "^0.10.1",
     "readdirp": "^0.3.3",
-    "event-stream": "^3.1.0"
+    "event-stream": "^3.1.0",
+    "redis-scanstreams": "^1.0.1"
   },
   "devDependencies": {
     "grunt-concurrent": "~0.4.2",

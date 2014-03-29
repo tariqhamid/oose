@@ -57,6 +57,11 @@ app.get('/:sha1/:filename',function(req,res){
   }
 })
 
+
+/**
+ * Start serve and listen
+ * @param {Function} done
+ */
 exports.start = function(done){
   app.listen(config.get('export.port'),config.get('export.host'),done)
 }

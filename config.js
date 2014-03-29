@@ -68,4 +68,9 @@ if(fs.existsSync('./config.local.js')){
   config.load(require(__dirname + '/config.local.js'))
 }
 
+
+/**
+ * Export config
+ * @type {ObjectManage}
+ */
 module.exports = config

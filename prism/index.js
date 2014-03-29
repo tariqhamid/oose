@@ -33,6 +33,11 @@ app.get('/:sha1/:filename',function(req,res){
   })
 })
 
+
+/**
+ * Start prism
+ * @param {function} done
+ */
 exports.start = function(done){
   app.listen(config.get('prism.port'),config.get('prism.host'),done)
 }

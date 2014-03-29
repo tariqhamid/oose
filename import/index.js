@@ -24,6 +24,11 @@ var listen = function(port,host,done){
   server.listen(port,host,done)
 }
 
+
+/**
+ * Start import
+ * @param {function} done
+ */
 exports.start = function(done){
   listen(config.get('import.port'),config.get('import.host'),done)
 }

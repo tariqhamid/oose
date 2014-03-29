@@ -16,4 +16,9 @@ var logger = new winston.Logger({
 })
 logger.cli()
 
+
+/**
+ * Export module
+ * @type {exports.Logger}
+ */
 module.exports = logger

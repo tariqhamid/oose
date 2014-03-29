@@ -82,4 +82,10 @@ peerStats.use(getCPU)
 peerStats.use('process',availableCapacity)
 peerStats.use('process',populate)
 peerStats.use('store',save)
+
+
+/**
+ * Export module
+ * @type {Collector}
+ */
 module.exports = peerStats

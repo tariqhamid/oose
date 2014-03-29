@@ -1,7 +1,9 @@
 'use strict';
 var async = require('async')
-  , EventEmitter = require('events').EventEmitter
   , util = require('util')
+  , EventEmitter = require('events').EventEmitter
+
+
 
 /**
  * Collector constructor
@@ -12,17 +14,20 @@ var Collector = function(){
 }
 util.inherits(Collector,EventEmitter)
 
+
 /**
  * Basket to store the internal collector info
  * @type {{}}
  */
 Collector.prototype.basket = {}
 
+
 /**
  * Timeout used by the loop timer
  * @type {null}
  */
 Collector.prototype.timeout = null
+
 
 /**
  * Middleware stack
@@ -33,6 +38,7 @@ Collector.prototype.middleware = {
   process: [],
   store: []
 }
+
 
 /**
  * Add middleware
@@ -48,6 +54,7 @@ Collector.prototype.use = function(position,fn){
   if('process' !== position || 'store' !== position) position = 'collect'
   self.middleware[position].push(fn)
 }
+
 
 /**
  * Start the collector loop
@@ -76,6 +83,7 @@ Collector.prototype.start = function(interval){
   run()
 }
 
+
 /**
  * Stop the collector loop
  */
@@ -83,4 +91,9 @@ Collector.prototype.stop = function(){
   if(this.timeout) clearTimeout(this.timeout)
 }
 
+
+/**
+ * Export module
+ * @type {Collector}
+ */
 module.exports = Collector

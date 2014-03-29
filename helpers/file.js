@@ -8,6 +8,12 @@ var config = require('../config')
   , temp = require('temp')
   , mmm = require('mmmagic')
 
+
+/**
+ * Take a file path and return a sha1 to the callback
+ * @param {String} path
+ * @param {Function} done
+ */
 exports.sum = function(path,done){
   var shasum = crypto.createHash('sha1')
   var rs = fs.createReadStream(path)
@@ -20,6 +26,12 @@ exports.sum = function(path,done){
   })
 }
 
+
+/**
+ * Convert a sha1 to an absolute path
+ * @param {String} sha1
+ * @return {string}
+ */
 exports.pathFromSha1 = function(sha1){
   var file = path.resolve(config.get('root')) + '/'
   var parts = sha1.split('')
@@ -33,10 +45,22 @@ exports.pathFromSha1 = function(sha1){
   return file
 }
 
+
+/**
+ * Convert a path back to a sha1
+ * @param {string} path
+ * @return {*|XML|string|void}
+ */
 exports.sha1FromPath = function(path){
   return path.replace(/[^a-f0-9]+/gi,'')
 }
 
+
+/**
+ * Insert file entry into redis
+ * @param {string} sha1
+ * @param {function} done
+ */
 exports.redisInsert = function(sha1,done){
   var destination = exports.pathFromSha1(sha1)
   var magic = new mmm.Magic(mmm.MAGIC_MIME_TYPE)
@@ -56,6 +80,13 @@ exports.redisInsert = function(sha1,done){
   })
 }
 
+
+/**
+ * Write a file from a source path
+ * @param {string} source
+ * @param {string} sha1
+ * @param {function} done
+ */
 exports.write = function(source,sha1,done){
   if(!done) done = function(){}
   var destination = exports.pathFromSha1(sha1)
@@ -70,6 +101,12 @@ exports.write = function(source,sha1,done){
   rs.pipe(ws)
 }
 
+
+/**
+ * Import a file directly from a stream
+ * @param {object} readable  Readable stream to import from
+ * @param {function} done
+ */
 exports.fromReadable = function(readable,done){
   var shasum = crypto.createHash('sha1')
   var tmpDir = path.resolve(config.get('root') + '/tmp')
@@ -123,6 +160,13 @@ exports.fromReadable = function(readable,done){
   readable.pipe(writable)
 }
 
+
+/**
+ * Same as write but does not require a sha1
+ * @param {string} source
+ * @param {function} done
+ * @return {null}
+ */
 exports.fromPath = function(source,done){
   if(!source) return done('No source provided for import ' + source)
   exports.sum(source,function(err,sha1){

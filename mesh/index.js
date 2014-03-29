@@ -93,11 +93,27 @@ var sendAnnounce = function(){
   })
 }
 
+
+/**
+ * Access to the multicast setup
+ * @type {Communicator}
+ */
 exports.multicast = multicast
+
+
+/**
+ * Start mesh
+ * @param {function} done
+ */
 exports.start = function(done){
   sendAnnounce()
   done()
 }
+
+
+/**
+ * Stop mesh
+ */
 exports.stop = function(){
   if(announceTimeout)
     clearTimeout(announceTimeout)

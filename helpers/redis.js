@@ -2,6 +2,9 @@
 var redis = require('redis')
   , config = require('../config')
 
+//override with scan streams
+require('redis-scanstreams')(redis)
+
 var client = redis.createClient(config.get('redis.port'),config.get('redis.host'),config.get('redis.options'))
 client.on('ready',function(){
   if(config.get('redis.auth')){
@@ -9,4 +12,9 @@ client.on('ready',function(){
   }
 })
 
+
+/**
+ * Export Module
+ * @return {object} client
+ */
 module.exports = client
