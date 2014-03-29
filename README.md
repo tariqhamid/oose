@@ -17,10 +17,7 @@ First, setup a local config file like so.
 ```js
 'use strict';
 module.exports = {
-  import: {
-    enabled: true
-  },
-  export: {
+  store: {
     enabled: true
   },
   prism: {

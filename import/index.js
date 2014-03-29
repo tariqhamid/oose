@@ -30,12 +30,12 @@ var listen = function(port,host,done){
  * @param {function} done
  */
 exports.start = function(done){
-  listen(config.get('import.port'),config.get('import.host'),done)
+  listen(config.get('store.import.port'),config.get('store.import.host'),done)
 }
 
 if(require.main === module){
   exports.start(function(){
     var logger = require('../helpers/logger')
-    logger.info('Import started, listening on port ' + config.get('import.port'))
+    logger.info('Import started, listening on port ' + config.get('store.import.port'))
   })
 }

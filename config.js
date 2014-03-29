@@ -41,15 +41,16 @@ config.load({
     ttl: 1,
     interval: 6000
   },
-  import: {
+  store: {
     enabled: false,
-    port: 3002,
-    host: null
-  },
-  export: {
-    enabled: false,
-    port: 3001,
-    host: null
+    import: {
+      port: 3002,
+      host: null
+    },
+    export: {
+      port: 3001,
+      host: null
+    }
   },
   prism: {
     enabled: false,

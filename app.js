@@ -1,7 +1,6 @@
 'use strict';
 var cluster = require('cluster')
   , os = require('os')
-  , kue = require('kue')
   , config = require('./config')
   , fs = require('fs')
   , mkdirp = require('mkdirp')
@@ -10,10 +9,14 @@ var cluster = require('cluster')
 
 //master startup
 if(cluster.isMaster){
+  var redis = require('./helpers/redis')
+    , jobs = require('./helpers/jobs')
   //make sure the root folder exists
   if(!fs.existsSync(config.get('root'))){
     mkdirp.sync(config.get('root'))
   }
+  //flush redis before startup
+  redis.flushdb()
   //start mesh for discovery and communication
   require('./mesh').start(function(){
     logger.info('Mesh started and announcing')
@@ -22,21 +25,14 @@ if(cluster.isMaster){
   require('./supervisor').start(function(){
     logger.info('Supervisor started')
   })
-  //setup kue
-  if(config.get('kue.port')){
-    kue.app.set('title',config.get('kue.title') || 'OOSE Tasks')
-    kue.app.listen(config.get('kue.port'),config.get('kue.port'))
-  }
-  var jobs = kue.createQueue(config.get('kue.options'))
+
   //register job handlers
   jobs.process('inventory',require('./tasks/inventory'))
   jobs.process('prismSync',require('./tasks/prismSync'))
   jobs.process('replicate',require('./tasks/replicate'))
   //fire off initial scan
-  if(config.get('export.enabled'))
+  if(config.get('store.enabled'))
     jobs.create('inventory',{title: 'Build the initial hash table', root: config.get('root')}).save()
-  if(config.get('prism.enabled'))
-    jobs.create('prismSync',{title: 'Sync or build the global hash table', hostname: config.get('hostname')}).save()
   //start workers
   var workers = config.get('workers') || os.cpus().length
   console.log('Starting ' + workers + ' workers')
@@ -49,16 +45,23 @@ if(cluster.isMaster){
 //worker startup
 if(cluster.isWorker){
   logger.info('Worker starting...')
-  //start tcp import
-  if(config.get('import.enabled')){
+  //start storage services
+  if(config.get('store.enabled')){
     require('./import').start(function(){
-      logger.info('Import listening on ' + (config.get('import.host') || 'localhost') + ':' + config.get('import.port'))
+      logger.info(
+        'Import listening on ' +
+        (config.get('store.import.host') || 'localhost') +
+        ':' +
+        config.get('store.import.port')
+      )
     })
-  }
-  //start export if its enabled
-  if(config.get('export.enabled')){
     require('./export').start(function(){
-      logger.info('Export listening on ' + (config.get('export.host') || 'localhost') + ':' + config.get('export.port'))
+      logger.info(
+        'Export listening on ' +
+        (config.get('store.export.host') || 'localhost') +
+        ':' +
+        config.get('store.export.port')
+      )
     })
   }
   //start resolve if its enabled

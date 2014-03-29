@@ -7,6 +7,7 @@ var config = require('../config')
   , os = require('os')
   , util = require('util')
   , myStats = require('../helpers/peerStats')
+  , jobs = require('../helpers/jobs')
 
 //start stats collection
 myStats.start(config.get('mesh.statInterval') || 1000)
@@ -44,6 +45,7 @@ multicast.useReceive(function(packet){
         if(err) logger.error(err)
         else {
           if(!oldPeer) oldPeer = {}
+          //populate details
           var peer = {}
           peer.latency = packet.sent - (oldPeer.sent || 0) - config.get('mesh.interval')
           if(peer.latency < 0) peer.latency = 0
@@ -57,11 +59,19 @@ multicast.useReceive(function(packet){
           peer.cpuTotal = packet.cpuTotal
           peer.availableCapacity = packet.availableCapacity
           peer.services = packet.services
+          //save to redis
           redis.sadd('peerList',packet.hostname)
           redis.zadd('peerRank',packet.availableCapacity,packet.hostname,function(err){
             if(err) logger.error(err)
             redis.hmset('peers:' + packet.hostname,peer,function(err){
               if(err) logger.error(err)
+              //start a prism sync on the first one
+              if(config.get('prism.enabled') && packet.services.indexOf('store') > 0 && !oldPeer){
+                jobs.create('prismSync',{
+                  title: 'Sync or build the global hash table',
+                  hostname: packet.hostname
+                }).save()
+              }
               logAnnounce(selfPeer,oldPeer,peer,packet)
             })
           })
@@ -89,8 +99,7 @@ var sendAnnounce = function(){
       message.cpuTotal = peer.cpuTotal
       message.availableCapacity = peer.availableCapacity
       message.services = ''
-      if(config.get('import.enabled')) message.services += ',import'
-      if(config.get('export.enabled')) message.services += ',export'
+      if(config.get('store.enabled')) message.services += ',store'
       if(config.get('prism.enabled')) message.services += ',prism'
       multicast.send(message,function(){
         announceTimeout = setTimeout(sendAnnounce,config.get('mesh.interval'))
