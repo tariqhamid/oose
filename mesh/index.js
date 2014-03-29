@@ -8,6 +8,15 @@ var config = require('../config')
   , util = require('util')
   , myStats = require('../helpers/peerStats')
   , jobs = require('../helpers/jobs')
+  , Emitter = require('scuttlebutt/events')
+  , net = require('net')
+
+//setup the command bus
+var cmdBusPeers = {}
+var cmdBus = new Emitter()
+cmdBus.on('ping',function(packet){
+  logger.info('Command: ping, Data: ' + util.inspect(packet))
+})
 
 //start stats collection
 myStats.start(config.get('mesh.statInterval') || 1000)
@@ -52,6 +61,7 @@ multicast.useReceive(function(packet){
           peer.sent = packet.sent
           peer.handle = packet.handle
           peer.hostname = packet.hostname
+          peer.meshPort = packet.meshPort
           peer.ip = packet.rinfo.address
           peer.diskFree = packet.diskFree
           peer.diskTotal = packet.diskTotal
@@ -59,6 +69,19 @@ multicast.useReceive(function(packet){
           peer.cpuTotal = packet.cpuTotal
           peer.availableCapacity = packet.availableCapacity
           peer.services = packet.services
+          if(packet.services.indexOf('store') > 0){
+            peer.importPort = packet.importPort
+            peer.exportPort = packet.exportPort
+          }
+          if(packet.services.indexOf('prism') > 0){
+            peer.prismPort = packet.prismPort
+          }
+          //connect to the nodes scuttlebutt
+          if(!cmdBusPeers[peer.handle] && peer.handle !== selfPeer.handle){
+            var stream = net.connect(peer.meshPort,peer.ip)
+            stream.pipe(cmdBus.createStream()).pipe(stream)
+            cmdBusPeers[peer.handle] = stream
+          }
           //save to redis
           redis.sadd('peerList',packet.hostname)
           redis.zadd('peerRank',packet.availableCapacity,packet.hostname,function(err){
@@ -89,9 +112,11 @@ var sendAnnounce = function(){
     else if(!peer){
       logger.warn('Announce delayed, peer not ready')
       announceTimeout = setTimeout(sendAnnounce,config.get('mesh.interval'))
-    } else {
+    }
+    else{
       var message = {}
       message.hostname = config.get('hostname')
+      message.meshPort = config.get('mesh.port')
       message.handle = peer.handle
       message.diskFree = peer.diskFree
       message.diskTotal = peer.diskTotal
@@ -99,8 +124,15 @@ var sendAnnounce = function(){
       message.cpuTotal = peer.cpuTotal
       message.availableCapacity = peer.availableCapacity
       message.services = ''
-      if(config.get('store.enabled')) message.services += ',store'
-      if(config.get('prism.enabled')) message.services += ',prism'
+      if(config.get('store.enabled')){
+        message.services += ',store'
+        message.importPort = config.get('store.import.port')
+        message.exportPort = config.get('store.export.port')
+      }
+      if(config.get('prism.enabled')){
+        message.services += ',prism'
+        message.prismPort = config.get('prism.port')
+      }
       multicast.send(message,function(){
         announceTimeout = setTimeout(sendAnnounce,config.get('mesh.interval'))
       })
@@ -117,11 +149,28 @@ exports.multicast = multicast
 
 
 /**
+ * Export command bus
+ * @type {ReliableEventEmitter}
+ */
+exports.bus = cmdBus
+
+
+/**
  * Start mesh
  * @param {function} done
  */
 exports.start = function(done){
+  //start a scuttlebutt server
+  net.createServer(function(stream){
+    stream.pipe(cmdBus.createStream()).pipe(stream)
+  }).listen(config.get('mesh.port'))
   sendAnnounce()
+  //just a test ping command
+  var pingPeer = function(){
+    exports.bus.emit('ping',{from: config.get('hostname')})
+    setTimeout(pingPeer,1000)
+  }
+  pingPeer()
   done()
 }
 

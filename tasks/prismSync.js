@@ -1,6 +1,5 @@
 'use strict';
 var redis = require('../helpers/redis')
-  , async = require('async')
 
 
 /**
