@@ -36,6 +36,6 @@ exports.start = function(done){
 if(require.main === module){
   exports.start(function(){
     var logger = require('../helpers/logger')
-    logger.info('Import  started listening on port ' + config.get('import.port'))
+    logger.info('Import started, listening on port ' + config.get('import.port'))
   })
 }

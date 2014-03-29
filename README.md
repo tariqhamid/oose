@@ -4,7 +4,7 @@ Object Oriented Storage Engine
 
 ## Installation
 
-``
+```
 $ git clone git@github.com:eSited/oose.git
 $ cd oose
 $ npm install
