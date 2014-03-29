@@ -37,7 +37,7 @@ var multicast = new Communicator({
 })
 multicast.useReceive(function(packet){
   //connect to the nodes scuttlebutt
-  if(!peerMap[packet.hostname]){
+  if(!peerMap[packet.hostname] && packet.hostname !== config.get('hostname')){
     logger.info('Setting up cmdBus connection to ' + packet.rinfo.address + ':' + packet.rinfo.port)
     var stream = net.connect(packet.rinfo.port,packet.rinfo.address)
     stream.pipe(cmdBus.createStream()).pipe(stream)
@@ -56,7 +56,7 @@ var discoverSend = function(){
 var announceLog = function(selfPeer,oldPeer,peer,packet){
   if(config.get('mesh.debug') || (packet.handle !== oldPeer.handle)){
     logger.info(
-      '[' + peer.handle + '] ' + packet.hostname +
+      '[' + peer.handle + '] ' + peer.hostname +
       ' (' + peer.ip + ':' + peer.meshPort + ')' +
       ' posted an announce at ' + new Date(peer.sent).toLocaleTimeString() +
       ' (latency ' + peer.latency + ')' +
