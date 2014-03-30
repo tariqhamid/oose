@@ -25,22 +25,16 @@ var udpServer = function(hostname){
       response = {
         command: 'lookup',
         sha1: message.sha1,
-        who: {
-          hostname: hostname,
-          host: '127.0.0.1',
-          port: multicastAddress.port
-        }
+        hostname: hostname
       }
       buf = bencode.encode(JSON.stringify(response))
-      multicast.send(buf,0,buf.length,message.tell.port,message.tell.host,function(){
+      multicast.send(buf,0,buf.length,rinfo.port,rinfo.address,function(){
         console.log('Sent UDP lookup response')
       })
     } else if('ping' === message.command){
-      response = {
-        command: 'ping'
-      }
+      response = {command: 'ping'}
       buf = bencode.encode(JSON.stringify(response))
-      multicast.send(buf,0,buf.length,message.tell.port,message.tell.host,function(){
+      multicast.send(buf,0,buf.length,rinfo.port,rinfo.address,function(){
         //console.log('Send UDP ping response')
       })
     } else {
@@ -65,11 +59,7 @@ var pingHosts = function(){
   socket.bind(function(){
     socket.addMembership(multicastAddress.host,'127.0.0.1')
     var message = {
-      command: 'ping',
-      tell: {
-        host: '127.0.0.1',
-        port: socket.address().port
-      }
+      command: 'ping'
     }
     var buf = bencode.encode(JSON.stringify(message))
     socket.send(buf,0,buf.length,multicastAddress.port,multicastAddress.host,function(){
@@ -94,11 +84,7 @@ var sha1Lookup = function(sha1,done){
     socket.addMembership('224.0.0.110','127.0.0.1')
     var message = {
       command: 'lookup',
-      sha1: sha1,
-      tell: {
-        host: '127.0.0.1',
-        port: socket.address().port
-      }
+      sha1: sha1
     }
     var buf = bencode.encode(JSON.stringify(message))
     socket.send(buf,0,buf.length,multicastAddress.port,multicastAddress.host,function(){
@@ -114,7 +100,11 @@ var sha1Lookup = function(sha1,done){
   socket.on('message',function(packet,rinfo){
     var message = JSON.parse(bencode.decode(packet))
     if('lookup' === message.command && sha1 === message.sha1){
-      who.push(message.who)
+      who.push({
+        hostname: message.hostname,
+        address: rinfo.address,
+        port: rinfo.port
+      })
     }
   })
 }
