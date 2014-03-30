@@ -20,6 +20,9 @@ module.exports = {
   store: {
     enabled: true
   },
+  supervisor: {
+    enabled: true
+  },
   prism: {
     enabled: true
   }

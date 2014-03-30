@@ -6,7 +6,6 @@ var cluster = require('cluster')
   , mkdirp = require('mkdirp')
   , logger = require('./helpers/logger')
 
-
 //master startup
 if(cluster.isMaster){
   var redis = require('./helpers/redis')
@@ -22,9 +21,11 @@ if(cluster.isMaster){
     logger.info('Mesh started and announcing')
   })
   //start the supervisor
-  require('./supervisor').start(function(){
-    logger.info('Supervisor started')
-  })
+  if(config.get('supervisor.enabled')){
+    require('./supervisor').start(function(){
+      logger.info('Supervisor started')
+    })
+  }
 
   //register job handlers
   jobs.process('inventory',require('./tasks/inventory'))
@@ -35,7 +36,7 @@ if(cluster.isMaster){
     jobs.create('inventory',{title: 'Build the initial hash table', root: config.get('root')}).save()
   //start workers
   var workers = config.get('workers') || os.cpus().length
-  console.log('Starting ' + workers + ' workers')
+  logger.info('Starting ' + workers + ' workers')
   for(var i=1; i <= workers; i++){
     logger.info('starting worker ' + i)
     cluster.fork()

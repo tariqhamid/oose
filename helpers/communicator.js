@@ -4,6 +4,7 @@ var ObjectManage = require('object-manage')
   , util = require('util')
   , async = require('async')
   , dgram = require('dgram')
+  , net = require('net')
   , bencode = require('bencode')
   , crc32 = require('buffer-crc32')
   , EventEmitter = require('events').EventEmitter
@@ -62,37 +63,81 @@ var Communicator = function(options){
     mcast: function(){
       self.socket = dgram.createSocket('udp4')
     },
-    tcp4: function(){
-      self.emit('error','TCP not yet supported')
+    tcp4listen: function(){
+      self.socket = net.createServer()
+    },
+    tcp4connect: function(){
+      self.socket = net.createConnection()
     }
   }
   //define the recv and xmit sockets
   setup[self.options.get('proto')]()
 
-  //bind the socket, setup to parse messages and fire receive event on incoming
-  self.socket.bind(self.options.get('port'),function(){
-    //add multicast membership if needed
-    if('mcast' === self.options.get('proto')){
-      self.socket.addMembership(self.options.get('mcast.address'))
-      self.socket.setMulticastTTL(self.options.get('mcast.ttl'))
-      self.options.set('address',self.options.get('mcast.address'))
-    }
-    self.socket.on('message',function(buf,rinfo){
-      var res = decode(buf)
-      if(false === res){
-        self.emit('warning','BAD CRC: ' + rinfo)
-      } else {
-        res.rinfo = rinfo
-        //run middleware
-        async.eachSeries(self.middleware.receive,
-          function(fn,next){fn(res,next)},function(err){
-            if(err) self.emit('error',err)
-            else self.emit('receive',res)
-          }
-        )
+  var middlewareReceive = function(res){
+    //run middleware
+    async.eachSeries(self.middleware.receive,
+      function(fn,next){fn(res,next)},function(err){
+        if(err) self.emit('error',err)
+        else self.emit('receive',res)
       }
+    )
+  }
+
+  if(self.socket instanceof dgram.Socket){
+    //bind the socket, setup to parse messages and fire receive event on incoming
+    self.socket.bind(self.options.get('port'),function(){
+      //add multicast membership if needed
+      if('mcast' === self.options.get('proto')){
+        self.socket.addMembership(self.options.get('mcast.address'))
+        self.socket.setMulticastTTL(self.options.get('mcast.ttl'))
+        self.options.set('address',self.options.get('mcast.address'))
+      }
+      self.socket.on('message',function(buf,rinfo){
+        var res = decode(buf)
+        if(false === res){
+          self.emit('warning','BAD CRC: ' + rinfo)
+        } else {
+          res.rinfo = rinfo
+          middlewareReceive(res)
+        }
+      })
     })
-  })
+  }
+
+  if(self.socket instanceof net.Server){ // this is a TCP listener
+    self.socket.on('connection',function(socket){
+      var remoteAddress = socket.remoteAddress
+      var remotePort = socket.remotePort
+      var buf
+      self.emit('info','Received TCP connection from ' + remoteAddress + ':' + remotePort)
+      socket.on('data',function(data){
+        if(buf instanceof Buffer){
+          buf = Buffer.concat([buf,data])
+        } else {
+          buf = data
+        }
+      })
+      socket.on('close',function(failed){
+        if(failed) self.emit('warning','There was an error in the TCP message from ' + remoteAddress + ':' + remotePort)
+        else {
+          self.emit('info','Closed connection from ' + remoteAddress + ':' + remotePort)
+          var res = decode(buf)
+          if(false === res){
+            self.emit('warning','BAD CRC: ' + rinfo)
+          } else {
+            res.rinfo = {
+              family: 'IPv4',
+              address: remoteAddress,
+              port: remotePort,
+              size: socket.bytesReceived
+            }
+            middlewareReceive(res)
+          }
+        }
+      })
+    })
+    self.socket.listen(self.options.get('port'))
+  }
 }
 util.inherits(Communicator,EventEmitter)
 
@@ -191,25 +236,3 @@ Communicator.prototype.send = function(payload,done){
  * @type {Communicator}
  */
 module.exports = Communicator
-
-/* USAGE EXAMPLE
---------------------
-var announce = new Communicator({proto: 'mcast'})
-announce.use('send',function(req,next){
-  req.set('Powered-By','..l..')
-  next()
-})
-announce.use('receive',function(res,next){
-  if(res.exists('Powered-By')){
-    console.log('Powered by ' + res.get('Powered-By'))
-  }
-  next()
-})
-announce.on('receive',function(res){
-  util.inspect(res.get())
-})
-announce.on('error',function(err){
-  console.log('Something failed ' + err)
-})
---------------------
-*/

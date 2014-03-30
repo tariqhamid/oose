@@ -44,6 +44,11 @@ config.load({
     nextPeerInterval: 5000,
     announceInterval: 5000
   },
+  supervisor: {
+    enabled: false,
+    retryInterval: 1000,
+    patrolInterval: 15000
+  },
   store: {
     enabled: false,
     import: {
