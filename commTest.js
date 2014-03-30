@@ -3,24 +3,14 @@ var net = require('net')
   , dgram = require('dgram')
   , bencode = require('bencode')
 
+//-------------------------
+//udp
+//-------------------------
 var multicastAddress = {
   host: '224.0.0.110',
   port: 9000
 }
 
-//tcp server
-var tcpServer = function(){
-  var tcp = net.createServer()
-  tcp.on('connection',function(socket){
-    console.log('Got a TCP connection')
-    //do some server stuff here
-  })
-  tcp.listen(9000,function(){
-    console.log('TCP listening on 9000')
-  })
-}
-
-//udp
 var udpServer = function(hostname){
   var multicast = dgram.createSocket('udp4')
   multicast.bind(multicastAddress.port,function(){
@@ -51,7 +41,7 @@ var udpServer = function(hostname){
       }
       buf = bencode.encode(JSON.stringify(response))
       multicast.send(buf,0,buf.length,message.tell.port,message.tell.host,function(){
-        console.log('Send UDP ping response')
+        //console.log('Send UDP ping response')
       })
     } else {
       //ignore the packet since we dont know the command
@@ -84,7 +74,6 @@ var pingHosts = function(){
     var buf = bencode.encode(JSON.stringify(message))
     socket.send(buf,0,buf.length,multicastAddress.port,multicastAddress.host,function(){
       start = new Date().getTime()
-      console.log('Sent ping request')
       setTimeout(pingHosts,1000)
     })
   })
@@ -136,6 +125,7 @@ udpServer('blah2')
 udpServer('blah3')
 
 //start pinging hosts too keep track of latency
+console.log('Starting ping')
 pingHosts()
 
 //send request
@@ -143,8 +133,60 @@ setTimeout(function(){
   var sha1 = 'foo'
   sha1Lookup(sha1,function(who){
     console.log(who)
-    process.exit()
   })
 },2000)
 
+//-------------------------
+//tcp
+//-------------------------
+var tcpServer = function(){
+  var tcp = net.createServer()
+  tcp.on('connection',function(socket){
+    console.log('Got a TCP connection')
+    var request = ''
+    socket.setEncoding('utf-8')
+    socket.on('readable',function(){
+      var chunk
+      while(null !== (chunk = socket.read())){
+        request += chunk
+      }
+      //do some server stuff here
+      request = JSON.parse(request)
+      console.log(request)
+      socket.write(JSON.stringify({command: 'lookup', sha1: request.sha1, hostname: 'blah12'}))
+      socket.end()
+    })
+  })
+  tcp.listen(9000,function(){
+    console.log('TCP listening on 9000')
+  })
+}
 
+var sha1LookupTCP = function(sha1,done){
+  console.log('Sending TCP lookup')
+  var response = ''
+  var client = net.connect(9000)
+  client.setEncoding('utf-8')
+  client.on('readable',function(){
+    var chunk
+    while(null !== (chunk = client.read())){
+      response += chunk
+    }
+    response = JSON.parse(response)
+    console.log(response)
+    done()
+  })
+  var message = {
+    command: 'lookup',
+    sha1: sha1
+  }
+  client.write(JSON.stringify(message))
+}
+
+tcpServer()
+setTimeout(function(){
+  sha1LookupTCP('foo',function(){
+    console.log('got response')
+    process.exit()
+  })
+},3000)
