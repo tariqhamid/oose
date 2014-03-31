@@ -20,19 +20,19 @@ setTimeout(function(){
 },config.get('mesh.announceInterval') * 2)
 
 //connection handles
-var mesh, peer
+var peer
 
 //start peer ping
 var pingHosts = {}
 var pingTimeout
 var pingSend = function(){
   var start = new Date().getTime()
-  mesh.send({command: 'ping'},function(){
+  peer.udp.multicast.send('ping',function(){
     pingTimeout = setTimeout(pingSend,1000)
   })
   //server
-  mesh.on('ping',function(req,rinfo){
-    mesh.respond({command: 'ping'},rinfo)
+  peer.udp.multicast.on('ping',function(req,rinfo){
+    peer.udp.send(rinfo.port,rinfo.address,'ping')
   })
   //client
   peer.udp.on('ping',function(res,rinfo){
@@ -67,7 +67,7 @@ var announceLog = function(selfPeer,oldPeer,peer,packet){
   }
 }
 //accept the multicast announce
-mesh.on('announce',function(packet,rinfo){
+peer.udp.multicast.on('announce',function(packet,rinfo){
   redis.hgetall('peers:' + config.get('hostname'),function(err,selfPeer){
     if(err) logger.error(err)
     else {
@@ -153,18 +153,11 @@ var announceSend = function(){
         message.services += ',prism'
         message.prismPort = config.get('prism.port')
       }
-      mesh.send('announce',message)
+      peer.udp.multicast.send('announce',message)
       announceTimeout = setTimeout(announceSend,config.get('mesh.announceInterval'))
     }
   })
 }
-
-
-/**
- * Access to the multicast setup
- * @type {Communicator}
- */
-exports.multicast = mesh
 
 
 /**
@@ -179,13 +172,13 @@ exports.peer = peer
  * @param {function} done
  */
 exports.start = function(done){
-  //start multicast
-  mesh = new communicator.Multicast(config.get('mesh.port'),config.get('mesh.address'))
   //start unicast
   peer = {
     udp: new communicator.UDP(config.get('mesh.port')),
-    tcp: new communicator.TCPServer(config.get('mesh.port'))
+    tcp: new communicator.TCP(config.get('mesh.port'))
   }
+  //setup multicast
+  peer.udp.addMulticast(config.get('mesh.address'),config.get('mesh.ttl'))
   //start ping
   pingSend()
   //start announce
