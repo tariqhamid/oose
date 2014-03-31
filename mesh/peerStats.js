@@ -1,13 +1,13 @@
 'use strict';
 /*jshint bitwise: false*/
-var Collector = require('./collector')
+var Collector = require('./../helpers/collector')
   , config = require('../config')
   , os = require('os')
   , ds = require('diskspace')
   , path = require('path')
   , shortlink = require('shortlink')
   , ip = require('ip')
-  , redis = require('./redis')
+  , redis = require('./../helpers/redis')
 
 var getDiskFree = function(basket,next){
   var root = path.resolve(config.get('root'))

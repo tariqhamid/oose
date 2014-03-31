@@ -42,8 +42,9 @@ Collector.prototype.use = function(position,fn){
 /**
  * Start the collector loop
  * @param {number} interval
+ * @param {number} delay
  */
-Collector.prototype.start = function(interval){
+Collector.prototype.start = function(interval,delay){
   var self = this
   var run = function(){
     self.basket = {}
@@ -73,7 +74,7 @@ Collector.prototype.start = function(interval){
       }
     )
   }
-  run()
+  setTimeout(run,delay || 0)
 }
 
 

@@ -1,7 +1,7 @@
 'use strict';
-var Collector = require('./collector')
-  , logger = require('./logger')
-  , redis = require('./redis')
+var Collector = require('./../helpers/collector')
+  , logger = require('./../helpers/logger')
+  , redis = require('./../helpers/redis')
 
 var selectPeer = function(basket,done){
   redis.zrevrangebyscore('peerRank',100,0,function(err,peers){
