@@ -1,4 +1,5 @@
 'use strict';
+var config = require('../config')
 
 var pingHosts = {}
 var pingTimeout
@@ -6,7 +7,7 @@ var pingTimeout
 var pingSend = function(conn){
   var start = new Date().getTime()
   conn.udp.multicast.send('ping',function(){
-    pingTimeout = setTimeout(pingSend,1000)
+    pingTimeout = setTimeout(pingSend,config.get('mesh.pingInterval'))
   })
   //server
   conn.udp.multicast.on('ping',function(req,rinfo){

@@ -4,8 +4,8 @@ var express = require('express')
   , config = require('../config')
   , redis = require('../helpers/redis')
 
-app.get('/api/nextPeer',function(req,res){
-  redis.hgetall('nextPeer',function(err,peer){
+app.get('/api/peerNext',function(req,res){
+  redis.hgetall('peerNext',function(err,peer){
     if(err) return res.json({status: 'error', code: 1, message: err})
     res.json({status: 'ok', code: 0, peer: peer})
   })

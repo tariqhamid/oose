@@ -13,10 +13,10 @@ var file = require('../helpers/file')
 module.exports = function(job,done){
   job.log('Starting to replicate ' + job.data.sha1)
   var bytesSent = 0
-  //i need to ask mesh for the nextPeer
+  //i need to ask mesh for the peerNext
   redis.hgetall(job.data.sha1,function(err,hash){
     var stat = JSON.parse(hash.stat)
-    redis.hetgall('nextPeer',function(err,peer){
+    redis.hetgall('peerNext',function(err,peer){
       var rs = fs.createReadStream(file.pathFromSha1(job.data.sha1))
       var ws = net.connect(peer.port,peer.ip)
       ws.on('connect',function(){

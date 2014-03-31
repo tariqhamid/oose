@@ -4,12 +4,12 @@ var config = require('../config')
   , logger = require('../helpers/logger')
   , communicator = require('../helpers/communicator')
   , myStats = require('./peerStats')
-  , nextPeer = require('./nextPeer')
+  , peerNext = require('./peerNext')
   , ping = require('./ping')
   , announce = require('./announce')
 
 //connection handles
-var conn
+var conn = {udp: {}, tcp: {}}
 
 
 /**
@@ -29,7 +29,7 @@ exports.start = function(done){
   myStats.start(config.get('mesh.statInterval'))
   //start next peer selection (delay)
   logger.info('Starting next peer selection')
-  nextPeer.start(config.get('mesh.nextPeerInterval'),config.get('mesh.announceInterval') * 2)
+  peerNext.start(config.get('mesh.peerNextInterval'),config.get('mesh.announceInterval') * 2)
   //start unicast
   conn = {
     udp: new communicator.UDP(config.get('mesh.port')),

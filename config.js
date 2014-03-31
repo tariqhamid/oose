@@ -39,9 +39,9 @@ config.load({
     address: '226.0.0.1',
     port: 3000,
     ttl: 1,
-    discoverInterval: 1000,
+    pingInterval: 1000,
     statInterval: 1000,
-    nextPeerInterval: 5000,
+    peerNextInterval: 5000,
     announceInterval: 5000
   },
   supervisor: {

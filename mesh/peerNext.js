@@ -30,20 +30,20 @@ var selectPeer = function(basket,done){
 
 var save = function(basket,done){
   if(Object.keys(basket).length > 0){
-    redis.hmset('nextPeer',basket,function(err){
+    redis.hmset('peerNext',basket,function(err){
       if(err) logger.warn('Couldnt save next peer ' + err)
       done()
     })
   } else done()
 }
 
-var nextPeer = new Collector()
-nextPeer.use(selectPeer)
-nextPeer.use('store',save)
+var peerNext = new Collector()
+peerNext.use(selectPeer)
+peerNext.use('store',save)
 
 
 /**
  * Export module
  * @type {Collector}
  */
-module.exports = nextPeer
+module.exports = peerNext
