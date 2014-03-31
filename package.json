@@ -25,11 +25,7 @@
     "kue": "^0.7.5",
     "mmmagic": "^0.3.6",
     "temp": "^0.7.0",
-    "busboy": "^0.2.3",
-    "websocket-stream": "^0.5.0",
     "diskspace": "~0.1.5",
-    "bencode": "~0.5.2",
-    "command": "0.0.4",
     "commander": "~2.1.0",
     "winston": "^0.7.2",
     "shortlink": "^1.0.6",
@@ -37,9 +33,7 @@
     "buffer-crc32": "^0.2.1",
     "async": "^0.2.10",
     "redis": "^0.10.1",
-    "readdirp": "^0.3.3",
-    "event-stream": "^3.1.0",
-    "scuttlebutt": "^5.6.8"
+    "readdirp": "^0.3.3"
   },
   "devDependencies": {
     "grunt-concurrent": "~0.4.2",
