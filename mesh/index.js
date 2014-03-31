@@ -57,7 +57,7 @@ exports.stop = function(){
   ping.stop()
   //next peer selection
   logger.info('Stopping next peer selection')
-  nextPeer.stop()
+  peerNext.stop()
   //stats
   logger.info('Stopping self stat collection')
   myStats.stop()
