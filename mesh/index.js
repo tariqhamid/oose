@@ -55,6 +55,9 @@ exports.stop = function(){
   //ping
   logger.info('Stopping ping')
   ping.stop()
+  //stop network connections
+  conn.tcp.close()
+  conn.udp.close()
   //next peer selection
   logger.info('Stopping next peer selection')
   peerNext.stop()
