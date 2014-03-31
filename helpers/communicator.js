@@ -52,8 +52,17 @@ var Communicator = function(options){
   //init event emitter
   EventEmitter.call(self)
   //setup options
-  self.options = new ObjectManage(self.optionSchema)
+  self.options = new ObjectManage({
+    proto: 'udp4',
+    mcast: {address: null, ttl: 1},
+    address: null,
+    port: 3333
+  })
   self.options.load(options)
+  self.middleware = {
+    send: [],
+    receive: []
+  }
   self.socket = null
 
   var setup = {
@@ -143,28 +152,6 @@ util.inherits(Communicator,EventEmitter)
 
 
 /**
- * Configuration Defaults
- * @type {{proto: string, mcast: {address: null, ttl: number}, address: string, port: number}}
- */
-Communicator.prototype.optionSchema = {
-  proto: 'udp4',
-  mcast: {address: null, ttl: 1},
-  address: null,
-  port: 3333
-}
-
-
-/**
- * Middleware stacks
- * @type {{send: Array, receive: Array}}
- */
-Communicator.prototype.middleware = {
-  send: [],
-  receive: []
-}
-
-
-/**
  * Add middleware
  * @param {string} position  Position of the middleware either send or receive
  * @param {function} fn
@@ -177,24 +164,6 @@ Communicator.prototype.use = function(position,fn){
   }
   if('send' !== position || 'receive' !== position) position = 'receive'
   self.middleware[position].push(fn)
-}
-
-
-/**
- * Shortcut to add send middleware
- * @param {function} fn
- */
-Communicator.prototype.useSend = function(fn){
-  this.use('send',fn)
-}
-
-
-/**
- * Shortcut to add receive middleware
- * @param {function} fn
- */
-Communicator.prototype.useReceive = function(fn){
-  this.use('receive',fn)
 }
 
 
