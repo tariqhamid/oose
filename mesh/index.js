@@ -9,7 +9,6 @@ var config = require('../config')
   , myStats = require('../helpers/peerStats')
   , nextPeer = require('../helpers/nextPeer')
   , jobs = require('../helpers/jobs')
-  , net = require('net')
 
 //start stats collection
 myStats.start(config.get('mesh.statInterval'))
