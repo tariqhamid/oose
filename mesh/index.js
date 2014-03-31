@@ -3,18 +3,13 @@
 var config = require('../config')
   , logger = require('../helpers/logger')
   , redis = require('../helpers/redis')
-  , Communicator = require('../helpers/communicator')
+  , communicator = require('../helpers/communicator')
   , os = require('os')
   , util = require('util')
   , myStats = require('../helpers/peerStats')
   , nextPeer = require('../helpers/nextPeer')
   , jobs = require('../helpers/jobs')
-  , Emitter = require('scuttlebutt/events')
   , net = require('net')
-
-//setup the command bus
-var peerMap = {}
-var cmdBus = new Emitter()
 
 //start stats collection
 myStats.start(config.get('mesh.statInterval'))
@@ -25,54 +20,55 @@ setTimeout(function(){
   nextPeer.start(config.get('mesh.nextPeerInterval'))
 },config.get('mesh.announceInterval') * 2)
 
+//connection handles
+var mesh, peer
 
-//setup multicast discovery
-var multicast = new Communicator({
-  proto: 'mcast',
-  port: config.get('mesh.port'),
-  mcast: {
-    address: config.get('mesh.address'),
-    ttl: config.get('mesh.ttl')
-  }
-})
-multicast.useReceive(function(packet){
-  //connect to the nodes scuttlebutt
-  if(!peerMap[packet.hostname] && packet.hostname !== config.get('hostname')){
-    logger.info('Setting up cmdBus connection to ' + packet.rinfo.address + ':' + packet.rinfo.port)
-    var stream = net.connect(packet.rinfo.port,packet.rinfo.address)
-    stream.pipe(cmdBus.createStream()).pipe(stream)
-    peerMap[packet.hostname] = {stream: stream, ip: packet.rinfo.address, port: packet.rinfo.port}
-  } else {
-    peerMap[packet.hostname] = {}
-    peerMap[packet.hostname].ip = packet.rinfo.address
-    peerMap[packet.hostname].port = packet.rinfo.port
-  }
-})
-var discoverTimeout
-var discoverSend = function(){
-  var message = {}
-  message.hostname = config.get('hostname')
-  multicast.send(message,function(){
-    discoverTimeout = setTimeout(discoverSend,config.get('mesh.discoverInterval'))
+//start peer ping
+var pingHosts = {}
+var pingTimeout
+var pingSend = function(){
+  var start = new Date().getTime()
+  mesh.send({command: 'ping'},function(){
+    pingTimeout = setTimeout(pingSend,1000)
+  })
+  //server
+  mesh.on('ping',function(req,rinfo){
+    mesh.respond({command: 'ping'},rinfo)
+  })
+  //client
+  peer.udp.on('ping',function(res,rinfo){
+    pingHosts[rinfo.address] = new Date().getTime() - start
   })
 }
+var pingMax = function(){
+  var max = 0
+  for(var i in pingHosts){
+    if(pingHosts.hasOwnProperty(i) && pingHosts[i] > max){
+      max = pingHosts[i]
+    }
+  }
+  return max
+}
+pingSend()
 
+
+//announcements
 var announceLog = function(selfPeer,oldPeer,peer,packet){
   if(config.get('mesh.debug') || (packet.handle !== oldPeer.handle)){
     logger.info(
-      '[' + peer.handle + '] ' + peer.hostname +
-      ' (' + peer.ip + ':' + peer.meshPort + ')' +
-      ' posted an announce at ' + new Date(peer.sent).toLocaleTimeString() +
-      ' (latency ' + peer.latency + ')' +
-      (config.get('mesh.debug') && packet.handle === selfPeer.handle ? ' [SELFIE]' : '')
+        '[' + peer.handle + '] ' + peer.hostname +
+        ' (' + peer.ip + ':' + peer.meshPort + ')' +
+        ' posted an announce at ' + new Date(peer.sent).toLocaleTimeString() +
+        ' (latency ' + peer.latency + ')' +
+        (config.get('mesh.debug') && packet.handle === selfPeer.handle ? ' [SELFIE]' : '')
     )
   }
   if(config.get('mesh.debug') > 1){
     logger.info(os.EOL + util.inspect(peer))
   }
 }
-
-cmdBus.on('announce',function(packet){
+//accept the multicast announce
+mesh.on('announce',function(packet,rinfo){
   redis.hgetall('peers:' + config.get('hostname'),function(err,selfPeer){
     if(err) logger.error(err)
     else {
@@ -87,7 +83,7 @@ cmdBus.on('announce',function(packet){
           peer.sent = packet.sent
           peer.handle = packet.handle
           peer.hostname = packet.hostname
-          peer.ip = peerMap[packet.hostname] ? peerMap[packet.hostname].ip : ''
+          peer.ip = rinfo.address
           peer.meshPort = packet.meshPort
           peer.diskFree = packet.diskFree
           peer.diskTotal = packet.diskTotal
@@ -158,7 +154,7 @@ var announceSend = function(){
         message.services += ',prism'
         message.prismPort = config.get('prism.port')
       }
-      cmdBus.emit('announce',message)
+      mesh.send('announce',message)
       announceTimeout = setTimeout(announceSend,config.get('mesh.announceInterval'))
     }
   })
@@ -169,14 +165,14 @@ var announceSend = function(){
  * Access to the multicast setup
  * @type {Communicator}
  */
-exports.multicast = multicast
+exports.multicast = mesh
 
 
 /**
- * Export command bus
+ * Export unicast connections
  * @type {ReliableEventEmitter}
  */
-exports.bus = cmdBus
+exports.peer = peer
 
 
 /**
@@ -184,13 +180,16 @@ exports.bus = cmdBus
  * @param {function} done
  */
 exports.start = function(done){
-  //start a scuttlebutt server
-  net.createServer(function(stream){
-    stream.pipe(cmdBus.createStream()).pipe(stream)
-  }).listen(config.get('mesh.port'))
-  //send out discovery packet
-  discoverSend()
-  //start announcing
+  //start multicast
+  mesh = new communicator.Multicast(config.get('mesh.port'),config.get('mesh.address'))
+  //start unicast
+  peer = {
+    udp: new communicator.UDP(config.get('mesh.port')),
+    tcp: new communicator.TCPServer(config.get('mesh.port'))
+  }
+  //start ping
+  pingSend()
+  //start announce
   announceSend()
   done()
 }
@@ -200,10 +199,10 @@ exports.start = function(done){
  * Stop mesh
  */
 exports.stop = function(){
+  if(pingTimeout)
+    clearTimeout(pingTimeout)
   if(announceTimeout)
     clearTimeout(announceTimeout)
-  if(discoverTimeout)
-    clearTimeout(discoverTimeout)
 }
 
 if(require.main === module){
