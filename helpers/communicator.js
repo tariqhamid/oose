@@ -5,8 +5,6 @@ var ObjectManage = require('object-manage')
   , async = require('async')
   , dgram = require('dgram')
   , net = require('net')
-  , bencode = require('bencode')
-  , crc32 = require('buffer-crc32')
   , EventEmitter = require('events').EventEmitter
 
 
@@ -16,8 +14,7 @@ var ObjectManage = require('object-manage')
  * @return {buffer}
  */
 var encode = function(obj){
-  var pkt = bencode.encode(obj)
-  return Buffer.concat([crc32(pkt),pkt])
+  return new Buffer(JSON.stringify(obj))
 }
 
 
@@ -27,17 +24,11 @@ var encode = function(obj){
  * @return {object} Decoded Object, or false on failure
  */
 var decode = function(buf){
-  var sum = buf.readInt32BE(0)
-  buf = buf.slice(4)
-  if(sum !== crc32.signed(buf)){
-    return false
-  } else {
-    var pkt = bencode.decode(buf)
-    for(var k in pkt)
-      if(pkt.hasOwnProperty(k) && Buffer.isBuffer(pkt[k]))
-        pkt[k] = pkt[k].toString()
-    return pkt
-  }
+  var pkt = JSON.parse(buf)
+  for(var k in pkt)
+    if(pkt.hasOwnProperty(k) && Buffer.isBuffer(pkt[k]))
+      pkt[k] = pkt[k].toString()
+  return pkt
 }
 
 
@@ -103,12 +94,8 @@ var Communicator = function(options){
       }
       self.socket.on('message',function(buf,rinfo){
         var res = decode(buf)
-        if(false === res){
-          self.emit('warning','BAD CRC: ' + rinfo)
-        } else {
-          res.rinfo = rinfo
-          middlewareReceive(res)
-        }
+        res.rinfo = rinfo
+        middlewareReceive(res)
       })
     })
   }
@@ -131,17 +118,13 @@ var Communicator = function(options){
         else {
           self.emit('info','Closed connection from ' + remoteAddress + ':' + remotePort)
           var res = decode(buf)
-          if(false === res){
-            self.emit('warning','BAD CRC: ' + rinfo)
-          } else {
-            res.rinfo = {
-              family: 'IPv4',
-              address: remoteAddress,
-              port: remotePort,
-              size: socket.bytesReceived
-            }
-            middlewareReceive(res)
+          res.rinfo = {
+            family: 'IPv4',
+            address: remoteAddress,
+            port: remotePort,
+            size: socket.bytesReceived
           }
+          middlewareReceive(res)
         }
       })
     })
