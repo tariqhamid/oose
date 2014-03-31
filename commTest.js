@@ -3,6 +3,7 @@ var net = require('net')
   , dgram = require('dgram')
   , bencode = require('bencode')
   , fs = require('fs')
+  , stream = require('stream')
 
 /*
 //-------------------------
@@ -136,58 +137,11 @@ var tcpServer = function(onData){
   var tcp = net.createServer()
   tcp.on('connection',function(socket){
     console.log('Got a TCP connection')
-    var session = null
-    socket.on('readable',function(){
-      var chunk, maxRead = 4096, nextRead = 0
-      if(!session){
-        //grab the lengths which are the first 6 bytes
-        chunk = socket.read(6)
-        if(chunk){
-          //start a new session and get the length
-          session = {
-            mode: 'command',
-            command: {length: {read: 0,total: 0,nextRead: 0}, data: ''},
-            data: {length: {read: 0, tota: 0, nextRead: 0}}
-          }
-          var commandLength = chunk.readUInt16BE(0)
-          var dataLength = chunk.readUInt32BE(2)
-          session.command.length.total = commandLength
-          session.command.length.nextRead = commandLength
-          session.data.length.total = dataLength
-          session.data.length.nextRead = dataLength
-        }
-      }
-      if(session && 'command' === session.mode){
-        nextRead = session.command.length.nextRead < maxRead ? session.command.length.nextRead : maxRead
-        while(null !== (chunk = socket.read(nextRead))){
-          session.command.length.read += chunk.length
-          session.command.length.nextRead = session.command.length.total - session.command.length.read
-          session.command.data += chunk.toString()
-        }
-        if(!session.command.length.nextRead){
-          session.command.data = JSON.parse(session.command.data)
-          session.mode = 'data'
-        }
-      } else if(session && 'data' === session.mode){
-        nextRead = session.data.length.nextRead < maxRead ? session.data.length.nextRead : maxRead
-        while(null !== (chunk = socket.read(nextRead))){
-          session.data.length.read += chunk.length
-          session.data.length.nextRead = session.data.length.total - session.data.length.read
-          onData(session.command.data,chunk)
-        }
-        if(!session.data.length.nextRead){
-          console.log('Finished with command receive')
-          session = null
-        }
-      }
-      /*while(null !== (chunk = socket.read())){
-        request += chunk
-      }
-      //do some server stuff here
-      request = JSON.parse(request)
-      console.log(request)
-      socket.write(JSON.stringify({command: 'lookup', sha1: request.sha1, hostname: 'blah12'}))
-      socket.end()*/
+    socket.once('readable',function(){
+      var chunk = socket.read(2)
+      var length = chunk.readUInt16BE(0)
+      var command = JSON.parse(socket.read(length))
+      onData(command,socket)
     })
   })
   tcp.listen(9000,function(){
@@ -195,56 +149,31 @@ var tcpServer = function(onData){
   })
 }
 
-var tcpClientConn
-var tcpClient = function(){
-  tcpClientConn = net.connect(9000)
-}
-
-var tcpSendCommand = function(command,dataLength,data){
-  command = JSON.stringify(command)
-  var length = command.length
-  var cbuf = new Buffer(length + 6)
-  cbuf.writeInt16BE(length,0)
-  cbuf.writeInt32BE(dataLength || 0,2)
-  cbuf.write(command,6)
-  tcpClientConn.write(cbuf)
-  data.pipe(tcpClientConn)
-}
-
-var sha1LookupTCP = function(sha1,done){
-  console.log('Sending TCP lookup')
-  var response = ''
+var tcpSendCommand = function(command,data){
   var client = net.connect(9000)
-  client.setEncoding('utf-8')
-  client.on('readable',function(){
-    var chunk
-    while(null !== (chunk = client.read())){
-      response += chunk
-    }
-    response = JSON.parse(response)
-    console.log(response)
-    done()
-  })
-  var message = {
-    command: 'lookup',
-    sha1: sha1
+  command = JSON.stringify(command)
+  var cbuf = new Buffer(command.length + 2)
+  cbuf.writeInt16BE(command.length,0)
+  cbuf.write(command,2)
+  client.write(cbuf)
+  if(data instanceof stream.Readable){
+    console.log('piping in data')
+    data.pipe(client)
   }
-  client.write(JSON.stringify(message))
 }
 
-tcpServer(function(command,data){
-  console.log(command,'Got data with a length of ' + data.length)
+tcpServer(function(command,readable){
+  readable.on('data',function(chunk){
+    console.log(command,'Got a chunk with a length of ' + chunk.length)
+  })
+  readable.on('end',function(){
+    console.log('done receiving command')
+  })
 })
-tcpClient()
 
 setTimeout(function(){
   tcpSendCommand(
     {command: 'ping'},
-    fs.statSync('./foo/foo.mp4').size,
     fs.createReadStream('./foo/foo.mp4')
   )
-  //sha1LookupTCP('foo',function(){
-  //  console.log('got response')
-  //  process.exit()
-  //})
 },1000)
