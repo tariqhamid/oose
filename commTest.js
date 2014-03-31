@@ -2,7 +2,9 @@
 var net = require('net')
   , dgram = require('dgram')
   , bencode = require('bencode')
+  , fs = require('fs')
 
+/*
 //-------------------------
 //udp
 //-------------------------
@@ -125,31 +127,88 @@ setTimeout(function(){
     console.log(who)
   })
 },2000)
+*/
 
 //-------------------------
 //tcp
 //-------------------------
-var tcpServer = function(){
+var tcpServer = function(onData){
   var tcp = net.createServer()
   tcp.on('connection',function(socket){
     console.log('Got a TCP connection')
-    var request = ''
-    socket.setEncoding('utf-8')
+    var session = null
     socket.on('readable',function(){
-      var chunk
-      while(null !== (chunk = socket.read())){
+      var chunk, maxRead = 4096, nextRead = 0
+      if(!session){
+        //grab the lengths which are the first 6 bytes
+        chunk = socket.read(6)
+        if(chunk){
+          //start a new session and get the length
+          session = {
+            mode: 'command',
+            command: {length: {read: 0,total: 0,nextRead: 0}, data: ''},
+            data: {length: {read: 0, tota: 0, nextRead: 0}}
+          }
+          var commandLength = chunk.readUInt16BE(0)
+          var dataLength = chunk.readUInt32BE(2)
+          session.command.length.total = commandLength
+          session.command.length.nextRead = commandLength
+          session.data.length.total = dataLength
+          session.data.length.nextRead = dataLength
+        }
+      }
+      if(session && 'command' === session.mode){
+        nextRead = session.command.length.nextRead < maxRead ? session.command.length.nextRead : maxRead
+        while(null !== (chunk = socket.read(nextRead))){
+          session.command.length.read += chunk.length
+          session.command.length.nextRead = session.command.length.total - session.command.length.read
+          session.command.data += chunk.toString()
+        }
+        if(!session.command.length.nextRead){
+          session.command.data = JSON.parse(session.command.data)
+          session.mode = 'data'
+        }
+      } else if(session && 'data' === session.mode){
+        nextRead = session.data.length.nextRead < maxRead ? session.data.length.nextRead : maxRead
+        while(null !== (chunk = socket.read(nextRead))){
+          session.data.length.read += chunk.length
+          session.data.length.nextRead = session.data.length.total - session.data.length.read
+          onData(session.command.data,chunk)
+        }
+        if(!session.data.length.nextRead){
+          console.log('Finished with command receive')
+          session = null
+        }
+      }
+      /*while(null !== (chunk = socket.read())){
         request += chunk
       }
       //do some server stuff here
       request = JSON.parse(request)
       console.log(request)
       socket.write(JSON.stringify({command: 'lookup', sha1: request.sha1, hostname: 'blah12'}))
-      socket.end()
+      socket.end()*/
     })
   })
   tcp.listen(9000,function(){
     console.log('TCP listening on 9000')
   })
+}
+
+var tcpClientConn
+var tcpClient = function(){
+  tcpClientConn = net.connect(9000)
+}
+
+var tcpSendCommand = function(command,dataLength,data){
+  command = JSON.stringify(command)
+  var length = command.length
+  var cbuf = new Buffer(length + 6)
+  cbuf.writeInt16BE(length,0)
+  cbuf.writeInt32BE(dataLength || 0,2)
+  cbuf.write(command,6)
+  tcpClientConn.write(cbuf)
+  data.pipe(tcpClientConn)
 }
 
 var sha1LookupTCP = function(sha1,done){
@@ -173,10 +232,19 @@ var sha1LookupTCP = function(sha1,done){
   client.write(JSON.stringify(message))
 }
 
-tcpServer()
+tcpServer(function(command,data){
+  console.log(command,'Got data with a length of ' + data.length)
+})
+tcpClient()
+
 setTimeout(function(){
-  sha1LookupTCP('foo',function(){
-    console.log('got response')
-    process.exit()
-  })
-},3000)
+  tcpSendCommand(
+    {command: 'ping'},
+    fs.statSync('./foo/foo.mp4').size,
+    fs.createReadStream('./foo/foo.mp4')
+  )
+  //sha1LookupTCP('foo',function(){
+  //  console.log('got response')
+  //  process.exit()
+  //})
+},1000)
