@@ -28,7 +28,6 @@
     "diskspace": ">=0.1.5",
     "commander": ">=2.1.0",
     "winston": ">=0.7.2",
-    "buffer-crc32": ">=0.2.1",
     "async": ">=0.2.10",
     "redis": ">=0.10.1",
     "readdirp": ">=0.3.3",
