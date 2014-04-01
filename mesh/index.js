@@ -13,7 +13,7 @@ var conn = {udp: {}, tcp: {}}
 
 
 /**
- * Export unicast connections
+ * Export connections
  * @type {object}
  */
 exports.conn = conn

@@ -36,6 +36,16 @@ var UDP = function(options){
   })
 }
 UDP.prototype = Object.create(EventEmitter.prototype)
+
+
+/**
+ * UDP.send()
+ * @param {string} command Command to send
+ * @param {object} message Additional message/command parameters
+ * @param {number} port Destination port
+ * @param {string} address Destination address (or multicast address)
+ * @param {function} done Callback (optional)
+ */
 UDP.prototype.send = function(command,message,port,address,done){
   var self = this
   if(!command) throw new Error('Tried to send a message without a command')
@@ -71,6 +81,17 @@ var TCP = function(options){
   })
 }
 TCP.prototype = Object.create(EventEmitter.prototype)
+
+
+/**
+ * TCP.send()
+ * @param {string} command Command to send
+ * @param {object} message Additional message/command parameters
+ * @param {number} port Destination port
+ * @param {string} address Destination address (or multicast address)
+ * @param {stream} readable Optional stream to deliver after command
+ * @return {net.socket}
+ */
 TCP.prototype.send = function(command,message,port,address,readable){
   if(!address) throw new Error('Tried to send a TCP message without an address')
   if(!port) throw new Error('Tried to send a TCP message without a port')
@@ -84,5 +105,22 @@ TCP.prototype.send = function(command,message,port,address,readable){
   return client
 }
 
+
+
+/**
+ * export UDP Convenience Constructor
+ * @param {object} options
+ * @return {UDP}
+ * @constructor
+ */
 exports.UDP = function(options){return new UDP(options)}
+
+
+
+/**
+ * export TCP Convenience Constructor
+ * @param {object} options
+ * @return {TCP}
+ * @constructor
+ */
 exports.TCP = function(options){return new TCP(options)}
