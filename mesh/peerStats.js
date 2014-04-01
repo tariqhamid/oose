@@ -5,8 +5,6 @@ var Collector = require('./../helpers/collector')
   , os = require('os')
   , ds = require('diskspace')
   , path = require('path')
-  , shortlink = require('shortlink')
-  , ip = require('ip')
   , redis = require('./../helpers/redis')
 
 var getDiskFree = function(basket,next){
@@ -54,24 +52,6 @@ var availableCapacity = function(basket,next){
   next()
 }
 
-//set the random-ish signature for handle generation
-// note: this algorithm is completely made up
-var genHandle = function(sig){
-  var swap32 = function swap32(val){
-    return ((val & 0xFF) << 24) |
-      ((val & 0xFF00) << 8) |
-      ((val >> 8) & 0xFF00) |
-      ((val >> 24) & 0xFF)
-  }
-  return shortlink.encode(Math.abs(swap32(ip.toLong(config.get('ip.public'))) ^ sig) & 0xffffffff)
-}
-
-var populate = function(basket,next){
-  if(!basket.sig) basket.sig = (new Date().getTime()) & 0xffffffff
-  if(!basket.handle) basket.handle = genHandle(basket.sig)
-  next()
-}
-
 var save = function(basket,next){
   redis.hmset('peers:' + config.get('hostname'),basket,next)
 }
@@ -80,7 +60,6 @@ var peerStats = new Collector()
 peerStats.use(getDiskFree)
 peerStats.use(getCPU)
 peerStats.use('process',availableCapacity)
-peerStats.use('process',populate)
 peerStats.use('store',save)
 
 

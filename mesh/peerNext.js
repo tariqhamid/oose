@@ -1,7 +1,8 @@
 'use strict';
-var Collector = require('./../helpers/collector')
-  , logger = require('./../helpers/logger')
-  , redis = require('./../helpers/redis')
+var Collector = require('../helpers/collector')
+  , logger = require('../helpers/logger')
+  , redis = require('../helpers/redis')
+  , config = require('../config')
 
 var selectPeer = function(basket,done){
   redis.zrevrangebyscore('peerRank',100,0,function(err,peers){
@@ -17,10 +18,11 @@ var selectPeer = function(basket,done){
           logger.warn('Cant select next peer missing ip or hostname')
           done()
         } else {
-          basket.handle = peer.handle
           basket.hostname = peer.hostname
+          basket.domain = config.get('domain')
           basket.ip = peer.ip
           basket.port = peer.importPort
+          basket.availableCapacity = peer.availableCapacity
           done()
         }
       })

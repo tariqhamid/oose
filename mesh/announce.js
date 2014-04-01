@@ -8,13 +8,13 @@ var logger = require('../helpers/logger')
 
 //announcements
 var announceLog = function(selfPeer,oldPeer,peer,packet){
-  if(config.get('mesh.debug') || (packet.handle !== oldPeer.handle)){
+  if(config.get('mesh.debug') || (packet.hostname !== oldPeer.hostname)){
     logger.info(
-        '[' + peer.handle + '] ' + peer.hostname +
+        '[' + peer.hostname + ']' +
         ' (' + peer.ip + ':' + peer.meshPort + ')' +
-        ' posted an announce at ' + new Date(peer.sent).toLocaleTimeString() +
+        ' announced at ' + new Date(peer.sent).toLocaleTimeString() +
         ' (latency ' + peer.latency + ')' +
-        (config.get('mesh.debug') && packet.handle === selfPeer.handle ? ' [SELFIE]' : '')
+        (config.get('mesh.debug') && packet.hostname === selfPeer.hostname ? ' [SELFIE]' : '')
     )
   }
   if(config.get('mesh.debug') > 1){
@@ -27,7 +27,9 @@ var announceListen = function(peer){
   peer.udp.on('announce',function(packet,rinfo){
     redis.hgetall('peers:' + config.get('hostname'),function(err,selfPeer){
       if(err) logger.error(err)
-      else{
+      else if(packet.hostname === selfPeer.hostname && packet.ip !== selfPeer.ip){
+        logger.error('Ignored announce from ' + rinfo.address + ' claiming to have our hostname!!')
+      } else {
         redis.hgetall('peers:' + packet.hostname,function(err,oldPeer){
           if(err) logger.error(err)
           else{
@@ -37,7 +39,6 @@ var announceListen = function(peer){
             peer.latency = packet.sent - (oldPeer.sent || 0) - config.get('mesh.interval.announce')
             if(peer.latency < 0) peer.latency = 0
             peer.sent = packet.sent
-            peer.handle = packet.handle
             peer.hostname = packet.hostname
             peer.ip = rinfo.address
             peer.meshPort = packet.meshPort
@@ -95,7 +96,6 @@ var announceSend = function(conn){
       message.sent = new Date().getTime()
       message.hostname = config.get('hostname')
       message.meshPort = config.get('mesh.port')
-      message.handle = peer.handle
       message.diskFree = peer.diskFree
       message.diskTotal = peer.diskTotal
       message.cpuIdle = peer.cpuIdle

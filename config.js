@@ -23,6 +23,7 @@ config.load({
   //options
   version: '0.0.1',
   hostname: os.hostname(),
+  domain: '',
   ip: {
     public: guessedIP,
     replication: guessedIP,
