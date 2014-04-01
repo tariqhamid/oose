@@ -1,22 +1,27 @@
 'use strict';
 var config = require('../config')
-
+  , logger = require('../helpers/logger')
+  , util = require('util')
 var pingHosts = {}
 var pingTimeout
+var start
 
-var pingSend = function(conn){
-  var start = new Date().getTime()
-  conn.udp.multicast.send('ping',function(){
-    pingTimeout = setTimeout(pingSend,config.get('mesh.pingInterval'))
-  })
+var pingListen = function(conn){
   //server
-  conn.udp.multicast.on('ping',function(req,rinfo){
-    conn.udp.send(rinfo.port,rinfo.address,'ping')
+  conn.udp.on('ping',function(req,rinfo){
+    conn.udp.send('pong',{},rinfo.port,rinfo.address)
   })
   //client
-  conn.udp.on('ping',function(res,rinfo){
+  conn.udp.on('pong',function(res,rinfo){
     pingHosts[rinfo.address] = new Date().getTime() - start
   })
+}
+
+var pingSend = function(conn){
+  start = new Date().getTime()
+  conn.udp.send('ping')
+  if(config.get('mesh.debug') > 1) logger.info('pingHosts:' + util.inspect(pingHosts))
+  pingTimeout = setTimeout(function(){pingSend(conn)},config.get('mesh.interval.ping'))
 }
 
 
@@ -40,6 +45,7 @@ exports.max = function(){
  * @param {object} conn
  */
 exports.start = function(conn){
+  pingListen(conn)
   pingSend(conn)
 }
 

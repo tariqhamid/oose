@@ -24,7 +24,7 @@ var announceLog = function(selfPeer,oldPeer,peer,packet){
 
 //accept the multicast announce
 var announceListen = function(peer){
-  peer.udp.multicast.on('announce',function(packet,rinfo){
+  peer.udp.on('announce',function(packet,rinfo){
     redis.hgetall('peers:' + config.get('hostname'),function(err,selfPeer){
       if(err) logger.error(err)
       else{
@@ -34,7 +34,7 @@ var announceListen = function(peer){
             if(!oldPeer) oldPeer = {}
             //populate details
             var peer = {}
-            peer.latency = packet.sent - (oldPeer.sent || 0) - config.get('mesh.announceInterval')
+            peer.latency = packet.sent - (oldPeer.sent || 0) - config.get('mesh.interval.announce')
             if(peer.latency < 0) peer.latency = 0
             peer.sent = packet.sent
             peer.handle = packet.handle
@@ -88,7 +88,7 @@ var announceSend = function(conn){
     if(err) logger.error(err)
     else if(!peer){
       logger.warn('Announce delayed, peer not ready')
-      announceTimeout = setTimeout(announceSend,config.get('mesh.announceInterval'))
+      announceTimeout = setTimeout(function(){announceSend(conn)},config.get('mesh.interval.announce'))
     }
     else{
       var message = {}
@@ -111,8 +111,8 @@ var announceSend = function(conn){
         message.services += ',prism'
         message.prismPort = config.get('prism.port')
       }
-      conn.udp.multicast.send('announce',message)
-      announceTimeout = setTimeout(announceSend,config.get('mesh.announceInterval'))
+      conn.udp.send('announce',message)
+      announceTimeout = setTimeout(function(){announceSend(conn)},config.get('mesh.interval.announce'))
     }
   })
 }

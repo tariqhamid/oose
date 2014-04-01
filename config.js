@@ -36,13 +36,17 @@ config.load({
   //services
   mesh: {
     debug: 0,
-    address: '226.0.0.1',
     port: 3000,
-    ttl: 1,
-    pingInterval: 1000,
-    statInterval: 1000,
-    peerNextInterval: 5000,
-    announceInterval: 5000
+    multicast: {
+      address: '226.0.0.1',
+      ttl: 1
+    },
+    interval: {
+      ping: 1000,
+      stat: 1000,
+      peerNext: 5000,
+      announce: 5000
+    }
   },
   supervisor: {
     enabled: false,

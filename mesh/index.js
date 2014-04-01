@@ -26,17 +26,24 @@ exports.conn = conn
 exports.start = function(done){
   //start stats collection
   logger.info('Starting self stat collection')
-  myStats.start(config.get('mesh.statInterval'))
+  myStats.start(config.get('mesh.interval.stat'))
   //start next peer selection (delay)
   logger.info('Starting next peer selection')
-  peerNext.start(config.get('mesh.peerNextInterval'),config.get('mesh.announceInterval') * 2)
-  //start unicast
-  conn = {
-    udp: new communicator.UDP(config.get('mesh.port')),
-    tcp: new communicator.TCP(config.get('mesh.port'))
-  }
-  //setup multicast
-  conn.udp.addMulticast(config.get('mesh.address'),config.get('mesh.ttl'))
+  peerNext.start(config.get('mesh.interval.peerNext'),config.get('mesh.interval.announce') * 2)
+  //start connections
+  conn = {}
+  conn.udp = communicator.UDP({
+    port: config.get('mesh.port'),
+    address: config.get('mesh.address'),
+    multicast: {
+      address: config.get('mesh.multicast.address'),
+      ttl: config.get('mesh.multicast.tll'),
+      interfaceAddress: config.get('mesh.multicast.interfaceAddress')
+    }
+  })
+  conn.udp.on('error',logger.error)
+  conn.tcp = communicator.TCP({port: config.get('mesh.port')})
+  conn.tcp.on('error',logger.error)
   //start ping
   ping.start(conn)
   //start announce

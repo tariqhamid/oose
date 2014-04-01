@@ -1,190 +1,88 @@
 'use strict';
-//mesh socket object
-var ObjectManage = require('object-manage')
-  , util = require('util')
-  , async = require('async')
+var net = require('net')
   , dgram = require('dgram')
-  , net = require('net')
+  , stream = require('stream')
   , EventEmitter = require('events').EventEmitter
 
-
-/**
- * Encode an object to be sent
- * @param {object} obj
- * @return {buffer}
- */
-var encode = function(obj){
-  return new Buffer(JSON.stringify(obj))
+var build = function(command,message){
+  return new Buffer(JSON.stringify({
+    command: command,
+    seq: new Date().getTime(),
+    message: message
+  }))
 }
 
-
-/**
- * Decode a buffer and explode into an object
- * @param {buffer} buf
- * @return {object} Decoded Object, or false on failure
- */
-var decode = function(buf){
-  var pkt = JSON.parse(buf)
-  for(var k in pkt)
-    if(pkt.hasOwnProperty(k) && Buffer.isBuffer(pkt[k]))
-      pkt[k] = pkt[k].toString()
-  return pkt
+var parse = function(packet){
+  return JSON.parse(packet.toString())
 }
 
-
-
-/**
- * Communicator constructor, accepts options
- * @constructor
- * @param {object} options
- */
-var Communicator = function(options){
+var UDP = function(options){
   var self = this
-  //init event emitter
   EventEmitter.call(self)
-  //setup options
-  self.options = new ObjectManage({
-    proto: 'udp4',
-    mcast: {address: null, ttl: 1},
-    address: null,
-    port: 3333
-  })
-  self.options.load(options)
-  self.middleware = {
-    send: [],
-    receive: []
-  }
-  self.socket = null
-
-  var setup = {
-    udp4: function(){
-      self.socket = dgram.createSocket('udp4')
-    },
-    mcast: function(){
-      self.socket = dgram.createSocket('udp4')
-    },
-    tcp4listen: function(){
-      self.socket = net.createServer()
-    },
-    tcp4connect: function(){
-      self.socket = net.createConnection()
+  if('object' !== typeof options) options = {}
+  if(!options.port) throw new Error('Port required to setup UDP')
+  self.options = options
+  self.socket = dgram.createSocket(net.isIPv6(options.address) ? 'udp6' : 'udp4')
+  self.socket.bind(options.port,options.address,function(){
+    if(options.multicast && options.multicast.address){
+      self.socket.setMulticastTTL(options.multicast.ttl || 1)
+      self.socket.addMembership(options.multicast.address,options.multicast.interfaceAddress || '')
     }
-  }
-  //define the recv and xmit sockets
-  setup[self.options.get('proto')]()
-
-  var middlewareReceive = function(res){
-    //run middleware
-    async.eachSeries(self.middleware.receive,
-      function(fn,next){fn(res,next)},function(err){
-        if(err) self.emit('error',err)
-        else self.emit('receive',res)
-      }
-    )
-  }
-
-  if(self.socket instanceof dgram.Socket){
-    //bind the socket, setup to parse messages and fire receive event on incoming
-    self.socket.bind(self.options.get('port'),function(){
-      //add multicast membership if needed
-      if('mcast' === self.options.get('proto')){
-        self.socket.addMembership(self.options.get('mcast.address'))
-        self.socket.setMulticastTTL(self.options.get('mcast.ttl'))
-        self.options.set('address',self.options.get('mcast.address'))
-      }
-      self.socket.on('message',function(buf,rinfo){
-        var res = decode(buf)
-        res.rinfo = rinfo
-        middlewareReceive(res)
-      })
-    })
-  }
-
-  if(self.socket instanceof net.Server){ // this is a TCP listener
-    self.socket.on('connection',function(socket){
-      var remoteAddress = socket.remoteAddress
-      var remotePort = socket.remotePort
-      var buf
-      self.emit('info','Received TCP connection from ' + remoteAddress + ':' + remotePort)
-      socket.on('data',function(data){
-        if(buf instanceof Buffer){
-          buf = Buffer.concat([buf,data])
-        } else {
-          buf = data
-        }
-      })
-      socket.on('close',function(failed){
-        if(failed) self.emit('warning','There was an error in the TCP message from ' + remoteAddress + ':' + remotePort)
-        else {
-          self.emit('info','Closed connection from ' + remoteAddress + ':' + remotePort)
-          var res = decode(buf)
-          res.rinfo = {
-            family: 'IPv4',
-            address: remoteAddress,
-            port: remotePort,
-            size: socket.bytesReceived
-          }
-          middlewareReceive(res)
-        }
-      })
-    })
-    self.socket.listen(self.options.get('port'))
-  }
+    self.emit('ready',self.socket)
+  })
+  self.socket.on('message',function(packet,rinfo){
+    var payload = parse(packet)
+    self.emit(payload.command,payload.message,rinfo)
+  })
 }
-util.inherits(Communicator,EventEmitter)
-
-
-/**
- * Add middleware
- * @param {string} position  Position of the middleware either send or receive
- * @param {function} fn
- */
-Communicator.prototype.use = function(position,fn){
+UDP.prototype = Object.create(EventEmitter.prototype)
+UDP.prototype.send = function(command,message,port,address,done){
   var self = this
-  if('function' === typeof position){
-    fn = position
-    position = 'receive'
+  if(!command) throw new Error('Tried to send a message without a command')
+  //missing port? must be directed towards multicast
+  if(!port || !address || 'function' === typeof port){
+    if(!self.options.multicast)
+      throw new Error('Tried to send a message without a destination with multicast disabled')
+    done = port
+    port = self.options.port
+    address = self.options.multicast.address
   }
-  if('send' !== position || 'receive' !== position) position = 'receive'
-  self.middleware[position].push(fn)
+  var packet = build(command,message)
+  self.socket.send(packet,0,packet.length,port,address,done)
 }
 
-
-/**
- * Send a payload via the socket
- * @param {object} payload Message to be sent, string input tolerated
- * @param {function} done Callback when message is sent
- */
-Communicator.prototype.send = function(payload,done){
+var TCP = function(options){
   var self = this
-  if('string' === typeof payload) payload = {message: payload}
-  if('object' !== typeof payload){
-    done('Invalid payload type, must be string or object')
-  } else {
-    var req = new ObjectManage(payload)
-    if(!req.exists('sent')) req.set('sent',new Date().getTime())
-    //run middleware
-    async.eachSeries(self.middleware.send,
-      function(fn,next){fn(req.get(),next)},
-      function(err){
-        if(err) done(err)
-        else {
-          var buf = encode(req.get())
-          self.socket.send(
-            buf,0,buf.length,
-            self.options.get('port'),
-            self.options.get('address'),
-            done
-          )
-        }
-      }
-    )
+  EventEmitter.call(self)
+  if('object' !== typeof options) options = {}
+  if(!options.port) throw new Error('Port required to setup TCP')
+  self.options = options
+  self.server = net.createServer()
+  self.server.on('connection',function(socket){
+    socket.once('readable',function(){
+      var length = socket.read(2).readUInt16BE(0)
+      var payload = parse(socket.read(length))
+      if(!payload) return self.emit('error','Failed to parse payload')
+      self.emit(payload.command,payload.message,socket)
+    })
+  })
+  self.server.listen(options.port,options.address,function(){
+    self.emit('ready',self.server)
+  })
+}
+TCP.prototype = Object.create(EventEmitter.prototype)
+TCP.prototype.send = function(command,message,port,address,readable){
+  if(!address) throw new Error('Tried to send a TCP message without an address')
+  if(!port) throw new Error('Tried to send a TCP message without a port')
+  var payload = build(command,message)
+  var buf = Buffer.concat([new Buffer(2).writeUInt16BE(payload.length),payload])
+  var client = net.connect(port,address)
+  client.write(buf)
+  if(readable instanceof stream.Readable){
+    readable.pipe(client)
   }
+  return client
 }
 
-
-/**
- * Export module
- * @type {Communicator}
- */
-module.exports = Communicator
+exports.UDP = function(options){return new UDP(options)}
+exports.TCP = function(options){return new TCP(options)}

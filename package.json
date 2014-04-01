@@ -33,7 +33,8 @@
     "buffer-crc32": "^0.2.1",
     "async": "^0.2.10",
     "redis": "^0.10.1",
-    "readdirp": "^0.3.3"
+    "readdirp": "^0.3.3",
+    "q": "~1.0.1"
   },
   "devDependencies": {
     "grunt-concurrent": "~0.4.2",
