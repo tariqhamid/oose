@@ -2,8 +2,6 @@
 var config = require('../config')
   , redis = require('../helpers/redis')
   , logger = require('../helpers/logger')
-  , Emitter = require('scuttlebutt/events')
-  , cmdBus = new Emitter()
 
 var runlevel = 'stopped'
 var msg = {
