@@ -26,7 +26,7 @@ var UDP = function(options){
   self.socket.bind(options.port,options.address,function(){
     if(options.multicast && options.multicast.address){
       self.socket.setMulticastTTL(options.multicast.ttl || 1)
-      self.socket.addMembership(options.multicast.address,options.multicast.interfaceAddress || '')
+      self.socket.addMembership(options.multicast.address,options.multicast.interfaceAddress || null)
     }
     self.emit('ready',self.socket)
   })
