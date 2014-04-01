@@ -27,7 +27,7 @@ var announceListen = function(peer){
   peer.udp.on('announce',function(packet,rinfo){
     redis.hgetall('peers:' + config.get('hostname'),function(err,selfPeer){
       if(err) logger.error(err)
-      else if(packet.hostname === selfPeer.hostname && packet.ip !== selfPeer.ip){
+      else if(selfPeer.ip && packet.hostname === selfPeer.hostname && rinfo.address !== selfPeer.ip){
         logger.error('Ignored announce from ' + rinfo.address + ' claiming to have our hostname!!')
       } else {
         redis.hgetall('peers:' + packet.hostname,function(err,oldPeer){
