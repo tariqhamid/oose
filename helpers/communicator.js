@@ -41,6 +41,7 @@ var UDP = function(options){
     var payload = parse(packet)
     self.emit(payload.command,payload.message,rinfo)
   })
+  self.socket.on('error',function(err){self.emit('error',err)})
 }
 UDP.prototype = Object.create(EventEmitter.prototype)
 
@@ -98,7 +99,9 @@ var TCP = function(options){
       if(!payload) return self.emit('error','Failed to parse payload')
       self.emit(payload.command,payload.message,socket)
     })
+    socket.on('error',function(err){self.emit('error',err)})
   })
+  self.server.on('error',function(err){self.emit('error',err)})
   self.server.listen(options.port,options.address,function(){
     self.emit('ready',self.server)
   })
@@ -116,11 +119,13 @@ TCP.prototype = Object.create(EventEmitter.prototype)
  * @return {net.socket}
  */
 TCP.prototype.send = function(command,message,port,address,readable){
+  var self = this
   if(!address) throw new Error('Tried to send a TCP message without an address')
   if(!port) throw new Error('Tried to send a TCP message without a port')
   var payload = build(command,message)
   var buf = Buffer.concat([new Buffer(2).writeUInt16BE(payload.length),payload])
   var client = net.connect(port,address)
+  client.on('error',function(err){self.emit('error',err)})
   client.write(buf)
   if(readable instanceof stream.Readable){
     readable.pipe(client)
