@@ -7,6 +7,7 @@ var config = require('../config')
   , peerNext = require('./peerNext')
   , ping = require('./ping')
   , announce = require('./announce')
+  , Q = require('q')
 
 //connection handles
 var conn = {udp: {}, tcp: {}}
@@ -20,16 +21,24 @@ exports.conn = conn
 
 
 /**
+ * Ping system
+ * @type {*|exports}
+ */
+exports.ping = ping
+
+
+/**
+ * Announce system
+ * @type {*|exports}
+ */
+exports.announce = announce
+
+
+/**
  * Start mesh
  * @param {function} done
  */
 exports.start = function(done){
-  //start stats collection
-  logger.info('Starting self stat collection')
-  myStats.start(config.get('mesh.interval.stat'))
-  //start next peer selection (delay)
-  logger.info('Starting next peer selection')
-  peerNext.start(config.get('mesh.interval.peerNext'),config.get('mesh.interval.announce') * 2)
   //start connections
   conn = {}
   conn.udp = communicator.UDP({
@@ -41,14 +50,25 @@ exports.start = function(done){
       interfaceAddress: config.get('mesh.multicast.interfaceAddress')
     }
   })
-  conn.udp.on('error',logger.error)
   conn.tcp = communicator.TCP({port: config.get('mesh.port')})
+  //connection error handling
+  conn.udp.on('error',logger.error)
   conn.tcp.on('error',logger.error)
-  //start ping
-  ping.start(conn)
-  //start announce
-  announce.start(conn)
-  done()
+  //start booting
+  Q.fcall(function(){
+    //start stats collection
+    logger.info('Starting self stat collection')
+    myStats.start(config.get('mesh.interval.stat'))
+  }).then(function(){
+    //start next peer selection (delay)
+    logger.info('Starting next peer selection')
+    peerNext.start(config.get('mesh.interval.peerNext'),config.get('mesh.interval.announce') * 2)
+  }).then(function(){
+    //start ping
+    ping.start(conn)
+  }).then(function(){
+    announce.start(conn)
+  }).catch(logger.error).fail(logger.error).done(done)
 }
 
 

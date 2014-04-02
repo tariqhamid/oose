@@ -133,7 +133,6 @@ exports.fromReadable = function(readable,done){
       else done(null,sha1)
     }
   }
-
   readable.on('data',function(chunk){
     shasum.update(chunk)
   })

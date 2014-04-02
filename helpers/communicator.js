@@ -16,6 +16,13 @@ var parse = function(packet){
   return JSON.parse(packet.toString())
 }
 
+
+
+/**
+ * UDP Communicator
+ * @param {object} options
+ * @constructor
+ */
 var UDP = function(options){
   var self = this
   EventEmitter.call(self)
@@ -61,6 +68,22 @@ UDP.prototype.send = function(command,message,port,address,done){
   self.socket.send(packet,0,packet.length,port,address,done)
 }
 
+
+/**
+ * Close the UDP handler and stop listening on the bound port
+ * @param {function} done
+ */
+UDP.prototype.close = function(done){
+  this.socket.close(done)
+}
+
+
+
+/**
+ * TCP Communicator
+ * @param {object} options
+ * @constructor
+ */
 var TCP = function(options){
   var self = this
   EventEmitter.call(self)
@@ -103,6 +126,15 @@ TCP.prototype.send = function(command,message,port,address,readable){
     readable.pipe(client)
   }
   return client
+}
+
+
+/**
+ * Close the TCP server
+ * @param {function} done
+ */
+TCP.prototype.close = function(done){
+  this.server.close(done)
 }
 
 
