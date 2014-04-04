@@ -31,7 +31,6 @@ var selectPeer = function(basket,done){
 }
 
 var save = function(basket,done){
-  console.log(save)
   if(Object.keys(basket).length > 0){
     redis.hmset('peerNext',basket,function(err){
       if(err) logger.warn('Couldn\'t save next peer:' + err)
