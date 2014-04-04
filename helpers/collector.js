@@ -44,8 +44,12 @@ Collector.prototype.use = function(position,fn){
  * @param {number} interval
  * @param {number} delay
  */
-Collector.prototype.start = function(interval,delay){
+Collector.prototype.start = function(interval,delay,cb){
   var self = this
+  if('function' === typeof delay){
+    cb = delay
+    delay = null
+  }
   var run = function(){
     self.basket = {}
     //collect
@@ -67,6 +71,11 @@ Collector.prototype.start = function(interval,delay){
               function(err){
                 if(err) self.emit('error',err)
                 self.timeout = setTimeout(run,interval)
+                if(cb && 'function' === typeof cb){
+                  //if started with a callback, run it once
+                  cb(null,self.basket)
+                  cb = false
+                }
               }
             )
           }

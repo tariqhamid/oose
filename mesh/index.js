@@ -7,7 +7,7 @@ var config = require('../config')
   , peerNext = require('./peerNext')
   , ping = require('./ping')
   , announce = require('./announce')
-  , Q = require('q')
+  , async = require('async')
 
 //connection handles
 var conn = {udp: {}, tcp: {}}
@@ -55,20 +55,22 @@ exports.start = function(done){
   conn.udp.on('error',logger.error)
   conn.tcp.on('error',logger.error)
   //start booting
-  Q.fcall(function(){
+  async.series([
     //start stats collection
-    logger.info('Starting self stat collection')
-    myStats.start(config.get('mesh.interval.stat'))
-  }).then(function(){
+    function(done){
+      logger.info('Starting self stat collection')
+      myStats.start(config.get('mesh.interval.stat'),0,done)
+    },
     //start next peer selection (delay)
-    logger.info('Starting next peer selection')
-    peerNext.start(config.get('mesh.interval.peerNext'),config.get('mesh.interval.announce') * 2)
-  }).then(function(){
+    function(done){
+      logger.info('Starting next peer selection')
+      peerNext.start(config.get('mesh.interval.peerNext'),config.get('mesh.interval.announce') * 2,done)
+    },
     //start ping
-    ping.start(conn)
-  }).then(function(){
-    announce.start(conn)
-  }).catch(logger.error).fail(logger.error).done(done)
+    function(done){ ping.start(conn,done) },
+    //start announcements
+    function(done){ announce.start(conn,done) }
+  ])
 }
 
 
@@ -76,21 +78,33 @@ exports.start = function(done){
  * Stop mesh
  */
 exports.stop = function(){
-  //announce
-  logger.info('Stopping announce')
-  announce.stop()
-  //ping
-  logger.info('Stopping ping')
-  ping.stop()
-  //stop network connections
-  conn.tcp.close()
-  conn.udp.close()
-  //next peer selection
-  logger.info('Stopping next peer selection')
-  peerNext.stop()
-  //stats
-  logger.info('Stopping self stat collection')
-  myStats.stop()
+  async.series([
+    //stop announce
+    function(){
+      logger.info('Stopping announce')
+      announce.stop()
+    },
+    //stop ping
+    function(){
+      logger.info('Stopping ping')
+      ping.stop()
+    },
+    //stop network connections
+    function(){
+      conn.tcp.close()
+      conn.udp.close()
+    },
+    //stop next peer selection
+    function(){
+      logger.info('Stopping next peer selection')
+      peerNext.stop()
+    },
+    //stats
+    function(){
+      logger.info('Stopping self stat collection')
+      myStats.stop()
+    }
+  ])
 }
 
 if(require.main === module){

@@ -8,14 +8,14 @@ var selectPeer = function(basket,done){
   redis.zrevrangebyscore('peerRank',100,0,function(err,peers){
     if(err) logger.error(err)
     if(!peers[0]){
-      logger.warn('Cant select next peer no winner exists')
+      logger.warn('Can\'t select next peer: no winner exists')
       done()
     } else {
       var hostname = peers[0]
       redis.hgetall('peers:' + hostname,function(err,peer){
         if(err) logger.error(err)
         if(!peer.hostname || !peer.ip){
-          logger.warn('Cant select next peer missing ip or hostname')
+          logger.warn('Can\'t select next peer: missing IP or hostname')
           done()
         } else {
           basket.hostname = peer.hostname
@@ -33,7 +33,7 @@ var selectPeer = function(basket,done){
 var save = function(basket,done){
   if(Object.keys(basket).length > 0){
     redis.hmset('peerNext',basket,function(err){
-      if(err) logger.warn('Couldnt save next peer ' + err)
+      if(err) logger.warn('Couldn\'t save next peer:' + err)
       done()
     })
   } else done()

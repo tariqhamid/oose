@@ -44,9 +44,10 @@ exports.max = function(){
  * Start pinging
  * @param {object} conn
  */
-exports.start = function(conn){
+exports.start = function(conn,cb){
   pingListen(conn)
   pingSend(conn)
+  if(cb && 'function' === typeof cb){ cb(null,null) }
 }
 
 

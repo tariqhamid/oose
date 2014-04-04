@@ -122,9 +122,10 @@ var announceSend = function(conn){
  * Start announcing
  * @param {object} conn
  */
-exports.start = function(conn){
+exports.start = function(conn,cb){
   announceListen(conn)
   announceSend(conn)
+  if(cb && 'function' === typeof cb){ cb(null,null) }
 }
 
 

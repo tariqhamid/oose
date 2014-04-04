@@ -31,7 +31,6 @@
     "async": ">=0.2.10",
     "redis": ">=0.10.1",
     "readdirp": ">=0.3.3",
-    "q": ">=1.0.1",
     "grunt": ">=0.4.4"
   },
   "devDependencies": {
