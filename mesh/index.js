@@ -3,8 +3,6 @@
 var config = require('../config')
   , logger = require('../helpers/logger')
   , communicator = require('../helpers/communicator')
-  , myStats = require('./peerStats')
-  , peerNext = require('./peerNext')
   , ping = require('./ping')
   , announce = require('./announce')
   , async = require('async')
@@ -56,21 +54,15 @@ exports.start = function(done){
   conn.tcp.on('error',logger.error)
   //start booting
   async.series([
-    //start stats collection
-    function(done){
-      logger.info('Starting self stat collection')
-      myStats.start(config.get('mesh.interval.stat'),0,done)
-    },
-    //start next peer selection (delay)
-    function(done){
-      logger.info('Starting next peer selection')
-      peerNext.start(config.get('mesh.interval.peerNext'),config.get('mesh.interval.announce') * 2,done)
-    },
     //start ping
     function(done){ ping.start(conn,done) },
     //start announcements
     function(done){ announce.start(conn,done) }
-  ])
+  ],
+    function(err,results){
+      done(err,results)
+    }
+  )
 }
 
 

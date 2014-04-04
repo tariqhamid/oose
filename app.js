@@ -5,6 +5,7 @@ var cluster = require('cluster')
   , fs = require('fs')
   , mkdirp = require('mkdirp')
   , logger = require('./helpers/logger')
+  , async = require('async')
 
 //master startup
 if(cluster.isMaster){
@@ -16,31 +17,64 @@ if(cluster.isMaster){
   }
   //flush redis before startup
   redis.flushdb()
-  //start mesh for discovery and communication
-  require('./mesh').start(function(){
-    logger.info('Mesh started and announcing')
-  })
-  //start the supervisor
-  if(config.get('supervisor.enabled')){
-    require('./supervisor').start(function(){
-      logger.info('Supervisor started')
-    })
-  }
-
-  //register job handlers
-  jobs.process('inventory',require('./tasks/inventory'))
-  jobs.process('prismSync',require('./tasks/prismSync'))
-  jobs.process('replicate',require('./tasks/replicate'))
-  //fire off initial scan
-  if(config.get('store.enabled'))
-    jobs.create('inventory',{title: 'Build the initial hash table', root: config.get('root')}).save()
-  //start workers
-  var workers = config.get('workers') || os.cpus().length
-  logger.info('Starting ' + workers + ' workers')
-  for(var i=1; i <= workers; i++){
-    logger.info('starting worker ' + i)
-    cluster.fork()
-  }
+  //start booting
+  async.series([
+      //start stats collection
+      function(done){
+        logger.info('Starting self stat collection')
+        require('./tasks/peerStats').start(
+          config.get('mesh.interval.stat'),
+          0,
+          done
+        )
+      },
+      //start next peer selection (delay)
+      function(done){
+        logger.info('Starting next peer selection')
+        require('./tasks/peerNext').start(
+          config.get('mesh.interval.peerNext'),
+          config.get('mesh.interval.announce') * 2,
+          done
+        )
+      },
+      //start ping
+      function(done){
+        //start mesh for discovery and communication
+        require('./mesh').start(function(){
+          logger.info('Mesh started')
+          done()
+        })
+      },
+      //start announcements
+      function(done){
+        //start the supervisor
+        if(config.get('supervisor.enabled')){
+          require('./supervisor').start(function(){
+            logger.info('Supervisor started')
+            done()
+          })
+        } else done()
+      }
+    ],
+    function(err,results){
+      if(!err){
+        //register job handlers
+        jobs.process('inventory',require('./tasks/inventory'))
+        jobs.process('prismSync',require('./tasks/prismSync'))
+        jobs.process('replicate',require('./tasks/replicate'))
+        //fire off initial scan
+        if(config.get('store.enabled'))
+          jobs.create('inventory',{title: 'Build the initial hash table', root: config.get('root')}).save()
+        //start workers
+        var workers = config.get('workers') || os.cpus().length
+        logger.info('Starting ' + workers + ' workers')
+        for(var i=1; i <= workers; i++){
+          logger.info('starting worker ' + i)
+          cluster.fork()
+        }
+      }
+    }
+  )
 }
 
 //worker startup
