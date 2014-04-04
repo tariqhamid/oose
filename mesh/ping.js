@@ -54,7 +54,8 @@ exports.start = function(conn,cb){
 /**
  * End Pinging
  */
-exports.stop = function(){
+exports.stop = function(cb){
   if(pingTimeout)
     clearTimeout(pingTimeout)
+  if(cb && 'function' === typeof cb){ cb(null,null) }
 }

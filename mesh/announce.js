@@ -132,7 +132,8 @@ exports.start = function(conn,cb){
 /**
  * Stop announcing
  */
-exports.stop = function(){
+exports.stop = function(cb){
   if(announceTimeout)
     clearTimeout(announceTimeout)
+  if(cb && 'function' === typeof cb){ cb(null,null) }
 }
