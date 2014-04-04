@@ -1,11 +1,12 @@
 'use strict';
 /*jshint bitwise: false*/
-var Collector = require('./../helpers/collector')
+var Collector = require('../helpers/collector')
+  , redis = require('../helpers/redis')
+  , logger = require('../helpers/logger')
   , config = require('../config')
   , os = require('os')
   , ds = require('diskspace')
   , path = require('path')
-  , redis = require('./../helpers/redis')
 
 var getDiskFree = function(basket,next){
   var root = path.resolve(config.get('root'))
@@ -14,7 +15,7 @@ var getDiskFree = function(basket,next){
   ds.check(root,function(total,free){
     basket.diskFree = parseInt(free,10) || 0
     basket.diskTotal = parseInt(total,10) || 0
-    next()
+    next(null,basket)
   })
 }
 
@@ -35,11 +36,11 @@ var getCPU = function(basket,next){
   if(!lastMeasure) lastMeasure = cpuAverage()
   var thisMeasure = cpuAverage()
   //figure percentage
-  basket.cpuIdle = thisMeasure.idle - lastMeasure.idle
-  basket.cpuTotal = thisMeasure.total - lastMeasure.total
+  basket.cpuIdle = (thisMeasure.idle - lastMeasure.idle) || 100
+  basket.cpuTotal = (thisMeasure.total - lastMeasure.total) || 100
   //set this value for next use
   lastMeasure = thisMeasure
-  next()
+  next(null,basket)
 }
 
 var availableCapacity = function(basket,next){
@@ -49,18 +50,22 @@ var availableCapacity = function(basket,next){
       (2 * (100 * (basket.diskFree / basket.diskTotal)))
     ) / 3
   )
-  next()
+  next(null,basket)
 }
 
 var save = function(basket,next){
-  redis.hmset('peers:' + config.get('hostname'),basket,next)
+  redis.hmset('peers:' + config.get('hostname'),basket,function(err){
+    if(err) next(err)
+    else next(null,basket)
+  })
 }
 
 var peerStats = new Collector()
-peerStats.use(getDiskFree)
-peerStats.use(getCPU)
-peerStats.use('process',availableCapacity)
-peerStats.use('store',save)
+peerStats.collect(getDiskFree)
+peerStats.collect(getCPU)
+peerStats.process(availableCapacity)
+peerStats.save(save)
+peerStats.on('error',logger.warn)
 
 
 /**

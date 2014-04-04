@@ -9,12 +9,14 @@ var cluster = require('cluster')
 
 //master startup
 if(cluster.isMaster){
+  require('node-sigint')
   var redis = require('./helpers/redis')
     , jobs = require('./helpers/jobs')
-    , communicator = require('./helpers/communicator')
-    , peerNext = require('./tasks/peerNext')
-    , peerStats = require('./tasks/peerStats')
+    , peerNext = require('./collectors/peerNext')
+    , peerStats = require('./collectors/peerStats')
     , mesh = require('./mesh')
+    , ping = require('./mesh/ping')
+    , announce = require('./mesh/announce')
   //make sure the root folder exists
   if(!fs.existsSync(config.get('root'))){
     mkdirp.sync(config.get('root'))
@@ -22,53 +24,33 @@ if(cluster.isMaster){
   //flush redis before startup
   redis.flushdb()
   //start booting
-  var conn = {}
   async.series(
     [
-      //start connections
+      //start mesh
       function(done){
-        logger.info('Starting network connections')
-        conn = {
-          udp: communicator.UDP({
-            port: config.get('mesh.port'),
-            address: config.get('mesh.address'),
-            multicast: {
-              address: config.get('mesh.multicast.address'),
-              ttl: config.get('mesh.multicast.ttl'),
-              interfaceAddress: config.get('mesh.multicast.interfaceAddress')
-            }
-          }),
-          tcp: communicator.TCP({port: config.get('mesh.port')})
-        }
-        //connection error handling
-        conn.udp.on('error',logger.error)
-        conn.tcp.on('error',logger.error)
-        done()
+        logger.info('Starting mesh')
+        mesh.start(done)
       },
-      //start stats collection
+      //start collectors
       function(done){
         logger.info('Starting stats collection')
-        peerStats.start(
-          config.get('mesh.interval.stat'),
-          0,
-          done
-        )
+        peerStats.start(config.get('mesh.interval.stat'),0)
+        peerStats.once('loopEnd',function(){done()})
       },
-      //start next peer selection (delay)
+      //start ping
       function(done){
-        logger.info('Starting next-peer selector')
-        peerNext.start(
-          config.get('mesh.interval.peerNext'),
-          config.get('mesh.interval.announce') * 2,
-          done
-        )
+        logger.info('Starting ping')
+        ping.start(done)
       },
-      //start mesh for discovery and communication
+      //start announce
       function(done){
-        mesh.start(conn,function(){
-          logger.info('Mesh started')
-          done()
-        })
+        logger.info('Starting announce')
+        announce.start(done)
+      },
+      //start next peer selection
+      function(done){
+        logger.info('Starting next peer selection')
+        peerNext.start(config.get('mesh.interval.peerNext'),config.get('mesh.interval.announce') * 2,done)
       },
       //start the supervisor
       function(done){
@@ -81,25 +63,31 @@ if(cluster.isMaster){
       }
     ],
     function(err){
-      if(!err){
-        //register job handlers
-        jobs.process('inventory',require('./tasks/inventory'))
-        jobs.process('prismSync',require('./tasks/prismSync'))
-        jobs.process('replicate',require('./tasks/replicate'))
-        //fire off initial scan
-        if(config.get('store.enabled'))
-          jobs.create('inventory',{title: 'Build the initial hash table', root: config.get('root')}).save()
-        //start workers
-        var workers = config.get('workers') || os.cpus().length
-        logger.info('Starting ' + workers + ' workers')
-        for(var i=1; i <= workers; i++){
-          logger.info('starting worker ' + i)
-          cluster.fork()
-        }
+      if(err){
+        logger.error('Startup failed: ' + err)
+        process.exit()
       }
+      //register job handlers
+      jobs.process('inventory',require('./tasks/inventory'))
+      jobs.process('prismSync',require('./tasks/prismSync'))
+      jobs.process('clone',require('./tasks/clone'))
+      //fire off initial scan
+      if(config.get('store.enabled'))
+        jobs.create('inventory',{title: 'Build the initial hash table', root: config.get('root')}).save()
+      //start workers
+      var workers = config.get('workers') || os.cpus().length
+      logger.info('Starting ' + workers + ' workers')
+      for(var i=1; i <= workers; i++){
+        cluster.fork()
+      }
+      cluster.on('online',function(worker){
+        logger.info('Worker ' + worker.id + ' online')
+      })
     }
   )
+  var shutdownAttempted = false
   var shutdown = function(){
+    logger.info('Beginning shutdown')
     async.series(
       [
         //stop workers
@@ -108,10 +96,20 @@ if(cluster.isMaster){
           cluster.disconnect(function(){done()})
           done()
         },
-        //stop mesh
+        //stop kue
         function(done){
-          logger.info('Stopping Mesh')
-          mesh.stop(done)
+          logger.info('Stopping kue')
+          jobs.shutdown(done,60000)
+        },
+        //stop announce
+        function(done){
+          logger.info('Stopping announce')
+          announce.stop(done)
+        },
+        //stop ping
+        function(done){
+          logger.info('Stopping ping')
+          ping.stop(done)
         },
         //stop next peer selection
         function(done){
@@ -123,47 +121,43 @@ if(cluster.isMaster){
           logger.info('Stopping self stat collection')
           peerStats.stop(done)
         },
-        //stop network connections
+        //stop mesh
         function(done){
-          logger.info('Stopping network connections')
-          conn.tcp.close()
-          conn.udp.close()
-          done()
+          logger.info('Stopping mesh')
+          mesh.stop(done)
         }
       ],
-      function(){ logger.info('STOPPED.') }
+      function(err){
+        if(err && !shutdownAttempted){
+          shutdownAttempted = true
+          logger.error('Shutdown failed: ' + err)
+        } else if(err && shutdownAttempted){
+          logger.error('Shutdown failed: ' + err)
+          logger.error('Shutdown already failed once, forcing exit')
+          process.exit()
+        } else {
+          logger.info('Stopped')
+          process.exit()
+        }
+      }
     )
   }
-  process.on('SIGINT',shutdown)
-  process.on('SIGTERM',shutdown)
+  process.once('SIGINT',shutdown)
+  process.once('SIGTERM',shutdown)
 }
 
 //worker startup
 if(cluster.isWorker){
-  logger.info('Worker starting...')
+  var storeImport = require('./import')
+    , storeExport = require('./export')
+    , prism = require('./prism')
   //start storage services
   if(config.get('store.enabled')){
-    require('./import').start(function(){
-      logger.info(
-        'Import listening on ' +
-        (config.get('store.import.host') || 'localhost') +
-        ':' +
-        config.get('store.import.port')
-      )
-    })
-    require('./export').start(function(){
-      logger.info(
-        'Export listening on ' +
-        (config.get('store.export.host') || 'localhost') +
-        ':' +
-        config.get('store.export.port')
-      )
-    })
+    storeImport.start()
+    storeExport.start()
   }
-  //start resolve if its enabled
+  //start prism if its enabled
   if(config.get('prism.enabled')){
-    require('./prism').start(function(){
-      logger.info('Prism listening on ' + (config.get('prism.host') || 'localhost') + ':' + config.get('prism.port'))
-    })
+    prism.start()
   }
 }

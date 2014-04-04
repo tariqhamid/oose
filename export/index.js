@@ -1,6 +1,7 @@
 'use strict';
 var express = require('express')
   , app = express()
+  , server = require('http').createServer(app)
   , redis = require('../helpers/redis')
   , fs = require('fs')
   , config = require('../config')
@@ -63,12 +64,15 @@ app.get('/:sha1/:filename',function(req,res){
  * @param {Function} done
  */
 exports.start = function(done){
-  app.listen(config.get('store.export.port'),config.get('store.export.host'),done)
+  if('function' !== typeof done) done = function(){}
+  server.listen(config.get('store.export.port'),config.get('store.export.host'),done)
 }
 
-if(require.main === module){
-  exports.start(function(){
-    var logger = require('../helpers/logger')
-    logger.info('Export started listening on port ' + config.get('store.export.port'))
-  })
+
+/**
+ * Stop export
+ * @param {function} done
+ */
+exports.stop = function(done){
+  server.close(done)
 }

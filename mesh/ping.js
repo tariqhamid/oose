@@ -1,12 +1,13 @@
 'use strict';
-var config = require('../config')
+var conn = require('./index')
+  , config = require('../config')
   , logger = require('../helpers/logger')
   , util = require('util')
 var pingHosts = {}
 var pingTimeout
 var start
 
-var pingListen = function(conn){
+var pingListen = function(){
   //server
   conn.udp.on('ping',function(req,rinfo){
     conn.udp.send('pong',{},rinfo.port,rinfo.address)
@@ -17,7 +18,7 @@ var pingListen = function(conn){
   })
 }
 
-var pingSend = function(conn){
+var pingSend = function(){
   start = new Date().getTime()
   conn.udp.send('ping')
   if(config.get('mesh.debug') > 1) logger.info('pingHosts:' + util.inspect(pingHosts))
@@ -42,12 +43,13 @@ exports.max = function(){
 
 /**
  * Start pinging
- * @param {object} conn
+ * @param {function} done
  */
-exports.start = function(conn,cb){
+exports.start = function(done){
+  if('function' !== typeof done) done = function(){}
   pingListen(conn)
   pingSend(conn)
-  if(cb && 'function' === typeof cb){ cb(null,null) }
+  done()
 }
 
 

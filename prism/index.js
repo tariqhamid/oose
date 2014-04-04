@@ -26,6 +26,7 @@ app.get('/:sha1/:filename',function(req,res){
  * @param {function} done
  */
 exports.start = function(done){
+  if('function' !== typeof done) done = function(){}
   app.listen(config.get('prism.port'),config.get('prism.host'),done)
 }
 

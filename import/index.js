@@ -5,8 +5,9 @@ var net = require('net')
   , logger = require('../helpers/logger')
 
 //setup tcp server if enabled
+var server
 var listen = function(port,host,done){
-  var server = net.createServer()
+  server = net.createServer()
   server.on('connection',function(socket){
     var remoteAddress = socket.remoteAddress
     var remotePort = socket.remotePort
@@ -30,12 +31,17 @@ var listen = function(port,host,done){
  * @param {function} done
  */
 exports.start = function(done){
+  if('function' !== typeof done) done = function(){}
   listen(config.get('store.import.port'),config.get('store.import.host'),done)
 }
 
-if(require.main === module){
-  exports.start(function(){
-    var logger = require('../helpers/logger')
-    logger.info('Import started, listening on port ' + config.get('store.import.port'))
-  })
+
+/**
+ * Stop import
+ * @param {function} done
+ */
+exports.stop = function(done){
+  if('function' !== typeof done) done = function(){}
+  if(server) server.close(done)
+  else done()
 }

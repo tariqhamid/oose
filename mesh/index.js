@@ -1,68 +1,47 @@
 'use strict';
-/*jshint bitwise: false*/
-var config = require('../config')
+var communicator = require('../helpers/communicator')
   , logger = require('../helpers/logger')
-  , ping = require('./ping')
-  , announce = require('./announce')
+  , config = require('../config')
   , async = require('async')
 
-
-/**
- * Ping system
- * @type {*|exports}
- */
-exports.ping = ping
+//connection handles
+var conn = {}
 
 
 /**
- * Announce system
- * @type {*|exports}
- */
-exports.announce = announce
-
-
-/**
- * Start mesh
+ * Start connections
  * @param {function} done
  */
-exports.start = function(conn,cb){
-  //start booting
-  async.series([
-    //start ping
-    function(done){ ping.start(conn,done) },
-    //start announcements
-    function(done){ announce.start(conn,done) }
-  ],
-    function(err,results){
-      cb(err,results)
+conn.start = function(done){
+  //start udp
+  conn.udp = communicator.UDP({
+    port: config.get('mesh.port'),
+    address: config.get('mesh.address'),
+    multicast: {
+      address: config.get('mesh.multicast.address'),
+      ttl: config.get('mesh.multicast.ttl'),
+      interfaceAddress: config.get('mesh.multicast.interfaceAddress')
     }
-  )
+  })
+  //start tcp
+  conn.tcp = communicator.TCP({port: config.get('mesh.port')})
+  //connection error handling
+  conn.udp.on('error',logger.error)
+  conn.tcp.on('error',logger.error)
+  done()
 }
 
 
 /**
  * Stop mesh
+ * @param {function} done
  */
-exports.stop = function(cb){
-  async.series(
-    [
-      //stop announce
-      function(done){
-        logger.info('Stopping announce')
-        announce.stop(done)
-      },
-      //stop ping
-      function(done){
-        logger.info('Stopping ping')
-        ping.stop(done)
-      }
-    ],
-    function(err,results){ cb(err,results) }
-  )
+conn.stop = function(done){
+  async.series([function(next){conn.udp.close(next)},function(next){conn.tcp.close(next)}],done)
 }
 
-if(require.main === module){
-  exports.start(function(){
-    logger.info('Mesh started and announcing')
-  })
-}
+
+/**
+ * Export connection handle
+ */
+module.exports = conn

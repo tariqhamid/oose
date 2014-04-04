@@ -1,6 +1,5 @@
 'use strict';
 var async = require('async')
-  , util = require('util')
   , EventEmitter = require('events').EventEmitter
 
 
@@ -10,32 +9,65 @@ var async = require('async')
  * @constructor
  */
 var Collector = function(){
-  var self = this
   EventEmitter.call(this)
-  self.middleware = {
-    collect: [],
-    process: [],
-    store: []
-  }
-  self.basket = {}
-  self.timeout = null
+  this.tasks = {collect: [], process: [], save: []}
+  this.timeout = null
 }
-util.inherits(Collector,EventEmitter)
+Collector.prototype = Object.create(EventEmitter.prototype)
 
 
 /**
- * Add middleware
- * @param {string} position  Position of the middleware either send or receive
+ * Add collect middleware
  * @param {function} fn
  */
-Collector.prototype.use = function(position,fn){
+Collector.prototype.collect = function(fn){
+  this.tasks.collect.push(fn)
+}
+
+
+/**
+ * Add process middleware
+ * @param {function} fn
+ */
+Collector.prototype.process = function(fn){
+  this.tasks.process.push(fn)
+}
+
+
+/**
+ * Add save middlware
+ * @param {function} fn
+ */
+Collector.prototype.save = function(fn){
+  this.tasks.save.push(fn)
+}
+
+
+/**
+ * Run the main collector loop
+ * @param {Number} interval
+ */
+Collector.prototype.run = function(interval){
   var self = this
-  if('function' === typeof position){
-    fn = position
-    position = 'collect'
+  self.emit('start',interval)
+  var run = function(){
+    self.emit('loopStart')
+    var basket = {}
+    var tasks = [function(done){done(null,basket)}].concat(
+      self.tasks.collect,
+      self.tasks.process,
+      self.tasks.save
+    )
+    async.waterfall(tasks,function(err){
+      if(err) self.emit('error',err)
+      else {
+        self.emit('loopEnd',basket)
+        self.timeout = setTimeout(run,interval)
+      }
+    })
   }
-  if('process' !== position || 'store' !== position) position = 'collect'
-  self.middleware[position].push(fn)
+  //kick off loop
+  run()
 }
 
 
@@ -43,55 +75,31 @@ Collector.prototype.use = function(position,fn){
  * Start the collector loop
  * @param {number} interval
  * @param {number} delay
+ * @param {function} done
  */
-Collector.prototype.start = function(interval,delay,cb){
+Collector.prototype.start = function(interval,delay,done){
   var self = this
   if('function' === typeof delay){
-    cb = delay
+    done = delay
     delay = null
   }
-  var run = function(){
-    self.basket = {}
-    //collect
-    async.eachSeries(
-      self.middleware.collect,
-      function(fn,next){fn(self.basket,next)},
-      function(err){
-        if(err) self.emit('error',err)
-        //process
-        async.eachSeries(
-          self.middleware.process,
-          function(fn,next){fn(self.basket,next)},
-          function(err){
-            if(err) self.emit('error',err)
-            //store
-            async.eachSeries(
-              self.middleware.store,
-              function(fn,next){fn(self.basket,next)},
-              function(err){
-                if(err) self.emit('error',err)
-                self.timeout = setTimeout(run,interval)
-                if(cb && 'function' === typeof cb){
-                  //if started with a callback, run it once
-                  cb(null,self.basket)
-                  cb = false
-                }
-              }
-            )
-          }
-        )
-      }
-    )
-  }
-  setTimeout(run,delay || 0)
+  if('function' !== typeof done) done = function(){}
+  setTimeout(function(){
+    self.run(interval)
+  },delay || 0)
+  done()
 }
 
 
 /**
  * Stop the collector loop
+ * @param {function} done
  */
-Collector.prototype.stop = function(){
+Collector.prototype.stop = function(done){
+  if('function' !== typeof done) done = function(){}
   if(this.timeout) clearTimeout(this.timeout)
+  this.emit('end')
+  done()
 }
 
 

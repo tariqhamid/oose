@@ -1,5 +1,6 @@
 'use strict';
-var logger = require('../helpers/logger')
+var conn = require('./index')
+  , logger = require('../helpers/logger')
   , redis = require('../helpers/redis')
   , jobs = require('../helpers/jobs')
   , config = require('../config')
@@ -23,8 +24,8 @@ var announceLog = function(selfPeer,oldPeer,peer,packet){
 }
 
 //accept the multicast announce
-var announceListen = function(peer){
-  peer.udp.on('announce',function(packet,rinfo){
+var announceListen = function(){
+  conn.udp.on('announce',function(packet,rinfo){
     redis.hgetall('peers:' + config.get('hostname'),function(err,selfPeer){
       if(err) logger.error(err)
       else if(selfPeer.ip && packet.hostname === selfPeer.hostname && rinfo.address !== selfPeer.ip){
@@ -84,7 +85,7 @@ var announceListen = function(peer){
 }
 
 var announceTimeout
-var announceSend = function(conn){
+var announceSend = function(){
   redis.hgetall('peers:' + config.get('hostname'),function(err,peer){
     if(err) logger.error(err)
     else if(!peer){
@@ -120,20 +121,23 @@ var announceSend = function(conn){
 
 /**
  * Start announcing
- * @param {object} conn
+ * @param {function} done
  */
-exports.start = function(conn,cb){
-  announceListen(conn)
-  announceSend(conn)
-  if(cb && 'function' === typeof cb){ cb(null,null) }
+exports.start = function(done){
+  if('function' !== typeof done) done = function(){}
+  announceListen()
+  announceSend()
+  done()
 }
 
 
 /**
  * Stop announcing
+ * @param {function} done
  */
-exports.stop = function(cb){
+exports.stop = function(done){
+  if('function' !== typeof done) done = function(){}
   if(announceTimeout)
     clearTimeout(announceTimeout)
-  if(cb && 'function' === typeof cb){ cb(null,null) }
+  done()
 }
