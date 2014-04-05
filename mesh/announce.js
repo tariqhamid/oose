@@ -155,7 +155,6 @@ var announceSend = function(){
       },
       //send message
       function(next){
-        console.log(message)
         conn.udp.send('announce',message)
         next()
       }
