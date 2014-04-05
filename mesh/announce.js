@@ -40,7 +40,6 @@ var announceListen = function(){
         function(next){
           redis.hgetall('peers:' + config.get('hostname'),function(err,result){
             if(err) return next(err)
-            console.log(result)
             selfPeer = result
             next()
           })
