@@ -99,7 +99,15 @@ exports.write = function(source,sha1,done){
   var ws = fs.createWriteStream(destination)
   ws.on('error',done)
   rs.on('end',function(){
-    exports.redisInsert(sha1,done)
+    exports.redisInsert(sha1,function(err){
+      if(err) return done(err)
+      //create the initial clone job
+      var jobs = require('./jobs')
+      jobs.create('clone',{title: 'Initial clone of ' + sha1, sha1: sha1}).save(function(err){
+        done(err,sha1)
+      })
+    })
+
   })
   rs.pipe(ws)
 }
@@ -125,12 +133,29 @@ exports.fromReadable = function(readable,done){
           else err = 'failed to remove tmp file ' + error
         }
         if(err) done(err,sha1)
-        else exports.redisInsert(sha1,done)
+        else {
+          exports.redisInsert(sha1,function(err){
+            if(err) done(err,sha1)
+            //create the initial clone job
+            var jobs = require('./jobs')
+            jobs.create('clone',{title: 'Initial clone of ' + sha1, sha1: sha1}).save(function(err){
+              done(err,sha1)
+            })
+          })
+        }
       })
     } else {
       if(err) done(err,sha1)
-      else if(!err && !exists) exports.redisInsert(sha1,done)
-      else done(null,sha1)
+      else if(!err && !exists){
+        exports.redisInsert(sha1,function(err){
+          if(err) return done(err,sha1)
+          //create the initial clone job
+          var jobs = require('./jobs')
+          jobs.create('clone',{title: 'Initial clone of ' + sha1, sha1: sha1}).save(function(err){
+            done(err,sha1)
+          })
+        })
+      } else done(null,sha1)
     }
   }
   readable.on('data',function(chunk){

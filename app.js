@@ -6,12 +6,13 @@ var cluster = require('cluster')
   , mkdirp = require('mkdirp')
   , logger = require('./helpers/logger')
   , async = require('async')
+  , kue = require('kue')
+  , jobs = require('./helpers/jobs')
 
 //master startup
 if(cluster.isMaster){
   require('node-sigint')
   var redis = require('./helpers/redis')
-    , jobs = require('./helpers/jobs')
     , peerNext = require('./collectors/peerNext')
     , peerStats = require('./collectors/peerStats')
     , mesh = require('./mesh')
@@ -68,10 +69,14 @@ if(cluster.isMaster){
         logger.error('Startup failed: ' + err)
         process.exit()
       }
+      //setup kue
+      if(config.get('kue.port')){
+        kue.app.set('title',config.get('kue.title') || 'OOSE Tasks')
+        kue.app.listen(config.get('kue.port'),config.get('kue.port'))
+      }
       //register job handlers
       jobs.process('inventory',require('./tasks/inventory'))
       jobs.process('prismSync',require('./tasks/prismSync'))
-      jobs.process('clone',require('./tasks/clone'))
       //fire off initial scan
       if(config.get('store.enabled'))
         jobs.create('inventory',{title: 'Build the initial hash table', root: config.get('root')}).save()
@@ -182,6 +187,7 @@ if(cluster.isWorker){
     , prism = require('./prism')
   //start storage services
   if(config.get('store.enabled')){
+    jobs.process('clone',require('./tasks/clone'))
     storeImport.start()
     storeExport.start()
   }

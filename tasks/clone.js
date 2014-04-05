@@ -16,7 +16,9 @@ module.exports = function(job,done){
   //i need to ask mesh for the peerNext
   redis.hgetall(job.data.sha1,function(err,hash){
     var stat = JSON.parse(hash.stat)
-    redis.hetgall('peerNext',function(err,peer){
+    redis.hgetall('peerNext',function(err,peer){
+      if(err) return done(err)
+      if(!peer) return done('Could not find suitable peer')
       var rs = fs.createReadStream(file.pathFromSha1(job.data.sha1))
       var ws = net.connect(peer.port,peer.ip)
       ws.on('connect',function(){
