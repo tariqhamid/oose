@@ -40,6 +40,7 @@ var announceListen = function(){
         function(next){
           redis.hgetall('peers:' + config.get('hostname'),function(err,result){
             if(err) return next(err)
+            console.log(result)
             selfPeer = result
             next()
           })
@@ -68,6 +69,7 @@ var announceListen = function(){
           peer.hostname = packet.hostname
           peer.ip = rinfo.address
           peer.readyState = packet.readyState
+          peer.peerCount = packet.peerCount
           peer.meshPort = packet.meshPort
           peer.diskFree = packet.diskFree
           peer.diskTotal = packet.diskTotal
@@ -119,6 +121,7 @@ var announceTimeout
 var announceSend = function(){
   var peer = {}
     , message = {}
+    , peerCount = 0
   async.series(
     [
       //find ourselves
@@ -130,12 +133,21 @@ var announceSend = function(){
           next()
         })
       },
+      //find peerCount
+      function(next){
+        redis.zcount('peerRank',0,100,function(err,result){
+          if(err) return next(err)
+          peerCount = result
+          next()
+        })
+      },
       //compose message
       function(next){
         message.sent = new Date().getTime()
         message.hostname = config.get('hostname')
         message.meshPort = config.get('mesh.port')
         message.readyState = peer.readyState || 0
+        message.peerCount = peerCount
         message.diskFree = peer.diskFree
         message.diskTotal = peer.diskTotal
         message.cpuIdle = peer.cpuIdle
