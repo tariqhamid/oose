@@ -201,7 +201,8 @@ if(cluster.isWorker){
         [
           function(next){storeImport.stop(next)},
           function(next){storeExport.stop(next)},
-          function(next){prism.stop(next)}
+          function(next){prism.stop(next)},
+          function(next){jobs.shutdown(next,60000)}
         ],
         function(err){
           if(err) throw err
