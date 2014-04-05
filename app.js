@@ -81,8 +81,19 @@ if(cluster.isMaster){
       for(var i=1; i <= workerCount; i++){
         workers.push(cluster.fork())
       }
+      //worker online notification
       cluster.on('online',function(worker){
         logger.info('Worker ' + worker.id + ' online')
+      })
+      //worker recovery
+      cluster.on('exit',function(worker,code,signal){
+        if(code){
+          logger.info('Worker ' + worker.id + ' died (' + (signal || code) + ') restarted')
+          //remove the worker from the handles array
+          workers.splice(workers.indexOf(worker),1)
+          //start the new worker
+          workers.push(cluster.fork())
+        }
       })
     }
   )
