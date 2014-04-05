@@ -20,9 +20,8 @@ if(cluster.isMaster){
     , announce = require('./mesh/announce')
     , workers = []
   //make sure the root folder exists
-  if(!fs.existsSync(config.get('root'))){
+  if(!fs.existsSync(config.get('root')))
     mkdirp.sync(config.get('root'))
-  }
   //flush redis before startup
   redis.flushdb()
   //start booting
@@ -185,16 +184,34 @@ if(cluster.isWorker){
   var storeImport = require('./import')
     , storeExport = require('./export')
     , prism = require('./prism')
-  //start storage services
-  if(config.get('store.enabled')){
-    jobs.process('clone',require('./tasks/clone'))
-    storeImport.start()
-    storeExport.start()
-  }
-  //start prism if its enabled
-  if(config.get('prism.enabled')){
-    prism.start()
-  }
+  async.parallel(
+    [
+      function(next){
+        if(config.get('store.enabled'))
+          jobs.process('clone',require('./tasks/clone'))
+        next()
+      },
+      function(next){
+        if(config.get('store.enabled'))
+          storeImport.start(next)
+        else next()
+      },
+      function(next){
+        if(config.get('store.enabled'))
+          storeExport.start(next)
+        else next()
+      },
+      function(next){
+        if(config.get('prism.enabled'))
+          prism.start(next)
+        else next()
+      }
+    ],
+    function(err){
+      if(err) logger.error(err)
+      //worker startup complete
+    }
+  )
   cluster.worker.on('message',function(msg){
     if('shutdown' === msg.cmd){
       async.parallel(

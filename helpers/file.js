@@ -7,6 +7,7 @@ var config = require('../config')
   , redis = require('./redis')
   , temp = require('temp')
   , mmm = require('mmmagic')
+  , async = require('async')
 
 
 /**
@@ -65,20 +66,19 @@ exports.redisInsert = function(sha1,done){
   var destination = exports.pathFromSha1(sha1)
   var magic = new mmm.Magic(mmm.MAGIC_MIME_TYPE)
   magic.detectFile(destination,function(err,mimeType){
-    if(err) return done(err,sha1)
+    if(err) return done(err)
     fs.stat(destination,function(err,stat){
-      if(err) return done(err,sha1)
+      if(err) return done(err)
       redis.hmset(sha1,{
         stat: JSON.stringify(stat),
         mimeType: mimeType,
         copiesMin: config.get('copies.min'),
         copiesMax: config.get('copies.max')
       },function(err){
-        if(!err){
-          redis.sadd('inventory',sha1)
-        }
+        if(err) return done(err)
+        redis.sadd('inventory',sha1)
+        done()
       })
-      done(null,sha1)
     })
   })
 }
@@ -120,70 +120,84 @@ exports.write = function(source,sha1,done){
  */
 exports.fromReadable = function(readable,done){
   var shasum = crypto.createHash('sha1')
+  var sha1 = ''
+  var exists = {redis: false, fs: false}
+  var destination = ''
+  var destinationFolder = ''
   var tmpDir = path.resolve(config.get('root') + '/tmp')
   if(!fs.existsSync()) mkdirp.sync(tmpDir)
   var tmp = temp.path({dir: tmpDir})
   var writable = fs.createWriteStream(tmp)
-  var finish = function(err,sha1,exists){
-    if(!exists) exists = false
-    if(fs.existsSync(tmp)){
-      fs.unlink(tmp,function(error){
-        if(error){
-          if(err) err = err + ' failed to remove tmp file ' + error
-          else err = 'failed to remove tmp file ' + error
-        }
-        if(err) done(err,sha1)
-        else {
-          exports.redisInsert(sha1,function(err){
-            if(err) done(err,sha1)
-            //create the initial clone job
-            var jobs = require('./jobs')
-            jobs.create('clone',{title: 'Initial clone of ' + sha1, sha1: sha1}).save(function(err){
-              done(err,sha1)
-            })
-          })
-        }
-      })
-    } else {
-      if(err) done(err,sha1)
-      else if(!err && !exists){
-        exports.redisInsert(sha1,function(err){
-          if(err) return done(err,sha1)
-          //create the initial clone job
-          var jobs = require('./jobs')
-          jobs.create('clone',{title: 'Initial clone of ' + sha1, sha1: sha1}).save(function(err){
-            done(err,sha1)
+  async.series(
+    [
+      //setup pipes and handlers for errors and update sha1 sum
+      function(next){
+        readable.on('data',function(chunk){
+          shasum.update(chunk)
+        })
+        readable.on('error',next)
+        writable.on('error',next)
+        readable.on('close',next)
+        readable.pipe(writable)
+      },
+      //when the read stream closes, end the write and start processing
+      function(next){
+        writable.on('finish',next)
+        writable.end()
+      },
+      //figure out our sha1 hash and setup paths
+      function(next){
+        sha1 = shasum.digest('hex')
+        destination = exports.pathFromSha1(sha1)
+        destinationFolder = path.dirname(destination)
+        next()
+      },
+      //find out if we already know the hash in redis
+      function(next){
+        redis.exists(sha1,function(err,result){
+          if(err) return next(err)
+          exists.redis = result
+          next()
+        })
+      },
+      //find out if we already know the hash on the filesystem
+      function(next){
+        fs.exists(destination,function(result){
+          exists.fs = result
+          next()
+        })
+      },
+      //remove the temp file if it does exist (no longer needed)
+      function(next){
+        if(exists.fs) fs.unlink(tmp,next)
+        else next()
+      },
+      //copy on to the file system if we must
+      function(next){
+        if(exists.fs) return next()
+        mkdirp(destinationFolder,function(err){
+          if(err) return next('Failed to create folder ' + destinationFolder + ' ' + err,sha1)
+          fs.rename(tmp,destination,function(err){
+            if(err) return next('Failed to rename ' + tmp + ' to ' + destination + ' ' + err)
+            next()
           })
         })
-      } else done(null,sha1)
+      }
+    //do some final processing
+    ],function(err){
+      //clean up the temp file regardless
+      if(fs.existsSync(tmp)) fs.unlinkSync(tmp)
+      if(err) return done(err)
+      //insert into redis
+      exports.redisInsert(sha1,function(err){
+        if(err) return done(err)
+        var jobs = require('./jobs')
+        jobs.create('clone',{title: 'Initial clone of ' + sha1, sha1: sha1}).save(function(err){
+          done(err,sha1)
+        })
+      })
     }
-  }
-  readable.on('data',function(chunk){
-    shasum.update(chunk)
-  })
-  readable.on('error',finish)
-  readable.on('close',function(){
-    writable.end()
-  })
-  writable.on('error',finish)
-  writable.on('finish',function(){
-    var sha1 = shasum.digest('hex')
-    redis.exists(sha1,function(err,exists){
-      if(err) return finish(err,sha1)
-      var destination = exports.pathFromSha1(sha1)
-      var destinationFolder = path.dirname(destination)
-      var fsExists = fs.existsSync(destination)
-      if(exists && fsExists) return finish(null,sha1,true)
-      mkdirp(destinationFolder,function(err){
-        if(err) return finish('Failed to create folder ' + destinationFolder + ' ' + err,sha1)
-        fs.rename(tmp,destination,function(err){
-          if(err) return finish('Failed to rename ' + tmp + ' to ' + destination + ' ' + err,sha1)
-          finish(null,sha1)
-        })
-      })
-    })
-  })
-  readable.pipe(writable)
+  )
 }
 
 
