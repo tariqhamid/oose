@@ -1,8 +1,10 @@
 'use strict';
 var express = require('express')
   , app = express()
+  , server = require('http').createServer(app)
   , config = require('../config')
   , redis = require('../helpers/redis')
+  , running = false
 
 app.get('/api/peerNext',function(req,res){
   redis.hgetall('peerNext',function(err,peer){
@@ -27,12 +29,20 @@ app.get('/:sha1/:filename',function(req,res){
  */
 exports.start = function(done){
   if('function' !== typeof done) done = function(){}
-  app.listen(config.get('prism.port'),config.get('prism.host'),done)
+  server.timeout = 0
+  server.listen(config.get('prism.port'),config.get('prism.host'),function(err){
+    running = true
+    done(err)
+  })
 }
 
-if(require.main === module){
-  exports.start(function(){
-    var logger = require('../helpers/logger')
-    logger.info('Prism  started listening on port ' + config.get('prism.port'))
-  })
+
+/**
+ * Stop server
+ * @param {function} done
+ */
+exports.stop = function(done){
+  if('function' !== typeof done) done = function(){}
+  if(server && running) server.close()
+  done()
 }

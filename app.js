@@ -17,6 +17,7 @@ if(cluster.isMaster){
     , mesh = require('./mesh')
     , ping = require('./mesh/ping')
     , announce = require('./mesh/announce')
+    , workers = []
   //make sure the root folder exists
   if(!fs.existsSync(config.get('root'))){
     mkdirp.sync(config.get('root'))
@@ -75,10 +76,10 @@ if(cluster.isMaster){
       if(config.get('store.enabled'))
         jobs.create('inventory',{title: 'Build the initial hash table', root: config.get('root')}).save()
       //start workers
-      var workers = config.get('workers') || os.cpus().length
+      var workerCount = config.get('workers') || os.cpus().length
       logger.info('Starting ' + workers + ' workers')
-      for(var i=1; i <= workers; i++){
-        cluster.fork()
+      for(var i=1; i <= workerCount; i++){
+        workers.push(cluster.fork())
       }
       cluster.on('online',function(worker){
         logger.info('Worker ' + worker.id + ' online')
@@ -87,14 +88,31 @@ if(cluster.isMaster){
   )
   var shutdownAttempted = false
   var shutdown = function(){
+    //register force kill for the second
+    process.on('SIGINT',function(){
+      process.exit()
+    })
+    //start the shutdown process
     logger.info('Beginning shutdown')
     async.series(
       [
         //stop workers
         function(done){
           logger.info('Stopping all workers')
-          cluster.disconnect(function(){done()})
-          done()
+          //send the workers the shutdown signal
+          async.each(workers,function(worker,next){
+            worker.send({cmd: 'shutdown'})
+            worker.once('message',function(msg){
+              if('stopped' === msg.cmd){
+                logger.info('Worker ' + worker.id + ' stopped')
+                next()
+              }
+            })
+          },function(err){
+            if(err) throw err
+            cluster.disconnect(function(){done()})
+            done()
+          })
         },
         //stop kue
         function(done){
@@ -160,4 +178,19 @@ if(cluster.isWorker){
   if(config.get('prism.enabled')){
     prism.start()
   }
+  cluster.worker.on('message',function(msg){
+    if('shutdown' === msg.cmd){
+      async.parallel(
+        [
+          function(next){storeImport.stop(next)},
+          function(next){storeExport.stop(next)},
+          function(next){prism.stop(next)}
+        ],
+        function(err){
+          if(err) throw err
+          cluster.worker.send({cmd: 'stopped'})
+        }
+      )
+    }
+  })
 }

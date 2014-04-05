@@ -6,6 +6,7 @@ var express = require('express')
   , fs = require('fs')
   , config = require('../config')
   , file = require('../helpers/file')
+  , running = false
 
 app.get('/:sha1/:filename',function(req,res){
   var sha1 = req.params.sha1
@@ -65,7 +66,10 @@ app.get('/:sha1/:filename',function(req,res){
  */
 exports.start = function(done){
   if('function' !== typeof done) done = function(){}
-  server.listen(config.get('store.export.port'),config.get('store.export.host'),done)
+  server.listen(config.get('store.export.port'),config.get('store.export.host'),function(err){
+    running = true
+    done(err)
+  })
 }
 
 
@@ -74,5 +78,7 @@ exports.start = function(done){
  * @param {function} done
  */
 exports.stop = function(done){
-  server.close(done)
+  if('function' !== typeof done) done = function(){}
+  if(server && running) server.close()
+  done()
 }

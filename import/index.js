@@ -3,6 +3,7 @@ var net = require('net')
   , file = require('../helpers/file')
   , config = require('../config')
   , logger = require('../helpers/logger')
+  , running = false
 
 //setup tcp server if enabled
 var server
@@ -32,7 +33,10 @@ var listen = function(port,host,done){
  */
 exports.start = function(done){
   if('function' !== typeof done) done = function(){}
-  listen(config.get('store.import.port'),config.get('store.import.host'),done)
+  listen(config.get('store.import.port'),config.get('store.import.host'),function(err){
+    running = true
+    done(err)
+  })
 }
 
 
@@ -42,6 +46,6 @@ exports.start = function(done){
  */
 exports.stop = function(done){
   if('function' !== typeof done) done = function(){}
-  if(server) server.close(done)
-  else done()
+  if(server && running) server.close()
+  done()
 }
