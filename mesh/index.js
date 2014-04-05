@@ -1,11 +1,27 @@
 'use strict';
 var communicator = require('../helpers/communicator')
   , logger = require('../helpers/logger')
+  , redis = require('../helpers/redis')
   , config = require('../config')
   , async = require('async')
 
 //connection handles
 var conn = {}
+
+
+/**
+ * Send ready state change
+ * @param {number} state
+ * @param {function} done
+ */
+conn.readyState = function(state,done){
+  if('function' !== typeof done) done = function(){}
+  redis.hset('peers:' + config.get('hostname'),'readyState',state,function(err){
+    if(err) done(err)
+    conn.udp.send('readySate',{readyState: state})
+    done()
+  })
+}
 
 
 /**

@@ -19,7 +19,12 @@ var announceLog = function(selfPeer,oldPeer,peer,packet){
     )
   }
   if(config.get('mesh.debug') > 1){
+    logger.info('Announce:')
     logger.info(os.EOL + util.inspect(peer))
+  }
+  if(config.get('mesh.debug') > 2){
+    logger.info('Self Peer:')
+    logger.info(os.EOL + util.inspect(selfPeer))
   }
 }
 
@@ -42,6 +47,7 @@ var announceListen = function(){
             peer.sent = packet.sent
             peer.hostname = packet.hostname
             peer.ip = rinfo.address
+            peer.readyState = packet.readyState
             peer.meshPort = packet.meshPort
             peer.diskFree = packet.diskFree
             peer.diskTotal = packet.diskTotal
@@ -97,6 +103,7 @@ var announceSend = function(){
       message.sent = new Date().getTime()
       message.hostname = config.get('hostname')
       message.meshPort = config.get('mesh.port')
+      message.readyState = peer.readyState || 0
       message.diskFree = peer.diskFree
       message.diskTotal = peer.diskTotal
       message.cpuIdle = peer.cpuIdle

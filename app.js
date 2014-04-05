@@ -32,6 +32,11 @@ if(cluster.isMaster){
         logger.info('Starting mesh')
         mesh.start(done)
       },
+      //go to ready state 1
+      function(done){
+        logger.info('Going to readyState 1')
+        mesh.readyState(1,done)
+      },
       //start collectors
       function(done){
         logger.info('Starting stats collection')
@@ -42,6 +47,11 @@ if(cluster.isMaster){
       function(done){
         logger.info('Starting ping')
         ping.start(done)
+      },
+      //go to ready state 2
+      function(done){
+        logger.info('Going to readyState 2')
+        mesh.readyState(2,done)
       },
       //start announce
       function(done){
@@ -86,8 +96,15 @@ if(cluster.isMaster){
         workers.push(cluster.fork())
       }
       //worker online notification
+      var workerOnlineCount = 0
       cluster.on('online',function(worker){
         logger.info('Worker ' + worker.id + ' online')
+        workerOnlineCount++
+        if(workerOnlineCount >= workerCount){
+          //go to ready state 3
+          logger.info('Going to readyState 3')
+          mesh.readyState(3)
+        }
       })
       //worker recovery
       cluster.on('exit',function(worker,code,signal){
@@ -111,6 +128,11 @@ if(cluster.isMaster){
     logger.info('Beginning shutdown')
     async.series(
       [
+        //go to ready state 5
+        function(done){
+          logger.info('Going to readyState 5')
+          mesh.readyState(5,done)
+        },
         //stop workers
         function(done){
           logger.info('Stopping all workers')
@@ -153,6 +175,11 @@ if(cluster.isMaster){
         function(done){
           logger.info('Stopping self stat collection')
           peerStats.stop(done)
+        },
+        //go to ready state 0
+        function(done){
+          logger.info('Going to readyState 0')
+          mesh.readyState(0,done)
         },
         //stop mesh
         function(done){
