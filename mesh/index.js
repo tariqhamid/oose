@@ -4,9 +4,11 @@ var communicator = require('../helpers/communicator')
   , redis = require('../helpers/redis')
   , config = require('../config')
   , async = require('async')
+  , redis = require('redis')
+  , shortId = require('shortid')
 
 //connection handles
-var conn = {}
+var mesh = {}
 
 
 /**
@@ -14,13 +16,13 @@ var conn = {}
  * @param {number} state
  * @param {function} done
  */
-conn.readyState = function(state,done){
+mesh.readyState = function(state,done){
   if('function' !== typeof done) done = function(){}
-  redis.hset('peers:' + config.get('hostname'),'readyState',state,function(err){
-    if(err) done(err)
-    conn.udp.send('readySate',{readyState: state})
+//  redis.hset('peers:' + config.get('hostname'),'readyState',state,function(err){
+//    if(err) done(err)
+//    mesh.udp.send('readyState',{readyState: state})
     done()
-  })
+//  })
 }
 
 
@@ -28,9 +30,9 @@ conn.readyState = function(state,done){
  * Start connections
  * @param {function} done
  */
-conn.start = function(done){
+mesh.start = function(done){
   //start udp
-  conn.udp = communicator.UDP({
+  mesh.udp = communicator.UDP({
     port: config.get('mesh.port'),
     address: config.get('mesh.address'),
     multicast: {
@@ -40,10 +42,23 @@ conn.start = function(done){
     }
   })
   //start tcp
-  conn.tcp = communicator.TCP({port: config.get('mesh.port')})
+  mesh.tcp = communicator.TCP({port: config.get('mesh.port')})
   //connection error handling
-  conn.udp.on('error',logger.error)
-  conn.tcp.on('error',logger.error)
+  mesh.udp.on('error',logger.error)
+  mesh.tcp.on('error',logger.error)
+  //routes
+  async.eachSeries([
+    'locate'
+  ],function(r,next){
+    logger.info('Mesh loaded handler for ' + r)
+    mesh.udp.on(r,function(req,rinfo){
+      if(mesh[r] && 'function' === typeof mesh[r]){
+        req.rinfo = rinfo
+        mesh[r](req)
+      }
+    })
+    next()
+  })
   done()
 }
 
@@ -52,12 +67,41 @@ conn.start = function(done){
  * Stop mesh
  * @param {function} done
  */
-conn.stop = function(done){
-  async.series([function(next){conn.udp.close(next)},function(next){conn.tcp.close(next)}],done)
+mesh.stop = function(done){
+  async.series([mesh.udp.close,mesh.tcp.close],done)
 }
 
 
 /**
- * Export connection handle
+ * Locate peers with inventory containing SHA1
+ * @param {string} sha1 SHA1 sum to locate (40 hex chars)
+ * @param {function} done
  */
-module.exports = conn
+mesh.locate = function(sha1,done){
+  if('object' === typeof sha1){
+    //called from the main listener
+    console.log(require('util').inspect(sha1))
+  }
+  //client
+//  mesh.udp.on('pong',function(res,rinfo){
+//    pingHosts[rinfo.address] = new Date().getTime() - start
+//  })
+/*
+  async.series(
+    [
+      function(next){
+        redis.sismember('inventory',sha1,next)
+      },
+      mesh.tcp.close
+    ],
+    done
+  )
+*/
+  done()
+}
+
+
+/**
+ * Export mesh object
+ */
+module.exports = mesh

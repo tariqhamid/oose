@@ -1,5 +1,5 @@
 'use strict';
-var conn = require('./index')
+var mesh = require('../mesh')
   , config = require('../config')
   , logger = require('../helpers/logger')
   , util = require('util')
@@ -9,20 +9,20 @@ var start
 
 var pingListen = function(){
   //server
-  conn.udp.on('ping',function(req,rinfo){
-    conn.udp.send('pong',{},rinfo.port,rinfo.address)
+  mesh.udp.on('ping',function(req,rinfo){
+    mesh.udp.send('pong',{},rinfo.port,rinfo.address)
   })
   //client
-  conn.udp.on('pong',function(res,rinfo){
+  mesh.udp.on('pong',function(res,rinfo){
     pingHosts[rinfo.address] = new Date().getTime() - start
   })
 }
 
 var pingSend = function(){
   start = new Date().getTime()
-  conn.udp.send('ping')
+  mesh.udp.send('ping')
   if(config.get('mesh.debug') > 1) logger.info('pingHosts:' + util.inspect(pingHosts))
-  pingTimeout = setTimeout(function(){pingSend(conn)},config.get('mesh.interval.ping'))
+  pingTimeout = setTimeout(function(){pingSend(mesh)},config.get('mesh.interval.ping'))
 }
 
 
@@ -46,18 +46,18 @@ exports.max = function(){
  * @param {function} done
  */
 exports.start = function(done){
-  if('function' !== typeof done) done = function(){}
-  pingListen(conn)
-  pingSend(conn)
-  done()
+  pingListen(mesh)
+  pingSend(mesh)
+  if(done && 'function' === typeof done){ done() }
 }
 
 
 /**
  * End Pinging
+ * @param {function} done Callback
  */
-exports.stop = function(cb){
+exports.stop = function(done){
   if(pingTimeout)
     clearTimeout(pingTimeout)
-  if(cb && 'function' === typeof cb){ cb(null,null) }
+  if(done && 'function' === typeof done){ done() }
 }

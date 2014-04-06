@@ -1,5 +1,5 @@
 'use strict';
-var conn = require('./index')
+var mesh = require('../mesh')
   , logger = require('../helpers/logger')
   , redis = require('../helpers/redis')
   , config = require('../config')
@@ -30,7 +30,7 @@ var announceLog = function(selfPeer,oldPeer,peer,packet){
 
 //accept the multicast announce
 var announceListen = function(){
-  conn.udp.on('announce',function(packet,rinfo){
+  mesh.udp.on('announce',function(packet,rinfo){
     var selfPeer = {}
       , oldPeer = {}
       , peer = {}
@@ -166,7 +166,7 @@ var announceSend = function(){
       },
       //send message
       function(next){
-        conn.udp.send('announce',message)
+        mesh.udp.send('announce',message)
         next()
       }
     //setup the next timeout
