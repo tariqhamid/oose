@@ -49,6 +49,25 @@ var buildCache = function(sha1,done){
   )
 }
 
+
+/**
+ * Build redirect url
+ * @param {object} req
+ * @param {object} winner
+ * @return {string}
+ */
+var buildDestination = function(req,winner){
+  var destination = req.protocol + '://' + winner.hostname
+  if(config.get('domain')){
+    destination += '.' + config.get('domain')
+  }
+  if((80 !== winner.exportPort && 'http' === req.protocol) || 443 !== winner.exportPort && 'https' === req.protocol){
+    destination += ':' + winner.exportPort
+  }
+  destination += req.originalUrl
+  return destination
+}
+
 app.get('/api/peerNext',function(req,res){
   redis.hgetall('peer:next',function(err,peer){
     if(err) return res.json({status: 'error', code: 1, message: err})
@@ -114,13 +133,7 @@ app.get('/:sha1/:filename',function(req,res){
     //send the response
     function(err){
       if(err) return res.send({status: 'error', code: 1, message: err})
-      var destination =
-        req.protocol + '://' +
-        winner.hostname + '.' +
-        config.get('domain') + ':' +
-        winner.exportPort +
-        req.originalUrl
-      res.redirect(destination)
+      res.redirect(buildDestination(req,winner))
     }
   )
 })
