@@ -102,10 +102,9 @@ exports.write = function(source,sha1,done){
     exports.redisInsert(sha1,function(err){
       if(err) return done(err)
       //create the initial clone job
-      var jobs = require('./jobs')
-      jobs.create('clone',{title: 'Initial clone of ' + sha1, sha1: sha1}).save(function(err){
-        done(err,sha1)
-      })
+      var clone = require('../tasks/clone')
+      clone.push({sha1: sha1})
+      done(null,sha1)
     })
 
   })
@@ -188,13 +187,16 @@ exports.fromReadable = function(readable,done){
       //clean up the temp file regardless
       if(fs.existsSync(tmp)) fs.unlinkSync(tmp)
       if(err) return done(err)
+      //if we already had the file just return
+      if(fs.exists && redis.exists) return done(null,sha1)
       //insert into redis
       exports.redisInsert(sha1,function(err){
         if(err) return done(err)
-        var jobs = require('./jobs')
-        jobs.create('clone',{title: 'Initial clone of ' + sha1, sha1: sha1}).save(function(err){
-          done(err,sha1)
-        })
+        //queue initial clone
+        var clone = require('../tasks/clone')
+        clone.push({sha1: sha1})
+        //finished!
+        done(null,sha1)
       })
     }
   )

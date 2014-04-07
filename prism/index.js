@@ -4,6 +4,7 @@ var express = require('express')
   , server = require('http').createServer(app)
   , config = require('../config')
   , redis = require('../helpers/redis')
+  //, mesh = require('../mesh')
   , running = false
 
 app.get('/api/peerNext',function(req,res){

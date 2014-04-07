@@ -30,7 +30,7 @@ config.load({
     management: guessedIP
   },
   root: './data',
-  copies: {
+  clones: {
     min: 2,
     max: 2
   },
@@ -69,12 +69,6 @@ config.load({
     enabled: false,
     port: 3003,
     host: null
-  },
-  kue: {
-    port: 3010,
-    host: null,
-    title: 'OOSE Tasks',
-    options: {}
   }
 })
 

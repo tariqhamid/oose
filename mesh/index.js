@@ -75,7 +75,11 @@ mesh.start = function(done){
  * @param {function} done
  */
 mesh.stop = function(done){
-  async.series([mesh.udp.close,mesh.tcp.close],done)
+  //this looks excessive but its the only way to maintain the scope of the close functions
+  async.series([
+    function(next){mesh.udp.close(next)},
+    function(next){mesh.tcp.close(next)}
+  ],done)
 }
 
 

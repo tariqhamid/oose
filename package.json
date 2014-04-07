@@ -24,7 +24,6 @@
     "diskspace": ">=0.1.5",
     "express": ">=3.4.8",
     "grunt": ">=0.4.4",
-    "kue": ">=0.7.5",
     "mkdirp": ">=0.3.5",
     "mmmagic": ">=0.3.6",
     "node-sigint": "0.0.1",
@@ -33,7 +32,8 @@
     "redis": ">=0.10.1",
     "shortid": ">=2.0.0",
     "temp": ">=0.7.0",
-    "winston": ">=0.7.2"
+    "winston": ">=0.7.2",
+    "pretty-bytes": "^0.1.0"
   },
   "devDependencies": {
     "grunt-concurrent": ">=0.4.2",

@@ -6,8 +6,6 @@ var cluster = require('cluster')
   , mkdirp = require('mkdirp')
   , logger = require('./helpers/logger')
   , async = require('async')
-  , kue = require('kue')
-  , jobs = require('./helpers/jobs')
 
 //master startup
 if(cluster.isMaster){
@@ -78,16 +76,13 @@ if(cluster.isMaster){
         logger.error('Startup failed: ' + err)
         process.exit()
       }
-      //setup kue
-      if(config.get('kue.port')){
-        kue.app.set('title',config.get('kue.title') || 'OOSE Tasks')
-        kue.app.listen(config.get('kue.port'),config.get('kue.port'))
-      }
-      //register job handlers
-      jobs.process('inventory',require('./tasks/inventory'))
       //fire off initial scan
-      if(config.get('store.enabled'))
-        jobs.create('inventory',{title: 'Build the initial hash table', root: config.get('root')}).save()
+      if(config.get('store.enabled')){
+        require('./tasks/inventory').start(function(err,fileCount){
+          if(err) logger.error(err)
+          else logger.info('[Inventory] Initial inventory is completed and read ' + fileCount + ' files')
+        })
+      }
       //start workers
       var workerCount = config.get('workers') || os.cpus().length
       logger.info('Starting ' + workers + ' workers')
@@ -150,11 +145,6 @@ if(cluster.isMaster){
             done()
           })
         },
-        //stop kue
-        function(done){
-          logger.info('Stopping kue')
-          jobs.shutdown(done,60000)
-        },
         //stop announce
         function(done){
           logger.info('Stopping announce')
@@ -214,11 +204,6 @@ if(cluster.isWorker){
     [
       function(next){
         if(config.get('store.enabled'))
-          jobs.process('clone',require('./tasks/clone'))
-        next()
-      },
-      function(next){
-        if(config.get('store.enabled'))
           storeImport.start(next)
         else next()
       },
@@ -244,8 +229,7 @@ if(cluster.isWorker){
         [
           function(next){storeImport.stop(next)},
           function(next){storeExport.stop(next)},
-          function(next){prism.stop(next)},
-          function(next){jobs.shutdown(next,60000)}
+          function(next){prism.stop(next)}
         ],
         function(err){
           if(err) throw err
