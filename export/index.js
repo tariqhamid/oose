@@ -19,7 +19,7 @@ app.get('/:sha1/:filename',function(req,res){
         console.log(err)
         res.send(err)
       } else if(!info){
-        res.statusCode(404)
+        res.status(404)
         res.send(sha1 + ': File not found')
       } else {
         //convert stats to an object
