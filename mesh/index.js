@@ -5,33 +5,29 @@ var communicator = require('../helpers/communicator')
   , config = require('../config')
   , async = require('async')
   , shortId = require('shortid')
+  , EventEmitter = require('events').EventEmitter
 
-//connection handles
-var mesh = {}
 
 
 /**
- * Send ready state change
- * @param {number} state
- * @param {function} done
+ * Mesh constructor
+ * @constructor
  */
-mesh.readyState = function(state,done){
-  if('function' !== typeof done) done = function(){}
-  redis.hset('peers:' + config.get('hostname'),'readyState',state,function(err){
-    if(err) done(err)
-    mesh.udp.send('readyState',{readyState: state})
-    done()
-  })
+var Mesh = function(){
+  var self = this
+  EventEmitter.call(self)
 }
+Mesh.prototype = Object.create(EventEmitter.prototype)
 
 
 /**
- * Start connections
+ * Start mesh and establish connections
  * @param {function} done
  */
-mesh.start = function(done){
+Mesh.prototype.start = function(done){
+  var self = this
   //start udp
-  mesh.udp = communicator.UDP({
+  self.udp = communicator.UDP({
     port: config.get('mesh.port'),
     address: config.get('mesh.address'),
     multicast: {
@@ -41,45 +37,41 @@ mesh.start = function(done){
     }
   })
   //start tcp
-  mesh.tcp = communicator.TCP({port: config.get('mesh.port')})
+  self.tcp = communicator.TCP({port: config.get('mesh.port')})
   //connection error handling
-  mesh.udp.on('error',logger.error)
-  mesh.tcp.on('error',logger.error)
-  //routes
-  async.eachSeries([
-    'locate'
-  ],function(r,next){
-    logger.info('Mesh loaded handler for ' + r)
-    mesh.udp.on(r,function(req,rinfo){
-      if(mesh[r] && 'function' === typeof mesh[r]){
-        req.rinfo = rinfo
-        mesh[r](req)
-      }
-    })
-   //NOTE THIS IS HERE AS A TEST INJECTION (7 second delay)
-    setTimeout(function(){
-      var sha1 = '65093ef4dbd6cfa1ad58dc4202abd9517f0d7838'
-      logger.info('[TEST] calling mesh.locate(' + sha1 + ')')
-      mesh.locate(sha1,function(err,result){
-        logger.info('[TEST] mesh.locate(' + sha1 + ') reply: ',require('util').inspect(result))
-      })
-    },7000)
-    next()
-  })
+  self.udp.on('error',function(err){self.emit('error',err)})
+  self.tcp.on('error',function(err){self.emit('error',err)})
   done()
 }
 
 
 /**
- * Stop mesh
+ * Close connections
  * @param {function} done
  */
-mesh.stop = function(done){
+Mesh.prototype.stop = function(done){
+  var self = this
   //this looks excessive but its the only way to maintain the scope of the close functions
   async.series([
-    function(next){mesh.udp.close(next)},
-    function(next){mesh.tcp.close(next)}
+    function(next){self.udp.close(next)},
+    function(next){self.tcp.close(next)}
   ],done)
+}
+
+
+/**
+ * Send ready state change
+ * @param {number} state
+ * @param {function} done
+ */
+Mesh.prototype.readyState = function(state,done){
+  var self = this
+  if('function' !== typeof done) done = function(){}
+  redis.hset('peers:' + config.get('hostname'),'readyState',state,function(err){
+    if(err) done(err)
+    self.udp.send('readyState',{readyState: state})
+    done()
+  })
 }
 
 
@@ -88,7 +80,8 @@ mesh.stop = function(done){
  * @param {multiple} sha1 SHA1 sum to locate (40 hex chars, or 20 byte Buffer)
  * @param {function} done Callback
  */
-mesh.locate = function(sha1,done){
+Mesh.prototype.locate = function(sha1,done){
+  var self = this
   //check for Buffer first, because it false positives the typeof below
   if(sha1 instanceof Buffer && 20 === sha1.length){
     //called with a SHA1 binary Buffer, convert and fall thru
@@ -97,39 +90,40 @@ mesh.locate = function(sha1,done){
     //called from the main listener
     if(config.get('mesh.debug') > 0){
       logger.info(
-        '[MCAST LOCATE] who has ' + sha1.sha1 +
-        ' tell ' + sha1.rinfo.address +
-        ' @ ' + sha1.token
+          '[MCAST LOCATE] who has ' + sha1.sha1 +
+          ' tell ' + sha1.rinfo.address +
+          ' @ ' + sha1.token
       )
     }
     redis.sismember('inventory',sha1.sha1,function(err,result){
-      mesh.udp.send(sha1.token,{sha1:sha1.sha1,exists:!!result})
+      self.udp.send(sha1.token,{sha1:sha1.sha1,exists:!!result})
     })
   }// intentionally no else
   if('string' === typeof sha1 && 40 === sha1.length){
     //called with a SHA1 hex string
     var token = shortId.generate()
     var basket = {}, locateTimeout
-    mesh.udp.on(token,function(req,rinfo){
+    self.udp.on(token,function(req,rinfo){
       if(config.get('mesh.debug') > 0){
         logger.info('[LOCATE@' + token + '] ' + rinfo.address + ' says ' +
-          (req.exists ? 'YES' : 'NO') + ' for ' + sha1
+            (req.exists ? 'YES' : 'NO') + ' for ' + sha1
         )
       }
       basket[rinfo.address] = req.exists
       //each recv packet resets the return timer to 1/4 sec
       clearTimeout(locateTimeout)
       locateTimeout = setTimeout(function(){
-        mesh.udp.removeAllListeners(token)
+        self.udp.removeAllListeners(token)
         done(null,basket)
       },250)
     })
-    mesh.udp.send('locate',{token:token,sha1:sha1})
+    self.udp.send('locate',{token:token,sha1:sha1})
   }
 }
 
 
 /**
- * Export mesh object
+ * Export mesh instance
+ * @type {Mesh}
  */
-module.exports = mesh
+module.exports = new Mesh()
