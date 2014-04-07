@@ -32,7 +32,11 @@ var buildCache = function(sha1,done){
           if('ok' !== payload.message.status) return next(payload.message.message)
           //make sure the response is our sha1
           if(sha1 !== payload.command) return next('Wrong command resposne for ' + sha1)
-          exists = payload.message.peers
+          for(var i in payload.message.peers){
+            if(payload.message.peers.hasOwnProperty(i)){
+              if(payload.message.peers[i]) exists[i] = true
+            }
+          }
           next()
         })
         client.on('error',next)
