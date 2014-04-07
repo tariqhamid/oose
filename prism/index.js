@@ -5,7 +5,7 @@ var express = require('express')
   , config = require('../config')
   , redis = require('../helpers/redis')
   , async = require('async')
-  , util = require('../helpers/communicator').utils
+  , util = require('../helpers/communicator').util
 
 var running = false
 
