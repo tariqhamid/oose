@@ -16,7 +16,7 @@ var pingListen = function(){
   })
   //client
   mesh.udp.on('pong',function(res,rinfo){
-    pingHosts[rinfo.address] = new Date().getTime() - start
+    pingHosts[rinfo.address] = new Date().getTime() - res.starttime
   })
 }
 
