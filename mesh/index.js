@@ -121,6 +121,7 @@ mesh.locate = function(sha1,done){
       clearTimeout(locateTimeout)
       locateTimeout = setTimeout(function(){
         mesh.udp.removeAllListeners(token)
+        mesh.udp.send('locate_result',{sha1:sha1,resultSet:basket})
         done(null,basket)
       },250)
     })
