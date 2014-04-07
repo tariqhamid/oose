@@ -41,7 +41,7 @@ $ node app
 
 ### Peers
 
-* peer:<hostname>
+* peer:[hostname]
   * Description: Peer meta information acquired from the announce packet
   * Type: Hash
 * peerRank
@@ -62,6 +62,6 @@ $ node app
 * inventory
   * Description: Peer inventory of sha1 hashes
   * Type: Set
-* <sha1>
+* [sha1]
   * Description: Meta information about a file
   * Type: Hash
