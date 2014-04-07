@@ -35,6 +35,8 @@ app.get('/:sha1/:filename',function(req,res){
         client.once('readable',function(){
           //read our response
           var payload = util.parse(client.read(client.read(2).readUInt16BE(0)))
+          //close the connection
+          client.end()
           //check if we got an error
           if('ok' !== payload.message.status) return next(payload.message.message)
           //make sure the response is our sha1

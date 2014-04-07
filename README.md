@@ -37,4 +37,31 @@ Second, start the system.
 $ node app
 ```
 
+## Redis Schema
 
+### Peers
+
+* peer:<hostname>
+  * Description: Peer meta information acquired from the announce packet
+  * Type: Hash
+* peerRank
+  * Description: A ranking of peers based on their availableCapacity
+  * Type: Sorted Set
+* peerNext
+  * Description: The meta information of the winner of the peerNext selection
+  * Type: Hash
+* prismList
+  * Description: List of peers running the prism service
+  * Type: Set
+* storeList
+  * Description: List of peers running the store service
+  * Type: Set
+
+### Local
+
+* inventory
+  * Description: Peer inventory of sha1 hashes
+  * Type: Set
+* <sha1>
+  * Description: Meta information about a file
+  * Type: Hash
