@@ -5,10 +5,52 @@ var express = require('express')
   , config = require('../config')
   , redis = require('../helpers/redis')
   , async = require('async')
-  , running = false
-  , util = require('../helpers/communicator').util
+  , util = require('../helpers/communicator').utils
+
+var running = false
+
+
+/**
+ * Build cache for prism
+ * @param {string} sha1
+ * @param {function} done
+ */
+var buildCache = function(sha1,done){
+  var exists = {}
+  async.series(
+    [
+      //acquire list of peers from locate up on the master
+      function(next){
+        console.log('Sending mesh.locate for ' + sha1)
+        var client = util.tcpSend('locate',{sha1: sha1},config.get('mesh.port'),config.get('mesh.host'))
+        client.once('readable',function(){
+          //read our response
+          var payload = util.parse(client.read(client.read(2).readUInt16BE(0)))
+          //close the connection
+          client.end()
+          //check if we got an error
+          if('ok' !== payload.message.status) return next(payload.message.message)
+          //make sure the response is our sha1
+          if(sha1 !== payload.command) return next('Wrong command resposne for ' + sha1)
+          exists = payload.message.peers
+          next()
+        })
+        client.on('error',next)
+      }
+    ],
+    //add the result to cache
+    function(err){
+      if(err) return done(err)
+      redis.sadd('prism:' + sha1,Object.keys(exists),function(err){
+        if(err) return done(err)
+        redis.expire('prism:' + sha1,config.get('prism.cache.expire'),done)
+      })
+    }
+  )
+}
+
 app.get('/api/peerNext',function(req,res){
-  redis.hgetall('peerNext',function(err,peer){
+  redis.hgetall('peer:next',function(err,peer){
     if(err) return res.json({status: 'error', code: 1, message: err})
     res.json({status: 'ok', code: 0, peer: peer})
   })
@@ -17,6 +59,9 @@ app.get('/api/peerNext',function(req,res){
 app.get('/:sha1/:filename',function(req,res){
   var sha1 = req.params.sha1
   var existsInCache = false
+  var peerList = []
+  var peers = {}
+  var winner = false
   async.series(
     [
       //check if we already know about this file
@@ -30,29 +75,47 @@ app.get('/:sha1/:filename',function(req,res){
       //if we must do a mesh.locate on the file
       function(next){
         if(existsInCache) return next()
-        console.log('Sending mesh.locate for ' + sha1)
-        var client = util.tcpSend('locate',{sha1: sha1},config.get('mesh.port'),config.get('mesh.host'))
-        client.once('readable',function(){
-          //read our response
-          var payload = util.parse(client.read(client.read(2).readUInt16BE(0)))
-          //close the connection
-          client.end()
-          //check if we got an error
-          if('ok' !== payload.message.status) return next(payload.message.message)
-          //make sure the response is our sha1
-          if(sha1 !== payload.command) return next('Wrong command resposne for ' + sha1)
-          var peers = payload.message.peers
-          console.log(peers)
+        buildCache(sha1,next)
+      },
+      //grab from cache
+      function(next){
+        redis.smembers('prism:' + sha1,function(err,result){
+          if(err) return next(err)
+          peerList = result
+          next()
         })
-        client.on('error',function(err){
-          next(err)
-        })
+      },
+      //resolve peer info
+      function(next){
+        async.each(
+          peerList,
+          function(hostname,next){
+            redis.hgetall('peer:list:' + hostname,function(err,peer){
+              if(err) return next(err)
+              peers[hostname] = peer
+              next()
+            })
+          },
+          next
+        )
+      },
+      //pick a winner
+      function(next){
+        for(var hostname in peers){
+          if(peers.hasOwnProperty(hostname)){
+            if(!winner || peers[hostname].availableCapacity < winner.availableCapacity){
+              winner = peers[hostname]
+            }
+          }
+        }
+        next()
       }
     ],
     //send the response
     function(err){
       if(err) return res.send({status: 'error', code: 1, message: err})
-      res.send('..l..')
+      var destination = req.protocol + '://' + winner.hostname + ':' + winner.exportPort + req.originalUrl
+      res.redirect(destination)
     }
   )
   /*

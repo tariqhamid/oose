@@ -14,7 +14,7 @@ app.get('/:sha1/:filename',function(req,res){
     res.send('Invalid path')
   } else {
     var path = file.pathFromSha1(sha1)
-    redis.hgetall(sha1,function(err,info){
+    redis.hgetall('inventory:' + sha1,function(err,info){
       if(err){
         console.log(err)
         res.send(err)
@@ -26,7 +26,7 @@ app.get('/:sha1/:filename',function(req,res){
           res.send('File not found')
         } else {
           //update hits
-          redis.hincrby(sha1,'hits',1)
+          redis.hincrby('inventory:' + sha1,'hits',1)
           //add attachment for a download
           if('string' === typeof req.query.download){
             res.set('Content-Disposition','attachment; filename=' + req.params.filename)
@@ -50,7 +50,7 @@ app.get('/:sha1/:filename',function(req,res){
           var rs = fs.createReadStream(path,range)
           //update bytes sent
           rs.on('data',function(data){
-            redis.hincrby(sha1,'sent',data.length)
+            redis.hincrby('inventory:' + sha1,'sent',data.length)
           })
           rs.pipe(res)
         }

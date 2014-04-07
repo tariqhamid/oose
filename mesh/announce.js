@@ -38,7 +38,7 @@ var announceListen = function(){
       [
         //grab ourselves
         function(next){
-          redis.hgetall('peers:' + config.get('hostname'),function(err,result){
+          redis.hgetall('peer:list:' + config.get('hostname'),function(err,result){
             if(err) return next(err)
             selfPeer = result
             next()
@@ -52,7 +52,7 @@ var announceListen = function(){
         },
         //grab previous peer information
         function(next){
-          redis.hgetall('peers:' + packet.hostname,function(err,result){
+          redis.hgetall('peer:list:' + packet.hostname,function(err,result){
             if(err) return next(err)
             oldPeer = result
             if(!oldPeer) oldPeer = {}
@@ -88,23 +88,27 @@ var announceListen = function(){
         //save to storeList
         function(next){
           if(packet.services.indexOf('store') > 0){
-            redis.sadd('storeList',packet.hostname,next)
+            redis.sadd('peer:store',packet.hostname,next)
           } else next()
         },
         function(next){
           if(packet.services.indexOf('store') > 0){
-            redis.zadd('peerRank',parseInt(peer.availableCapacity,10),packet.hostname,next)
+            redis.zadd('peer:rank',parseInt(peer.availableCapacity,10),packet.hostname,next)
           } else next()
         },
         //save to prism list
         function(next){
           if(packet.services.indexOf('prism') > 0){
-            redis.sadd('prismList',packet.hostname,next)
+            redis.sadd('peer:prism',packet.hostname,next)
           } else next()
+        },
+        //save to peer ip map
+        function(next){
+          redis.hset('peer:ip',peer.ip,peer.hostname,next)
         },
         //save to redis
         function(next){
-          redis.hmset('peers:' + packet.hostname,peer,next)
+          redis.hmset('peer:list:' + packet.hostname,peer,next)
         }
         //save to peerRank
       //process announce receipt
@@ -125,7 +129,7 @@ var announceSend = function(){
     [
       //find ourselves
       function(next){
-        redis.hgetall('peers:' + config.get('hostname'),function(err,result){
+        redis.hgetall('peer:list:' + config.get('hostname'),function(err,result){
           if(err) return next(err)
           if(!result) return next('Announce delayed, peer not ready')
           peer = result
@@ -134,7 +138,7 @@ var announceSend = function(){
       },
       //find peerCount
       function(next){
-        redis.zcount('peerRank',0,100,function(err,result){
+        redis.zcount('peer:rank',0,100,function(err,result){
           if(err) return next(err)
           peerCount = result
           next()

@@ -30,7 +30,7 @@ var msg = {
 
 var supervisorTimeout
 var supervisorStartup = function(){
-  redis.hgetall('peers:' + config.get('hostname'),function(err,peer){
+  redis.hgetall('peer:list:' + config.get('hostname'),function(err,peer){
     if(err) logger.error(err)
     else if(!peer){
       msg.starting()

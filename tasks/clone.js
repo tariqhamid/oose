@@ -25,7 +25,7 @@ var clone = function(job,cb){
   var bytesSent = 0
   var start = new Date().getTime()
   //i need to ask mesh for the peerNext
-  redis.hgetall('peerNext',function(err,peer){
+  redis.hgetall('peer:next',function(err,peer){
     if(err) return done(err)
     if(!peer || peer.hostname === config.get('hostname')) return done('Could not find suitable peer')
     var rs = fs.createReadStream(file.pathFromSha1(job.sha1))

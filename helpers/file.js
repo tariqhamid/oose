@@ -69,7 +69,7 @@ exports.redisInsert = function(sha1,done){
     if(err) return done(err)
     fs.stat(destination,function(err,stat){
       if(err) return done(err)
-      redis.hmset(sha1,{
+      redis.hmset('inventory:' + sha1,{
         stat: JSON.stringify(stat),
         mimeType: mimeType,
         copiesMin: config.get('copies.min'),

@@ -60,6 +60,7 @@ Mesh.prototype.start = function(done){
         self[r](req)
       }
     })
+    /*
     //NOTE THIS IS HERE AS A TEST INJECTION (7 second delay)
     setTimeout(function(){
       var sha1 = '65093ef4dbd6cfa1ad58dc4202abd9517f0d7838'
@@ -68,6 +69,7 @@ Mesh.prototype.start = function(done){
         logger.info('[TEST] mesh.locate(' + sha1 + ') reply: ',require('util').inspect(result))
       })
     },7000)
+    */
     next()
   })
   done()
@@ -96,7 +98,7 @@ Mesh.prototype.stop = function(done){
 Mesh.prototype.readyState = function(state,done){
   var self = this
   if('function' !== typeof done) done = function(){}
-  redis.hset('peers:' + config.get('hostname'),'readyState',state,function(err){
+  redis.hset('peer:list:' + config.get('hostname'),'readyState',state,function(err){
     if(err) done(err)
     self.udp.send('readyState',{readyState: state})
     done()
@@ -132,20 +134,44 @@ Mesh.prototype.locate = function(sha1,done){
     //called with a SHA1 hex string
     var token = shortId.generate()
     var basket = {}, locateTimeout
+    var hostname = ''
     self.udp.on(token,function(req,rinfo){
-      if(config.get('mesh.debug') > 0){
-        logger.info('[LOCATE@' + token + '] ' + rinfo.address + ' says ' +
-            (req.exists ? 'YES' : 'NO') + ' for ' + sha1
-        )
-      }
-      basket[rinfo.address] = req.exists
-      //each recv packet resets the return timer to 1/4 sec
-      clearTimeout(locateTimeout)
-      locateTimeout = setTimeout(function(){
-        self.udp.removeAllListeners(token)
-        self.udp.send('locate_result',{sha1:sha1,resultSet:basket})
-        done(null,basket)
-      },250)
+      async.series(
+        [
+          //log the action
+          function(next){
+            if(config.get('mesh.debug') > 0){
+              logger.info('[LOCATE@' + token + '] ' + rinfo.address + ' says ' +
+                  (req.exists ? 'YES' : 'NO') + ' for ' + sha1
+              )
+            }
+            next()
+          },
+          //resolve ip to peer hostname
+          function(next){
+            redis.hget('peer:ip',rinfo.address,function(err,result){
+              if(err) return next(err)
+              hostname = result
+              next()
+            })
+          },
+          //add to basket
+          function(next){
+            basket[hostname] = req.exists
+            next()
+          }
+        ],
+        //each recv packet resets the return timer to 1/4 sec
+        function(err){
+          if(err) logger.error('Failed to respond to locate: ' + err)
+          clearTimeout(locateTimeout)
+          locateTimeout = setTimeout(function(){
+            self.udp.removeAllListeners(token)
+            self.udp.send('locate:result',{sha1:sha1,resultSet:basket})
+            done(null,basket)
+          },250)
+        }
+      )
     })
     self.udp.send('locate',{token:token,sha1:sha1})
   }

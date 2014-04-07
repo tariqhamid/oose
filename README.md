@@ -41,27 +41,33 @@ $ node app
 
 ### Peers
 
-* peer:[hostname]
+* peer:list:[hostname]
   * Description: Peer meta information acquired from the announce packet
   * Type: Hash
-* peerRank
+* peer:rank
   * Description: A ranking of peers based on their availableCapacity
   * Type: Sorted Set
-* peerNext
+* peer:next
   * Description: The meta information of the winner of the peerNext selection
   * Type: Hash
-* prismList
+* peer:prism
   * Description: List of peers running the prism service
   * Type: Set
-* storeList
+* peer:store
   * Description: List of peers running the store service
   * Type: Set
 
-### Local
+## Prism
+
+* prism:[sha1]
+  * Description: List of peers with a given hash
+  * Type: Set
+
+### Store
 
 * inventory
   * Description: Peer inventory of sha1 hashes
   * Type: Set
-* [sha1]
+* inventory:[sha1]
   * Description: Meta information about a file
   * Type: Hash

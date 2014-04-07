@@ -68,7 +68,10 @@ config.load({
   prism: {
     enabled: false,
     port: 3003,
-    host: null
+    host: null,
+    cache: {
+      expire: 300
+    }
   }
 })
 

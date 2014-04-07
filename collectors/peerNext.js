@@ -5,13 +5,13 @@ var Collector = require('../helpers/collector')
   , config = require('../config')
 
 var selectPeer = function(basket,done){
-  redis.zrevrangebyscore('peerRank',100,0,function(err,peers){
+  redis.zrevrangebyscore('peer:rank',100,0,function(err,peers){
     if(err) logger.error(err)
     if(!peers[0]){
       done('Can\'t select next peer: no winner exists')
     } else {
       var hostname = peers[0]
-      redis.hgetall('peers:' + hostname,function(err,peer){
+      redis.hgetall('peer:list:' + hostname,function(err,peer){
         if(err) logger.error(err)
         if(!peer.hostname || !peer.ip){
           done('Can\'t select next peer: missing IP or hostname')
@@ -30,7 +30,7 @@ var selectPeer = function(basket,done){
 
 var save = function(basket,done){
   if(Object.keys(basket).length > 0){
-    redis.hmset('peerNext',basket,function(err){
+    redis.hmset('peer:next',basket,function(err){
       if(err) done('Couldn\'t save next peer:' + err)
       else done(null,basket)
     })
