@@ -114,16 +114,15 @@ app.get('/:sha1/:filename',function(req,res){
     //send the response
     function(err){
       if(err) return res.send({status: 'error', code: 1, message: err})
-      var destination = req.protocol + '://' + winner.hostname + ':' + winner.exportPort + req.originalUrl
+      var destination =
+        req.protocol + '://' +
+        winner.hostname + '.' +
+        config.get('domain') + ':' +
+        winner.exportPort +
+        req.originalUrl
       res.redirect(destination)
     }
   )
-  /*
-  redis.hget('hashPeers',sha1,function(err,peers){
-    peers = JSON.parse(peers)
-    //do some load balancing stuff here
-    res.redirect('http://' + peers[0].hostname + req.originalUrl)
-  })*/
 })
 
 
