@@ -4,7 +4,21 @@ var net = require('net')
   , stream = require('stream')
   , EventEmitter = require('events').EventEmitter
 
-var build = function(command,message){
+
+/**
+ * Static utility functions
+ * @type {{}}
+ */
+var util = {}
+
+
+/**
+ * Build packet
+ * @param {string} command
+ * @param {object} message
+ * @return {Buffer}
+ */
+util.build = function(command,message){
   return new Buffer(JSON.stringify({
     command: command,
     seq: new Date().getTime(),
@@ -12,8 +26,49 @@ var build = function(command,message){
   }))
 }
 
-var parse = function(packet){
+
+/**
+ * Parse packet
+ * @param {Buffer} packet
+ * @return {object}
+ */
+util.parse = function(packet){
   return JSON.parse(packet.toString())
+}
+
+
+/**
+ * Wrap the packet with the payload length and return a new buffer
+ * @param {Buffer} payload
+ * @return {Buffer}
+ */
+util.withLength = function(payload){
+  var length = new Buffer(2)
+  length.writeUInt16BE(payload.length,0)
+  return Buffer.concat([length,payload])
+}
+
+
+/**
+ * TCP.send()
+ * @param {string} command Command to send
+ * @param {object} message Additional message/command parameters
+ * @param {number} port Destination port
+ * @param {string} address Destination address (or multicast address)
+ * @param {stream} readable Optional stream to deliver after command
+ * @return {net.socket}
+ */
+util.tcpSend = function(command,message,port,address,readable){
+  if(!port) throw new Error('Tried to send a TCP message without a port')
+  var payload = util.withLength(util.build(command,message))
+  var client = net.connect(port,address || '127.0.0.1')
+  client.on('connect',function(){
+    client.write(payload)
+    if(readable instanceof stream.Readable){
+      readable.pipe(client)
+    }
+  })
+  return client
 }
 
 
@@ -38,7 +93,7 @@ var UDP = function(options){
     self.emit('ready',self.socket)
   })
   self.socket.on('message',function(packet,rinfo){
-    var payload = parse(packet)
+    var payload = util.parse(packet)
     self.emit(payload.command,payload.message,rinfo)
   })
   self.socket.on('error',function(err){self.emit('error',err)})
@@ -65,7 +120,7 @@ UDP.prototype.send = function(command,message,port,address,done){
     port = self.options.port
     address = self.options.multicast.address
   }
-  var packet = build(command,message)
+  var packet = util.build(command,message)
   self.socket.send(packet,0,packet.length,port,address,done)
 }
 
@@ -95,7 +150,7 @@ var TCP = function(options){
   self.server.on('connection',function(socket){
     socket.once('readable',function(){
       var length = socket.read(2).readUInt16BE(0)
-      var payload = parse(socket.read(length))
+      var payload = util.parse(socket.read(length))
       if(!payload) return self.emit('error','Failed to parse payload')
       self.emit(payload.command,payload.message,socket)
     })
@@ -110,28 +165,10 @@ TCP.prototype = Object.create(EventEmitter.prototype)
 
 
 /**
- * TCP.send()
- * @param {string} command Command to send
- * @param {object} message Additional message/command parameters
- * @param {number} port Destination port
- * @param {string} address Destination address (or multicast address)
- * @param {stream} readable Optional stream to deliver after command
- * @return {net.socket}
+ * TCP send utility
+ * @type {Function}
  */
-TCP.prototype.send = function(command,message,port,address,readable){
-  var self = this
-  if(!address) throw new Error('Tried to send a TCP message without an address')
-  if(!port) throw new Error('Tried to send a TCP message without a port')
-  var payload = build(command,message)
-  var buf = Buffer.concat([new Buffer(2).writeUInt16BE(payload.length),payload])
-  var client = net.connect(port,address)
-  client.on('error',function(err){self.emit('error',err)})
-  client.write(buf)
-  if(readable instanceof stream.Readable){
-    readable.pipe(client)
-  }
-  return client
-}
+TCP.prototype.send = util.tcpSend
 
 
 /**
@@ -141,6 +178,13 @@ TCP.prototype.send = function(command,message,port,address,readable){
 TCP.prototype.close = function(done){
   this.server.close(done)
 }
+
+
+/**
+ * Utility functions
+ * @type {{}}
+ */
+exports.util = util
 
 
 

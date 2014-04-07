@@ -41,6 +41,35 @@ Mesh.prototype.start = function(done){
   //connection error handling
   self.udp.on('error',function(err){self.emit('error',err)})
   self.tcp.on('error',function(err){self.emit('error',err)})
+  self.tcp.on('locate',function(message,socket){
+    self.locate(message.sha1,function(err,result){
+      var response
+      if(err) response = {status: 'error', code: 1, message: err}
+      else response = {status: 'ok', code: 1, peers: result}
+      socket.end(communicator.util.withLength(communicator.util.build(message.sha1,response)))
+    })
+  })
+  //routes
+  async.eachSeries([
+    'locate'
+  ],function(r,next){
+    logger.info('Mesh loaded handler for ' + r)
+    self.udp.on(r,function(req,rinfo){
+      if(self[r] && 'function' === typeof self[r]){
+        req.rinfo = rinfo
+        self[r](req)
+      }
+    })
+    //NOTE THIS IS HERE AS A TEST INJECTION (7 second delay)
+    setTimeout(function(){
+      var sha1 = '65093ef4dbd6cfa1ad58dc4202abd9517f0d7838'
+      logger.info('[TEST] calling mesh.locate(' + sha1 + ')')
+      self.locate(sha1,function(err,result){
+        logger.info('[TEST] mesh.locate(' + sha1 + ') reply: ',require('util').inspect(result))
+      })
+    },7000)
+    next()
+  })
   done()
 }
 

@@ -5,9 +5,8 @@ var express = require('express')
   , config = require('../config')
   , redis = require('../helpers/redis')
   , async = require('async')
-  , mesh = require('../mesh')
   , running = false
-
+  , util = require('../helpers/communicator').util
 app.get('/api/peerNext',function(req,res){
   redis.hgetall('peerNext',function(err,peer){
     if(err) return res.json({status: 'error', code: 1, message: err})
@@ -32,10 +31,19 @@ app.get('/:sha1/:filename',function(req,res){
       function(next){
         if(existsInCache) return next()
         console.log('Sending mesh.locate for ' + sha1)
-        mesh.locate(sha1,function(err,result){
-          if(err) return next(err)
-          console.log('Got locate response for ' + sha1,result)
-          next()
+        var client = util.tcpSend('locate',{sha1: sha1},config.get('mesh.port'),config.get('mesh.host'))
+        client.once('readable',function(){
+          //read our response
+          var payload = util.parse(client.read(client.read(2).readUInt16BE(0)))
+          //check if we got an error
+          if('ok' !== payload.message.status) return next(payload.message.message)
+          //make sure the response is our sha1
+          if(sha1 !== payload.command) return next('Wrong command resposne for ' + sha1)
+          var peers = payload.message.peers
+          console.log(peers)
+        })
+        client.on('error',function(err){
+          next(err)
         })
       }
     ],

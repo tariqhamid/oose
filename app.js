@@ -132,9 +132,9 @@ if(cluster.isMaster){
           logger.info('Stopping all workers')
           //send the workers the shutdown signal
           async.each(workers,function(worker,next){
-            worker.send({cmd: 'shutdown'})
-            worker.once('message',function(msg){
-              if('stopped' === msg.cmd){
+            worker.send({command: 'shutdown'})
+            worker.once('message',function(message){
+              if('stopped' === message.command){
                 logger.info('Worker ' + worker.id + ' stopped')
                 next()
               }
@@ -223,8 +223,8 @@ if(cluster.isWorker){
       //worker startup complete
     }
   )
-  cluster.worker.on('message',function(msg){
-    if('shutdown' === msg.cmd){
+  cluster.worker.on('message',function(message){
+    if('shutdown' === message.command){
       async.parallel(
         [
           function(next){storeImport.stop(next)},
@@ -233,7 +233,7 @@ if(cluster.isWorker){
         ],
         function(err){
           if(err) throw err
-          cluster.worker.send({cmd: 'stopped'})
+          cluster.worker.send({command: 'stopped'})
         }
       )
     }
