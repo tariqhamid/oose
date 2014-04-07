@@ -3,14 +3,16 @@ var mesh = require('../mesh')
   , config = require('../config')
   , logger = require('../helpers/logger')
   , util = require('util')
+  , shortId = require('shortid')
+
 var pingHosts = {}
 var pingTimeout
-var start
 
 var pingListen = function(){
   //server
   mesh.udp.on('ping',function(req,rinfo){
-    mesh.udp.send('pong',{},rinfo.port,rinfo.address)
+    req.rinfo = rinfo
+    mesh.udp.send('pong',req,rinfo.port,rinfo.address)
   })
   //client
   mesh.udp.on('pong',function(res,rinfo){
@@ -19,9 +21,11 @@ var pingListen = function(){
 }
 
 var pingSend = function(){
-  start = new Date().getTime()
-  mesh.udp.send('ping')
-  if(config.get('mesh.debug') > 1) logger.info('pingHosts:' + util.inspect(pingHosts))
+  mesh.udp.send('ping',{
+    token:shortId.generate(),
+    starttime:new Date().getTime()
+  })
+  if(config.get('mesh.debug') > 1) logger.info('[MESH PING] hosts:' + util.inspect(pingHosts))
   pingTimeout = setTimeout(function(){pingSend(mesh)},config.get('mesh.interval.ping'))
 }
 

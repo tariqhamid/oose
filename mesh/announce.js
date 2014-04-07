@@ -11,19 +11,19 @@ var mesh = require('../mesh')
 var announceLog = function(selfPeer,oldPeer,peer,packet){
   if(config.get('mesh.debug') || (packet.hostname !== oldPeer.hostname)){
     logger.info(
-        '[' + peer.hostname + ']' +
+        '[MESH ANNOUNCE] ' + peer.hostname +
         ' (' + peer.ip + ':' + peer.meshPort + ')' +
-        ' announced at ' + new Date(peer.sent).toLocaleTimeString() +
+        ' @ ' + new Date(peer.sent).toLocaleTimeString() +
         ' (latency ' + peer.latency + ')' +
         (config.get('mesh.debug') && packet.hostname === selfPeer.hostname ? ' [SELFIE]' : '')
     )
   }
   if(config.get('mesh.debug') > 1){
-    logger.info('Announce:')
+    logger.info('[MESH ANNOUNCE] Announce:')
     logger.info(os.EOL + util.inspect(peer))
   }
   if(config.get('mesh.debug') > 2){
-    logger.info('Self Peer:')
+    logger.info('[MESH ANNOUNCE] Self Peer:')
     logger.info(os.EOL + util.inspect(selfPeer))
   }
 }
