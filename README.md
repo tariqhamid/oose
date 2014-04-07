@@ -57,7 +57,7 @@ $ node app
   * Description: List of peers running the store service
   * Type: Set
 
-## Prism
+### Prism
 
 * prism:[sha1]
   * Description: List of peers with a given hash
@@ -71,3 +71,8 @@ $ node app
 * inventory:[sha1]
   * Description: Meta information about a file
   * Type: Hash
+
+## Changelog
+
+### 0.1.0
+* Initial release
