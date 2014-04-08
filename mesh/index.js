@@ -98,7 +98,7 @@ Mesh.prototype.stop = function(done){
 Mesh.prototype.readyState = function(state,done){
   var self = this
   if('function' !== typeof done) done = function(){}
-  redis.hset('peer:list:' + config.get('hostname'),'readyState',state,function(err){
+  redis.hset('peer:db:' + config.get('hostname'),'readyState',state,function(err){
     if(err) done(err)
     self.udp.send('readyState',{readyState: state})
     done()

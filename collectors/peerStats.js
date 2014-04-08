@@ -54,7 +54,7 @@ var availableCapacity = function(basket,next){
 }
 
 var save = function(basket,next){
-  redis.hmset('peer:list:' + config.get('hostname'),basket,function(err){
+  redis.hmset('peer:db:' + config.get('hostname'),basket,function(err){
     if(err) next(err)
     else next(null,basket)
   })

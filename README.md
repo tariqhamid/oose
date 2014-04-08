@@ -41,7 +41,7 @@ $ node app
 
 ### Peers
 
-* peer:list:[hostname]
+* peer:db:[hostname]
   * Description: Peer meta information acquired from the announce packet
   * Type: Hash
 * peer:rank

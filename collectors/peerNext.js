@@ -11,7 +11,7 @@ var selectPeer = function(basket,done){
       done('Can\'t select next peer: no winner exists')
     } else {
       var hostname = peers[0]
-      redis.hgetall('peer:list:' + hostname,function(err,peer){
+      redis.hgetall('peer:db:' + hostname,function(err,peer){
         if(err) logger.error(err)
         if(!peer.hostname || !peer.ip){
           done('Can\'t select next peer: missing IP or hostname')

@@ -113,7 +113,7 @@ app.get('/:sha1/:filename',function(req,res){
         async.each(
           peerList,
           function(hostname,next){
-            redis.hgetall('peer:list:' + hostname,function(err,peer){
+            redis.hgetall('peer:db:' + hostname,function(err,peer){
               if(err) return next(err)
               peers[hostname] = peer
               next()
