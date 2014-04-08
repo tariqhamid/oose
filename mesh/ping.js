@@ -7,6 +7,7 @@ var mesh = require('../mesh')
 
 var pingHosts = {}
 var pingTimeout
+var thisToken
 
 var pingListen = function(){
   //server
@@ -16,13 +17,18 @@ var pingListen = function(){
   })
   //client
   mesh.udp.on('pong',function(res,rinfo){
-    pingHosts[rinfo.address] = new Date().getTime() - res.starttime
+    if(res.token === thisToken){
+      pingHosts[rinfo.address] = new Date().getTime() - res.starttime
+    } else {
+      logger.warn('[MESH PING] Out of order ping response detected and ignored')
+    }
   })
 }
 
 var pingSend = function(){
+  thisToken = shortId.generate()
   mesh.udp.send('ping',{
-    token:shortId.generate(),
+    token:thisToken,
     starttime:new Date().getTime()
   })
   if(config.get('mesh.debug') > 1) logger.info('[MESH PING] hosts:' + util.inspect(pingHosts))
