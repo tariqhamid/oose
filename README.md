@@ -72,7 +72,7 @@ $ node app
   * Description: Meta information about a file
   * Type: Hash
 
-## System Preparation
+## Install Procedure
 
 ### Debian
 
@@ -85,7 +85,37 @@ $ apt-get -y install gcc g++ make git redis-server
 Optional packages
 
 ```
-$ apt-get -y install dstat vim
+$ apt-get -y install dstat vim screen
+```
+
+Create an oose user
+
+```
+$ adduser oose
+```
+
+Checkout the repo
+
+```
+$ su - oose
+$ git clone https://github.com/eSited/oose.git
+```
+
+Install dependencies
+
+```
+$ su - oose
+$ cd oose
+$ npm install
+```
+
+Start app inside a screen
+
+```
+$ screen -a -S oose
+$ su - oose
+$ cd oose
+$ node app
 ```
 
 ## Changelog
