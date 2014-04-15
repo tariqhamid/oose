@@ -72,6 +72,22 @@ $ node app
   * Description: Meta information about a file
   * Type: Hash
 
+## System Preparation
+
+### Debian
+
+Required packages
+
+```
+$ apt-get -y install gcc g++ make git redis-server
+```
+
+Optional packages
+
+```
+$ apt-get -y install dstat vim
+```
+
 ## Changelog
 
 ### 0.1.0
