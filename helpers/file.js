@@ -69,16 +69,20 @@ exports.redisInsert = function(sha1,done){
     if(err) return done(err)
     fs.stat(destination,function(err,stat){
       if(err) return done(err)
-      redis.hmset('inventory:' + sha1,{
-        stat: JSON.stringify(stat),
-        mimeType: mimeType,
-        copiesMin: config.get('copies.min'),
-        copiesMax: config.get('copies.max')
-      },function(err){
-        if(err) return done(err)
-        redis.sadd('inventory',sha1)
-        done()
-      })
+      redis.hmset(
+        'inventory:' + sha1,
+        {
+          stat: JSON.stringify(stat),
+          mimeType: mimeType,
+          copiesMin: config.get('copies.min'),
+          copiesMax: config.get('copies.max')
+        },
+        function(err){
+          if(err) return done(err)
+          redis.sadd('inventory',sha1)
+          done()
+        }
+      )
     })
   })
 }
@@ -139,11 +143,6 @@ exports.fromReadable = function(readable,done){
         readable.on('close',next)
         readable.pipe(writable)
       },
-      //when the read stream closes, end the write and start processing
-      function(next){
-        writable.on('finish',next)
-        writable.end()
-      },
       //figure out our sha1 hash and setup paths
       function(next){
         sha1 = shasum.digest('hex')
@@ -155,14 +154,14 @@ exports.fromReadable = function(readable,done){
       function(next){
         redis.exists(sha1,function(err,result){
           if(err) return next(err)
-          exists.redis = result
+          exists.redis = result || false
           next()
         })
       },
       //find out if we already know the hash on the filesystem
       function(next){
         fs.exists(destination,function(result){
-          exists.fs = result
+          exists.fs = result || false
           next()
         })
       },

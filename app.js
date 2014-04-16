@@ -102,7 +102,9 @@ if(cluster.isMaster){
       })
       //worker recovery
       cluster.on('exit',function(worker,code,signal){
-        if(code){
+        if(0 === code){
+          workers.splice(workers.indexOf(worker),1)
+        } else {
           logger.info('Worker ' + worker.id + ' died (' + (signal || code) + ') restarted')
           //remove the worker from the handles array
           workers.splice(workers.indexOf(worker),1)
@@ -130,20 +132,14 @@ if(cluster.isMaster){
         //stop workers
         function(done){
           logger.info('Stopping all workers')
-          //send the workers the shutdown signal
-          async.each(workers,function(worker,next){
-            worker.send({command: 'shutdown'})
-            worker.once('message',function(message){
-              if('stopped' === message.command){
-                logger.info('Worker ' + worker.id + ' stopped')
-                next()
-              }
-            })
-          },function(err){
-            if(err) throw err
-            cluster.disconnect(function(){done()})
-            done()
-          })
+          //wait for the workers to all die
+          var checkWorkerCount = function(){
+            if(workers.length){
+              logger.info('Waiting on ' + workers.length + ' to exit')
+              setTimeout(checkWorkerCount,100)
+            } else done()
+          }
+          checkWorkerCount()
         },
         //stop announce
         function(done){
@@ -223,19 +219,18 @@ if(cluster.isWorker){
       //worker startup complete
     }
   )
-  cluster.worker.on('message',function(message){
-    if('shutdown' === message.command){
-      async.parallel(
-        [
-          function(next){storeImport.stop(next)},
-          function(next){storeExport.stop(next)},
-          function(next){prism.stop(next)}
-        ],
-        function(err){
-          if(err) throw err
-          cluster.worker.send({command: 'stopped'})
-        }
-      )
-    }
-  })
+  var workerShutdown = function(){
+    async.parallel(
+      [
+        function(next){storeImport.stop(next)},
+        function(next){storeExport.stop(next)},
+        function(next){prism.stop(next)}
+      ],
+      function(err){
+        if(err) throw err
+        process.exit(0)
+      }
+    )
+  }
+  process.on('SIGINT',workerShutdown)
 }

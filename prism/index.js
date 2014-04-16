@@ -21,7 +21,6 @@ var buildCache = function(sha1,done){
     [
       //acquire list of peers from locate up on the master
       function(next){
-        console.log('Sending mesh.locate for ' + sha1)
         var client = util.tcpSend('locate',{sha1: sha1},config.get('mesh.port'),config.get('mesh.host'))
         client.once('readable',function(){
           //read our response
@@ -31,7 +30,7 @@ var buildCache = function(sha1,done){
           //check if we got an error
           if('ok' !== payload.message.status) return next(payload.message.message)
           //make sure the response is our sha1
-          if(sha1 !== payload.command) return next('Wrong command resposne for ' + sha1)
+          if(sha1 !== payload.command) return next('Wrong command response for ' + sha1)
           for(var i in payload.message.peers){
             if(payload.message.peers.hasOwnProperty(i)){
               if(payload.message.peers[i]) exists[i] = true

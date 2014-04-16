@@ -86,7 +86,10 @@ Mesh.prototype.stop = function(done){
   async.series([
     function(next){self.udp.close(next)},
     function(next){self.tcp.close(next)}
-  ],done)
+  ],function(err){
+    if(err) logger.error('Mesh failed to stop: ' + err)
+  })
+  done()
 }
 
 
