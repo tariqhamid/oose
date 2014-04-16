@@ -187,7 +187,7 @@ exports.fromReadable = function(readable,done){
       if(fs.existsSync(tmp)) fs.unlinkSync(tmp)
       if(err) return done(err)
       //if we already had the file just return
-      if(fs.exists && redis.exists) return done(null,sha1)
+      if(exists.fs && exists.redis) return done(null,sha1)
       //insert into redis
       exports.redisInsert(sha1,function(err){
         if(err) return done(err)
