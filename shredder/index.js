@@ -8,13 +8,12 @@ var readdirp = require('readdirp')
   , async = require('async')
   , log = require('winston')
   , crypto = require('crypto')
-  , os = require('os')
   , Transcoder = require('stream-transcoder')
   , mmm = require('mmmagic')
-  , PassThrough = require('stream').PassThrough
   , temp = require('temp')
   , mkdirp = require('mkdirp')
   , MP4Box = require(__dirname + '/helpers/MP4Box')
+  , PassThrough = require('stream').PassThrough
 
 //check for testing
 var testing = false
@@ -61,7 +60,7 @@ var Sniffer = function(){
 Sniffer.prototype = Object.create(PassThrough.prototype)
 
 var importFile = function(path,done){
-  var peer, client, sum, mimeType, fileMetadata, transcode
+  var peer, client, sum, mimeType, transcode
   async.series(
     [
       //figure out our peer
@@ -156,7 +155,7 @@ var q = async.queue(
     importFile(path,function(err,sha1){
       if(err) log.error('Failed to import ' + path + ': ' + err)
       else log.info('Import successful for ' + path + ' sha1 sum [' + sha1 + ']')
-      done() 
+      done()
     })
   },
   config.get('concurrency') || 1
