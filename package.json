@@ -26,16 +26,17 @@
     "grunt": ">=0.4.4",
     "mkdirp": ">=0.3.5",
     "mmmagic": ">=0.3.6",
+    "mongoose": "^3.8.8",
     "node-sigint": "0.0.1",
     "object-manage": ">=0.7.1",
+    "pretty-bytes": "^0.1.0",
     "readdirp": ">=0.3.3",
     "redis": ">=0.10.1",
     "restler": "^3.2.1",
     "stream-transcoder": "0.0.3",
     "shortid": ">=2.0.0",
     "temp": ">=0.7.0",
-    "winston": ">=0.7.2",
-    "pretty-bytes": "^0.1.0"
+    "winston": ">=0.7.2"
   },
   "devDependencies": {
     "grunt-concurrent": ">=0.4.2",

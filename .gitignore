@@ -6,3 +6,5 @@ log/*
 /data
 config.local.js
 /foo
+embed/views/*
+embed/public/*

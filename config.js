@@ -81,6 +81,13 @@ config.load({
         enabled: true
       }
     }
+  },
+  embed: {
+    enabled: false,
+    port: 3004,
+    host: null,
+    seed: '3123572',
+    secrets: []
   }
 })
 
