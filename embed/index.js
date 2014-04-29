@@ -7,6 +7,7 @@ var express = require('express')
   , config = require('../config')
   , logger = require('../helpers/logger')
   , Embed = require('./models/embed').model
+  , running = false
 
 app.set('views',__dirname + '/views')
 app.set('view engine','jade')
@@ -190,7 +191,11 @@ exports.start = function(done){
   if(config.get('embed.secrets').length > 1){
     logger.warn('No embed secrets defined, API will be unusable')
   }
-  server.listen(3000,done)
+  server.listen(config.get('embed.port'),config.get('embed.host'),function(err){
+    if(err) return done(err)
+    running = true
+    done()
+  })
 }
 
 
@@ -199,6 +204,7 @@ exports.start = function(done){
  * @param {function} done
  */
 exports.stop = function(done){
-  server.close()
+  if('function' !== typeof done) done = function(){}
+  if(server && running) server.close()
   done()
 }

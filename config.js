@@ -88,6 +88,11 @@ config.load({
     host: null,
     seed: '3123572',
     secrets: []
+  },
+  mongoose: {
+    enabled: false,
+    dsn: 'mongodb://localhost/oose',
+    options: {native_parser: true}
   }
 })
 

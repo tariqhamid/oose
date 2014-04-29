@@ -16,7 +16,6 @@ if(cluster.isMaster){
     , mesh = require('./mesh')
     , ping = require('./mesh/ping')
     , announce = require('./mesh/announce')
-    , workers = []
   //make sure the root folder exists
   if(!fs.existsSync(config.get('root')))
     mkdirp.sync(config.get('root'))
@@ -26,49 +25,49 @@ if(cluster.isMaster){
   async.series(
     [
       //start mesh
-      function(done){
+      function(next){
         logger.info('Starting mesh')
-        mesh.start(done)
+        mesh.start(next)
       },
       //go to ready state 1
-      function(done){
+      function(next){
         logger.info('Going to readyState 1')
-        mesh.readyState(1,done)
+        mesh.readyState(1,next)
       },
       //start collectors
-      function(done){
+      function(next){
         logger.info('Starting stats collection')
         peerStats.start(config.get('mesh.interval.stat'),0)
-        peerStats.once('loopEnd',function(){done()})
+        peerStats.once('loopEnd',function(){next()})
       },
       //start ping
-      function(done){
+      function(next){
         logger.info('Starting ping')
-        ping.start(done)
+        ping.start(next)
       },
       //go to ready state 2
-      function(done){
+      function(next){
         logger.info('Going to readyState 2')
-        mesh.readyState(2,done)
+        mesh.readyState(2,next)
       },
       //start announce
-      function(done){
+      function(next){
         logger.info('Starting announce')
-        announce.start(done)
+        announce.start(next)
       },
       //start next peer selection
-      function(done){
+      function(next){
         logger.info('Starting next peer selection')
-        peerNext.start(config.get('mesh.interval.peerNext'),config.get('mesh.interval.announce') * 2,done)
+        peerNext.start(config.get('mesh.interval.peerNext'),config.get('mesh.interval.announce') * 2,next)
       },
       //start the supervisor
-      function(done){
+      function(next){
         if(config.get('supervisor.enabled')){
           require('./supervisor').start(function(){
             logger.info('Supervisor started')
-            done()
+            next()
           })
-        } else done()
+        } else next()
       }
     ],
     function(err){
@@ -85,10 +84,8 @@ if(cluster.isMaster){
       }
       //start workers
       var workerCount = config.get('workers') || os.cpus().length
-      logger.info('Starting ' + workers + ' workers')
-      for(var i=1; i <= workerCount; i++){
-        workers.push(cluster.fork())
-      }
+      logger.info('Starting ' + workerCount + ' workers')
+      for(var i=1; i <= workerCount; i++) cluster.fork()
       //worker online notification
       var workerOnlineCount = 0
       cluster.on('online',function(worker){
@@ -102,14 +99,10 @@ if(cluster.isMaster){
       })
       //worker recovery
       cluster.on('exit',function(worker,code,signal){
-        if(0 === code){
-          workers.splice(workers.indexOf(worker),1)
-        } else {
+        if(0 !== code){
           logger.info('Worker ' + worker.id + ' died (' + (signal || code) + ') restarted')
-          //remove the worker from the handles array
-          workers.splice(workers.indexOf(worker),1)
           //start the new worker
-          workers.push(cluster.fork())
+          cluster.fork()
         }
       })
     }
@@ -125,51 +118,59 @@ if(cluster.isMaster){
     async.series(
       [
         //go to ready state 5
-        function(done){
+        function(next){
           logger.info('Going to readyState 5')
-          mesh.readyState(5,done)
+          mesh.readyState(5,next)
+        },
+        //message workers to shutdown
+        function(next){
+          logger.info('Stopping all workers')
+          for(var id in cluster.workers){
+            if(cluster.workers.hasOwnProperty(id))
+              cluster.workers[id].send('shutdown')
+          }
+          next()
         },
         //stop workers
-        function(done){
-          logger.info('Stopping all workers')
+        function(next){
           //wait for the workers to all die
           var checkWorkerCount = function(){
-            if(workers.length){
-              logger.info('Waiting on ' + workers.length + ' to exit')
-              setTimeout(checkWorkerCount,100)
-            } else done()
+            if(cluster.workers.length){
+              logger.info('Waiting on ' + cluster.workers.length + ' to exit')
+              setTimeout(checkWorkerCount,1000)
+            } else next()
           }
           checkWorkerCount()
         },
         //stop announce
-        function(done){
+        function(next){
           logger.info('Stopping announce')
-          announce.stop(done)
+          announce.stop(next)
         },
         //stop ping
-        function(done){
+        function(next){
           logger.info('Stopping ping')
-          ping.stop(done)
+          ping.stop(next)
         },
         //stop next peer selection
-        function(done){
+        function(next){
           logger.info('Stopping next peer selection')
-          peerNext.stop(done)
+          peerNext.stop(next)
         },
         //stats
-        function(done){
+        function(next){
           logger.info('Stopping self stat collection')
-          peerStats.stop(done)
+          peerStats.stop(next)
         },
         //go to ready state 0
-        function(done){
+        function(next){
           logger.info('Going to readyState 0')
-          mesh.readyState(0,done)
+          mesh.readyState(0,next)
         },
         //stop mesh
-        function(done){
+        function(next){
           logger.info('Stopping mesh')
-          mesh.stop(done)
+          mesh.stop(next)
         }
       ],
       function(err){
@@ -196,6 +197,8 @@ if(cluster.isWorker){
   var storeImport = require('./import')
     , storeExport = require('./export')
     , prism = require('./prism')
+    , mongoose = require('mongoose')
+    , embed = require('./embed')
   async.parallel(
     [
       function(next){
@@ -212,6 +215,15 @@ if(cluster.isWorker){
         if(config.get('prism.enabled'))
           prism.start(next)
         else next()
+      },
+      function(next){
+        if(!config.get('mongoose.enabled')) return next()
+        mongoose.connect(config.get('mongoose.dsn'),config.get('mongoose.options'),next)
+      },
+      function(next){
+        if(config.get('mongoose.enabled') && config.get('embed.enabled')){
+          embed.start(next)
+        } else next()
       }
     ],
     function(err){
@@ -222,9 +234,26 @@ if(cluster.isWorker){
   var workerShutdown = function(){
     async.parallel(
       [
-        function(next){storeImport.stop(next)},
-        function(next){storeExport.stop(next)},
-        function(next){prism.stop(next)}
+        function(next){
+          if(config.get('store.enabled'))
+            storeImport.stop(next)
+          else next()
+        },
+        function(next){
+          if(config.get('store.enabled'))
+            storeExport.stop(next)
+          else next()
+        },
+        function(next){
+          if(config.get('prism.enabled'))
+            prism.stop(next)
+          else next()
+        },
+        function(next){
+          if(config.get('embed.enabled'))
+            embed.stop(next)
+          else next()
+        }
       ],
       function(err){
         if(err) throw err
@@ -232,5 +261,8 @@ if(cluster.isWorker){
       }
     )
   }
-  process.on('SIGINT',workerShutdown)
+  process.on('message',function(message){
+    if('shutdown' === message) workerShutdown()
+  })
+  process.on('SIGINT',function(){})
 }

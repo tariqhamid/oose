@@ -14,9 +14,14 @@ $ npm install
 
 First, setup a local config file like so.
 
+**NOTE** Remember to change the secret for the embed API access
+
 ```js
 'use strict';
 module.exports = {
+  mesh: {
+    debug: 1
+  },
   store: {
     enabled: true
   },
@@ -25,6 +30,13 @@ module.exports = {
   },
   prism: {
     enabled: true
+  },
+  mongoose: {
+    enabled: true
+  },
+  embed: {
+    enabled: true,
+    secrets: ['ooseembedapikey'] //CHANGE THIS!!!
   }
 }
 ```
