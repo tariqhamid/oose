@@ -72,6 +72,15 @@ config.load({
     cache: {
       expire: 300
     }
+  },
+  shredder: {
+    version: '0.0.1',
+    concurrency: 1,
+    transcode: {
+      videos: {
+        enabled: true
+      }
+    }
   }
 })
 

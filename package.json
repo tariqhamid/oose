@@ -30,6 +30,8 @@
     "object-manage": ">=0.7.1",
     "readdirp": ">=0.3.3",
     "redis": ">=0.10.1",
+    "restler": "^3.2.1",
+    "stream-transcoder": "0.0.3",
     "shortid": ">=2.0.0",
     "temp": ">=0.7.0",
     "winston": ">=0.7.2",
