@@ -12,7 +12,7 @@ var readdirp = require('readdirp')
   , mmm = require('mmmagic')
   , temp = require('temp')
   , mkdirp = require('mkdirp')
-  , MP4Box = require(__dirname + '/helpers/MP4Box')
+  , gpac = require('./plugins/gpac')
   , PassThrough = require('stream').PassThrough
 
 //check for testing
@@ -119,7 +119,7 @@ var importFile = function(path,done){
           var tmpPath = temp.path({dir: tmpDir})
           transcode.on('finish',function(){
             //rail through mp4box
-            MP4Box.hint(tmpPath,function(err){
+            gpac.hint(tmpPath,function(err){
               if(err) return next(err)
               readable = fs.createReadStream(tmpPath)
               readable.on('error',function(err){
