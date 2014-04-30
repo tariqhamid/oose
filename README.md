@@ -37,6 +37,10 @@ module.exports = {
   embed: {
     enabled: true,
     secrets: ['ooseembedapikey'] //CHANGE THIS!!!
+  },
+  shredder: {
+    enabled: true,
+    transcode: {videos: {enabled: true}}
   }
 }
 ```

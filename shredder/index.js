@@ -8,18 +8,20 @@ var readdirp = require('readdirp')
   , async = require('async')
   , log = require('winston')
   , crypto = require('crypto')
-  , ffmpeg = require('fluent-ffmpeg')
+  //, ffmpeg = require('fluent-ffmpeg')
   , Transcoder = require('stream-transcoder')
   , mmm = require('mmmagic')
   , temp = require('temp')
   , mkdirp = require('mkdirp')
   , gpac = require('./plugins/gpac')
   , url = require('../helpers/url')
-  , PassThrough = require('stream').PassThrough
-  , EventEmitter = require('events').EventEmitter
+
+var PassThrough = require('stream').PassThrough
+var EventEmitter = require('events').EventEmitter
 
 var Sniffer = function(){
   PassThrough.call(this)
+  this.timeout = null
 }
 Sniffer.prototype = Object.create(PassThrough.prototype)
 
@@ -168,6 +170,7 @@ Shredder.prototype.importFile = function(path,done){
 /**
  * Start shredder (but not necessarily the Shredder-queue)
  * @param {function} done
+ * @return {*}
  */
 Shredder.prototype.start = function(done){
   var self = this
@@ -190,7 +193,7 @@ Shredder.prototype.start = function(done){
     function(task,done){
       var path = task.path
       log.info('Starting to import ' + path)
-      importFile(path,function(err,sha1){
+      self.importFile(path,function(err,sha1){
         if(err) log.error('Failed to import ' + path + ': ' + err)
         else log.info('Import successful for ' + path + ' sha1 sum [' + sha1 + ']')
         done()
@@ -205,11 +208,10 @@ Shredder.prototype.start = function(done){
       self.q.push({path: entry.fullPath})
     })
     stream.on('end',function(){
-      setTimeout(self.run,1000)
+      self.timeout = setTimeout(self.run,1000)
     })
   }
   self.run()
-
   done()
 }
 
@@ -220,12 +222,7 @@ Shredder.prototype.start = function(done){
  */
 Shredder.prototype.stop = function(done){
   var self = this
-  //this looks excessive but its the only way to maintain the scope of the close functions
-  async.series([
-    function(next){next()},
-  ],function(err){
-    if(err) logger.error('Shredder failed to stop: ' + err)
-  })
+  clearTimeout(self.timeout)
   done()
 }
 
