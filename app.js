@@ -16,6 +16,7 @@ if(cluster.isMaster){
     , mesh = require('./mesh')
     , ping = require('./mesh/ping')
     , announce = require('./mesh/announce')
+    , shredder = require('./shredder')
   //make sure the root folder exists
   if(!fs.existsSync(config.get('root')))
     mkdirp.sync(config.get('root'))
@@ -65,6 +66,15 @@ if(cluster.isMaster){
         if(config.get('supervisor.enabled')){
           require('./supervisor').start(function(){
             logger.info('Supervisor started')
+            next()
+          })
+        } else next()
+      },
+      //start Shredder
+      function(next){
+        if(config.get('shredder.enabled')){
+          shredder.start(function(){
+            logger.info('Shredder started')
             next()
           })
         } else next()
@@ -141,6 +151,14 @@ if(cluster.isMaster){
             } else next()
           }
           checkWorkerCount()
+        },
+        //stop shredder
+        function(next){
+          if(config.get('shredder.enabled')){
+            logger.info('Stopping shredder')
+            shredder.stop(next)
+          }
+          else next()
         },
         //stop announce
         function(next){

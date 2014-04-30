@@ -4,45 +4,59 @@ var readdirp = require('readdirp')
   , path = require('path')
   , net = require('net')
   , restler = require('restler')
-  , config = require(__dirname + '/config')
+  , config = require('../config')
   , async = require('async')
   , log = require('winston')
   , crypto = require('crypto')
+  , ffmpeg = require('fluent-ffmpeg')
   , Transcoder = require('stream-transcoder')
   , mmm = require('mmmagic')
   , temp = require('temp')
   , mkdirp = require('mkdirp')
   , gpac = require('./plugins/gpac')
+  , url = require('../helpers/url')
   , PassThrough = require('stream').PassThrough
+  , EventEmitter = require('events').EventEmitter
 
-//check for testing
-var testing = false
-if('test' === process.argv[3]) testing = true
-
-//load profile
-var profile = path.resolve(process.argv[2])
-if(!fs.existsSync(profile))
-  throw new Error('Configuration profile not found')
-config.load(require(profile))
-
-//check if root exists ..l..
-if(!fs.existsSync(config.get('root')))
-  throw new Error('Root folder doesnt exist')
-
-var prismUrl = function(command){
-  return 'http://' + config.get('prism.host') + ':' + config.get('prism.port') + '/api/' + command
+var Sniffer = function(){
+  PassThrough.call(this)
 }
+Sniffer.prototype = Object.create(PassThrough.prototype)
 
-var nextPeer = function(done){
-  restler.get(prismUrl('peerNext')).on('complete',function(res){
+
+
+/**
+ * Shredder constructor
+ * @constructor
+ */
+var Shredder = function(){
+  var self = this
+  EventEmitter.call(self)
+}
+Shredder.prototype = Object.create(EventEmitter.prototype)
+
+
+/**
+ * Call prism for nextPeer
+ * @param {function} done Callback
+ */
+Shredder.prototype.nextPeer = function(done){
+  restler.get(url.prism('peerNext')).on('complete',function(res){
     if(res instanceof Error) return done(res)
     done(null,res.peer)
   })
 }
 
-var processVideo = function(path,mimeType,done){
+
+/**
+ * Process video
+ * @param {string} path Full path of file to process
+ * @param {string} mimeType MIME type of file
+ * @param {function} done Callback
+ */
+Shredder.prototype.processVideo = function(path,mimeType,done){
   var vid = new Transcoder(fs.createReadStream(path))
-//  vid.maxSize(1280,720)
+  //  vid.maxSize(1280,720)
   vid.videoCodec('h264')
   vid.videoBitrate(512 * 1024)
   vid.audioCodec('libfaac')
@@ -54,18 +68,20 @@ var processVideo = function(path,mimeType,done){
   done(null,vid)
 }
 
-var Sniffer = function(){
-  PassThrough.call(this)
-}
-Sniffer.prototype = Object.create(PassThrough.prototype)
 
-var importFile = function(path,done){
+/**
+ * Import a file
+ * @param {string} path Full path to file
+ * @param {function} done Callback
+ */
+Shredder.prototype.importFile = function(path,done){
+  var self = this
   var peer, client, sum, mimeType, transcode
   async.series(
     [
       //figure out our peer
       function(next){
-        nextPeer(function(err,result){
+        self.nextPeer(function(err,result){
           if(err) return next(err)
           peer = result
           next()
@@ -88,9 +104,9 @@ var importFile = function(path,done){
       },
       //check to see if this is a video file and if so process it
       function(next){
-        if(!config.get('transcode.videos.enabled')) return next()
+        if(!config.get('shredder.transcode.videos.enabled')) return next()
         if(!mimeType.match(/^video/)) return next()
-        processVideo(path,mimeType,function(err,result){
+        self.processVideo(path,mimeType,function(err,result){
           if(err) return next(err)
           transcode = result
           next()
@@ -114,7 +130,7 @@ var importFile = function(path,done){
           readable.pipe(sniff).pipe(client)
         } else {
           //setup temp folder
-          var tmpDir = config.get('root') + '/tmp'
+          var tmpDir = config.get('shredder.root') + '/tmp'
           if(!fs.existsSync(tmpDir)) mkdirp.sync(tmpDir)
           var tmpPath = temp.path({dir: tmpDir})
           transcode.on('finish',function(){
@@ -137,7 +153,7 @@ var importFile = function(path,done){
       },
       //remove the original file
       function(next){
-        if(testing) return next()
+        if(self.testing) return next()
         fs.unlink(path,next)
       }
     ],
@@ -148,26 +164,74 @@ var importFile = function(path,done){
   )
 }
 
-var q = async.queue(
-  function(task,done){
-    var path = task.path
-    log.info('Starting to import ' + path)
-    importFile(path,function(err,sha1){
-      if(err) log.error('Failed to import ' + path + ': ' + err)
-      else log.info('Import successful for ' + path + ' sha1 sum [' + sha1 + ']')
-      done()
-    })
-  },
-  config.get('concurrency') || 1
-)
 
-var run = function(){
-  var stream = readdirp({root: config.get('root'), directoryFilter: ['!tmp']})
-  stream.on('data',function(entry){
-    q.push({path: entry.fullPath})
-  })
-  stream.on('end',function(){
-    setTimeout(run,1000)
-  })
+/**
+ * Start shredder (but not necessarily the Shredder-queue)
+ * @param {function} done
+ */
+Shredder.prototype.start = function(done){
+  var self = this
+  //load profile
+  if(config.get('shredder.profile')){
+    self.profile = path.resolve(config.get('shredder.profile'))
+    if(!fs.existsSync(self.profile))
+      return done(new Error('Configuration profile not found'))
+    config.load(require(self.profile))
+  }
+  //check for testing
+  self.testing = !!config.get('shredder.testing')
+  //check if root exists
+  if(!config.get('shredder.root'))
+    config.set('shredder.root',config.get('root'))
+  if(!fs.existsSync(config.get('shredder.root')))
+    return done(new Error('Root folder does not exist'))
+
+  self.q = async.queue(
+    function(task,done){
+      var path = task.path
+      log.info('Starting to import ' + path)
+      importFile(path,function(err,sha1){
+        if(err) log.error('Failed to import ' + path + ': ' + err)
+        else log.info('Import successful for ' + path + ' sha1 sum [' + sha1 + ']')
+        done()
+      })
+    },
+      config.get('shredder.concurrency') || 1
+  )
+
+  self.run = function(){
+    var stream = readdirp({root: config.get('shredder.root'), directoryFilter: ['!tmp']})
+    stream.on('data',function(entry){
+      self.q.push({path: entry.fullPath})
+    })
+    stream.on('end',function(){
+      setTimeout(self.run,1000)
+    })
+  }
+  self.run()
+
+  done()
 }
-run()
+
+
+/**
+ * Stop processing
+ * @param {function} done
+ */
+Shredder.prototype.stop = function(done){
+  var self = this
+  //this looks excessive but its the only way to maintain the scope of the close functions
+  async.series([
+    function(next){next()},
+  ],function(err){
+    if(err) logger.error('Shredder failed to stop: ' + err)
+  })
+  done()
+}
+
+
+/**
+ * Export shredder instance
+ * @type {Mesh}
+ */
+module.exports = new Shredder()
