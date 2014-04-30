@@ -74,11 +74,12 @@ config.load({
     }
   },
   shredder: {
+    enabled: false,
     version: '0.0.1',
     concurrency: 1,
     transcode: {
       videos: {
-        enabled: true
+        enabled: false
       }
     }
   },
