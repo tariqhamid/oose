@@ -62,7 +62,7 @@ var announceListen = function(){
         //populate peer information to store
         function(next){
           //populate details
-          peer.latency = packet.sent - (oldPeer.sent || 0) - config.get('mesh.interval.announce')
+          peer.latency = packet.sent - (oldPeer.sent || 0) - config.get('mesh.announce.interval')
           if(peer.latency < 0) peer.latency = 0
           peer.sent = packet.sent
           peer.hostname = packet.hostname
@@ -176,7 +176,7 @@ var announceSend = function(){
     //setup the next timeout
     ],function(err){
       if(err) logger.error(err)
-      announceTimeout = setTimeout(announceSend,config.get('mesh.interval.announce'))
+      announceTimeout = setTimeout(announceSend,config.get('mesh.announce.interval'))
     }
   )
 }

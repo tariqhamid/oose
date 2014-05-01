@@ -27,8 +27,10 @@ if(cluster.isMaster){
     [
       //start mesh
       function(next){
-        logger.info('Starting mesh')
-        mesh.start(next)
+        if(config.get('mesh.enabled')){
+          logger.info('Starting mesh')
+          mesh.start(next)
+        }
       },
       //go to ready state 1
       function(next){
@@ -37,14 +39,18 @@ if(cluster.isMaster){
       },
       //start collectors
       function(next){
-        logger.info('Starting stats collection')
-        peerStats.start(config.get('mesh.interval.stat'),0)
-        peerStats.once('loopEnd',function(){next()})
+        if(config.get('mesh.enabled') && config.get('mesh.stat.enabled')){
+          logger.info('Starting stats collection')
+          peerStats.start(config.get('mesh.stat.interval'),0)
+          peerStats.once('loopEnd',function(){next()})
+        } else next()
       },
       //start ping
       function(next){
-        logger.info('Starting ping')
-        ping.start(next)
+        if(config.get('mesh.enabled') && config.get('mesh.ping.enabled')){
+          logger.info('Starting ping')
+          ping.start(next)
+        } else next()
       },
       //go to ready state 2
       function(next){
@@ -53,13 +59,17 @@ if(cluster.isMaster){
       },
       //start announce
       function(next){
-        logger.info('Starting announce')
-        announce.start(next)
+        if(config.get('mesh.enabled') && config.get('mesh.announce.enabled')){
+          logger.info('Starting announce')
+          announce.start(next)
+        } else next()
       },
       //start next peer selection
       function(next){
-        logger.info('Starting next peer selection')
-        peerNext.start(config.get('mesh.interval.peerNext'),config.get('mesh.interval.announce') * 2,next)
+        if(config.get('mesh.enabled') && config.get('mesh.peerNext.enabled')){
+          logger.info('Starting next peer selection')
+          peerNext.start(config.get('mesh.peerNext.interval'),config.get('mesh.announce.interval') * 2,next)
+        } else next()
       },
       //start the supervisor
       function(next){
@@ -157,28 +167,35 @@ if(cluster.isMaster){
           if(config.get('shredder.enabled')){
             logger.info('Stopping shredder')
             shredder.stop(next)
-          }
-          else next()
+          } else next()
         },
         //stop announce
         function(next){
-          logger.info('Stopping announce')
-          announce.stop(next)
+          if(config.get('mesh.enabled') && config.get('mesh.announce.enabled')){
+            logger.info('Stopping announce')
+            announce.stop(next)
+          }
         },
         //stop ping
         function(next){
-          logger.info('Stopping ping')
-          ping.stop(next)
+          if(config.get('mesh.enabled') && config.get('mesh.ping.enabled')){
+            logger.info('Stopping ping')
+            ping.stop(next)
+          } else next()
         },
         //stop next peer selection
         function(next){
-          logger.info('Stopping next peer selection')
-          peerNext.stop(next)
+          if(config.get('mesh.enabled') && config.get('mesh.nextPeer.enabled')){
+            logger.info('Stopping next peer selection')
+            peerNext.stop(next)
+          } else next()
         },
         //stats
         function(next){
-          logger.info('Stopping self stat collection')
-          peerStats.stop(next)
+          if(config.get('mesh.enabled') && config.get('mesh.stat.enabled')){
+            logger.info('Stopping self stat collection')
+            peerStats.stop(next)
+          } else next()
         },
         //go to ready state 0
         function(next){
@@ -187,8 +204,10 @@ if(cluster.isMaster){
         },
         //stop mesh
         function(next){
-          logger.info('Stopping mesh')
-          mesh.stop(next)
+          if(config.get('mesh.enabled')){
+            logger.info('Stopping mesh')
+            mesh.stop(next)
+          } else next()
         }
       ],
       function(err){
@@ -235,8 +254,9 @@ if(cluster.isWorker){
         else next()
       },
       function(next){
-        if(!config.get('mongoose.enabled')) return next()
-        mongoose.connect(config.get('mongoose.dsn'),config.get('mongoose.options'),next)
+        if(config.get('mongoose.enabled')){
+          mongoose.connect(config.get('mongoose.dsn'),config.get('mongoose.options'),next)
+        } else next()
       },
       function(next){
         if(config.get('mongoose.enabled') && config.get('embed.enabled')){
