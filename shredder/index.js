@@ -8,8 +8,7 @@ var readdirp = require('readdirp')
   , async = require('async')
   , log = require('winston')
   , crypto = require('crypto')
-  //, ffmpeg = require('fluent-ffmpeg')
-  , Transcoder = require('stream-transcoder')
+  , ffmpeg = require('fluent-ffmpeg')
   , mmm = require('mmmagic')
   , temp = require('temp')
   , mkdirp = require('mkdirp')
@@ -57,17 +56,26 @@ Shredder.prototype.nextPeer = function(done){
  * @param {function} done Callback
  */
 Shredder.prototype.processVideo = function(path,mimeType,done){
-  var vid = new Transcoder(fs.createReadStream(path))
-  //  vid.maxSize(1280,720)
-  vid.videoCodec('h264')
-  vid.videoBitrate(512 * 1024)
-  vid.audioCodec('libfaac')
-  vid.audioBitrate(128 * 1024)
-  vid.custom('crf','23')
-  vid.custom('preset','medium')
-  vid.custom('movflags','+faststart')
-  vid.format('mp4')
-  done(null,vid)
+  var ffmeta = ffmpeg.Metadata
+  ffmeta(path,function(metadata,err){
+    if(!err){
+      var infs = fs.createReadStream(path)
+      infs.on('error',done) // calls as done(err) so skipped the closure - FIXME ?
+      var ffproc = new ffmpeg({source:infs,nolog:true})
+      ffproc.on('error',done) // calls as done(err) so skipped the closure - FIXME ?
+      //  vid.maxSize(1280,720)
+      ffproc.addOption('-preset','medium')
+      ffproc.withVideoCodec('libx264')
+      ffproc.withVideoBitrate('512k')
+      ffproc.addOption('-crf',23)
+      ffproc.withAudioCodec('libfaac')
+      ffproc.withAudioChannels(2)
+      ffproc.withAudioBitrate('128k')
+      ffproc.toFormat('mp4')
+      ffproc.addOption('-movflags','+faststart')
+      done(null,ffproc)
+    } else done(err)
+  })
 }
 
 
@@ -78,7 +86,7 @@ Shredder.prototype.processVideo = function(path,mimeType,done){
  */
 Shredder.prototype.importFile = function(path,done){
   var self = this
-  var peer, client, sum, mimeType, transcode
+  var peer, client, sum, mimeType, ffProcess
   async.series(
     [
       //figure out our peer
@@ -110,7 +118,7 @@ Shredder.prototype.importFile = function(path,done){
         if(!mimeType.match(/^video/)) return next()
         self.processVideo(path,mimeType,function(err,result){
           if(err) return next(err)
-          transcode = result
+          ffProcess = result
           next()
         })
       },
@@ -126,7 +134,7 @@ Shredder.prototype.importFile = function(path,done){
           sum = shasum.digest('hex')
         })
         client.on('end',next)
-        if(!transcode){
+        if(!ffProcess){
           readable = fs.createReadStream(path)
           readable.on('error',next)
           readable.pipe(sniff).pipe(client)
@@ -135,7 +143,7 @@ Shredder.prototype.importFile = function(path,done){
           var tmpDir = config.get('shredder.root') + '/tmp'
           if(!fs.existsSync(tmpDir)) mkdirp.sync(tmpDir)
           var tmpPath = temp.path({dir: tmpDir})
-          transcode.on('finish',function(){
+          ffProcess.on('end',function(){
             //rail through mp4box
             gpac.hint(tmpPath,function(err){
               if(err) return next(err)
@@ -150,7 +158,7 @@ Shredder.prototype.importFile = function(path,done){
               readable.pipe(sniff).pipe(client)
             })
           })
-          transcode.writeToFile(tmpPath)
+          ffProcess.saveToFile(tmpPath)
         }
       },
       //remove the original file
