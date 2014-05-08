@@ -29,7 +29,7 @@ config.load({
     replication: guessedIP,
     management: guessedIP
   },
-  root: './data',
+  root: __dirname + '/_data',
   clones: {
     min: 2,
     max: 2

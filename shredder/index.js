@@ -6,7 +6,7 @@ var readdirp = require('readdirp')
   , restler = require('restler')
   , config = require('../config')
   , async = require('async')
-  , log = require('winston')
+  , logger = require('../helpers/logger')
   , crypto = require('crypto')
   , ffmpeg = require('fluent-ffmpeg')
   , mmm = require('mmmagic')
@@ -14,10 +14,9 @@ var readdirp = require('readdirp')
   , mkdirp = require('mkdirp')
   , gpac = require('./plugins/gpac')
   , url = require('../helpers/url')
+  , EventEmitter = require('events').EventEmitter
 
 var PassThrough = require('stream').PassThrough
-var EventEmitter = require('events').EventEmitter
-
 var Sniffer = function(){
   PassThrough.call(this)
   this.timeout = null
@@ -193,17 +192,20 @@ Shredder.prototype.start = function(done){
   self.testing = !!config.get('shredder.testing')
   //check if root exists
   if(!config.get('shredder.root'))
-    config.set('shredder.root',config.get('root'))
+    config.set('shredder.root',path.resolve(__dirname + '/../_shredbox'))
+  //make sure the root folder exists
   if(!fs.existsSync(config.get('shredder.root')))
-    return done(new Error('Root folder does not exist'))
+    mkdirp.sync(config.get('shredder.root'))
+  if(!fs.existsSync(config.get('shredder.root')))
+    return done(new Error('Root folder [' + path.resolve(config.get('shredder.root')) + '] does not exist'))
 
   self.q = async.queue(
     function(task,done){
       var path = task.path
-      log.info('Starting to import ' + path)
+      logger.info('Starting to import ' + path)
       self.importFile(path,function(err,sha1){
-        if(err) log.error('Failed to import ' + path + ': ' + err)
-        else log.info('Import successful for ' + path + ' sha1 sum [' + sha1 + ']')
+        if(err) logger.error('Failed to import ' + path + ': ' + err)
+        else logger.info('Import successful for ' + path + ' sha1 sum [' + sha1 + ']')
         done()
       })
     },

@@ -83,9 +83,11 @@ if(cluster.isMaster){
       //start Shredder
       function(next){
         if(config.get('shredder.enabled')){
-          shredder.start(function(){
-            logger.info('Shredder started')
-            next()
+          shredder.start(function(err){
+            if(!err){
+              logger.info('Shredder started')
+              next()
+            } else next(err)
           })
         } else next()
       }
