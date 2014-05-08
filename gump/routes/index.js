@@ -23,9 +23,14 @@ exports.embed = require('./embed')
 exports.index = function(req,res){
   File
     .findInPath(req.query.path)
+    .where('name',new RegExp(req.query.search || '.*','i'))
     .exec(function(err,results){
       if(err) return res.send(err.message)
-      res.render('index',{path: req.query.path || '/', files: results})
+      res.render('index',{
+        path: req.query.path || '/',
+        files: results,
+        search: req.query.search
+      })
     }
   )
 }
