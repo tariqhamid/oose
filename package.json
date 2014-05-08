@@ -22,6 +22,8 @@
     "cluster-master": "^0.2.0",
     "commander": "^2.2.0",
     "connect-busboy": "0.0.1",
+    "connect-flash": "^0.1.1",
+    "connect-redis": "1.4.7",
     "diskspace": "^0.1.6",
     "express": "^3.5.2",
     "fluent-ffmpeg": "^1.7.1",

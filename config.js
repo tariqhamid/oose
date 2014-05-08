@@ -88,6 +88,10 @@ config.load({
     tmpDir: __dirname + '/gump/tmp',
     embed: {
       seed: '3123572'
+    },
+    cookie: {
+      secret: 'oose',
+      maxAge: 2592000
     }
   },
   mongoose: {

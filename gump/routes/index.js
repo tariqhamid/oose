@@ -5,8 +5,8 @@ var temp = require('temp')
   , mkdirp = require('mkdirp')
   , mmm = require('mmmagic')
   , async = require('async')
-  , path = require('path')
   , File = require('../models/file').model
+
 
 /**
  * Embed
@@ -21,10 +21,43 @@ exports.embed = require('./embed')
  * @param {object} res
  */
 exports.index = function(req,res){
-  File.find({path: /^\/[^\/]+$/},function(err,results){
-    if(err) return res.send(err.message)
-    res.render('index',{path: '/', files: results})
-  })
+  File
+    .findInPath(req.query.path)
+    .exec(function(err,results){
+      if(err) return res.send(err.message)
+      res.render('index',{path: req.query.path || '/', files: results})
+    }
+  )
+}
+
+
+/**
+ * Process action for index
+ * @param {object} req
+ * @param {object} res
+ */
+exports.folderRemove = function(req,res){
+  async.each(
+    req.body.remove,
+    function(item,next){
+      File.findOne({_id: item},function(err,result){
+        if(err) return next(err.message)
+        if(!result) return next('Could not find item ' + item)
+        result.remove(function(err){
+          if(err) return next(err.message)
+          next()
+        })
+      })
+    },
+    function(err){
+      if(err){
+        req.flash('error','Failed to remove item ' + err)
+      } else {
+        req.flash('success','Item(s) removed successfully')
+      }
+      res.redirect('/?path=' + req.query.path)
+    }
+  )
 }
 
 
@@ -69,9 +102,7 @@ exports.upload = function(req,res){
               doc = new File()
               doc.name = file.filename
               doc.tmp = file.tmp
-              doc.path = '/' + [req.query.path,file.filename]
-                .filter(function(i){return (i && i !== '/')})
-                .join('/')
+              doc.path = doc.absolutePath(req.query.path,req.body.name)
               doc.mimeType = mimeType
               next()
             },
@@ -96,4 +127,41 @@ exports.upload = function(req,res){
       }
     )
   })
+}
+
+
+/**
+ * Create folder
+ * @param {object} req
+ * @param {object} res
+ */
+exports.folderCreate = function(req,res){
+  var doc
+  async.series(
+    [
+      function(next){
+        doc = new File()
+        doc.name = req.body.name
+        doc.path = doc.absolutePath(req.query.path,req.body.name)
+        doc.folder = true
+        doc.mimeType = 'folder'
+        doc.status = 'ok'
+        next()
+      },
+      function(next){
+        doc.save(function(err){
+          if(err) return next(err.message)
+          next()
+        })
+      }
+    ],
+    function(err){
+      if(err){
+        req.flash('error','Failed to create folder ' + err)
+      } else {
+        req.flash('success','Folder created successfully')
+      }
+      res.redirect('/?path=' + req.query.path)
+    }
+  )
 }

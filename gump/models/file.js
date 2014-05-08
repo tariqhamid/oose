@@ -5,6 +5,11 @@ var mongoose = require('mongoose')
 mongoose.plugin(require('mongoose-list'))
 
 schema = new mongoose.Schema({
+  folder: {
+    type: Boolean,
+    require: true,
+    default: false
+  },
   name: {
     type: String,
     required: true
@@ -43,6 +48,20 @@ schema = new mongoose.Schema({
   }
 })
 
+
+/**
+ * Create proper absolute path from a root and a new name
+ * @param {string} root
+ * @param {string} name
+ * @return {string}
+ */
+schema.methods.absolutePath = function(root,name){
+  if(root.indexOf('/') !== 0)
+    root = '/' + root
+  return root + '/' + name
+}
+
+
 // handling of created/modified
 schema.pre('save',function(next){
   var now = new Date()
@@ -65,3 +84,16 @@ exports.schema = schema
  * Mongoose model
  */
 exports.model = mongoose.model('File',schema)
+
+
+/**
+ * Find items in a path (directly owned)
+ * @param {string} path
+ * @return {object} Mongoose query
+ */
+exports.model.findInPath = function(path){
+  var exp = new RegExp('^' + (!path || path === '/' ? '' : path) + '/[^\/]+$','i')
+  var query = exports.model.find({path: exp})
+  query.sort('-folder name')
+  return query
+}
