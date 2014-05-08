@@ -16,6 +16,7 @@ var readdirp = require('readdirp')
   , url = require('../helpers/url')
   , EventEmitter = require('events').EventEmitter
 
+// set up a stream sniffer for output sha1 hashing
 var PassThrough = require('stream').PassThrough
 var Sniffer = function(){
   PassThrough.call(this)
