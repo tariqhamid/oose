@@ -1,7 +1,7 @@
 'use strict';
 var fs = require('fs')
   , async = require('async')
-  , logger = require('../../helpers/logger')
+  , logger = require('../../helpers/logger').create('gump:embed')
   , Embed = require('../models/embed').model
 
 

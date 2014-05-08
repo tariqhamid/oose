@@ -2,7 +2,7 @@
 /*jshint bitwise: false*/
 var Collector = require('../helpers/collector')
   , redis = require('../helpers/redis')
-  , logger = require('../helpers/logger')
+  , logger = require('../helpers/logger').create('collector:peerStats')
   , config = require('../config')
   , os = require('os')
   , ds = require('diskspace')

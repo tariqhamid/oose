@@ -4,7 +4,7 @@ var cluster = require('cluster')
   , config = require('./config')
   , fs = require('fs')
   , mkdirp = require('mkdirp')
-  , logger = require('./helpers/logger')
+  , logger = require('./helpers/logger').create('main')
   , async = require('async')
 
 //master startup
@@ -101,7 +101,7 @@ if(cluster.isMaster){
       if(config.get('store.enabled')){
         require('./tasks/inventory').start(function(err,fileCount){
           if(err) logger.error(err)
-          else logger.info('[Inventory] Initial inventory is completed and read ' + fileCount + ' files')
+          else logger.info('Initial inventory is completed and read ' + fileCount + ' files')
         })
       }
       //start workers

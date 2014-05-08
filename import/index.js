@@ -2,7 +2,7 @@
 var net = require('net')
   , file = require('../helpers/file')
   , config = require('../config')
-  , logger = require('../helpers/logger')
+  , logger = require('../helpers/logger').create('import')
   , running = false
 
 //setup tcp server if enabled

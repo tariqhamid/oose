@@ -1,6 +1,6 @@
 'use strict';
 var communicator = require('../helpers/communicator')
-  , logger = require('../helpers/logger')
+  , logger = require('../helpers/logger').create('mesh')
   , redis = require('../helpers/redis')
   , config = require('../config')
   , async = require('async')

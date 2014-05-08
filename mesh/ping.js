@@ -1,7 +1,7 @@
 'use strict';
 var mesh = require('../mesh')
   , config = require('../config')
-  , logger = require('../helpers/logger')
+  , logger = require('../helpers/logger').create('mesh:ping')
   , util = require('util')
   , shortId = require('shortid')
 
@@ -31,7 +31,7 @@ var pingSend = function(){
     token:thisToken,
     starttime:new Date().getTime()
   })
-  if(config.get('mesh.debug') > 1) logger.info('[MESH PING] hosts:' + util.inspect(pingHosts))
+  if(config.get('mesh.debug') > 1) logger.info('hosts:' + util.inspect(pingHosts))
   pingTimeout = setTimeout(function(){pingSend(mesh)},config.get('mesh.ping.interval'))
 }
 

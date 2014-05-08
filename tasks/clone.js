@@ -4,7 +4,7 @@ var file = require('../helpers/file')
   , net = require('net')
   , fs = require('fs')
   , async = require('async')
-  , logger = require('../helpers/logger')
+  , logger = require('../helpers/logger').create('task:fileClone')
   , prettyBytes = require('pretty-bytes')
   , config = require('../config')
 
@@ -16,11 +16,11 @@ var file = require('../helpers/file')
  */
 var clone = function(job,cb){
   var done = function(err){
-    if(err) logger.error('[CLONE] ' + job.sha1 + ' failed to replicate: ' + err)
+    if(err) logger.error(job.sha1 + ' failed to replicate: ' + err)
     cb(err)
   }
   if('function' !== typeof done) done = function(){}
-  logger.info('[CLONE] Starting to replicate ' + job.sha1)
+  logger.info('Starting to replicate ' + job.sha1)
   //track some stats
   var bytesSent = 0
   var start = new Date().getTime()
@@ -42,7 +42,7 @@ var clone = function(job,cb){
       var duration = (new Date().getTime() - start) / 1000
       var bytesPerSec = prettyBytes(bytesSent / duration) + '/sec'
       logger.info(
-        '[CLONE] Finished replicating ' + job.sha1 +
+        'Finished replicating ' + job.sha1 +
         ' to ' + peer.hostname + '.' + peer.domain +
         ' in ' + duration + ' seconds ' +
         'averaging ' + bytesPerSec)

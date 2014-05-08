@@ -1,6 +1,6 @@
 'use strict';
 var Collector = require('../helpers/collector')
-  , logger = require('../helpers/logger')
+  , logger = require('../helpers/logger').create('collector:peerNext')
   , redis = require('../helpers/redis')
   , config = require('../config')
 

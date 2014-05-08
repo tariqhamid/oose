@@ -1,6 +1,6 @@
 'use strict';
 var mesh = require('../mesh')
-  , logger = require('../helpers/logger')
+  , logger = require('../helpers/logger').create('mesh:announce')
   , redis = require('../helpers/redis')
   , config = require('../config')
   , os = require('os')
@@ -11,7 +11,7 @@ var mesh = require('../mesh')
 var announceLog = function(selfPeer,oldPeer,peer,packet){
   if(config.get('mesh.debug') || (packet.hostname !== oldPeer.hostname)){
     logger.info(
-        '[MESH ANNOUNCE] ' + peer.hostname +
+        peer.hostname +
         ' (' + peer.ip + ':' + peer.meshPort + ')' +
         ' @ ' + new Date(peer.sent).toLocaleTimeString() +
         ' (latency ' + peer.latency + ')' +
@@ -19,11 +19,11 @@ var announceLog = function(selfPeer,oldPeer,peer,packet){
     )
   }
   if(config.get('mesh.debug') > 1){
-    logger.info('[MESH ANNOUNCE] Announce:')
+    logger.info('Announce:')
     logger.info(os.EOL + util.inspect(peer))
   }
   if(config.get('mesh.debug') > 2){
-    logger.info('[MESH ANNOUNCE] Self Peer:')
+    logger.info('Self Peer:')
     logger.info(os.EOL + util.inspect(selfPeer))
   }
 }

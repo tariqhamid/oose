@@ -1,7 +1,7 @@
 'use strict';
 var config = require('../config')
   , redis = require('../helpers/redis')
-  , logger = require('../helpers/logger')
+  , logger = require('../helpers/logger').create('supervisor')
 
 var runlevel = 'stopped'
 var msg = {
