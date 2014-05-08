@@ -8,3 +8,6 @@ config.local.js
 /foo
 embed/views/*
 embed/public/*
+gump/public/bower_components
+npm-debug.log
+tmp

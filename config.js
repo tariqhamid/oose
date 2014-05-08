@@ -46,7 +46,7 @@ config.load({
     ping: { enabled: true, interval: 1000 },
     stat: { enabled: true, interval: 1000 },
     peerNext: { enabled: true, interval: 5000 },
-    announce: { enabled: true, interval: 5000 },
+    announce: { enabled: true, interval: 5000 }
   },
   supervisor: {
     enabled: false,
@@ -81,12 +81,14 @@ config.load({
       }
     }
   },
-  embed: {
+  gump: {
     enabled: false,
     port: 3004,
     host: null,
-    seed: '3123572',
-    secrets: []
+    tmpDir: __dirname + '/gump/tmp',
+    embed: {
+      seed: '3123572'
+    }
   },
   mongoose: {
     enabled: false,

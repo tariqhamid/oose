@@ -14,8 +14,6 @@ $ npm install
 
 First, setup a local config file like so.
 
-**NOTE** Remember to change the secret for the embed API access
-
 ```js
 'use strict';
 module.exports = {
@@ -34,9 +32,8 @@ module.exports = {
   mongoose: {
     enabled: true
   },
-  embed: {
+  gump: {
     enabled: true,
-    secrets: ['ooseembedapikey'] //CHANGE THIS!!!
   },
   shredder: {
     enabled: true,

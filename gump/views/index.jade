@@ -1,0 +1,47 @@
+extends layout
+append css
+  link(type='text/css', rel='stylesheet', href='/css/dropzone.css')
+append js
+  script(src='/bower_components/dropzone/downloads/dropzone.min.js')
+block content
+  .container
+    div
+      .pull-right
+        form.form-inline#tableSearch(role='form', action='', method='get')
+          .form-group
+            input.form-control(type='text', name='search', placeholder='Filter Results', value=search)
+      h1 Files
+    div
+      span.glyphicon.glyphicon-folder-open  #{path}
+    #dropzone
+      form.dropzone(action='/upload?path=#{path}', method='post', id='file-upload')
+    form(method='post', role='form')
+      table.table.table-striped
+        tr
+          th
+          th
+          th Name
+          th Type
+          th Created
+          th Status
+        if files.length
+          each file in files
+            tr
+              td
+                input(type='checkbox', name='remove[]', value=file.id)
+              td
+                if file.folder
+                  span.glyphicon.glyphicon-folder-close
+                else
+                  span.glyphicon.glyphicon-file
+              td= file.name
+              td= file.mimeType
+              td= new Date(file.metrics.dateCreated).toDateString()
+              td= file.status
+        else
+          tr
+            td(colspan='4') No entries exist
+      div
+        span #{count || 0} entries
+        div
+          button.btn.btn-danger#tableDelete(type='submit') Delete Checked

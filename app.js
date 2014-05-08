@@ -235,7 +235,7 @@ if(cluster.isWorker){
     , storeExport = require('./export')
     , prism = require('./prism')
     , mongoose = require('mongoose')
-    , embed = require('./embed')
+    , gump = require('./gump')
   async.parallel(
     [
       function(next){
@@ -259,8 +259,8 @@ if(cluster.isWorker){
         } else next()
       },
       function(next){
-        if(config.get('mongoose.enabled') && config.get('embed.enabled')){
-          embed.start(next)
+        if(config.get('mongoose.enabled') && config.get('gump.enabled')){
+          gump.start(next)
         } else next()
       }
     ],
@@ -288,8 +288,8 @@ if(cluster.isWorker){
           else next()
         },
         function(next){
-          if(config.get('embed.enabled'))
-            embed.stop(next)
+          if(config.get('gump.enabled'))
+            gump.stop(next)
           else next()
         }
       ],
