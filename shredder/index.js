@@ -1,9 +1,10 @@
 'use strict';
 var readdirp = require('readdirp')
   , fs = require('fs')
+  , util = require('util')
   , path = require('path')
   , net = require('net')
-  , restler = require('restler')
+  , redis = require('../helpers/redis')
   , config = require('../config')
   , async = require('async')
   , logger = require('../helpers/logger').create('shredder')
@@ -13,7 +14,6 @@ var readdirp = require('readdirp')
   , temp = require('temp')
   , mkdirp = require('mkdirp')
   , gpac = require('./plugins/gpac')
-  , url = require('../helpers/url')
   , Sniffer = require('../helpers/Sniffer')
   , EventEmitter = require('events').EventEmitter
 
@@ -35,9 +35,14 @@ Shredder.prototype = Object.create(EventEmitter.prototype)
  * @param {function} done Callback
  */
 Shredder.prototype.nextPeer = function(done){
-  restler.get(url.prism('peerNext')).on('complete',function(res){
-    if(res instanceof Error) return done(res)
-    done(null,res.peer)
+  redis.hgetall('peer:next',function(err,peer){
+    if('undefined' === typeof peer || null === peer){
+      err = 'Could not obtain a peer from redis'
+    }
+    if(!err){
+      peer.host = peer.hostname + '.' + peer.domain
+      done(null,peer)
+    } else done(err)
   })
 }
 
@@ -45,30 +50,39 @@ Shredder.prototype.nextPeer = function(done){
 /**
  * Process video
  * @param {string} path Full path of file to process
- * @param {string} mimeType MIME type of file
  * @param {function} done Callback
  */
-Shredder.prototype.processVideo = function(path,mimeType,done){
+Shredder.prototype.getVideoInfo = function(path,done){
   var ffmeta = ffmpeg.Metadata
   ffmeta(path,function(metadata,err){
     if(!err){
-      var infs = fs.createReadStream(path)
-      infs.on('error',done) // calls as done(err) so skipped the closure - FIXME ?
-      var ffproc = new ffmpeg({source:infs,nolog:true})
-      ffproc.on('error',done) // calls as done(err) so skipped the closure - FIXME ?
-      //  vid.maxSize(1280,720)
-      ffproc.addOption('-preset','medium')
-      ffproc.withVideoCodec('libx264')
-      ffproc.withVideoBitrate('512k')
-      ffproc.addOption('-crf',23)
-      ffproc.withAudioCodec('libfaac')
-      ffproc.withAudioChannels(2)
-      ffproc.withAudioBitrate('128k')
-      ffproc.toFormat('mp4')
-      ffproc.addOption('-movflags','+faststart')
-      done(null,ffproc)
+      done(null,metadata)
     } else done(err)
   })
+}
+
+
+/**
+ * Process video
+ * @param {string} path Full path of file to process
+ * @param {function} done Callback
+ */
+Shredder.prototype.processVideo = function(path,done){
+  var infs = fs.createReadStream(path)
+  infs.on('error',done) // calls as done(err) so skipped the closure - FIXME ?
+  var ffproc = new ffmpeg({source:infs,nolog:true})
+  ffproc.on('error',done) // calls as done(err) so skipped the closure - FIXME ?
+//  ffproc.withSize('?x360')
+  ffproc.addOption('-preset','medium')
+  ffproc.withVideoCodec('libx264')
+  ffproc.withVideoBitrate('200k')
+  ffproc.addOption('-crf',23)
+  ffproc.withAudioCodec('libfaac')
+  ffproc.withAudioChannels(2)
+  ffproc.withAudioBitrate('128k')
+  ffproc.toFormat('mp4')
+  ffproc.addOption('-movflags','+faststart')
+  done(null,ffproc)
 }
 
 
@@ -79,19 +93,22 @@ Shredder.prototype.processVideo = function(path,mimeType,done){
  */
 Shredder.prototype.importFile = function(path,done){
   var self = this
-  var peer, client, sum, mimeType, ffProcess
+  var peer, client, sum, mimeType, videoInfo, ffProcess
   async.series(
     [
       //figure out our peer
       function(next){
+        logger.info('Checking nextPeer')
         self.nextPeer(function(err,result){
-          if(err) return next(err)
-          peer = result
-          next()
+          if(!err){
+            peer = result
+            next()
+          } else next(err)
         })
       },
       //connect to the peer
       function(next){
+        logger.info('Connecting nextPeer:',util.inspect(peer))
         client = net.connect(peer.port,peer.host)
         client.on('error',next)
         client.on('connect',next)
@@ -100,19 +117,32 @@ Shredder.prototype.importFile = function(path,done){
       function(next){
         var magic = new mmm.Magic(mmm.MAGIC_MIME_TYPE)
         magic.detectFile(path,function(err,result){
-          if(err) return next(err)
-          mimeType = result
-          next()
+          if(!err){
+            mimeType = result
+            next()
+          } else next(err)
         })
       },
-      //check to see if this is a video file and if so process it
+      //check to see if this is a video file and if so obtain metadata (info)
       function(next){
         if(!config.get('shredder.transcode.videos.enabled')) return next()
-        if(!mimeType.match(/^video/)) return next()
-        self.processVideo(path,mimeType,function(err,result){
-          if(err) return next(err)
-          ffProcess = result
-          next()
+        if(!mimeType.match(/^video/))
+          logger.warn('MIME type is not video/* (detected ' + mimeType + ')')
+        self.getVideoInfo(path,function(err,result){
+          if(!err){
+            videoInfo = result
+            logger.info('videoInfo:' + util.inspect(videoInfo))
+            next()
+          } else next(err)
+        })
+      },
+      //process it
+      function(next){
+        self.processVideo(path,function(err,result){
+          if(!err){
+            ffProcess = result
+            next()
+          } else next(err)
         })
       },
       //send file to peer
@@ -139,16 +169,17 @@ Shredder.prototype.importFile = function(path,done){
           ffProcess.on('end',function(){
             //rail through mp4box
             gpac.hint(tmpPath,function(err){
-              if(err) return next(err)
-              readable = fs.createReadStream(tmpPath)
-              readable.on('error',function(err){
-                fs.unlinkSync(tmpPath)
-                next(err)
-              })
-              readable.on('end',function(){
-                fs.unlinkSync(tmpPath)
-              })
-              readable.pipe(sniff).pipe(client)
+              if(!err){
+                readable = fs.createReadStream(tmpPath)
+                readable.on('error',function(err){
+                  fs.unlinkSync(tmpPath)
+                  next(err)
+                })
+                readable.on('end',function(){
+                  fs.unlinkSync(tmpPath)
+                })
+                readable.pipe(sniff).pipe(client)
+              } else next(err)
             })
           })
           ffProcess.saveToFile(tmpPath)
@@ -156,13 +187,15 @@ Shredder.prototype.importFile = function(path,done){
       },
       //remove the original file
       function(next){
-        if(self.testing) return next()
-        fs.unlink(path,next)
+        if(!self.testing){
+          fs.unlink(path,next)
+        } else next()
       }
     ],
     function(err){
-      if(err) return done(err)
-      done(null,sum)
+      if(!err){
+        done(null,sum)
+      } else done(err)
     }
   )
 }
