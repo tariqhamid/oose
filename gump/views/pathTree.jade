@@ -1,14 +1,13 @@
-mixin pathTree(path,file)
+mixin pathTree(god,path,file)
   div
-    a(href='/?path=/')
+    a(href='/?path=,#{god ? "&god=on": ""}')
       span.glyphicon.glyphicon-folder-open  /
-    - var currentPath = '/'
-    - var items = path.split('/')
-    each item, i in items
-      - currentPath += (currentPath !== '/' ? '/' : '') + item
+    - var currentPath = []
+    each item, i in path
+      - currentPath.push(item)
       if item
         | &nbsp;
-        a(href='/?path=#{currentPath}') #{item}
+        a(href='/?path=,#{currentPath.join(",")},#{god ? "&god=on": ""}')= item
         span  /
     if file
       span  #{file}

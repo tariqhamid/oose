@@ -56,7 +56,7 @@ app.get('/users/edit',routes.user.form)
 //routing
 app.post('/upload',routes.upload)
 app.post('/folderCreate',routes.folderCreate)
-app.post('/',routes.folderRemove)
+app.post('/',routes.fileRemove)
 app.get('/embed/:handle',routes.embed.render)
 app.get('/api/embedDetails/:handle',routes.embed.apiDetails)
 app.get('/file',routes.file)

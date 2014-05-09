@@ -9,6 +9,11 @@ block content
     div
       .pull-right
         form.form-inline#tableSearch(role='form', action='', method='get')
+          input#path(type='hidden', name='path', value=pathEncoded)
+          if user.admin
+            .form-group
+              input.checkbox(type='checkbox', name='god', onchange='$("#path").val(","); $("#tableSearch").submit()', checked=god)
+              span God Mode
           .form-group
             input.form-control(type='text', name='search', placeholder='Filter Results', value=search)
           .form-group
@@ -17,10 +22,10 @@ block content
               |  Create Folder
       h1 Files
     +alerts()
-    +pathTree(path)
+    +pathTree(god,path)
     #dropzone
-      form.dropzone(action='/upload?path=#{path}', method='post', id='file-upload')
-    form(method='post', role='form')
+      form.dropzone(action='/upload?path=#{pathEncoded}#{god ? "&god=on": ""}', method='post', id='file-upload')
+    form(method='post', role='form', action='/?path=#{pathEncoded}')
       table.table.table-striped
         tr
           th
@@ -42,9 +47,9 @@ block content
                   span.glyphicon.glyphicon-file
               td
                 if file.folder
-                  a(href='/?path=#{file.path}')= file.name
+                  a(href='/?path=#{file.encode(file.relative(god))}#{god ? "&god=on": ""}')= file.name
                 else
-                  a(href='/file?id=#{file.id}')= file.name
+                  a(href='/file?id=#{file.id}#{god ? "&god=on": ""}')= file.name
               td= file.mimeType
               td= new Date(file.metrics.dateCreated).toDateString()
               td= file.status
@@ -58,7 +63,7 @@ block content
   #folderCreate.modal(tabindex='-1',role='dialog',aria-labelledby='folderCreate',aria-hidden='true')
     .modal-dialog.modal-sm
       .modal-content
-        form(method='post', action='/folderCreate?path=#{path}')
+        form(method='post', action='/folderCreate?path=#{pathEncoded}#{god ? "&god=on": ""}')
           button.close(type='button',data-dismiss='modal',aria-hidden='true')
           .modal-header
             h2 Create Folder in #{path}

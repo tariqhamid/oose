@@ -28,14 +28,20 @@ exports.user = require('./user')
  * @param {object} res
  */
 exports.index = function(req,res){
+  var path = File.decode(req.query.path)
+  if(!req.query.god || !req.session.user.admin)
+    path.unshift(req.session.user._id)
   File
-    .findInPath(req.query.path)
+    .findChildren(path)
     .where('name',new RegExp(req.query.search || '.*','i'))
     .exec(function(err,results){
       if(err) return res.send(err.message)
+      if(!req.query.god || !req.session.user.admin) path.shift()
       res.render('index',{
-        path: req.query.path || '/',
+        path: path,
+        pathEncoded: File.encode(path),
         files: results,
+        god: req.query.god ? true : false,
         search: req.query.search
       })
     }
@@ -48,7 +54,7 @@ exports.index = function(req,res){
  * @param {object} req
  * @param {object} res
  */
-exports.folderRemove = function(req,res){
+exports.fileRemove = function(req,res){
   async.each(
     req.body.remove,
     function(item,next){
@@ -67,7 +73,7 @@ exports.folderRemove = function(req,res){
       } else {
         req.flash('success','Item(s) removed successfully')
       }
-      res.redirect('/?path=' + req.query.path)
+      res.redirect('/?path=' + req.query.path + (req.query.god ? '&god=on' : ''))
     }
   )
 }
@@ -81,7 +87,9 @@ exports.folderRemove = function(req,res){
 exports.upload = function(req,res){
   var body = {}
   var files = []
-
+  var path = File.decode(req.query.path)
+  if(!req.query.god || !req.session.user.admin)
+    path.unshift(req.session.user._id)
   req.pipe(req.busboy)
   req.busboy.on('field',function(key,value){
     body[key] = value
@@ -115,12 +123,18 @@ exports.upload = function(req,res){
                 next()
               })
             },
+            //create parents
+            function(next){
+              File.mkdirp(Object.create(path),next)
+            },
             //create doc
             function(next){
+              var currentPath = path.slice(0)
+              currentPath.push(file.filename)
               doc = new File()
               doc.name = file.filename
               doc.tmp = file.tmp
-              doc.path = doc.absolutePath(req.query.path,file.filename)
+              doc.path = currentPath
               doc.mimeType = mimeType
               next()
             },
@@ -155,12 +169,19 @@ exports.upload = function(req,res){
  */
 exports.folderCreate = function(req,res){
   var doc
+  var path = File.decode(req.query.path)
+  path.unshift(req.session.user._id)
   async.series(
     [
+      //create parents
       function(next){
+        File.mkdirp(path,next)
+      },
+      function(next){
+        path.push(req.body.name)
         doc = new File()
         doc.name = req.body.name
-        doc.path = doc.absolutePath(req.query.path,req.body.name)
+        doc.path = path
         doc.folder = true
         doc.mimeType = 'folder'
         doc.status = 'ok'
@@ -179,7 +200,7 @@ exports.folderCreate = function(req,res){
       } else {
         req.flash('success','Folder created successfully')
       }
-      res.redirect('/?path=' + req.query.path)
+      res.redirect('/?path=' + req.query.path + (req.query.god ? '&god=on' : ''))
     }
   )
 }
@@ -193,7 +214,10 @@ exports.folderCreate = function(req,res){
 exports.file = function(req,res){
   File.findOne({_id: req.query.id},function(err,result){
     if(result.status === 'processing'){
-      return res.render('fileProcessing',{file: result})
+      return res.render('fileProcessing',{
+        file: result,
+        god: req.query.god ? true : false
+      })
     }
   })
 }
