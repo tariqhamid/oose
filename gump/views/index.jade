@@ -17,16 +17,7 @@ block content
               |  Create Folder
       h1 Files
     +alerts()
-    div
-      a(href='/?path=/')
-        span.glyphicon.glyphicon-folder-open  /
-      - var currentPath = '/'
-      each item in path.split('/')
-        - currentPath += (currentPath !== '/' ? '/' : '') + item
-        if item
-          | &nbsp;
-          a(href='/?path=#{currentPath}') #{item}
-          span  /
+    +pathTree(path)
     #dropzone
       form.dropzone(action='/upload?path=#{path}', method='post', id='file-upload')
     form(method='post', role='form')

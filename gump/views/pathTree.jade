@@ -1,0 +1,14 @@
+mixin pathTree(path,file)
+  div
+    a(href='/?path=/')
+      span.glyphicon.glyphicon-folder-open  /
+    - var currentPath = '/'
+    - var items = path.split('/')
+    each item, i in items
+      - currentPath += (currentPath !== '/' ? '/' : '') + item
+      if item
+        | &nbsp;
+        a(href='/?path=#{currentPath}') #{item}
+        span  /
+    if file
+      span  #{file}

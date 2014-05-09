@@ -39,6 +39,7 @@ app.post('/folderCreate',routes.folderCreate)
 app.post('/',routes.folderRemove)
 app.get('/embed/:handle',routes.embed.render)
 app.get('/api/embedDetails/:handle',routes.embed.apiDetails)
+app.get('/file',routes.file)
 app.get('/',routes.index)
 
 

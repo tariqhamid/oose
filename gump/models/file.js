@@ -1,5 +1,6 @@
 'use strict';
 var mongoose = require('mongoose')
+  , path = require('path')
   , async = require('async')
   , schema
 
@@ -64,6 +65,15 @@ schema.methods.absolutePath = function(root,name){
     return root + '/' + name
   else
     return '/' + name
+}
+
+
+/**
+ * Get the parent path of an object
+ * @return {string} path
+ */
+schema.methods.parentPath = function(){
+  return path.dirname(this.path) || '/'
 }
 
 

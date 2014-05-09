@@ -113,7 +113,7 @@ exports.upload = function(req,res){
               doc = new File()
               doc.name = file.filename
               doc.tmp = file.tmp
-              doc.path = doc.absolutePath(req.query.path,req.body.name)
+              doc.path = doc.absolutePath(req.query.path,file.filename)
               doc.mimeType = mimeType
               next()
             },
@@ -175,4 +175,18 @@ exports.folderCreate = function(req,res){
       res.redirect('/?path=' + req.query.path)
     }
   )
+}
+
+
+/**
+ * File details
+ * @param {object} req
+ * @param {object} res
+ */
+exports.file = function(req,res){
+  File.findOne({_id: req.query.id},function(err,result){
+    if(result.status === 'processing'){
+      return res.render('fileProcessing',{file: result})
+    }
+  })
 }
