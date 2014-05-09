@@ -1,5 +1,6 @@
 'use strict';
 var mongoose = require('mongoose')
+  , async = require('async')
   , schema
 
 mongoose.plugin(require('mongoose-list'))
@@ -14,6 +15,7 @@ schema = new mongoose.Schema({
     type: String,
     required: true
   },
+  sha1: String,
   tmp: String,
   path: {
     type: String,
@@ -58,7 +60,10 @@ schema = new mongoose.Schema({
 schema.methods.absolutePath = function(root,name){
   if(root.indexOf('/') !== 0)
     root = '/' + root
-  return root + '/' + name
+  if(root !== '/')
+    return root + '/' + name
+  else
+    return '/' + name
 }
 
 
@@ -97,3 +102,33 @@ exports.model.findInPath = function(path){
   query.sort('-folder name')
   return query
 }
+
+
+/**
+ * Find descendends of a path
+ * @param {string} path
+ * @return {object} Mongoose query
+ */
+exports.model.findDescendents = function(path){
+  var exp = new RegExp('^' + (!path || path === '/' ? '' : path) + '.*$','i')
+  return exports.model.find({path: exp})
+}
+
+//make sure and remove descendants and delete files
+schema.pre('remove',function(next){
+  //remove direct descendants and let the waterfall happen
+  exports.model
+    .findDescendents(this.path)
+    .exec(function(err,results){
+      if(err) return next(err.message)
+      if(!results) return next()
+      async.eachLimit(
+        results,
+        require('os').cpus().length,
+        function(item,next){
+          exports.model.findByIdAndRemove(item.id,next)
+        },
+        next
+      )
+    })
+})

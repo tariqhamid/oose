@@ -14,15 +14,8 @@ var readdirp = require('readdirp')
   , mkdirp = require('mkdirp')
   , gpac = require('./plugins/gpac')
   , url = require('../helpers/url')
+  , Sniffer = require('../helpers/Sniffer')
   , EventEmitter = require('events').EventEmitter
-
-// set up a stream sniffer for output sha1 hashing
-var PassThrough = require('stream').PassThrough
-var Sniffer = function(){
-  PassThrough.call(this)
-  this.timeout = null
-}
-Sniffer.prototype = Object.create(PassThrough.prototype)
 
 
 

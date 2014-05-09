@@ -74,13 +74,19 @@ exports.folderRemove = function(req,res){
 exports.upload = function(req,res){
   var body = {}
   var files = []
+
   req.pipe(req.busboy)
   req.busboy.on('field',function(key,value){
     body[key] = value
   })
   req.busboy.on('file',function(fieldname,file,filename){
     var tmp = temp.path({dir: config.get('gump.tmpDir')})
-    files.push({tmp: tmp, filename: filename})
+    var fileParams = {
+      tmp: tmp,
+      filename: filename,
+      sha1: ''
+    }
+    files.push(fileParams)
     if(!fs.existsSync(config.get('gump.tmpDir')))
       mkdirp.sync(config.get('gump.tmpDir'))
     var writable = fs.createWriteStream(tmp)
