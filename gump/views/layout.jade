@@ -1,5 +1,6 @@
 include alerts
 include pathTree
+include table
 doctype html
 html
   head
@@ -10,13 +11,25 @@ html
       link(rel='stylesheet', href='/css/layout.css')
     title OOSE Gump
   body
-    //navbar
-    .navbar.navbar-fixed-top.navbar-inverse(role='navigation')
-      .container
-        a.navbar-brand(href='/') Gump
-        ul.nav.navbar-nav
-          li
-            a(href='/') Files
+
+    if user
+      //navbar
+      .navbar.navbar-fixed-top.navbar-inverse(role='navigation')
+        .container
+          a.navbar-brand(href='/') Gump
+          ul.nav.navbar-nav
+            li
+              a(href='/') Files
+            if user.admin
+              li
+                a(href='/users') Manage Users
+          ul.nav.navbar-nav.navbar-right
+            li.dropdown
+              a.dropdown-toggle(data-toggle='dropdown') #{user.email}
+                b.caret
+              ul.dropdown-menu
+                li
+                  a(href='/logout') Logout
     //main content
     block content
     .text-center

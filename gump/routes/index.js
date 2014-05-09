@@ -16,6 +16,13 @@ exports.embed = require('./embed')
 
 
 /**
+ * User
+ * @type {exports}
+ */
+exports.user = require('./user')
+
+
+/**
  * Homepage
  * @param {object} req
  * @param {object} res

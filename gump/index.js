@@ -32,6 +32,26 @@ app.use(function(req,res,next){
   res.locals.flash = req.flash.bind(req)
   next()
 })
+app.use(function(req,res,next){
+  if(!req.session.user && req.url.indexOf('/login') < 0){
+    res.redirect('/login')
+  } else {
+    app.locals.user = req.session.user
+    next()
+  }
+})
+
+//auth
+app.post('/login',routes.user.login)
+app.get('/login',routes.user.login)
+app.get('/logout',routes.user.logout)
+
+//users (admin)
+app.post('/users',routes.user.list)
+app.post('/users/save',routes.user.save)
+app.get('/users',routes.user.list)
+app.get('/users/create',routes.user.form)
+app.get('/users/edit',routes.user.form)
 
 //routing
 app.post('/upload',routes.upload)

@@ -1,0 +1,38 @@
+extends ../layout
+block append js
+  script(src='/js/table.js')
+block content
+  .container
+    +tableHeader('Users','/users/create','Create User')
+    +alerts()
+    form(method='post', role='form')
+      table.table.table-striped
+        tr
+          th
+            input#toggle(type='checkbox')
+          th Email
+          th Admin
+          th Last Login
+          th Active
+        each row,i in list
+          tr
+            td
+              input(type='checkbox', name='remove[]', value=row.id)
+            td
+              a(href='/users/edit?id=#{row.id}')= row.email
+            td
+              if(row.admin)
+                span.glyphicon.glyphicon-check
+              else
+                span.glyphicon.glyphicon-remove
+            td
+              if row.metrics.dateSeen
+                div.text-success= new Date(row.metrics.dateSeen).toDateString()
+              if row.metrics.dateFail
+                div.text-danger= new Date(row.metrics.dateFail).toDateString()
+            td
+              if(row.active)
+                span.glyphicon.glyphicon-check
+              else
+                span.glyphicon.glyphicon-remove
+      +tableFooter(page,count)
