@@ -43,23 +43,23 @@ block content
                   small.text-muted= peer.services
               td
                 .progress.progress-striped(style='margin-bottom: 0;')
-                  .progress-bar(role='progressbar', aria-valuenow='#{peer.availableCapacity}', aria-valuemin='0', aria-valuemax='100', style='width: #{peer.availableCapacity}%;')
+                  .progress-bar.progress-bar-success(role='progressbar', aria-valuenow='#{peer.availableCapacity}', aria-valuemin='0', aria-valuemax='100', style='width: #{peer.availableCapacity}%;')
                 div
                   small.text-muted #{peer.availableCapacity.toFixed(2)}%
               td
                 .progress.progress-striped(style='margin-bottom: 0;')
-                  .progress-bar(role='progressbar', aria-valuenow='#{peer.cpuPercent}', aria-valuemin='0', aria-valuemax='100', style='width: #{peer.cpuPercent}%;')
+                  .progress-bar.progress-bar-danger(role='progressbar', aria-valuenow='#{peer.cpuPercent}', aria-valuemin='0', aria-valuemax='100', style='width: #{peer.cpuPercent}%;')
                 div
                   small.text-muted #{peer.cpuPercent}%
               td
                 .progress.progress-striped(style='margin-bottom: 0;')
-                  .progress-bar(role='progressbar', aria-valuenow='#{peer.memoryPercent}', aria-valuemin='0', aria-valuemax='100', style='width: #{peer.memoryPercent}%;')
+                  .progress-bar.progress-bar-warning(role='progressbar', aria-valuenow='#{peer.memoryPercent}', aria-valuemin='0', aria-valuemax='100', style='width: #{peer.memoryPercent}%;')
                     | #{peer.memoryPercent}%
                 div
                   small.text-muted #{prettyBytes(peer.memoryTotal - peer.memoryFree)} / #{prettyBytes(peer.memoryTotal)}
               td
                 .progress.progress-striped(style='margin-bottom: 0;')
-                  .progress-bar(role='progressbar', aria-valuenow='#{peer.diskPercent}', aria-valuemin='0', aria-valuemax='100', style='width: #{peer.diskPercent}%;')
+                  .progress-bar.progress-bar-info(role='progressbar', aria-valuenow='#{peer.diskPercent}', aria-valuemin='0', aria-valuemax='100', style='width: #{peer.diskPercent}%;')
                     | #{peer.diskPercent}%
                 div
                   small.text-muted #{prettyBytes(peer.diskTotal - peer.diskFree)} / #{prettyBytes(peer.diskTotal)}
