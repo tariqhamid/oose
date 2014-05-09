@@ -238,6 +238,7 @@ if(cluster.isWorker){
     , prism = require('./prism')
     , mongoose = require('mongoose')
     , gump = require('./gump')
+    , lg = require('./lg')
   async.parallel(
     [
       function(next){
@@ -263,6 +264,11 @@ if(cluster.isWorker){
       function(next){
         if(config.get('mongoose.enabled') && config.get('gump.enabled')){
           gump.start(next)
+        } else next()
+      },
+      function(next){
+        if(config.get('lg.enabled')){
+          lg.start(next)
         } else next()
       }
     ],
@@ -292,6 +298,11 @@ if(cluster.isWorker){
         function(next){
           if(config.get('gump.enabled'))
             gump.stop(next)
+          else next()
+        },
+        function(next){
+          if(config.get('lg.enabled'))
+            lg.stop(next)
           else next()
         }
       ],

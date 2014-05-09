@@ -94,6 +94,17 @@ config.load({
       maxAge: 2592000
     }
   },
+  lg: {
+    enabled: false,
+    port: 3005,
+    host: null,
+    user: 'oose',
+    password: 'oose',
+    cookie: {
+      secret: 'oose',
+      maxAge: 2592000
+    }
+  },
   mongoose: {
     enabled: false,
     dsn: 'mongodb://localhost/oose',

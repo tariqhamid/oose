@@ -1,5 +1,5 @@
 'use strict';
-var list = require('../helpers/list')
+var list = require('../../helpers/list')
   , Model = require('../models/user').model
 
 

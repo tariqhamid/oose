@@ -7,6 +7,7 @@ log/*
 embed/views/*
 embed/public/*
 gump/public/bower_components
+lg/public/bower_components
 npm-debug.log
 tmp
 config.local.js

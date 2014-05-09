@@ -1,0 +1,10 @@
+{
+  "name": "oose-lg",
+  "version": "0.2.0",
+  "dependencies": {
+    "bootstrap": "~3.0.3",
+    "html5-boilerplate": "latest",
+    "jquery": "~1.10.2",
+    "dropzone": "~3.9.0"
+  }
+}
