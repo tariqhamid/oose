@@ -21,12 +21,16 @@ block content
 
         if peers.length
           each peer in peers
+            - peer.availableCapacity = parseInt(peer.availableCapacity,10)
             - peer.cpuIdle = parseInt(peer.cpuIdle,10)
             - peer.cpuTotal = parseInt(peer.cpuTotal,10)
+            - peer.cpuPercent = (100 - (peer.cpuIdle / peer.cpuTotal) * 100).toFixed(2)
             - peer.diskFree = parseInt(peer.diskFree,10)
             - peer.diskTotal = parseInt(peer.diskTotal,10)
+            - peer.diskPercent = (100 - (peer.diskFree / peer.diskTotal) * 100).toFixed(2)
             - peer.memoryFree = parseInt(peer.memoryFree,10)
             - peer.memoryTotal = parseInt(peer.memoryTotal,10)
+            - peer.memoryPercent = (100 - (peer.memoryFree / peer.memoryTotal) * 100).toFixed(2)
             tr
               td
                 input(type='checkbox', name='remove[]', value=peer.hostname)
@@ -37,14 +41,28 @@ block content
                   | (#{peer.hostname})
                 div
                   small.text-muted= peer.services
-              td= peer.availableCapacity
-              td #{(100 - (peer.cpuIdle / peer.cpuTotal) * 100).toFixed(2)}%
               td
-                | #{prettyBytes(peer.memoryTotal - peer.memoryFree)} / #{prettyBytes(peer.memoryTotal)}
-                | #{(100 - (peer.memoryFree / peer.memoryTotal) * 100).toFixed(2)}%
+                .progress.progress-striped(style='margin-bottom: 0;')
+                  .progress-bar(role='progressbar', aria-valuenow='#{peer.availableCapacity}', aria-valuemin='0', aria-valuemax='100', style='width: #{peer.availableCapacity}%;')
+                div
+                  small.text-muted #{peer.availableCapacity.toFixed(2)}%
               td
-                | #{prettyBytes(peer.diskTotal - peer.diskFree)} / #{prettyBytes(peer.diskTotal)}
-                | #{(100 - (peer.diskFree / peer.diskTotal) * 100).toFixed(2)}%
+                .progress.progress-striped(style='margin-bottom: 0;')
+                  .progress-bar(role='progressbar', aria-valuenow='#{peer.cpuPercent}', aria-valuemin='0', aria-valuemax='100', style='width: #{peer.cpuPercent}%;')
+                div
+                  small.text-muted #{peer.cpuPercent}%
+              td
+                .progress.progress-striped(style='margin-bottom: 0;')
+                  .progress-bar(role='progressbar', aria-valuenow='#{peer.memoryPercent}', aria-valuemin='0', aria-valuemax='100', style='width: #{peer.memoryPercent}%;')
+                    | #{peer.memoryPercent}%
+                div
+                  small.text-muted #{prettyBytes(peer.memoryTotal - peer.memoryFree)} / #{prettyBytes(peer.memoryTotal)}
+              td
+                .progress.progress-striped(style='margin-bottom: 0;')
+                  .progress-bar(role='progressbar', aria-valuenow='#{peer.diskPercent}', aria-valuemin='0', aria-valuemax='100', style='width: #{peer.diskPercent}%;')
+                    | #{peer.diskPercent}%
+                div
+                  small.text-muted #{prettyBytes(peer.diskTotal - peer.diskFree)} / #{prettyBytes(peer.diskTotal)}
               td= moment(new Date(peer.sent)).fromNow()
         else
           tr
