@@ -43,6 +43,12 @@ var getCPU = function(basket,next){
   next(null,basket)
 }
 
+var getMemory = function(basket,next){
+  basket.memoryFree = os.freemem()
+  basket.memoryTotal = os.totalmem()
+  next(null,basket)
+}
+
 var availableCapacity = function(basket,next){
   basket.availableCapacity = Math.round(
     (
@@ -63,6 +69,7 @@ var save = function(basket,next){
 var peerStats = new Collector()
 peerStats.collect(getDiskFree)
 peerStats.collect(getCPU)
+peerStats.collect(getMemory)
 peerStats.process(availableCapacity)
 peerStats.save(save)
 peerStats.on('error',logger.warn)

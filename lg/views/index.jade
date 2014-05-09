@@ -8,29 +8,43 @@ block content
         tr
           th
             input#toggle(type='checkbox')
-          th Ready State
-          th IP
-          th Hostname
-          th Available Capacity
-          th Services
-          th CPU Usage
-          th Disk Usage
-          th Disk Space
-          th Last Registered
+          th State
+          th
+            div IP (Hostname)
+            div
+              small.text-muted Services
+          th Available
+          th CPU
+          th Memory
+          th Disk
+          th Seen
 
         if peers.length
           each peer in peers
+            - peer.cpuIdle = parseInt(peer.cpuIdle,10)
+            - peer.cpuTotal = parseInt(peer.cpuTotal,10)
+            - peer.diskFree = parseInt(peer.diskFree,10)
+            - peer.diskTotal = parseInt(peer.diskTotal,10)
+            - peer.memoryFree = parseInt(peer.memoryFree,10)
+            - peer.memoryTotal = parseInt(peer.memoryTotal,10)
             tr
               td
                 input(type='checkbox', name='remove[]', value=peer.hostname)
               td= peer.readyState
-              td= peer.ip
-              td= peer.hostname
+              td
+                div
+                  | #{peer.ip}
+                  | (#{peer.hostname})
+                div
+                  small.text-muted= peer.services
               td= peer.availableCapacity
-              td= peer.services
-              td #{(100 - (parseInt(peer.cpuIdle,10) / parseInt(peer.cpuTotal,10)) * 100).toFixed(2)}%
-              td #{(100 - (parseInt(peer.diskFree,10) / parseInt(peer.diskTotal,10)) * 100).toFixed(2)}%
-              td #{prettyBytes(parseInt(peer.diskFree,10))} / #{prettyBytes(parseInt(peer.diskTotal,10))}
+              td #{(100 - (peer.cpuIdle / peer.cpuTotal) * 100).toFixed(2)}%
+              td
+                | #{prettyBytes(peer.memoryTotal - peer.memoryFree)} / #{prettyBytes(peer.memoryTotal)}
+                | #{(100 - (peer.memoryFree / peer.memoryTotal) * 100).toFixed(2)}%
+              td
+                | #{prettyBytes(peer.diskTotal - peer.diskFree)} / #{prettyBytes(peer.diskTotal)}
+                | #{(100 - (peer.diskFree / peer.diskTotal) * 100).toFixed(2)}%
               td= moment(new Date(peer.sent)).fromNow()
         else
           tr

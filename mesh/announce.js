@@ -74,6 +74,8 @@ var announceListen = function(){
           peer.diskTotal = packet.diskTotal
           peer.cpuIdle = packet.cpuIdle
           peer.cpuTotal = packet.cpuTotal
+          peer.memoryFree = packet.memoryFree
+          peer.memoryTotal = packet.memoryTotal
           peer.availableCapacity = packet.availableCapacity || 0
           peer.services = packet.services
           if(packet.services.indexOf('store') > 0){
@@ -155,17 +157,28 @@ var announceSend = function(){
         message.diskTotal = peer.diskTotal
         message.cpuIdle = peer.cpuIdle
         message.cpuTotal = peer.cpuTotal
+        message.memoryFree = peer.memoryFree
+        message.memoryTotal = peer.memoryTotal
         message.availableCapacity = peer.availableCapacity
+        //services
         message.services = ''
+        if(config.get('mesh.enabled')) message.services += ',mesh'
+        if(config.get('supervisor.enabled')) message.services += ',supervisor'
+        if(config.get('store.enabled')) message.services += ',store'
+        if(config.get('prism.enabled')) message.services += ',prism'
+        if(config.get('shredder.enabled')) message.services += ',shredder'
+        if(config.get('gump.enabled')) message.services += ',gump'
+        if(config.get('prism.enabled')) message.services += ',prism'
+        if(config.get('lg.enabled')) message.services += ',lg'
+        //special service data
         if(config.get('store.enabled')){
-          message.services += ',store'
           message.importPort = config.get('store.import.port')
           message.exportPort = config.get('store.export.port')
         }
         if(config.get('prism.enabled')){
-          message.services += ',prism'
           message.prismPort = config.get('prism.port')
         }
+        if(config.get(''))
         next()
       },
       //send message
