@@ -289,13 +289,30 @@ exports.folderCreate = function(req,res){
  * @param {object} res
  */
 exports.file = function(req,res){
+  var god = req.query.god ? true : false
   File.findOne({_id: req.query.id},function(err,result){
+    if(result.status === 'error'){
+      return res.render('fileError',{
+        file: result,
+        god: god
+      })
+    }
     if(result.status === 'processing'){
       return res.render('fileProcessing',{
         file: result,
-        god: req.query.god ? true : false
+        god: god
       })
     }
+    if(result.status === 'ok' && result.embedHandle){
+      return res.render('fileEmbed',{
+        file: result,
+        god: god
+      })
+    }
+    res.render('fileDetails',{
+      file: result,
+      god: god
+    })
   })
 }
 
