@@ -5,7 +5,7 @@ var express = require('express')
   , config = require('../config')
   , redis = require('../helpers/redis')
   , async = require('async')
-  , util = require('../helpers/communicator').util
+var commUtil = require('../helpers/communicator').util
 
 var running = false
 
@@ -21,10 +21,10 @@ var buildCache = function(sha1,done){
     [
       //acquire list of peers from locate up on the master
       function(next){
-        var client = util.tcpSend('locate',{sha1: sha1},config.get('mesh.port'),config.get('mesh.host'))
+        var client = commUtil.tcpSend('locate',{sha1: sha1},config.get('mesh.port'),config.get('mesh.host'))
         client.once('readable',function(){
           //read our response
-          var payload = util.parse(client.read(client.read(2).readUInt16BE(0)))
+          var payload = commUtil.parse(client.read(client.read(2).readUInt16BE(0)))
           //close the connection
           client.end()
           //check if we got an error
@@ -103,10 +103,10 @@ app.post('/api/shredderJob',function(req,res){
       },
       //send the request to that peer
       function(next){
-        var client = util.tcpSend('shred:job:push',req.body,peerNext.meshPort,peerNext.ip)
+        var client = commUtil.tcpSend('shred:job:push',req.body,peerNext.meshPort,peerNext.ip)
         client.once('readable',function(){
           //read our response
-          var payload = util.parse(client.read(client.read(2).readUInt16BE(0)))
+          var payload = commUtil.parse(client.read(client.read(2).readUInt16BE(0)))
           //close the connection
           client.end()
           //check if we got an error
