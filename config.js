@@ -92,6 +92,11 @@ config.load({
     cookie: {
       secret: 'oose',
       maxAge: 2592000
+    },
+    prism: {
+      host: '127.0.0.1',
+      port: 3003,
+      callbackToken: 'oose'
     }
   },
   lg: {

@@ -5,6 +5,10 @@ var temp = require('temp')
   , mkdirp = require('mkdirp')
   , mmm = require('mmmagic')
   , async = require('async')
+  , net = require('net')
+  , crypto = require('crypto')
+  , restler = require('restler')
+  , Sniffer = require('../../helpers/Sniffer')
   , File = require('../models/file').model
 
 
@@ -101,11 +105,19 @@ exports.upload = function(req,res){
       filename: filename,
       sha1: ''
     }
+    var shasum = crypto.createHash('sha1')
+    var sniff = new Sniffer()
+    sniff.on('data',function(data){
+      shasum.update(data)
+    })
+    sniff.on('end',function(){
+      fileParams.sha1 = shasum.digest('hex')
+    })
     files.push(fileParams)
     if(!fs.existsSync(config.get('gump.tmpDir')))
       mkdirp.sync(config.get('gump.tmpDir'))
     var writable = fs.createWriteStream(tmp)
-    file.pipe(writable)
+    file.pipe(sniff).pipe(writable)
   })
   req.busboy.on('finish',function(){
     async.each(
@@ -122,6 +134,63 @@ exports.upload = function(req,res){
                 mimeType = result
                 next()
               })
+            },
+            //decide whether to use shredder or raw import
+            function(next){
+              var prismBaseUrl = 'http://' + config.get('gump.prism.host') + ':' + config.get('gump.prism.port')
+              if(mimeType.match(/video|audio/i)){
+                restler
+                  .post(prismBaseUrl + '/api/shredderJob',{
+                    data: {
+                      mimeType: mimeType
+                    }
+                  })
+                  .on('complete',function(result){
+                    if(result instanceof Error){
+                      return next(result)
+                    }
+                    next()
+                  })
+              } else {
+                var peerNext = {}
+                async.series(
+                  [
+                    //ask for nextPeer
+                    function(next){
+                      restler
+                        .get(
+                           +
+                          '/api/peerNext'
+                        )
+                        .on('complete',function(result){
+                          if(result instanceof Error){
+                            return next(result)
+                          }
+                          if(!result.peer){
+                            return next('Next peer could not be found')
+                          }
+                          peerNext = result.peer
+                          next()
+                        })
+                    },
+                    //send to import
+                    function(next){
+                      var client = net.connect(peerNext.port,peerNext.host)
+                      client.on('connect',function(){
+                        var rs = fs.createReadStream(__dirname + '/../foo/foo.mp4')
+                        rs.pipe(client)
+                        client.on('error',function(err){
+                          next(err)
+                        })
+                        client.on('end',function(){
+                          next()
+                        })
+                      })
+                    }
+                  ],
+                  next
+                )
+              }
             },
             //create parents
             function(next){
