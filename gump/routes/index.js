@@ -206,7 +206,12 @@ exports.upload = function(req,res){
               doc.tmp = file.tmp
               doc.path = currentPath
               doc.mimeType = mimeType
-              doc.importJob = importJob
+              if(importJob){
+                doc.importJob = importJob
+                doc.status = 'procesing'
+              } else {
+                doc.status = 'ok'
+              }
               next()
             },
             //save doc
@@ -291,4 +296,64 @@ exports.file = function(req,res){
       })
     }
   })
+}
+
+
+/**
+ * Job Import updates
+ * @param {object} req
+ * @param {object} res
+ */
+exports.jobImportUpdate = function(req,res){
+  var file
+  async.series(
+    [
+      //find file by job
+      function(next){
+        File.findOne({'importJob.handle': req.body.handle},function(err,result){
+          if(err) return next(err.message)
+          if(!result) return next('could not find file by handle')
+          file = result
+          next()
+        })
+      },
+      //update job status
+      function(next){
+        file.importJob.status = req.body.status
+        file.importJob.message = req.body.message
+        if(req.body.framesTotal) file.importJob.framesTotal = req.body.framesTotal
+        if(req.body.framesComplete) file.importJob.framesComplete = req.body.framesComplete
+        if(req.body.manifest) file.importJob.manifest = req.body.manifest
+        if('complete' === file.importJob.status){
+          file.status = 'ok'
+          fs.unlink(file.tmp,next)
+        } else if('error' === file.importJob.status){
+          file.importError = req.body.message
+          fs.unlink(file.tmp,next)
+        } else{
+          next()
+        }
+      },
+      //save job
+      function(next){
+        file.save(function(err){
+          if(err) return next(err.message)
+          next()
+        })
+      }
+    ],
+    function(err){
+      if(err){
+        return res.json({
+          status: 'error',
+          code: 1,
+          message: err
+        })
+      }
+      res.json({
+        status: 'ok',
+        code: 0
+      })
+    }
+  )
 }

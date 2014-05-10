@@ -53,14 +53,19 @@ app.get('/users',routes.user.list)
 app.get('/users/create',routes.user.form)
 app.get('/users/edit',routes.user.form)
 
-//routing
+//file manage
 app.post('/upload',routes.upload)
 app.post('/folderCreate',routes.folderCreate)
 app.post('/',routes.fileRemove)
-app.get('/embed/:handle',routes.embed.render)
-app.get('/api/embedDetails/:handle',routes.embed.apiDetails)
 app.get('/file',routes.file)
 app.get('/',routes.index)
+
+//embed
+app.get('/embed/:handle',routes.embed.render)
+
+//api
+app.get('/api/embedDetails/:handle',routes.embed.apiDetails)
+app.post('/api/importJobUpdate',routes.index.importJobUpdate)
 
 
 /**
