@@ -9,11 +9,11 @@ var fs = require('fs')
   , logger = require('../helpers/logger').create('shredder')
   , crypto = require('crypto')
   , ffmpeg = require('fluent-ffmpeg')
-  , mmm = require('mmmagic')
   , temp = require('temp')
   , mkdirp = require('mkdirp')
   , gpac = require('./plugins/gpac')
   , Sniffer = require('../helpers/Sniffer')
+  , restler = require('restler')
   , shortId = require('shortid')
   , mesh = require('../mesh')
 var EventEmitter = require('events').EventEmitter
@@ -39,11 +39,13 @@ Shredder.prototype = Object.create(EventEmitter.prototype)
 Shredder.prototype.meshListen = function(done){
   var self = this
   // shred:job:push - queue entry acceptor
-
   mesh.tcp.on('shred:job:push',function(message,socket){
-    //jab job into local q
+    //use an uppercase friendly character set
+    shortId.characters('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+    //build job description
     var job = {
       handle: shortId.generate(),
+      logger: logger,
       source: {
         url: message.source,
         sha1: message.sha1,
@@ -53,7 +55,10 @@ Shredder.prototype.meshListen = function(done){
       output: message.output,
       callback: message.callback
     }
-    self.q.push(job,self.jobComplete(job))
+    //jab job into local q
+    logger.info('Job queued locally as ' + job.handle)
+    self.q.push(job)
+    //respond to the request with the assigned handle and queue position
     socket.end(commUtil.withLength(commUtil.build(
       job.source.sha1,
       {status: 'ok', handle: job.handle, position: self.q.length()}
@@ -64,11 +69,21 @@ Shredder.prototype.meshListen = function(done){
 
 
 /**
- * Handle the job callback(s)
- * @param {object} job Shredder job structure
+ * Handle job completion callback
+ * @param {object} job Job description
  */
 Shredder.prototype.jobComplete = function(job){
-  //restler call the job.callback url
+  var response = {
+    handle: job.handle,
+    status: 'complete',
+    message: 'Job has completed successfully'
+  }
+  if(job.output.framesTotal) response.framesTotal = job.output.framesTotal
+  if(job.output.framesComplete) response.framesComplete = job.output.framesComplete
+  response.manifest = {}
+  if(job.output.videoSha1) response.manifest.video = job.output.videoSha1
+  if(job.output.imageSha1) response.manifest.image = job.output.imageSha1
+  restler.post(job.callback,{data: response})
 }
 
 
@@ -90,7 +105,29 @@ Shredder.prototype.nextPeer = function(done){
 
 
 /**
- * Process video
+ * Get source file into a local temp file
+ * @param {object} job Job description
+ * @param {function} done Callback
+ */
+Shredder.prototype.getSource = function(job,done){
+  //setup temp folder
+  var tmpDir = config.get('shredder.root') + '/tmp'
+  if(!fs.existsSync(tmpDir)) mkdirp.sync(tmpDir)
+  //
+  restler.get(job.source.url).on('complete',function(result){
+    if(result instanceof Error) return done(result)
+    var tempfile = temp.path({dir: tmpDir})
+    fs.writeFile(tempfile,result,function(err){
+      if(!err){
+        done(null,tempfile)
+      } else done(err)
+    })
+  })
+}
+
+
+/**
+ * Get source video metadata (info)
  * @param {string} path Full path of file to process
  * @param {function} done Callback
  */
@@ -129,38 +166,24 @@ Shredder.prototype.processVideo = function(path,done){
 
 
 /**
- * Import a file
- * @param {string} path Full path to file
+ * Run a job
+ * @param {object} job Job structure
  * @param {function} done Callback
  */
-Shredder.prototype.importFile = function(path,done){
+Shredder.prototype.runJob = function(job,done){
   var self = this
-  var peer, client, sum, mimeType, videoInfo, ffProcess
+  var store, ffProcess
+  // replace the global logger with the job-specific one
+  var logger = job.logger // NOTE - SCOPE SMASHING HERE
+
+  logger.info('Starting')
   async.series(
     [
-      //figure out our peer
+      //grab the source file
       function(next){
-        logger.info('Checking nextPeer')
-        self.nextPeer(function(err,result){
+        self.getSource(job,function(err,result){
           if(!err){
-            peer = result
-            next()
-          } else next(err)
-        })
-      },
-      //connect to the peer
-      function(next){
-        logger.info('Connecting nextPeer:',util.inspect(peer))
-        client = net.connect(peer.port,peer.host)
-        client.on('error',next)
-        client.on('connect',next)
-      },
-      //figure out the mime type
-      function(next){
-        var magic = new mmm.Magic(mmm.MAGIC_MIME_TYPE)
-        magic.detectFile(path,function(err,result){
-          if(!err){
-            mimeType = result
+            job.source.tempfile = result
             next()
           } else next(err)
         })
@@ -168,19 +191,35 @@ Shredder.prototype.importFile = function(path,done){
       //check to see if this is a video file and if so obtain metadata (info)
       function(next){
         if(!config.get('shredder.transcode.videos.enabled')) return next()
-        if(!mimeType.match(/^video/))
-          logger.warn('MIME type is not video/* (detected ' + mimeType + ')')
-        self.getVideoInfo(path,function(err,result){
+        self.getVideoInfo(job.source.tempfile,function(err,result){
           if(!err){
-            videoInfo = result
-            logger.info('videoInfo:' + util.inspect(videoInfo))
+            job.source.videoInfo = result
+            logger.info('videoInfo:' + util.inspect(job.source.videoInfo))
             next()
           } else next(err)
         })
       },
-      //process it
+      //figure out our peer
       function(next){
-        self.processVideo(path,function(err,result){
+        logger.info('Checking nextPeer')
+        self.nextPeer(function(err,result){
+          if(!err){
+            job.output.peer = result
+            next()
+          } else next(err)
+        })
+      },
+      //connect to the peer
+      function(next){
+        var peer = job.output.peer
+        logger.info('Connecting to destination store @ ' + peer.host + ':' + peer.port)
+        store = net.connect(peer.port,peer.host)
+        store.on('error',next)
+        store.on('connect',next)
+      },
+      //set up our processing chain
+      function(next){
+        self.processVideo(job.source.tempfile,function(err,result){
           if(!err){
             ffProcess = result
             next()
@@ -196,18 +235,15 @@ Shredder.prototype.importFile = function(path,done){
           shasum.update(data)
         })
         sniff.on('end',function(){
-          sum = shasum.digest('hex')
+          job.output.videoSha1 = shasum.digest('hex')
         })
-        client.on('end',next)
+        store.on('end',next)
         if(!ffProcess){
           readable = fs.createReadStream(path)
           readable.on('error',next)
-          readable.pipe(sniff).pipe(client)
+          readable.pipe(sniff).pipe(store)
         } else {
-          //setup temp folder
-          var tmpDir = config.get('shredder.root') + '/tmp'
-          if(!fs.existsSync(tmpDir)) mkdirp.sync(tmpDir)
-          var tmpPath = temp.path({dir: tmpDir})
+          var tmpPath = job.output.tempfile
           ffProcess.on('end',function(){
             //rail through mp4box
             gpac.hint(tmpPath,function(err){
@@ -220,7 +256,7 @@ Shredder.prototype.importFile = function(path,done){
                 readable.on('end',function(){
                   fs.unlinkSync(tmpPath)
                 })
-                readable.pipe(sniff).pipe(client)
+                readable.pipe(sniff).pipe(store)
               } else next(err)
             })
           })
@@ -236,7 +272,7 @@ Shredder.prototype.importFile = function(path,done){
     ],
     function(err){
       if(!err){
-        done(null,sum)
+        done(null,job)
       } else done(err)
     }
   )
@@ -261,25 +297,33 @@ Shredder.prototype.start = function(done){
   self.testing = !!config.get('shredder.testing')
   //check if root exists
   if(!config.get('shredder.root'))
-    config.set('shredder.root',path.resolve(__dirname + '/../_shredbox'))
+    config.set('shredder.root',path.resolve(config.get('root')))
   //make sure the root folder exists
   if(!fs.existsSync(config.get('shredder.root')))
     mkdirp.sync(config.get('shredder.root'))
   if(!fs.existsSync(config.get('shredder.root')))
     return done(new Error('Root folder [' + path.resolve(config.get('shredder.root')) + '] does not exist'))
-
+  //set up the local queue
   self.q = async.queue(
-    function(task,done){
-      var path = task.path
-      logger.info('Starting to import ' + path)
-      self.importFile(path,function(err,sha1){
-        if(err) logger.error('Failed to import ' + path + ': ' + err)
-        else logger.info('Import successful for ' + path + ' sha1 sum [' + sha1 + ']')
+    function(job,done){
+      if('undefined' === typeof job.handle || null === job.handle || !job.handle)
+        done('ERROR: Job.handle not set')
+      //now that the job is running, overload the main logger for this scope
+      var logger = require('../helpers/logger').create('shredder:job:'+job.handle)
+      job.logger = logger
+      self.runJob(job,function(err){
+        if(err){
+          logger.error('Import failed: ' + err)
+        } else {
+          logger.info('Import successful')
+          self.jobComplete(job)
+        }
         done()
       })
     },
       config.get('shredder.concurrency') || 1
   )
+  //startup otherwise complete, listen on mesh
   self.meshListen(done)
 }
 
@@ -289,8 +333,6 @@ Shredder.prototype.start = function(done){
  * @param {function} done
  */
 Shredder.prototype.stop = function(done){
-  var self = this
-  clearTimeout(self.timeout)
   done()
 }
 
