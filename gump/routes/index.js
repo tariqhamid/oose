@@ -371,7 +371,7 @@ exports.importJobUpdate = function(req,res){
               doc.title = file.filename
               doc.keywords = file.filename.split(' ').join(',')
               doc.template = 'standard'
-              if(file.manifest.image) doc.media.image = file.manifest.images
+              if(file.manifest.image) doc.media.image = file.manifest.image
               if(file.manifest.video) doc.media.video = file.manifest.video
               doc.save(function(err){
                 if(err) return next(err.message)
