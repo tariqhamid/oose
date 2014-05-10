@@ -150,15 +150,7 @@ exports.upload = function(req,res){
                       source: gumpBaseUrl + '/tmp/' + path.basename(file.tmp),
                       callback: gumpBaseUrl + '/api/importJobUpdate',
                       output: {
-                        muxer: 'mp4',
-                        videoCodec: 'h264',
-                        audioCodec: 'libfaac',
-                        movFlags: '+faststart',
-                        watermark: {
-                          position: 'bottom-right',
-                          image: 'http://'
-                        },
-                        optimize: true
+                        preset: 'mp4Stream'
                       }
                     }
                   })
