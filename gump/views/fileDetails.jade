@@ -1,0 +1,17 @@
+extends layout
+block content
+  .container
+    h1= file.name
+    +pathTree(god,file.relativeParent(god),file.name)
+    div
+      a.btn.btn-success(href='/download/#{file.sha1}') Download
+    table.table.table-striped
+      tr
+        td Type
+        td= file.mimeType
+      tr
+        td Size
+        td= file.size
+      tr
+        td Uploaded
+        td= new Date(file.metrics.dateCreated).toDateString()
