@@ -59,7 +59,7 @@ Logger.prototype.warn = function(msg){
  * @param {*} msg
  */
 Logger.prototype.error = function(msg){
-  this.logger.warn(this.tag + msg)
+  this.logger.error(this.tag + msg)
 }
 
 

@@ -2,6 +2,7 @@
 var net = require('net')
   , dgram = require('dgram')
   , stream = require('stream')
+  , logger = require('../helpers/logger').create('communicator')
   , EventEmitter = require('events').EventEmitter
 
 
@@ -33,7 +34,9 @@ util.build = function(command,message){
  * @return {object}
  */
 util.parse = function(packet){
-  return JSON.parse(packet.toString())
+  if(packet instanceof Buffer)
+    packet = packet.toString()
+  return JSON.parse(packet)
 }
 
 
@@ -93,7 +96,13 @@ var UDP = function(options){
     self.emit('ready',self.socket)
   })
   self.socket.on('message',function(packet,rinfo){
-    var payload = util.parse(packet)
+    var payload
+    if(packet === null){
+      logger.warn('Null packet received from ' + rinfo.address + ':' + rinfo.port)
+      payload = {}
+    } else {
+      payload = util.parse(packet)
+    }
     self.emit(payload.command,payload.message,rinfo)
   })
   self.socket.on('error',function(err){self.emit('error',err)})
