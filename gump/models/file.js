@@ -45,6 +45,7 @@ schema = new mongoose.Schema({
     index: true,
     default: 'application/octet-stream'
   },
+  importJob: String,
   status: {
     type: String,
     index: true,

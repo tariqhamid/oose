@@ -125,6 +125,7 @@ exports.upload = function(req,res){
       function(file,next){
         var mimeType, doc
         var magic = new mmm.Magic(mmm.MAGIC_MIME_TYPE)
+        var importJob
         async.series(
           [
             //detect mime type
@@ -138,6 +139,7 @@ exports.upload = function(req,res){
             //decide whether to use shredder or raw import
             function(next){
               var prismBaseUrl = 'http://' + config.get('gump.prism.host') + ':' + config.get('gump.prism.port')
+              var gumpBaseUrl = 'http://' + config.get('gump.host') + ':' + config.get('gump.port')
               if(mimeType.match(/video|audio/i)){
                 restler
                   .post(prismBaseUrl + '/api/shredderJob',{
@@ -145,16 +147,26 @@ exports.upload = function(req,res){
                       mimeType: mimeType,
                       filename: file.filename,
                       sha1: file.sha1,
-                      source:
-                        'http://' + config.get('gump.host') + ':' + config.get('gump.port') +
-                        '/tmp/' + path.basename(file.tmp),
-                      outputFormat: 'mp4'
+                      source: gumpBaseUrl + '/tmp/' + path.basename(file.tmp),
+                      callback: gumpBaseUrl + '/api/importJobUpdate',
+                      output: {
+                        muxer: 'mp4',
+                        videoCodec: 'h264',
+                        audioCodec: 'libfaac',
+                        movFlags: '+faststart',
+                        watermark: {
+                          position: 'bottom-right',
+                          image: 'http://'
+                        },
+                        optimize: true
+                      }
                     }
                   })
                   .on('complete',function(result){
                     if(result instanceof Error){
                       return next(result)
                     }
+                    importJob = result.handle
                     next()
                   })
               } else {
@@ -202,6 +214,7 @@ exports.upload = function(req,res){
               doc.tmp = file.tmp
               doc.path = currentPath
               doc.mimeType = mimeType
+              doc.importJob = importJob
               next()
             },
             //save doc
