@@ -177,7 +177,7 @@ exports.upload = function(req,res){
                     function(next){
                       var client = net.connect(peerNext.port,peerNext.host)
                       client.on('connect',function(){
-                        var rs = fs.createReadStream(__dirname + '/../foo/foo.mp4')
+                        var rs = fs.createReadStream(file.tmp)
                         rs.pipe(client)
                         client.on('error',function(err){
                           next(err)
