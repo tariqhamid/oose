@@ -15,7 +15,10 @@ var readdirp = require('readdirp')
   , mkdirp = require('mkdirp')
   , gpac = require('./plugins/gpac')
   , Sniffer = require('../helpers/Sniffer')
-  , EventEmitter = require('events').EventEmitter
+  , shortId = require('shortid')
+  , mesh = require('../mesh')
+var EventEmitter = require('events').EventEmitter
+var commUtil = require('../helpers/communicator').util
 
 
 
@@ -28,6 +31,46 @@ var Shredder = function(){
   EventEmitter.call(self)
 }
 Shredder.prototype = Object.create(EventEmitter.prototype)
+
+
+/**
+ * Set up Mesh event listener
+ * @param {function} done Callback
+ */
+Shredder.prototype.meshListen = function(done){
+  var self = this
+  // shred:job:push - queue entry acceptor
+
+  mesh.tcp.on('shred:job:push',function(message,socket){
+    //jab job into local q
+    var job = {
+      handle: shortId.generate(),
+      source: {
+        url: message.source,
+        sha1: message.sha1,
+        mimeType: message.mimeType,
+        filename: message.filename
+      },
+      output: message.output,
+      callback: message.callback
+    }
+    self.q.push(job,self.jobComplete(job))
+    socket.end(commUtil.withLength(commUtil.build(
+      job.source.sha1,
+      {status: 'ok', handle: job.handle, position: self.q.length()}
+    )))
+  })
+  done()
+}
+
+
+/**
+ * Handle the job callback(s)
+ * @param {object} job Shredder job structure
+ */
+Shredder.prototype.jobComplete = function(job){
+  //restler call the job.callback url
+}
 
 
 /**
