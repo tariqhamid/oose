@@ -436,7 +436,7 @@ exports.download = function(req,res){
       function(next){
         url =
           'http://' + config.get('gump.prism.host') + ':' + config.get('gump.prism.port') +
-          '/' + file.sha1 + '/' + file.name
+          '/' + file.sha1 + '/' + file.name + '?download=true'
         next()
       }
     ],
