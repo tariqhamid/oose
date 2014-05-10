@@ -10,6 +10,7 @@ var temp = require('temp')
   , restler = require('restler')
   , Sniffer = require('../../helpers/Sniffer')
   , File = require('../models/file').model
+  , Embed = require('../models/embed').model
 
 
 /**
@@ -324,15 +325,44 @@ exports.jobImportUpdate = function(req,res){
         if(req.body.framesTotal) file.importJob.framesTotal = req.body.framesTotal
         if(req.body.framesComplete) file.importJob.framesComplete = req.body.framesComplete
         if(req.body.manifest) file.importJob.manifest = req.body.manifest
-        if('complete' === file.importJob.status){
-          file.status = 'ok'
-          fs.unlink(file.tmp,next)
-        } else if('error' === file.importJob.status){
-          file.importError = req.body.message
-          fs.unlink(file.tmp,next)
-        } else{
-          next()
-        }
+        next()
+      },
+      //handle complete status
+      function(next){
+        if('complete' !== file.importJob.status) return next()
+        file.status = 'ok'
+        async.series(
+          [
+            //remove tmp file
+            function(next){
+              fs.unlink(file.tmp,next)
+            },
+            //create the embed object
+            function(next){
+              var embedHandle = Embed.generateHandle()
+              file.embedHandle = embedHandle
+              var doc = new Embed()
+              doc.handle = embedHandle
+              doc.title = file.filename
+              doc.keywords = file.filename.split(' ').join(',')
+              doc.template = 'standard'
+              if(file.manifest.image) doc.media.image = file.manifest.images
+              if(file.manifest.video) doc.media.video = file.manifest.video
+              doc.save(function(err){
+                if(err) return next(err.message)
+                next()
+              })
+            }
+          ],
+          next
+        )
+
+      },
+      //handle error status
+      function(next){
+        if('error' !== file.importJob.status) return next()
+        file.importError = req.body.message
+        fs.unlink(file.tmp,next)
       },
       //save job
       function(next){
