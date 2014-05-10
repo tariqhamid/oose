@@ -142,7 +142,13 @@ exports.upload = function(req,res){
                 restler
                   .post(prismBaseUrl + '/api/shredderJob',{
                     data: {
-                      mimeType: mimeType
+                      mimeType: mimeType,
+                      filename: file.filename,
+                      sha1: file.sha1,
+                      source:
+                        'http://' + config.get('gump.host') + ':' + config.get('gump.port') +
+                        '/tmp/' + path.basename(file.tmp),
+                      outputFormat: 'mp4'
                     }
                   })
                   .on('complete',function(result){
@@ -157,18 +163,9 @@ exports.upload = function(req,res){
                   [
                     //ask for nextPeer
                     function(next){
-                      restler
-                        .get(
-                           +
-                          '/api/peerNext'
-                        )
-                        .on('complete',function(result){
-                          if(result instanceof Error){
-                            return next(result)
-                          }
-                          if(!result.peer){
-                            return next('Next peer could not be found')
-                          }
+                      restler.get(prismBaseUrl + '/api/peerNext').on('complete',function(result){
+                          if(result instanceof Error) return next(result)
+                          if(!result.peer) return next('Next peer could not be found')
                           peerNext = result.peer
                           next()
                         })
