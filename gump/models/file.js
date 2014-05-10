@@ -31,6 +31,7 @@ schema = new mongoose.Schema({
     type: String,
     required: true
   },
+  size: Number,
   sha1: String,
   tmp: String,
   path: {

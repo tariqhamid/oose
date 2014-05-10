@@ -12,6 +12,7 @@ var running = false
 
 app.locals.pretty = true
 app.locals.version = config.get('version')
+app.locals.prettyBytes = require('pretty-bytes')
 
 app.set('views',__dirname + '/views')
 app.set('view engine','jade')
@@ -61,14 +62,14 @@ app.get('/file',routes.file)
 app.get('/',routes.index)
 
 //download
-app.get('/download',routes.index.download)
+app.get('/download',routes.download)
 
 //embed
 app.get('/embed/:handle',routes.embed.render)
 
 //api
 app.get('/api/embedDetails/:handle',routes.embed.apiDetails)
-app.post('/api/importJobUpdate',routes.index.importJobUpdate)
+app.post('/api/importJobUpdate',routes.importJobUpdate)
 
 
 /**

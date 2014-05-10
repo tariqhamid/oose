@@ -104,11 +104,13 @@ exports.upload = function(req,res){
     var fileParams = {
       tmp: tmp,
       filename: filename,
-      sha1: ''
+      sha1: '',
+      size: 0
     }
     var shasum = crypto.createHash('sha1')
     var sniff = new Sniffer()
     sniff.on('data',function(data){
+      fileParams.size += data.length
       shasum.update(data)
     })
     sniff.on('end',function(){
@@ -188,6 +190,10 @@ exports.upload = function(req,res){
                           next()
                         })
                       })
+                    },
+                    //remove tmp file
+                    function(next){
+                      fs.unlink(file.tmp,next)
                     }
                   ],
                   next
@@ -205,6 +211,8 @@ exports.upload = function(req,res){
               doc = new File()
               doc.name = file.filename
               doc.tmp = file.tmp
+              doc.sha1 = file.sha1
+              doc.size = file.size
               doc.path = currentPath
               doc.mimeType = mimeType
               if(importJob){
@@ -322,7 +330,7 @@ exports.file = function(req,res){
  * @param {object} req
  * @param {object} res
  */
-exports.jobImportUpdate = function(req,res){
+exports.importJobUpdate = function(req,res){
   var file
   async.series(
     [
@@ -421,11 +429,14 @@ exports.download = function(req,res){
           if(err) return next()
           if(!result) return next('Could not find file')
           file = result
+          next()
         })
       },
       //build the oose url
       function(next){
-        url = config.get('gump.store.host') + ':' + config.get('grump.store.port') + '/' + file.sha1 + '/' + file.name
+        url =
+          'http://' + config.get('gump.prism.host') + ':' + config.get('gump.prism.port') +
+          '/' + file.sha1 + '/' + file.name
         next()
       }
     ],

@@ -3,15 +3,19 @@ block content
   .container
     h1= file.name
     +pathTree(god,file.relativeParent(god),file.name)
+    br
     div
-      a.btn.btn-success(href='/download?id=#{file.id}') Download
+      a.btn.btn-success(href='/download?id=#{file.id}')
+        span.glyphicon.glyphicon-download-alt
+        | Download
+    br
     table.table.table-striped
       tr
         td Type
         td= file.mimeType
       tr
         td Size
-        td= file.size
+        td= prettyBytes(file.size)
       tr
         td Uploaded
         td= new Date(file.metrics.dateCreated).toDateString()
