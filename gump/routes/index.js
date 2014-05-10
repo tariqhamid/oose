@@ -143,7 +143,7 @@ exports.upload = function(req,res){
             function(next){
               var prismBaseUrl = 'http://' + config.get('gump.prism.host') + ':' + config.get('gump.prism.port')
               var gumpBaseUrl = 'http://' + config.get('gump.host') + ':' + config.get('gump.port')
-              if(mimeType.match(/video|audio/i)){
+              if(mimeType.match(/^(video|audio)\//i)){
                 restler
                   .post(prismBaseUrl + '/api/shredderJob',{
                     data: {
