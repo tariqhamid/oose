@@ -60,6 +60,9 @@ app.post('/',routes.fileRemove)
 app.get('/file',routes.file)
 app.get('/',routes.index)
 
+//download
+app.get('/download',routes.index.download)
+
 //embed
 app.get('/embed/:handle',routes.embed.render)
 

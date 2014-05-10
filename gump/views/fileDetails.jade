@@ -4,7 +4,7 @@ block content
     h1= file.name
     +pathTree(god,file.relativeParent(god),file.name)
     div
-      a.btn.btn-success(href='/download/#{file.sha1}') Download
+      a.btn.btn-success(href='/download?id=#{file.id}') Download
     table.table.table-striped
       tr
         td Type

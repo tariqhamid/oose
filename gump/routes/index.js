@@ -404,3 +404,40 @@ exports.jobImportUpdate = function(req,res){
     }
   )
 }
+
+
+/**
+ * Download redirect
+ * @param {object} req
+ * @param {object} res
+ */
+exports.download = function(req,res){
+  var file, url
+  async.series(
+    [
+      //find the file
+      function(next){
+        File.findOne({_id: req.query.id},function(err,result){
+          if(err) return next()
+          if(!result) return next('Could not find file')
+          file = result
+        })
+      },
+      //build the oose url
+      function(next){
+        url = config.get('gump.store.host') + ':' + config.get('grump.store.port') + '/' + file.sha1 + '/' + file.name
+        next()
+      }
+    ],
+    function(err){
+      if(err){
+        return res.json({
+          status: 'error',
+          code: 1,
+          message: err
+        })
+      }
+      res.redirect(302,url)
+    }
+  )
+}
