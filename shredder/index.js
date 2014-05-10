@@ -1,6 +1,5 @@
 'use strict';
-var readdirp = require('readdirp')
-  , fs = require('fs')
+var fs = require('fs')
   , util = require('util')
   , path = require('path')
   , net = require('net')
@@ -281,18 +280,7 @@ Shredder.prototype.start = function(done){
     },
       config.get('shredder.concurrency') || 1
   )
-
-  self.run = function(){
-    var stream = readdirp({root: config.get('shredder.root'), directoryFilter: ['!tmp']})
-    stream.on('data',function(entry){
-      self.q.push({path: entry.fullPath})
-    })
-    stream.on('end',function(){
-      self.timeout = setTimeout(self.run,1000)
-    })
-  }
-  self.run()
-  done()
+  self.meshListen(done)
 }
 
 
