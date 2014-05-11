@@ -160,25 +160,9 @@ var announceSend = function(){
         message.memoryFree = peer.memoryFree
         message.memoryTotal = peer.memoryTotal
         message.availableCapacity = peer.availableCapacity
-        //services
-        message.services = ''
-        if(config.get('mesh.enabled')) message.services += ',mesh'
-        if(config.get('supervisor.enabled')) message.services += ',supervisor'
-        if(config.get('store.enabled')) message.services += ',store'
-        if(config.get('prism.enabled')) message.services += ',prism'
-        if(config.get('shredder.enabled')) message.services += ',shredder'
-        if(config.get('gump.enabled')) message.services += ',gump'
-        if(config.get('prism.enabled')) message.services += ',prism'
-        if(config.get('lg.enabled')) message.services += ',lg'
-        //special service data
-        if(config.get('store.enabled')){
-          message.importPort = config.get('store.import.port')
-          message.exportPort = config.get('store.export.port')
-        }
-        if(config.get('prism.enabled')){
-          message.prismPort = config.get('prism.port')
-        }
-        if(config.get(''))
+        message.services = peer.services
+        message.servicePorts = peer.servicePorts
+        message.net = peer.net
         next()
       },
       //send message

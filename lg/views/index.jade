@@ -17,6 +17,8 @@ block content
           th CPU
           th Memory
           th Disk
+          th Net In
+          th Net Out
           th Seen
 
         if peers.length
@@ -31,6 +33,8 @@ block content
             - peer.memoryFree = parseInt(peer.memoryFree,10)
             - peer.memoryTotal = parseInt(peer.memoryTotal,10)
             - peer.memoryPercent = (100 - (peer.memoryFree / peer.memoryTotal) * 100).toFixed(2)
+            - peer.netInPercent = ((peer.net.inBps / peer.net.speed) * 100).toFixed(2)
+            - peer.netOutPercent = ((peer.net.outBps / peer.net.speed) * 100).toFixed(2)
             tr
               td
                 input(type='checkbox', name='remove[]', value=peer.hostname)
@@ -63,6 +67,18 @@ block content
                     | #{peer.diskPercent}%
                 div
                   small.text-muted #{prettyBytes(peer.diskTotal - peer.diskFree)} / #{prettyBytes(peer.diskTotal)}
+              td
+                .progress.progress-striped(style='margin-bottom: 0;')
+                  .progress-bar.progress-bar-danger(role='progressbar', aria-valuenow='#{peer.netInPercent}', aria-valuemin='0', aria-valuemax='100', style='width: #{peer.netInPercent}%;')
+                    | #{peer.netInPercent}%
+                div
+                  small.text-muted #{prettyBytes(peer.net.inBps)} / #{prettyBytes(peer.net.speed)}
+              td
+                .progress.progress-striped(style='margin-bottom: 0;')
+                  .progress-bar.progress-bar-success(role='progressbar', aria-valuenow='#{peer.netOutPercent}', aria-valuemin='0', aria-valuemax='100', style='width: #{peer.netOutPercent}%;')
+                    | #{peer.netOutPercent}%
+                div
+                  small.text-muted #{prettyBytes(peer.net.outBps)} / #{prettyBytes(peer.net.speed)}
               td= moment(new Date(peer.sent)).fromNow()
         else
           tr

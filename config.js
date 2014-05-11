@@ -17,6 +17,7 @@ var guessIP = function(){
   return ip
 }
 var guessedIP = guessIP()
+var guessedInterface = '4'
 
 var config = new ObjectManage()
 config.load({
@@ -28,6 +29,13 @@ config.load({
     public: guessedIP,
     replication: guessedIP,
     management: guessedIP
+  },
+  snmp: {
+    interface: {
+      public: guessedInterface,
+      replication: guessedInterface,
+      management: guessedInterface
+    }
   },
   root: __dirname + '/_data',
   clones: {
