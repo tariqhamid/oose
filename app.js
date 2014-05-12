@@ -7,6 +7,10 @@ var cluster = require('cluster')
   , async = require('async')
   , logger = require('./helpers/logger').create('main')
 
+process.on('error',function(err){
+  logger.critical(err)
+})
+
 //master startup
 if(cluster.isMaster){
   //fix windows handling of ctrl+c

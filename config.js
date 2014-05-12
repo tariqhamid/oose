@@ -37,7 +37,7 @@ config.load({
       management: guessedInterface
     }
   },
-  root: __dirname + '/_data',
+  root: __dirname + '/data',
   clones: {
     min: 2,
     max: 2

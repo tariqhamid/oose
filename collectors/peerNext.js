@@ -16,10 +16,11 @@ var selectPeer = function(basket,done){
         if(!peer.hostname || !peer.ip){
           done('Can\'t select next peer: missing IP or hostname')
         } else {
+          peer.servicePorts = JSON.parse(peer.servicePorts)
           basket.hostname = peer.hostname
           basket.domain = config.get('domain')
           basket.ip = peer.ip
-          basket.port = peer.importPort
+          basket.port = peer.servicePorts.import
           basket.availableCapacity = peer.availableCapacity
           done(null,basket)
         }

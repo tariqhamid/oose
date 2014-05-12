@@ -9,8 +9,9 @@ var temp = require('temp')
   , crypto = require('crypto')
   , restler = require('restler')
   , Sniffer = require('../../helpers/Sniffer')
-  , File = require('../models/file').model
-  , Embed = require('../models/embed').model
+
+var File = require('../models/file').model
+var Embed = require('../models/embed').model
 
 
 /**
@@ -171,21 +172,21 @@ exports.upload = function(req,res){
                     //ask for nextPeer
                     function(next){
                       restler.get(prismBaseUrl + '/api/peerNext').on('complete',function(result){
-                          if(result instanceof Error) return next(result)
-                          if(!result.peer) return next('Next peer could not be found')
-                          peerNext = result.peer
-                          next()
-                        })
+                        if(result instanceof Error) return next(result)
+                        if(!result.peer) return next('Next peer could not be found')
+                        peerNext = result.peer
+                        next()
+                      })
                     },
                     //send to import
                     function(next){
                       var client = net.connect(peerNext.port,peerNext.host)
+                      client.on('error',function(err){
+                        next(err)
+                      })
                       client.on('connect',function(){
                         var rs = fs.createReadStream(file.tmp)
                         rs.pipe(client)
-                        client.on('error',function(err){
-                          next(err)
-                        })
                         client.on('end',function(){
                           next()
                         })
