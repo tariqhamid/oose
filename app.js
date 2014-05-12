@@ -4,12 +4,14 @@ var cluster = require('cluster')
   , config = require('./config')
   , fs = require('fs')
   , mkdirp = require('mkdirp')
-  , logger = require('./helpers/logger').create('main')
   , async = require('async')
+  , logger = require('./helpers/logger').create('main')
 
 //master startup
 if(cluster.isMaster){
+  //fix windows handling of ctrl+c
   require('node-sigint')
+  //import packages
   var redis = require('./helpers/redis')
     , peerNext = require('./collectors/peerNext')
     , peerStats = require('./collectors/peerStats')
@@ -17,6 +19,16 @@ if(cluster.isMaster){
     , ping = require('./mesh/ping')
     , announce = require('./mesh/announce')
     , shredder = require('./shredder')
+    , program = require('commander')
+  //parse cli
+  program
+    .version(config.get('version'))
+    .option('-v, --verbose','Enable debug')
+    .parse(process.argv)
+  //set log verbosity
+  if(program.verbose){
+    require('./helpers/logger').consoleFilter.setConfig({level: 7})
+  }
   //make sure the root folder exists
   if(!fs.existsSync(config.get('root')))
     mkdirp.sync(config.get('root'))
@@ -29,6 +41,9 @@ if(cluster.isMaster){
       function(next){
         if(config.get('mesh.enabled')){
           logger.info('Starting mesh')
+          mesh.on('error',function(err){
+            logger.error(err)
+          })
           mesh.start(next)
         }
       },

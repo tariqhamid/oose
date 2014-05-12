@@ -40,7 +40,9 @@ var save = function(basket,done){
 var peerNext = new Collector()
 peerNext.collect(selectPeer)
 peerNext.save(save)
-peerNext.on('error',logger.warn)
+peerNext.on('error',function(err){
+  logger.error(err)
+})
 
 
 /**

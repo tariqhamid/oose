@@ -10,7 +10,7 @@ var Collector = require('../helpers/collector')
   , snmp = require('snmp-native')
   , async = require('async')
 
-var session = new snmp.Session({community: 'esitedllc'})
+var session = new snmp.Session({community: 'public'})
 var snmpNetOID = config.get('snmp.interface.public')
 
 var getDiskFree = function(basket,next){
@@ -168,7 +168,9 @@ peerStats.collect(getServices)
 peerStats.collect(getNetwork)
 peerStats.process(availableCapacity)
 peerStats.save(save)
-peerStats.on('error',logger.warn)
+peerStats.on('error',function(err){
+  logger.error(err)
+})
 
 
 /**

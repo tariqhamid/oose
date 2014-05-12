@@ -9,23 +9,15 @@ var mesh = require('../mesh')
 
 //announcements
 var announceLog = function(selfPeer,oldPeer,peer,packet){
-  if(config.get('mesh.debug') || (packet.hostname !== oldPeer.hostname)){
-    logger.info(
-        peer.hostname +
-        ' (' + peer.ip + ':' + peer.meshPort + ')' +
-        ' @ ' + new Date(peer.sent).toLocaleTimeString() +
-        ' (latency ' + peer.latency + ')' +
-        (config.get('mesh.debug') && packet.hostname === selfPeer.hostname ? ' [SELFIE]' : '')
-    )
-  }
-  if(config.get('mesh.debug') > 1){
-    logger.info('Announce:')
-    logger.info(os.EOL + util.inspect(peer))
-  }
-  if(config.get('mesh.debug') > 2){
-    logger.info('Self Peer:')
-    logger.info(os.EOL + util.inspect(selfPeer))
-  }
+  logger.info(
+      peer.hostname +
+      ' (' + peer.ip + ':' + peer.meshPort + ')' +
+      ' @ ' + new Date(peer.sent).toLocaleTimeString() +
+      ' (latency ' + peer.latency + ')' +
+      (config.get('mesh.debug') && packet.hostname === selfPeer.hostname ? ' [SELFIE]' : '')
+  )
+  logger.debug('Announce:' + os.EOL + util.inspect(peer))
+  logger.debug('Self Peer:' + os.EOL + util.inspect(selfPeer))
 }
 
 //accept the multicast announce

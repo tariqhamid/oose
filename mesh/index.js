@@ -122,13 +122,11 @@ Mesh.prototype.locate = function(sha1,done){
     sha1 = sha1.toString('hex')
   } else if('object' === typeof sha1){
     //called from the main listener
-    if(config.get('mesh.debug') > 0){
-      logger.info(
-          '[MCAST LOCATE] who has ' + sha1.sha1 +
-          ' tell ' + sha1.rinfo.address +
-          ' @ ' + sha1.token
-      )
-    }
+    logger.debug(
+        '[MCAST LOCATE] who has ' + sha1.sha1 +
+        ' tell ' + sha1.rinfo.address +
+        ' @ ' + sha1.token
+    )
     redis.sismember('inventory',sha1.sha1,function(err,result){
       self.udp.send(sha1.token,{sha1:sha1.sha1,exists:!!result})
     })
@@ -143,11 +141,9 @@ Mesh.prototype.locate = function(sha1,done){
         [
           //log the action
           function(next){
-            if(config.get('mesh.debug') > 0){
-              logger.info('[LOCATE@' + token + '] ' + rinfo.address + ' says ' +
-                  (req.exists ? 'YES' : 'NO') + ' for ' + sha1
-              )
-            }
+            logger.debug('[LOCATE@' + token + '] ' + rinfo.address + ' says ' +
+                (req.exists ? 'YES' : 'NO') + ' for ' + sha1
+            )
             next()
           },
           //resolve ip to peer hostname

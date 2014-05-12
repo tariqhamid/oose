@@ -22,7 +22,7 @@ var guessedInterface = '4'
 var config = new ObjectManage()
 config.load({
   //options
-  version: '0.0.1',
+  version: '0.2.0',
   hostname: os.hostname(),
   domain: '',
   ip: {
@@ -45,7 +45,6 @@ config.load({
   //services
   mesh: {
     enabled: true,
-    debug: 0,
     port: 3000,
     multicast: {
       address: '226.0.0.1',

@@ -31,7 +31,7 @@ var pingSend = function(){
     token:thisToken,
     starttime:new Date().getTime()
   })
-  if(config.get('mesh.debug') > 1) logger.info('hosts:' + util.inspect(pingHosts))
+  logger.debug('hosts:' + util.inspect(pingHosts))
   pingTimeout = setTimeout(function(){pingSend(mesh)},config.get('mesh.ping.interval'))
 }
 
