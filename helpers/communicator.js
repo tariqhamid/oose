@@ -158,7 +158,9 @@ var TCP = function(options){
   self.server = net.createServer()
   self.server.on('connection',function(socket){
     socket.once('readable',function(){
-      var length = socket.read(2).readUInt16BE(0)
+      var lengthRaw = socket.read(2)
+      if(!lengthRaw) return self.emit('error','Invalid socket data ' + socket.remoteAddress + ':' + socket.remotePort)
+      var length = lengthRaw.readUInt16BE(0)
       var payload = util.parse(socket.read(length))
       if(!payload) return self.emit('error','Failed to parse payload')
       self.emit(payload.command,payload.message,socket)
