@@ -35,7 +35,7 @@ Collector.prototype.process = function(fn){
 
 
 /**
- * Add save middlware
+ * Add save middleware
  * @param {function} fn
  */
 Collector.prototype.save = function(fn){
