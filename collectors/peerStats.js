@@ -65,15 +65,14 @@ var getServices = function(basket,next){
   if(config.get('gump.enabled')) basket.services += ',gump'
   if(config.get('lg.enabled')) basket.services += ',lg'
   //service ports
-  var servicePorts = {}
   if(config.get('store.enabled')){
-    servicePorts.import = config.get('store.import.port')
-    servicePorts.export = config.get('store.export.port')
+    basket.portImport = config.get('store.import.port')
+    basket.portExport = config.get('store.export.port')
   }
   if(config.get('prism.enabled')){
-    servicePorts.prism = config.get('prism.port')
+    basket.portPrism = config.get('prism.port')
   }
-  basket.servicePorts = JSON.stringify(servicePorts)
+  basket.portMesh = config.get('mesh.port')
   next(null,basket)
 }
 
@@ -131,16 +130,12 @@ var getNetwork = function(basket,next){
       previousNet.in = net.in
       previousNet.out = net.out
       previousNet.lastCollected = now
-      basket.net = JSON.stringify({
-        speed: net.speed,
-        inBps: stats.inBps,
-        outBps: stats.outBps
-      })
+      basket.netSpeed = net.speed
+      basket.netInBps = stats.inBps
+      basket.netOutBps = stats.outBps
       next(null,basket)
     }
   )
-
-
 }
 
 var availableCapacity = function(basket,next){

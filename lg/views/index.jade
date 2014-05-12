@@ -34,9 +34,12 @@ block content
             - peer.diskPercent = (100 - (peer.diskFree / peer.diskTotal) * 100).toFixed(2)
             - peer.memoryFree = parseInt(peer.memoryFree,10)
             - peer.memoryTotal = parseInt(peer.memoryTotal,10)
+            - peer.netSpeed = parseInt(peer.netSpeed,10)
+            - peer.netInBps = parseInt(peer.netInBps,10)
+            - peer.netOutBps = parseInt(peer.netOutBps,10)
             - peer.memoryPercent = (100 - (peer.memoryFree / peer.memoryTotal) * 100).toFixed(2)
-            - peer.netInPercent = ((peer.net.inBps / peer.net.speed) * 100).toFixed(2)
-            - peer.netOutPercent = ((peer.net.outBps / peer.net.speed) * 100).toFixed(2)
+            - peer.netInPercent = ((peer.netInBps / peer.netSpeed) * 100).toFixed(2)
+            - peer.netOutPercent = ((peer.netOutBps / peer.netSpeed) * 100).toFixed(2)
             tr
               td
                 input(type='checkbox', name='remove[]', value=peer.hostname)
@@ -74,13 +77,13 @@ block content
                   .progress-bar.progress-bar-danger(role='progressbar', aria-valuenow='#{peer.netInPercent}', aria-valuemin='0', aria-valuemax='100', style='width: #{peer.netInPercent}%;')
                     | #{peer.netInPercent}%
                 div
-                  small.text-muted #{prettyBytes(peer.net.inBps)} / #{prettyBytes(peer.net.speed)}
+                  small.text-muted #{prettyBytes(peer.netInBps)} / #{prettyBytes(peer.netSpeed)}
               td
                 .progress.progress-striped(style='margin-bottom: 0;')
                   .progress-bar.progress-bar-success(role='progressbar', aria-valuenow='#{peer.netOutPercent}', aria-valuemin='0', aria-valuemax='100', style='width: #{peer.netOutPercent}%;')
                     | #{peer.netOutPercent}%
                 div
-                  small.text-muted #{prettyBytes(peer.net.outBps)} / #{prettyBytes(peer.net.speed)}
+                  small.text-muted #{prettyBytes(peer.netOutBps)} / #{prettyBytes(peer.netSpeed)}
               td= moment(new Date(peer.sent)).fromNow()
         else
           tr

@@ -59,7 +59,7 @@ var announceListen = function(){
           peer.ip = rinfo.address
           peer.readyState = packet.readyState
           peer.peerCount = packet.peerCount
-          peer.meshPort = packet.meshPort
+          peer.portMesh = packet.portMesh
           peer.diskFree = packet.diskFree
           peer.diskTotal = packet.diskTotal
           peer.cpuIdle = packet.cpuIdle
@@ -69,12 +69,15 @@ var announceListen = function(){
           peer.availableCapacity = packet.availableCapacity || 0
           peer.services = packet.services
           if(packet.services.indexOf('store') > 0){
-            peer.importPort = packet.importPort
-            peer.exportPort = packet.exportPort
+            peer.portImport = packet.portImport
+            peer.portExport = packet.portExport
           }
           if(packet.services.indexOf('prism') > 0){
-            peer.prismPort = packet.prismPort
+            peer.portPrism = packet.portPrism
           }
+          peer.netSpeed = packet.netSpeed || 0
+          peer.netInBps = packet.netInBps || 0
+          peer.netOutBps = packet.netOutBps || 0
           next()
         },
         //save to storeList
@@ -140,7 +143,6 @@ var announceSend = function(){
       function(next){
         message.sent = new Date().getTime()
         message.hostname = config.get('hostname')
-        message.meshPort = config.get('mesh.port')
         message.readyState = peer.readyState || 0
         message.peerCount = peerCount
         message.diskFree = peer.diskFree
@@ -151,8 +153,12 @@ var announceSend = function(){
         message.memoryTotal = peer.memoryTotal
         message.availableCapacity = peer.availableCapacity
         message.services = peer.services
-        message.servicePorts = peer.servicePorts
-        message.net = peer.net
+        message.portImport = peer.portImport || 0
+        message.portExport = peer.portExport || 0
+        message.portPrism = peer.portPrism || 0
+        message.netSpeed = peer.netSpeed || 0
+        message.netInBps = peer.netInBps || 0
+        message.netOutBps = peer.netOutBps || 0
         next()
       },
       //send message

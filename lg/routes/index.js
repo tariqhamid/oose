@@ -25,7 +25,6 @@ exports.index = function(req,res){
           function(item,next){
             redis.hgetall(item,function(err,result){
               if(err) return next(err)
-              result.net = JSON.parse(result.net)
               peers.push(result)
               next()
             })
