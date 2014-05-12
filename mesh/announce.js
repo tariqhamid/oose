@@ -3,8 +3,6 @@ var mesh = require('../mesh')
   , logger = require('../helpers/logger').create('mesh:announce')
   , redis = require('../helpers/redis')
   , config = require('../config')
-  , os = require('os')
-  , util = require('util')
   , async = require('async')
 
 //announcements
@@ -16,8 +14,8 @@ var announceLog = function(selfPeer,oldPeer,peer,packet){
       ' (latency ' + peer.latency + ')' +
       (config.get('mesh.debug') && packet.hostname === selfPeer.hostname ? ' [SELFIE]' : '')
   )
-  logger.debug('Announce:' + os.EOL + util.inspect(peer))
-  logger.debug('Self Peer:' + os.EOL + util.inspect(selfPeer))
+  //logger.debug('Announce:' + os.EOL + util.inspect(peer))
+  //logger.debug('Self Peer:' + os.EOL + util.inspect(selfPeer))
 }
 
 //accept the multicast announce

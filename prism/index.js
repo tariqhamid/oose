@@ -60,12 +60,16 @@ var buildCache = function(sha1,done){
  * @return {string}
  */
 var buildDestination = function(req,winner){
+  winner.servicePorts = JSON.parse(winner.servicePorts)
   var destination = req.protocol + '://' + winner.hostname
   if(config.get('domain')){
     destination += '.' + config.get('domain')
   }
-  if((80 !== winner.exportPort && 'http' === req.protocol) || 443 !== winner.exportPort && 'https' === req.protocol){
-    destination += ':' + winner.exportPort
+  if(
+    (80 !== winner.servicePorts.export && 'http' === req.protocol) ||
+    443 !== winner.servicePorts.export && 'https' === req.protocol
+  ){
+    destination += ':' + winner.servicePorts.export
   }
   destination += req.originalUrl
   return destination
