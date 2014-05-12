@@ -1,7 +1,7 @@
 'use strict';
 var config = require('../config')
   , os = require('os')
-  , snmp = require('snmp-native')
+  , snmp = require('net-snmp')
   , async = require('async')
 
 var ifDefaults = function(){
@@ -21,11 +21,11 @@ var network = {
   management: ifDefaults()
 }
 var oid = {
-  'RFC1213-MIB::ipRouteIfIndex': [1,3,6,1,2,1,4,21,1,2],
-  'IF-MIB::ifAlias': [1,3,6,1,2,1,31,1,1,1,18],
-  'IF-MIB::ifSpeed': [1,3,6,1,2,1,2,2,1,5],
-  'IF-MIB::ifInOctets': [1,3,6,1,2,1,2,2,1,10],
-  'IF-MIB::ifOutOctets': [1,3,6,1,2,1,2,2,1,16]
+  'RFC1213-MIB::ipRouteIfIndex': ['1.3.6.1.2.1.4.21.1.2'],
+  'IF-MIB::ifAlias': ['1.3.6.1.2.1.31.1.1.1.18'],
+  'IF-MIB::ifSpeed': ['1.3.6.1.2.1.2.2.1.5'],
+  'IF-MIB::ifInOctets': ['1.3.6.1.2.1.2.2.1.10'],
+  'IF-MIB::ifOutOctets': ['1.3.6.1.2.1.2.2.1.16']
 }
 var oidGen = {
   ipRouteIfIndex: function(ip){
@@ -141,7 +141,7 @@ var detectNetwork = function(community,self){
  * @param {array} timeouts Timeouts (see snmp-native docs); default: [5000,5000,5000,5000]
  * @param {string} family Address family; default: 'udp4'
  */
-var SnmpClient = function(community,port,host,timeouts,family){
+var SNMPClient = function(community,port,host,timeouts,family){
   var opts = snmp.defaultOptions
   if('string' === typeof community) opts.community = community
   if(port && 'number' === typeof port) opts.port = port
@@ -157,7 +157,7 @@ var SnmpClient = function(community,port,host,timeouts,family){
  * Get disk percentage used for whichever disk contains the given path
  * @param {string} path Path to get disk metrics for, default: config->root
  */
-SnmpClient.prototype.getDiskPercentUsed = function(path){
+SNMPClient.prototype.getDiskPercentUsed = function(path){
   if(!path) path = config.get('root')
 }
 
@@ -165,7 +165,7 @@ SnmpClient.prototype.getDiskPercentUsed = function(path){
  * Get disk percentage used for whichever disk contains the given path
  * @param {string} path Path to get disk metrics for, default: config->root
  */
-SnmpClient.prototype.updateNetwork = function(which,next){
+SNMPClient.prototype.updateNetwork = function(which,next){
   self.session.get({oid: [1,3,6,1,2,1,2,2,1,5,snmpClient.network.public.ifIndex]},function(err,result){
     if(!err){
       if(net.speed !== result[0].value)
@@ -181,6 +181,6 @@ SnmpClient.prototype.updateNetwork = function(which,next){
 
 /**
  * Export module
- * @type {SnmpClient}
+ * @type {SNMPClient}
  */
-module.exports = SnmpClient
+module.exports = SNMPClient

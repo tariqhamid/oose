@@ -90,29 +90,25 @@ var getNetwork = function(basket,next){
   }
   async.parallel(
     [
-      //get speed
+      //get net stats from snmp
       function(next){
-        session.get(['1.3.6.1.2.1.2.2.1.5.' + snmpNetOID],function(err,result){
-          if(err) return next(err)
-          net.speed = result[0].value
-          next()
-        })
-      },
-      //get in counter
-      function(next){
-        session.get(['1.3.6.1.2.1.2.2.1.10.' + snmpNetOID],function(err,result){
-          if(err) return next(err)
-          net.in = result[0].value
-          next()
-        })
-      },
-      //get out counter
-      function(next){
-        session.get(['1.3.6.1.2.1.2.2.1.16.' + snmpNetOID],function(err,result){
-          if(err) return next(err)
-          net.out = result[0].value
-          next()
-        })
+        session.get(
+          [
+            '1.3.6.1.2.1.2.2.1.5.' + snmpNetOID,
+            '1.3.6.1.2.1.2.2.1.10.' + snmpNetOID,
+            '1.3.6.1.2.1.2.2.1.16.' + snmpNetOID
+          ],
+          function(err,result){
+            if(err) return next(err)
+            //get speed
+            net.speed = result[0].value
+            //get in counter
+            net.in = result[1].value
+            //get out counter
+            net.out = result[2].value
+            next()
+          }
+        )
       }
     ],
     function(err){
