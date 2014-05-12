@@ -1,7 +1,7 @@
 'use strict';
 var fs = require('fs')
-  , config = require('../config')
   , mkdirp = require('mkdirp')
+  , util = require('util')
 
 //make sure the log folder exists
 if(!fs.existsSync('./log')) mkdirp.sync('./log')
@@ -28,6 +28,15 @@ var unshift = function(args,value){
   return obj
 }
 
+//normalize logged args
+var stringify = function(args){
+  args.forEach(function(item,i,o){
+    if('string' !== typeof item)
+      o[i] = util.inspect(item)
+  })
+  return args
+}
+
 
 
 /**
@@ -49,6 +58,7 @@ Logger.prototype.log = function(){
   var level = args[1]
   args.splice(1,1)
   args.unshift(level)
+  args = stringify(args)
   logger.log.apply(logger,args)
 }
 
