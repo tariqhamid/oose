@@ -2,22 +2,113 @@
 var ObjectManage = require('object-manage')
   , fs = require('fs')
   , os = require('os')
+  , async = require('async')
+  , snmp = require('snmp-native')
 
-var guessIP = function(){
-  var interfaces = os.networkInterfaces()
-  var ip = '127.0.0.1'
-  var filter = function(address){
-    if('IPv4' === address.family && !address.internal && !ip)
-      ip = address.address
+var netInfoDefaults = function(){
+  return {
+    ifIndex: 0,
+    name: 'ERROR',
+    ip: false,
+    lastUpdate: 0,
+    speed: 0,
+    in: 0,
+    out: 0
   }
-  for(var i in interfaces){
-    if(!interfaces.hasOwnProperty(i)) continue
-    interfaces[i].forEach(filter)
-  }
-  return ip
 }
-var guessedIP = guessIP()
-var guessedInterface = '4'
+
+var network = {
+  public: netInfoDefaults(),
+  replication: netInfoDefaults(),
+  management: netInfoDefaults()
+}
+var ifIndexRouted = 0
+var ifInfoRouted = {
+  name: 'ERROR',
+  ip: false,
+  speed: 0,
+  in: 0,
+  out: 0
+}
+async.series(
+  [
+    function(nextInit){
+      var snmpSession = new snmp.Session()
+      async.series(
+        [
+          //detect our interface index by tracing the default route
+          // RFC1213-MIB::ipRouteIfIndex.0.0.0.0
+          function(next){
+            snmpSession.get({oid: [1,3,6,1,2,1,4,21,1,2,0,0,0,0]},function(err,result){
+              if(!err){
+                ifIndexRouted = result[0].value
+                next()
+              } else return next(err)
+            })
+          },
+          //get useful name from IF-MIB::ifAlias.<ifIndex>
+          function(next){
+            snmpSession.get({oid: [1,3,6,1,2,1,31,1,1,1,18,ifIndexRouted]},function(err,result){
+              if(!err){
+                ifInfoRouted.name = result[0].value
+                next()
+              } else next(err)
+            })
+          },
+          //get speed from IF-MIB::ifSpeed.<ifIndex>
+          function(next){
+            snmpSession.get({oid: [1,3,6,1,2,1,2,2,1,5,ifIndexRouted]},function(err,result){
+              if(!err){
+                ifInfoRouted.speed = result[0].value
+                next()
+              } else next(err)
+            })
+          },
+          //get in counter from IF-MIB::ifInOctets.<ifIndex>
+          function(next){
+            snmpSession.get({oid: [1,3,6,1,2,1,2,2,1,10,ifIndexRouted]},function(err,result){
+              if(!err){
+                ifInfoRouted.in = result[0].value
+                next()
+              } else next(err)
+            })
+          },
+          //get out counter from IF-MIB::ifOutOctets.<ifIndex>
+          function(next){
+            snmpSession.get({oid: [1,3,6,1,2,1,2,2,1,16,ifIndexRouted]},function(err,result){
+              if(!err){
+                ifInfoRouted.out = result[0].value
+                next()
+              } else next(err)
+            })
+          }
+        ],
+        function(err){
+          if(err) return nextInit(err)
+          nextInit()
+        }
+      )
+    },
+    function(nextInit){
+      var interfaces = os.networkInterfaces()
+      console.log(interfaces[ifInfoRouted.name])
+      var filter = function(address){
+        if('IPv4' === address.family && !address.internal && !ifInfoRouted.ip)
+          ifInfoRouted.ip = address.address
+      }
+      for(var i in interfaces){
+        if(!interfaces.hasOwnProperty(i)) continue
+        interfaces[i].forEach(filter)
+      }
+      nextInit()
+    }
+  ],
+  function(err){
+    if(err) console.log(err)
+    console.log('ifIndexRouted detected: ' + ifIndexRouted)
+    console.log('ifInfoRouted:',ifInfoRouted)
+  }
+)
 
 var config = new ObjectManage()
 config.load({
@@ -25,16 +116,17 @@ config.load({
   version: '0.2.0',
   hostname: os.hostname(),
   domain: '',
+  network: ifInfoRouted,
   ip: {
-    public: guessedIP,
-    replication: guessedIP,
-    management: guessedIP
+    public: ifInfoRouted.ip,
+    replication: ifInfoRouted.ip,
+    management: ifInfoRouted.ip
   },
   snmp: {
-    interface: {
-      public: guessedInterface,
-      replication: guessedInterface,
-      management: guessedInterface
+    ifIndex: {
+      public: ifIndexRouted,
+      replication: ifIndexRouted,
+      management: ifIndexRouted
     }
   },
   root: __dirname + '/data',

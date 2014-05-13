@@ -7,12 +7,17 @@ var Collector = require('../helpers/collector')
   , os = require('os')
   , ds = require('diskspace')
   , path = require('path')
-  , snmp = require('net-snmp')
+  , snmpClient = require('../helpers/snmp-client')
   , async = require('async')
 
-var session = snmp.createSession('127.0.0.1','public')
-var snmpNetOID = config.get('snmp.interface.public')
+var snmpSession = snmpClient.session
 
+
+/**
+ * Get disk byte used/free for whichever disk contains the root
+ * @param {object} basket Collector basket
+ * @param {function} next Callback
+ */
 var getDiskFree = function(basket,next){
   var root = path.resolve(config.get('root'))
   //Windows needs to call with only the drive letter
@@ -76,6 +81,8 @@ var getServices = function(basket,next){
   next(null,basket)
 }
 
+var interfaces = {}
+
 var previousNet = {
   in: 0,
   out: 0,
@@ -113,6 +120,7 @@ var getNetwork = function(basket,next){
     ],
     function(err){
       if(err) return next(err)
+      logger.info(require('util').inspect(interfaces))
       var stats = {
         inBps: 0,
         outBps: 0
