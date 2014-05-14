@@ -1,21 +1,21 @@
 'use strict';
 var fs = require('fs')
- , util = require('util')
- , path = require('path')
- , net = require('net')
- , redis = require('../helpers/redis')
- , config = require('../config')
- , async = require('async')
- , logger = require('../helpers/logger').create('shredder')
- , crypto = require('crypto')
- , ffmpeg = require('fluent-ffmpeg')
- , temp = require('temp')
- , mkdirp = require('mkdirp')
- , gpac = require('./plugins/gpac')
- , Sniffer = require('../helpers/Sniffer')
- , restler = require('restler')
- , shortId = require('shortid')
- , mesh = require('../mesh')
+  , util = require('util')
+  , path = require('path')
+  , net = require('net')
+  , redis = require('../helpers/redis')
+  , config = require('../config')
+  , async = require('async')
+  , logger = require('../helpers/logger').create('shredder')
+  , crypto = require('crypto')
+  , ffmpeg = require('fluent-ffmpeg')
+  , temp = require('temp')
+  , mkdirp = require('mkdirp')
+  , gpac = require('./plugins/gpac')
+  , Sniffer = require('../helpers/Sniffer')
+  , restler = require('restler')
+  , shortId = require('shortid')
+  , mesh = require('../mesh')
 var commUtil = require('../helpers/communicator').util
 var testing = !!config.get('shredder.testing')
 
@@ -249,7 +249,7 @@ var q = async.queue(
       done()
     })
   },
-    config.get('shredder.concurrency') || 1
+  config.get('shredder.concurrency') || 1
 )
 
 
