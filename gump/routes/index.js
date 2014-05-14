@@ -138,18 +138,6 @@ exports.upload = function(req,res){
         var doc, importJob
         async.series(
           [
-            /*
-            //detect mime type
-            function(next){
-              console.log(file.tmp)
-              magic.detectFile(file.tmp,function(err,result){
-                if(err) return next(err)
-                console.log(result)
-                process.exit()
-                mimeType = result
-                next()
-              })
-            },*/
             //decide whether to use shredder or raw import
             function(next){
               var prismBaseUrl = 'http://' + config.get('gump.prism.host') + ':' + config.get('gump.prism.port')
