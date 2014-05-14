@@ -40,11 +40,9 @@ Shredder.prototype.meshListen = function(done){
   var self = this
   // shred:job:push - queue entry acceptor
   mesh.tcp.on('shred:job:push',function(message,socket){
-    //use an uppercase friendly character set
-    shortId.characters('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ')
     //build job description
     var job = {
-      handle: shortId.generate(),
+      handle: shortId.generate().toUpperCase(),
       logger: logger,
       source: {
         url: message.source,
@@ -64,6 +62,7 @@ Shredder.prototype.meshListen = function(done){
       {status: 'ok', handle: job.handle, position: self.q.length()}
     )))
   })
+  logger.info('Listening for jobs')
   done()
 }
 
@@ -113,7 +112,6 @@ Shredder.prototype.getSource = function(job,done){
   //setup temp folder
   var tmpDir = config.get('shredder.root') + '/tmp'
   if(!fs.existsSync(tmpDir)) mkdirp.sync(tmpDir)
-  //
   restler.get(job.source.url).on('complete',function(result){
     if(result instanceof Error) return done(result)
     var tempfile = temp.path({dir: tmpDir})

@@ -10,6 +10,7 @@ var temp = require('temp')
   , restler = require('restler')
   , Sniffer = require('../../helpers/Sniffer')
   , logger = require('../../helpers/logger').create('gump:index')
+  , Q = require('q')
 
 var File = require('../models/file').model
 var Embed = require('../models/embed').model
@@ -93,7 +94,7 @@ exports.fileRemove = function(req,res){
  */
 exports.upload = function(req,res){
   var body = {}
-  var files = []
+  var fileQ = []
   var path = File.decode(req.query.path)
   if(!req.query.god || !req.session.user.admin)
     path.unshift(req.session.user._id)
@@ -102,6 +103,8 @@ exports.upload = function(req,res){
     body[key] = value
   })
   req.busboy.on('file',function(fieldname,file,filename){
+    var deferred = Q.defer()
+    fileQ.push(deferred.promise)
     var tmp = temp.path({dir: config.get('gump.tmpDir')})
     var magic = new mmm.Magic(mmm.MAGIC_MIME_TYPE)
     var fileParams = {
@@ -114,7 +117,7 @@ exports.upload = function(req,res){
     var sniff = new Sniffer()
     sniff.once('data',function(data){
       magic.detect(data,function(err,result){
-        if(err) logger.warn('Failed to detect mimetype of ' + tmp)
+        if(err) logger.warn('Failed to detect MIME type of ' + tmp)
         fileParams.mimeType = result || 'index/x-empty'
       })
     })
@@ -124,124 +127,127 @@ exports.upload = function(req,res){
     })
     sniff.on('end',function(){
       fileParams.sha1 = shasum.digest('hex')
+      deferred.resolve(fileParams)
     })
-    files.push(fileParams)
     if(!fs.existsSync(config.get('gump.tmpDir')))
       mkdirp.sync(config.get('gump.tmpDir'))
     var writable = fs.createWriteStream(tmp)
     file.pipe(sniff).pipe(writable)
   })
   req.busboy.on('finish',function(){
-    async.each(
-      files,
-      function(file,next){
-        var doc, importJob
-        async.series(
-          [
-            //decide whether to use shredder or raw import
-            function(next){
-              var prismBaseUrl = 'http://' + config.get('gump.prism.host') + ':' + config.get('gump.prism.port')
-              var gumpBaseUrl = 'http://' + config.get('gump.host') + ':' + config.get('gump.port')
-              if(file.mimeType.match(/^(video|audio)\//i)){
-                restler
-                  .post(prismBaseUrl + '/api/shredderJob',{
-                    data: {
-                      mimeType: file.mimeType,
-                      filename: file.filename,
-                      sha1: file.sha1,
-                      source: gumpBaseUrl + '/tmp/' + require('path').basename(file.tmp),
-                      callback: gumpBaseUrl + '/api/importJobUpdate',
-                      output: {
-                        preset: 'mp4Stream'
+    Q.all(fileQ).done(function(files){
+      logger.info(files)
+      async.each(
+        files,
+        function(file,next){
+          var doc, importJob
+          async.series(
+            [
+              //decide whether to use shredder or raw import
+              function(next){
+                var prismBaseUrl = 'http://' + config.get('gump.prism.host') + ':' + config.get('gump.prism.port')
+                var gumpBaseUrl = 'http://' + config.get('gump.host') + ':' + config.get('gump.port')
+                if(file.mimeType.match(/^(video|audio)\//i)){
+                  restler
+                    .post(prismBaseUrl + '/api/shredderJob',{
+                      data: {
+                        mimeType: file.mimeType,
+                        filename: file.filename,
+                        sha1: file.sha1,
+                        source: gumpBaseUrl + '/tmp/' + require('path').basename(file.tmp),
+                        callback: gumpBaseUrl + '/api/importJobUpdate',
+                        output: {
+                          preset: 'mp4Stream'
+                        }
                       }
-                    }
-                  })
-                  .on('complete',function(result){
-                    if(result instanceof Error){
-                      return next(result)
-                    }
-                    importJob = result.handle
-                    next()
-                  })
-              } else {
-                var peerNext = {}
-                async.series(
-                  [
-                    //ask for nextPeer
-                    function(next){
-                      restler.get(prismBaseUrl + '/api/peerNext').on('complete',function(result){
-                        if(result instanceof Error) return next(result)
-                        if(!result.peer) return next('Next peer could not be found')
-                        peerNext = result.peer
-                        next()
-                      })
-                    },
-                    //send to import
-                    function(next){
-                      var client = net.connect(peerNext.port,peerNext.host)
-                      client.on('error',function(err){
-                        next(err)
-                      })
-                      client.on('connect',function(){
-                        var rs = fs.createReadStream(file.tmp)
-                        rs.pipe(client)
-                        client.on('end',function(){
+                    })
+                    .on('complete',function(result){
+                      if(result instanceof Error){
+                        return next(result)
+                      }
+                      importJob = result.handle
+                      next()
+                    })
+                } else {
+                  var peerNext = {}
+                  async.series(
+                    [
+                      //ask for nextPeer
+                      function(next){
+                        restler.get(prismBaseUrl + '/api/peerNext').on('complete',function(result){
+                          if(result instanceof Error) return next(result)
+                          if(!result.peer) return next('Next peer could not be found')
+                          peerNext = result.peer
                           next()
                         })
-                      })
-                    },
-                    //remove tmp file
-                    function(next){
-                      fs.unlink(file.tmp,next)
-                    }
-                  ],
-                  next
-                )
-              }
-            },
-            //create parents
-            function(next){
-              File.mkdirp(Object.create(path),next)
-            },
-            //create doc
-            function(next){
-              var currentPath = path.slice(0)
-              currentPath.push(file.filename)
-              doc = new File()
-              doc.name = file.filename
-              doc.tmp = file.tmp
-              doc.sha1 = file.sha1
-              doc.size = file.size
-              doc.path = currentPath
-              doc.mimeType = file.mimeType
-              if(importJob){
-                doc.importJob = importJob
-                doc.status = 'procesing'
-              } else {
-                doc.status = 'ok'
-              }
-              next()
-            },
-            //save doc
-            function(next){
-              doc.save(function(err){
-                if(err) return next(err.message)
+                      },
+                      //send to import
+                      function(next){
+                        var client = net.connect(peerNext.portImport,peerNext.ip)
+                        client.on('error',function(err){
+                          next(err)
+                        })
+                        client.on('connect',function(){
+                          var rs = fs.createReadStream(file.tmp)
+                          rs.pipe(client)
+                          client.on('end',function(){
+                            next()
+                          })
+                        })
+                      },
+                      //remove tmp file
+                      function(next){
+                        fs.unlink(file.tmp,next)
+                      }
+                    ],
+                    next
+                  )
+                }
+              },
+              //create parents
+              function(next){
+                File.mkdirp(Object.create(path),next)
+              },
+              //create doc
+              function(next){
+                var currentPath = path.slice(0)
+                currentPath.push(file.filename)
+                doc = new File()
+                doc.name = file.filename
+                doc.tmp = file.tmp
+                doc.sha1 = file.sha1
+                doc.size = file.size
+                doc.path = currentPath
+                doc.mimeType = file.mimeType
+                if(importJob){
+                  doc.importJob = importJob
+                  doc.status = 'processing'
+                } else {
+                  doc.status = 'ok'
+                }
                 next()
-              })
-            }
-          ],
-          next
-        )
-      },
-      function(err){
-        if(err){
-          res.status(500)
-          res.json({error: err})
-        } else {
-          res.json({success: 'File upload successfully'})
+              },
+              //save doc
+              function(next){
+                doc.save(function(err){
+                  if(err) return next(err.message)
+                  next()
+                })
+              }
+            ],
+            next
+          )
+        },
+        function(err){
+          if(err){
+            res.status(500)
+            res.json({error: err})
+          } else {
+            res.json({success: 'File upload succeeded'})
+          }
         }
-      }
-    )
+      )
+    })
   })
 }
 
