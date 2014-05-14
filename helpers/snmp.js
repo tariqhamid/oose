@@ -16,7 +16,7 @@ exports.createSession = function(host,community,options){
     options.port = 161
   }
   if(!community || 'string' !== typeof community) community = 'public'
-  return new snmp.createSession(host,community,options)
+  return snmp.createSession(host,community,options)
 }
 
 

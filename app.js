@@ -27,12 +27,17 @@ if(cluster.isMaster){
   //parse cli
   program
     .version(config.get('version'))
-    .option('-v, --verbose','Enable debug')
+    .option(
+      '-v, --verbose',
+      'Increase logging',
+      function(v,total){
+        return total + 1
+      },
+      0
+    )
     .parse(process.argv)
   //set log verbosity
-  if(program.verbose){
-    require('./helpers/logger').consoleFilter.setConfig({level: 7})
-  }
+  require('./helpers/logger').consoleFilter.setConfig({level: (program.verbose || 0) + 4})
   //make sure the root folder exists
   if(!fs.existsSync(config.get('root')))
     mkdirp.sync(config.get('root'))
