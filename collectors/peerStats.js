@@ -180,7 +180,7 @@ var getMemory = function(basket,next){
             if(err) return next(err)
             if(!result || 3 !== result.length) return next('Could not get memory info from SNMP')
             basket.memoryTotal = result[0].value * result[1].value
-            basket.memoryFree = result[0].value * result[2].value
+            basket.memoryFree = basket.memoryTotal - result[0].value * result[2].value
             next()
           }
         )
