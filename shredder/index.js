@@ -1,77 +1,30 @@
 'use strict';
 var fs = require('fs')
-  , util = require('util')
-  , path = require('path')
-  , net = require('net')
-  , redis = require('../helpers/redis')
-  , config = require('../config')
-  , async = require('async')
-  , logger = require('../helpers/logger').create('shredder')
-  , crypto = require('crypto')
-  , ffmpeg = require('fluent-ffmpeg')
-  , temp = require('temp')
-  , mkdirp = require('mkdirp')
-  , gpac = require('./plugins/gpac')
-  , Sniffer = require('../helpers/Sniffer')
-  , restler = require('restler')
-  , shortId = require('shortid')
-  , mesh = require('../mesh')
-var EventEmitter = require('events').EventEmitter
+ , util = require('util')
+ , path = require('path')
+ , net = require('net')
+ , redis = require('../helpers/redis')
+ , config = require('../config')
+ , async = require('async')
+ , logger = require('../helpers/logger').create('shredder')
+ , crypto = require('crypto')
+ , ffmpeg = require('fluent-ffmpeg')
+ , temp = require('temp')
+ , mkdirp = require('mkdirp')
+ , gpac = require('./plugins/gpac')
+ , Sniffer = require('../helpers/Sniffer')
+ , restler = require('restler')
+ , shortId = require('shortid')
+ , mesh = require('../mesh')
 var commUtil = require('../helpers/communicator').util
-
-
-
-/**
- * Shredder constructor
- * @constructor
- */
-var Shredder = function(){
-  var self = this
-  EventEmitter.call(self)
-}
-Shredder.prototype = Object.create(EventEmitter.prototype)
-
-
-/**
- * Set up Mesh event listener
- * @param {function} done Callback
- */
-Shredder.prototype.meshListen = function(done){
-  var self = this
-  // shred:job:push - queue entry acceptor
-  mesh.tcp.on('shred:job:push',function(message,socket){
-    //build job description
-    var job = {
-      handle: shortId.generate().toUpperCase(),
-      logger: logger,
-      source: {
-        url: message.source,
-        sha1: message.sha1,
-        mimeType: message.mimeType,
-        filename: message.filename
-      },
-      output: message.output,
-      callback: message.callback
-    }
-    //jab job into local q
-    logger.info('Job queued locally as ' + job.handle)
-    self.q.push(job)
-    //respond to the request with the assigned handle and queue position
-    socket.end(commUtil.withLength(commUtil.build(
-      job.source.sha1,
-      {status: 'ok', handle: job.handle, position: self.q.length()}
-    )))
-  })
-  logger.info('Listening for jobs')
-  done()
-}
+var testing = !!config.get('shredder.testing')
 
 
 /**
  * Handle job completion callback
  * @param {object} job Job description
  */
-Shredder.prototype.jobComplete = function(job){
+var jobComplete = function(job){
   var response = {
     handle: job.handle,
     status: 'complete',
@@ -90,7 +43,7 @@ Shredder.prototype.jobComplete = function(job){
  * Call prism for nextPeer
  * @param {function} done Callback
  */
-Shredder.prototype.nextPeer = function(done){
+var nextPeer = function(done){
   redis.hgetall('peer:next',function(err,peer){
     if('undefined' === typeof peer || null === peer){
       err = 'Could not obtain a peer from redis'
@@ -108,7 +61,7 @@ Shredder.prototype.nextPeer = function(done){
  * @param {object} job Job description
  * @param {function} done Callback
  */
-Shredder.prototype.getSource = function(job,done){
+var getSource = function(job,done){
   //setup temp folder
   var tmpDir = config.get('shredder.root') + '/tmp'
   if(!fs.existsSync(tmpDir)) mkdirp.sync(tmpDir)
@@ -129,7 +82,7 @@ Shredder.prototype.getSource = function(job,done){
  * @param {string} path Full path of file to process
  * @param {function} done Callback
  */
-Shredder.prototype.getVideoInfo = function(path,done){
+var getVideoInfo = function(path,done){
   var ffmeta = ffmpeg.Metadata
   ffmeta(path,function(metadata,err){
     if(!err){
@@ -144,7 +97,7 @@ Shredder.prototype.getVideoInfo = function(path,done){
  * @param {string} path Full path of file to process
  * @param {function} done Callback
  */
-Shredder.prototype.processVideo = function(path,done){
+var processVideo = function(path,done){
   var infs = fs.createReadStream(path)
   infs.on('error',done) // calls as done(err) so skipped the closure - FIXME ?
   var ffproc = new ffmpeg({source:infs,nolog:true})
@@ -168,8 +121,7 @@ Shredder.prototype.processVideo = function(path,done){
  * @param {object} job Job structure
  * @param {function} done Callback
  */
-Shredder.prototype.runJob = function(job,done){
-  var self = this
+var runJob = function(job,done){
   var store, ffProcess
   // replace the global logger with the job-specific one
   var logger = job.logger // NOTE - SCOPE SMASHING HERE
@@ -179,7 +131,7 @@ Shredder.prototype.runJob = function(job,done){
     [
       //grab the source file
       function(next){
-        self.getSource(job,function(err,result){
+        getSource(job,function(err,result){
           if(!err){
             job.source.tempfile = result
             next()
@@ -189,7 +141,7 @@ Shredder.prototype.runJob = function(job,done){
       //check to see if this is a video file and if so obtain metadata (info)
       function(next){
         if(!config.get('shredder.transcode.videos.enabled')) return next()
-        self.getVideoInfo(job.source.tempfile,function(err,result){
+        getVideoInfo(job.source.tempfile,function(err,result){
           if(!err){
             job.source.videoInfo = result
             logger.info('videoInfo:' + util.inspect(job.source.videoInfo))
@@ -200,7 +152,7 @@ Shredder.prototype.runJob = function(job,done){
       //figure out our peer
       function(next){
         logger.info('Checking nextPeer')
-        self.nextPeer(function(err,result){
+        nextPeer(function(err,result){
           if(!err){
             job.output.peer = result
             next()
@@ -217,7 +169,7 @@ Shredder.prototype.runJob = function(job,done){
       },
       //set up our processing chain
       function(next){
-        self.processVideo(job.source.tempfile,function(err,result){
+        processVideo(job.source.tempfile,function(err,result){
           if(!err){
             ffProcess = result
             next()
@@ -263,7 +215,7 @@ Shredder.prototype.runJob = function(job,done){
       },
       //remove the original file
       function(next){
-        if(!self.testing){
+        if(!testing){
           fs.unlink(path,next)
         } else next()
       }
@@ -278,21 +230,69 @@ Shredder.prototype.runJob = function(job,done){
 
 
 /**
+ * The job queue
+ */
+var q = async.queue(
+  function(job,done){
+    if('undefined' === typeof job.handle || null === job.handle || !job.handle)
+      done('ERROR: Job.handle not set')
+    //now that the job is running, overload the main logger for this scope
+    var logger = require('../helpers/logger').create('shredder:job:'+job.handle)
+    job.logger = logger
+    runJob(job,function(err){
+      if(err){
+        logger.error('Import failed: ' + err)
+      } else {
+        logger.info('Import successful')
+        jobComplete(job)
+      }
+      done()
+    })
+  },
+    config.get('shredder.concurrency') || 1
+)
+
+
+/**
+ * Set up Mesh event listener
+ * @param {function} done Callback
+ */
+var meshListen = function(done){
+  // shred:job:push - queue entry acceptor
+  mesh.tcp.on('shred:job:push',function(message,socket){
+    //build job description
+    var job = {
+      handle: shortId.generate().toUpperCase(),
+      logger: logger,
+      source: {
+        url: message.source,
+        sha1: message.sha1,
+        mimeType: message.mimeType,
+        filename: message.filename
+      },
+      output: message.output,
+      callback: message.callback
+    }
+    //jab job into local q
+    logger.info('Job queued locally as ' + job.handle)
+    q.push(job)
+    //respond to the request with the assigned handle and queue position
+    socket.end(commUtil.withLength(commUtil.build(
+      job.source.sha1,
+      {status: 'ok', handle: job.handle, position: q.length()}
+    )))
+  })
+  logger.info('Listening for jobs')
+  done()
+}
+
+
+/**
  * Start shredder (but not necessarily the Shredder-queue)
  * @param {function} done
  * @return {*}
  */
-Shredder.prototype.start = function(done){
-  var self = this
-  //load profile
-  if(config.get('shredder.profile')){
-    self.profile = path.resolve(config.get('shredder.profile'))
-    if(!fs.existsSync(self.profile))
-      return done(new Error('Configuration profile not found'))
-    config.load(require(self.profile))
-  }
-  //check for testing
-  self.testing = !!config.get('shredder.testing')
+exports.start = function(done){
   //check if root exists
   if(!config.get('shredder.root'))
     config.set('shredder.root',path.resolve(config.get('root')))
@@ -300,29 +300,9 @@ Shredder.prototype.start = function(done){
   if(!fs.existsSync(config.get('shredder.root')))
     mkdirp.sync(config.get('shredder.root'))
   if(!fs.existsSync(config.get('shredder.root')))
-    return done(new Error('Root folder [' + path.resolve(config.get('shredder.root')) + '] does not exist'))
-  //set up the local queue
-  self.q = async.queue(
-    function(job,done){
-      if('undefined' === typeof job.handle || null === job.handle || !job.handle)
-        done('ERROR: Job.handle not set')
-      //now that the job is running, overload the main logger for this scope
-      var logger = require('../helpers/logger').create('shredder:job:'+job.handle)
-      job.logger = logger
-      self.runJob(job,function(err){
-        if(err){
-          logger.error('Import failed: ' + err)
-        } else {
-          logger.info('Import successful')
-          self.jobComplete(job)
-        }
-        done()
-      })
-    },
-      config.get('shredder.concurrency') || 1
-  )
-  //startup otherwise complete, listen on mesh
-  self.meshListen(done)
+    return done('Root folder [' + path.resolve(config.get('shredder.root')) + '] does not exist')
+  //listen on mesh
+  meshListen(done)
 }
 
 
@@ -330,13 +310,6 @@ Shredder.prototype.start = function(done){
  * Stop processing
  * @param {function} done
  */
-Shredder.prototype.stop = function(done){
+exports.stop = function(done){
   done()
 }
-
-
-/**
- * Export shredder instance
- * @type {Mesh}
- */
-module.exports = new Shredder()
