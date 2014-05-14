@@ -80,22 +80,25 @@ schema = new mongoose.Schema({
 
 //make sure and remove descendants and delete files
 schema.pre('remove',function(next){
-  var Model = this
+  var Model = require('../models/file').model
+  var path = this.path
   //remove direct descendants and let the waterfall happen
-  Model
-    .findDescendents(this.path)
-    .exec(function(err,results){
-      if(err) return next(err.message)
-      if(!results) return next()
-      async.eachLimit(
-        results,
-        require('os').cpus().length,
-        function(item,next){
-          Model.findByIdAndRemove(item.id,next)
-        },
-        next
-      )
-    })
+  if(!path instanceof Array) path = path.split('/')
+  var exp = new RegExp('^,' + path.join(','))
+  var query = Model.find({path: exp})
+  query.sort('-folder name')
+  query.exec(function(err,results){
+    if(err) return next(err.message)
+    if(!results) return next()
+    async.eachLimit(
+      results,
+      require('os').cpus().length,
+      function(item,next){
+        Model.findByIdAndRemove(item.id,next)
+      },
+      next
+    )
+  })
 })
 
 

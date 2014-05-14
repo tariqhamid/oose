@@ -9,6 +9,7 @@ var temp = require('temp')
   , crypto = require('crypto')
   , restler = require('restler')
   , Sniffer = require('../../helpers/Sniffer')
+  , logger = require('../../helpers/logger').create('gump:index')
 
 var File = require('../models/file').model
 var Embed = require('../models/embed').model
@@ -102,6 +103,7 @@ exports.upload = function(req,res){
   })
   req.busboy.on('file',function(fieldname,file,filename){
     var tmp = temp.path({dir: config.get('gump.tmpDir')})
+    var magic = new mmm.Magic(mmm.MAGIC_MIME_TYPE)
     var fileParams = {
       tmp: tmp,
       filename: filename,
@@ -110,6 +112,12 @@ exports.upload = function(req,res){
     }
     var shasum = crypto.createHash('sha1')
     var sniff = new Sniffer()
+    sniff.once('data',function(data){
+      magic.detect(data,function(err,result){
+        if(err) logger.warn('Failed to detect mimetype of ' + tmp)
+        fileParams.mimeType = result || 'index/x-empty'
+      })
+    })
     sniff.on('data',function(data){
       fileParams.size += data.length
       shasum.update(data)
@@ -127,31 +135,33 @@ exports.upload = function(req,res){
     async.each(
       files,
       function(file,next){
-        var mimeType, doc
-        var magic = new mmm.Magic(mmm.MAGIC_MIME_TYPE)
-        var importJob
+        var doc, importJob
         async.series(
           [
+            /*
             //detect mime type
             function(next){
+              console.log(file.tmp)
               magic.detectFile(file.tmp,function(err,result){
                 if(err) return next(err)
+                console.log(result)
+                process.exit()
                 mimeType = result
                 next()
               })
-            },
+            },*/
             //decide whether to use shredder or raw import
             function(next){
               var prismBaseUrl = 'http://' + config.get('gump.prism.host') + ':' + config.get('gump.prism.port')
               var gumpBaseUrl = 'http://' + config.get('gump.host') + ':' + config.get('gump.port')
-              if(mimeType.match(/^(video|audio)\//i)){
+              if(file.mimeType.match(/^(video|audio)\//i)){
                 restler
                   .post(prismBaseUrl + '/api/shredderJob',{
                     data: {
-                      mimeType: mimeType,
+                      mimeType: file.mimeType,
                       filename: file.filename,
                       sha1: file.sha1,
-                      source: gumpBaseUrl + '/tmp/' + path.basename(file.tmp),
+                      source: gumpBaseUrl + '/tmp/' + require('path').basename(file.tmp),
                       callback: gumpBaseUrl + '/api/importJobUpdate',
                       output: {
                         preset: 'mp4Stream'
@@ -215,7 +225,7 @@ exports.upload = function(req,res){
               doc.sha1 = file.sha1
               doc.size = file.size
               doc.path = currentPath
-              doc.mimeType = mimeType
+              doc.mimeType = file.mimeType
               if(importJob){
                 doc.importJob = importJob
                 doc.status = 'procesing'

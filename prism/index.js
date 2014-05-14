@@ -9,6 +9,7 @@ var commUtil = require('../helpers/communicator').util
 
 var running = false
 
+app.use(express.urlencoded())
 
 /**
  * Build cache for prism
