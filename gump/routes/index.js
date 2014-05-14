@@ -2,14 +2,13 @@
 var temp = require('temp')
   , config = require('../../config')
   , fs = require('fs')
-  , os = require('os')
   , mkdirp = require('mkdirp')
   , async = require('async')
   , net = require('net')
   , crypto = require('crypto')
   , restler = require('restler')
   , Sniffer = require('../../helpers/Sniffer')
-  , logger = require('../../helpers/logger').create('gump:index')
+  , Q = require('q')
 
 var File = require('../models/file').model
 var Embed = require('../models/embed').model
@@ -93,6 +92,7 @@ exports.fileRemove = function(req,res){
  */
 exports.upload = function(req,res){
   var body = {}
+  var promises = []
   //normalize path and deal with god mode
   var path = File.decode(req.query.path)
   if(!req.query.god || !req.session.user.admin)
@@ -165,7 +165,7 @@ exports.upload = function(req,res){
       next
     )
   }
-  var q = async.queue(function(file,next){
+  var processFile = function(file){
     var writable = fs.createWriteStream(file.tmp)
     var shasum = crypto.createHash('sha1')
     var sniff = new Sniffer()
@@ -217,17 +217,13 @@ exports.upload = function(req,res){
             })
           }
         ],
-        next
+        function(err){
+          if(err) return file.promise.reject(err)
+          file.promise.resolve()
+        }
       )
     })
     file.readable.pipe(sniff).pipe(writable)
-  },os.cpus().length)
-  q.drain = function(){
-    res.json({
-      status: 'ok',
-      code: 0,
-      message: 'Files uploaded successfully'
-    })
   }
   //busboy handling
   req.pipe(req.busboy)
@@ -235,7 +231,9 @@ exports.upload = function(req,res){
     body[key] = value
   })
   req.busboy.on('file',function(fieldname,readable,filename,encoding,mimetype){
+    var promise = Q.defer()
     var file = {
+      promise: promise,
       tmp: temp.path({dir: config.get('gump.tmpDir')}),
       fieldname: fieldname,
       readable: readable,
@@ -246,9 +244,25 @@ exports.upload = function(req,res){
       sha1: '',
       importJob: ''
     }
-    q.push(file,function(err){
-      if(err) logger.warning('Failed to process file ' + file.tmp + ' ' + err)
-    })
+    promises.push(promise)
+    processFile(file)
+  })
+  req.busboy.on('finish',function(){
+    Q.all(promises)
+      .fail(function(err){
+        res.json({
+          status: 'error',
+          code: 1,
+          message: err
+        })
+      })
+      .done(function(){
+        res.json({
+          status: 'ok',
+          code: 0,
+          message: 'Files uploaded successfully'
+        })
+      })
   })
 }
 
