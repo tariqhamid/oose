@@ -39,6 +39,7 @@ block content
             - peer.memoryPercent = (100 - (peer.memoryFree / peer.memoryTotal) * 100).toFixed(2)
             - peer.netInPercent = ((peer.netInBps / peer.netSpeed) * 100).toFixed(2)
             - peer.netOutPercent = ((peer.netOutBps / peer.netSpeed) * 100).toFixed(2)
+            - peer.sentDelta = ((+new Date - peer.sent)/1000).toFixed(1)
             tr
               td
                 input(type='checkbox', name='remove[]', value=peer.hostname)
@@ -83,7 +84,7 @@ block content
                     | #{peer.netOutPercent}%
                 div
                   small.text-muted #{prettyBytes(peer.netOutBps)} / #{prettyBytes(peer.netSpeed)}
-              td= moment(new Date(peer.sent)).fromNow()
+              td #{peer.sentDelta}s ago
         else
           tr
             td(colspan='8') No entries exist

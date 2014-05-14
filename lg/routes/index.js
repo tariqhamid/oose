@@ -34,11 +34,10 @@ exports.index = function(req,res){
       }
     ],
     function(err){
-      if(err) return res.send('An error occured querying peers: ' + err)
+      if(err) return res.send('An error occurred querying peers: ' + err)
       res.render('index',{
         peers: peers
       })
     }
   )
-
 }
