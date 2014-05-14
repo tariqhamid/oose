@@ -91,7 +91,7 @@ app.post('/api/shredderJob',function(req,res){
       //validate input
       function(next){
         if(!req.body.filename) return next('filename is required')
-        if(!req.body.mimeType) return next('mimeType is required')
+        if(!req.body.mimetype) return next('mimeType is required')
         if(!req.body.sha1) return next('sha1 is required')
         if(!req.body.source) return next('source url is required')
         if(!req.body.callback) return next('callback url is required')

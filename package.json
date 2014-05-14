@@ -45,7 +45,6 @@
     "node-sigint": "^0.0.1",
     "object-manage": "^0.7.1",
     "pretty-bytes": "^0.1.0",
-    "q": "^1.0.1",
     "readdirp": "^1.0.1",
     "redis": "^0.10.1",
     "restler": "^3.2.2",

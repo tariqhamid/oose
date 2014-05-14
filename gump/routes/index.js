@@ -2,15 +2,14 @@
 var temp = require('temp')
   , config = require('../../config')
   , fs = require('fs')
+  , os = require('os')
   , mkdirp = require('mkdirp')
-  , mmm = require('mmmagic')
   , async = require('async')
   , net = require('net')
   , crypto = require('crypto')
   , restler = require('restler')
   , Sniffer = require('../../helpers/Sniffer')
   , logger = require('../../helpers/logger').create('gump:index')
-  , Q = require('q')
 
 var File = require('../models/file').model
 var Embed = require('../models/embed').model
@@ -94,162 +93,161 @@ exports.fileRemove = function(req,res){
  */
 exports.upload = function(req,res){
   var body = {}
-  var fileQ = []
+  //normalize path and deal with god mode
   var path = File.decode(req.query.path)
   if(!req.query.god || !req.session.user.admin)
     path.unshift(req.session.user._id)
+  //setup temp folder
+  if(!fs.existsSync(config.get('gump.tmpDir')))
+    mkdirp.sync(config.get('gump.tmpDir'))
+  //url creators
+  var prismBaseUrl = function(){
+    return 'http://' + (config.get('gump.prism.host') || '127.0.0.1') + ':' + config.get('gump.prism.port') || 3003
+  }
+  var gumpBaseUrl = function(){
+    return 'http://' + (config.get('gump.host') || '127.0.0.1') + ':' + (config.get('gump.port') || 3004)
+  }
+  //import functions
+  var sendToShredder = function(file,next){
+    restler
+      .post(prismBaseUrl() + '/api/shredderJob',{
+        data: {
+          mimetype: file.mimetype,
+          filename: file.filename,
+          sha1: file.sha1,
+          source: gumpBaseUrl() + '/tmp/' + require('path').basename(file.tmp),
+          callback: gumpBaseUrl() + '/api/importJobUpdate',
+          output: {
+            preset: 'mp4Stream'
+          }
+        }
+      })
+      .on('complete',function(result){
+        if(result instanceof Error) return next(result)
+        if('ok' !== result.status) return next(result.message)
+        if(!result.handle) return next('Shredder failed to return a job handle')
+        file.importJob = result.handle
+        next()
+      })
+  }
+  var sendToOOSE = function(file,next){
+    var peerNext = {}
+    async.series(
+      [
+        //ask for nextPeer
+        function(next){
+          restler.get(prismBaseUrl() + '/api/peerNext').on('complete',function(result){
+            if(result instanceof Error) return next(result)
+            if(!result.peer) return next('Next peer could not be found')
+            peerNext = result.peer
+            next()
+          })
+        },
+        //send to import
+        function(next){
+          var client = net.connect(peerNext.portImport,peerNext.ip)
+          client.on('error',function(err){
+            next(err)
+          })
+          client.on('connect',function(){
+            var rs = fs.createReadStream(file.tmp)
+            rs.pipe(client)
+            client.on('end',function(){
+              next()
+            })
+          })
+        },
+        //remove tmp file
+        function(next){
+          fs.unlink(file.tmp,next)
+        }
+      ],
+      next
+    )
+  }
+  var q = async.queue(function(file,next){
+    var writable = fs.createWriteStream(file.tmp)
+    var shasum = crypto.createHash('sha1')
+    var sniff = new Sniffer()
+    var doc
+    sniff.on('data',function(data){
+      file.size += data.length
+      shasum.update(data)
+    })
+    writable.on('finish',function(){
+      file.sha1 = shasum.digest('hex')
+      async.series(
+        [
+          //send to oose or shredder
+          function(next){
+            if(file.mimetype.match(/^(video|audio)\//i)){
+              sendToShredder(file,next)
+            } else {
+              sendToOOSE(file,next)
+            }
+          },
+          //create parents
+          function(next){
+            File.mkdirp(Object.create(path),next)
+          },
+          //create doc
+          function(next){
+            var currentPath = path.slice(0)
+            currentPath.push(file.filename)
+            doc = new File()
+            doc.name = file.filename
+            doc.tmp = file.tmp
+            doc.sha1 = file.sha1
+            doc.size = file.size
+            doc.path = currentPath
+            doc.mimetype = file.mimetype
+            if(file.importJob){
+              doc.importJob.handle = file.importJob
+              doc.status = 'processing'
+            } else {
+              doc.status = 'ok'
+            }
+            next()
+          },
+          //save doc
+          function(next){
+            doc.save(function(err){
+              if(err) return next(err.message)
+              next()
+            })
+          }
+        ],
+        next
+      )
+    })
+    file.readable.pipe(sniff).pipe(writable)
+  },os.cpus().length)
+  q.drain = function(){
+    res.json({
+      status: 'ok',
+      code: 0,
+      message: 'Files uploaded successfully'
+    })
+  }
+  //busboy handling
   req.pipe(req.busboy)
   req.busboy.on('field',function(key,value){
     body[key] = value
   })
-  req.busboy.on('file',function(fieldname,file,filename){
-    var deferred = Q.defer()
-    fileQ.push(deferred.promise)
-    var tmp = temp.path({dir: config.get('gump.tmpDir')})
-    var magic = new mmm.Magic(mmm.MAGIC_MIME_TYPE)
-    var fileParams = {
-      tmp: tmp,
+  req.busboy.on('file',function(fieldname,readable,filename,encoding,mimetype){
+    var file = {
+      tmp: temp.path({dir: config.get('gump.tmpDir')}),
+      fieldname: fieldname,
+      readable: readable,
       filename: filename,
+      size: 0,
+      encoding: encoding,
+      mimetype: mimetype,
       sha1: '',
-      size: 0
+      importJob: ''
     }
-    var shasum = crypto.createHash('sha1')
-    var sniff = new Sniffer()
-    sniff.once('data',function(data){
-      magic.detect(data,function(err,result){
-        if(err) logger.warn('Failed to detect MIME type of ' + tmp)
-        fileParams.mimeType = result || 'index/x-empty'
-      })
-    })
-    sniff.on('data',function(data){
-      fileParams.size += data.length
-      shasum.update(data)
-    })
-    sniff.on('end',function(){
-      fileParams.sha1 = shasum.digest('hex')
-      deferred.resolve(fileParams)
-    })
-    if(!fs.existsSync(config.get('gump.tmpDir')))
-      mkdirp.sync(config.get('gump.tmpDir'))
-    var writable = fs.createWriteStream(tmp)
-    file.pipe(sniff).pipe(writable)
-  })
-  req.busboy.on('finish',function(){
-    Q.all(fileQ).done(function(files){
-      async.each(
-        files,
-        function(file,next){
-          var doc, importJob
-          async.series(
-            [
-              //decide whether to use shredder or raw import
-              function(next){
-                var prismHost = config.get('gump.prism.host') || '127.0.0.1'
-                  , prismPort = config.get('gump.prism.port') || 3003
-                  , prismBaseUrl = 'http://' + prismHost + ':' + prismPort
-                var gumpHost = config.get('gump.host') || '127.0.0.1'
-                var gumpPort = config.get('gump.port') || 3004
-                var gumpBaseUrl = 'http://' + gumpHost + ':' + gumpPort
-                if(file.mimeType.match(/^(video|audio)\//i)){
-                  restler
-                    .post(prismBaseUrl + '/api/shredderJob',{
-                      data: {
-                        mimeType: file.mimeType,
-                        filename: file.filename,
-                        sha1: file.sha1,
-                        source: gumpBaseUrl + '/tmp/' + require('path').basename(file.tmp),
-                        callback: gumpBaseUrl + '/api/importJobUpdate',
-                        output: {
-                          preset: 'mp4Stream'
-                        }
-                      }
-                    })
-                    .on('complete',function(result){
-                      if(result instanceof Error){
-                        return next(result)
-                      }
-                      importJob = result.handle
-                      next()
-                    })
-                } else {
-                  var peerNext = {}
-                  async.series(
-                    [
-                      //ask for nextPeer
-                      function(next){
-                        restler.get(prismBaseUrl + '/api/peerNext').on('complete',function(result){
-                          if(result instanceof Error) return next(result)
-                          if(!result.peer) return next('Next peer could not be found')
-                          peerNext = result.peer
-                          next()
-                        })
-                      },
-                      //send to import
-                      function(next){
-                        var client = net.connect(peerNext.portImport,peerNext.ip)
-                        client.on('error',function(err){
-                          next(err)
-                        })
-                        client.on('connect',function(){
-                          var rs = fs.createReadStream(file.tmp)
-                          rs.pipe(client)
-                          client.on('end',function(){
-                            next()
-                          })
-                        })
-                      },
-                      //remove tmp file
-                      function(next){
-                        fs.unlink(file.tmp,next)
-                      }
-                    ],
-                    next
-                  )
-                }
-              },
-              //create parents
-              function(next){
-                File.mkdirp(Object.create(path),next)
-              },
-              //create doc
-              function(next){
-                var currentPath = path.slice(0)
-                currentPath.push(file.filename)
-                doc = new File()
-                doc.name = file.filename
-                doc.tmp = file.tmp
-                doc.sha1 = file.sha1
-                doc.size = file.size
-                doc.path = currentPath
-                doc.mimeType = file.mimeType
-                if(importJob){
-                  doc.importJob = importJob
-                  doc.status = 'processing'
-                } else {
-                  doc.status = 'ok'
-                }
-                next()
-              },
-              //save doc
-              function(next){
-                doc.save(function(err){
-                  if(err) return next(err.message)
-                  next()
-                })
-              }
-            ],
-            next
-          )
-        },
-        function(err){
-          if(err){
-            res.status(500)
-            res.json({error: err})
-          } else {
-            res.json({success: 'File upload succeeded'})
-          }
-        }
-      )
+    q.push(file,function(err){
+      if(err) logger.warning('Failed to process file ' + file.tmp + ' ' + err)
     })
   })
 }
