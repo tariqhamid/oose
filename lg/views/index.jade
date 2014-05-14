@@ -26,9 +26,8 @@ block content
         if peers.length
           each peer in peers
             - peer.availableCapacity = parseInt(peer.availableCapacity,10)
-            - peer.cpuIdle = parseInt(peer.cpuIdle,10)
-            - peer.cpuTotal = parseInt(peer.cpuTotal,10)
-            - peer.cpuPercent = (100 - (peer.cpuIdle / peer.cpuTotal) * 100).toFixed(2)
+            - peer.cpuUsed = parseInt(peer.cpuUsed,10)
+            - peer.cpuCount = parseInt(peer.cpuCount,10)
             - peer.diskFree = parseInt(peer.diskFree,10)
             - peer.diskTotal = parseInt(peer.diskTotal,10)
             - peer.diskPercent = (100 - (peer.diskFree / peer.diskTotal) * 100).toFixed(2)
@@ -57,9 +56,9 @@ block content
                   small.text-muted #{peer.availableCapacity.toFixed(2)}%
               td
                 .progress.progress-striped(style='margin-bottom: 0;')
-                  .progress-bar.progress-bar-danger(role='progressbar', aria-valuenow='#{peer.cpuPercent}', aria-valuemin='0', aria-valuemax='100', style='width: #{peer.cpuPercent}%;')
+                  .progress-bar.progress-bar-danger(role='progressbar', aria-valuenow='#{peer.cpuUsed}', aria-valuemin='0', aria-valuemax='100', style='width: #{peer.cpuUsed}%;')
                 div
-                  small.text-muted #{peer.cpuPercent}%
+                  small.text-muted #{peer.cpuUsed}%
               td
                 .progress.progress-striped(style='margin-bottom: 0;')
                   .progress-bar.progress-bar-warning(role='progressbar', aria-valuenow='#{peer.memoryPercent}', aria-valuemin='0', aria-valuemax='100', style='width: #{peer.memoryPercent}%;')

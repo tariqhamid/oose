@@ -9,7 +9,7 @@ var mesh = require('../mesh')
 var announceLog = function(selfPeer,oldPeer,peer,packet){
   logger.info(
       peer.hostname +
-      ' (' + peer.ip + ':' + peer.meshPort + ')' +
+      ' (' + peer.ip + ':' + peer.portMesh + ')' +
       ' @ ' + new Date(peer.sent).toLocaleTimeString() +
       ' (latency ' + peer.latency + ')' +
       (config.get('mesh.debug') && packet.hostname === selfPeer.hostname ? ' [SELFIE]' : '')
@@ -59,11 +59,10 @@ var announceListen = function(){
           peer.ip = rinfo.address
           peer.readyState = packet.readyState
           peer.peerCount = packet.peerCount
-          peer.portMesh = packet.portMesh
           peer.diskFree = packet.diskFree
           peer.diskTotal = packet.diskTotal
-          peer.cpuIdle = packet.cpuIdle
-          peer.cpuTotal = packet.cpuTotal
+          peer.cpuUsed = packet.cpuUsed
+          peer.cpuCount = packet.cpuCount
           peer.memoryFree = packet.memoryFree
           peer.memoryTotal = packet.memoryTotal
           peer.availableCapacity = packet.availableCapacity || 0
@@ -75,6 +74,7 @@ var announceListen = function(){
           if(packet.services.indexOf('prism') > 0){
             peer.portPrism = packet.portPrism
           }
+          peer.portMesh = packet.portMesh
           peer.netSpeed = packet.netSpeed || 0
           peer.netInBps = packet.netInBps || 0
           peer.netOutBps = packet.netOutBps || 0
@@ -147,8 +147,8 @@ var announceSend = function(){
         message.peerCount = peerCount
         message.diskFree = peer.diskFree
         message.diskTotal = peer.diskTotal
-        message.cpuIdle = peer.cpuIdle
-        message.cpuTotal = peer.cpuTotal
+        message.cpuUsed = peer.cpuUsed
+        message.cpuCount = peer.cpuCount
         message.memoryFree = peer.memoryFree
         message.memoryTotal = peer.memoryTotal
         message.availableCapacity = peer.availableCapacity
@@ -156,6 +156,7 @@ var announceSend = function(){
         message.portImport = peer.portImport || 0
         message.portExport = peer.portExport || 0
         message.portPrism = peer.portPrism || 0
+        message.portMesh = peer.portMesh || 0
         message.netSpeed = peer.netSpeed || 0
         message.netInBps = peer.netInBps || 0
         message.netOutBps = peer.netOutBps || 0

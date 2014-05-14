@@ -107,34 +107,77 @@ var getDiskFree = function(basket,next){
   })
 }
 
-var lastMeasure
 var getCPU = function(basket,next){
-  var cpuAverage = function(){
-    var totalIdle = 0
-      , totalTick = 0
-    var cpus = os.cpus()
-    for(var i=0,len=cpus.length; i<len; i++){
-      for(var type in cpus[i].times){
-        if(cpus[i].times.hasOwnProperty(type)){ totalTick += cpus[i].times[type] }
+  var cpuUsed = 0
+  var cpuCount = 0
+  async.series(
+    [
+      function(next){
+        snmpSession.getBulk([snmp.mib.cpuLoadTable],function(err,result){
+          if(err) return next(err)
+          if(!result || !result[0] || !result[0].length) return next('Could not get CPU statistics from SNMP')
+          cpuCount = result[0].length
+          result[0].forEach(function(item){
+            cpuUsed += item.value
+          })
+          cpuUsed = cpuUsed / cpuCount
+          next()
+        })
       }
-      totalIdle += cpus[i].times.idle
+    ],
+    function(err){
+      if(err) return next(err)
+      basket.cpuUsed = cpuUsed
+      basket.cpuCount = cpuCount
+      next(null,basket)
     }
-    return {idle: totalIdle / cpus.length, total: totalTick / cpus.length}
-  }
-  if(!lastMeasure) lastMeasure = cpuAverage()
-  var thisMeasure = cpuAverage()
-  //figure percentage
-  basket.cpuIdle = (thisMeasure.idle - lastMeasure.idle) || 100
-  basket.cpuTotal = (thisMeasure.total - lastMeasure.total) || 100
-  //set this value for next use
-  lastMeasure = thisMeasure
-  next(null,basket)
+  )
 }
 
 var getMemory = function(basket,next){
-  basket.memoryFree = os.freemem()
-  basket.memoryTotal = os.totalmem()
-  next(null,basket)
+  var memoryIndex
+  async.series(
+    [
+      //get memory index from hrStorageTable
+      function(next){
+        snmpSession.getBulk([snmp.mib.hrStorageTable],function(err,result){
+          if(err) return next(err)
+          if(!result || !result[0]) return next('Could not look up memory index')
+          result[0].forEach(function(item){
+            if(
+              item.value &&
+              item.value instanceof Buffer &&
+              item.value.toString().match(/physical memory/i) &&
+              !memoryIndex
+            ){
+              memoryIndex = item.oid.split('.').pop()
+            }
+          })
+          next()
+        })
+      },
+      function(next){
+        snmpSession.get(
+          [
+            snmp.mib.memoryAllocationUnit(memoryIndex),
+            snmp.mib.memorySize(memoryIndex),
+            snmp.mib.memoryUsed(memoryIndex)
+          ],
+          function(err,result){
+            if(err) return next(err)
+            if(!result || 3 !== result.length) return next('Could not get memory info from SNMP')
+            basket.memoryTotal = result[0].value * result[1].value
+            basket.memoryFree = result[0].value * result[2].value
+            next()
+          }
+        )
+      }
+    ],
+    function(err){
+      if(err) return next(err)
+      next(null,basket)
+    }
+  )
 }
 
 var getServices = function(basket,next){
@@ -182,7 +225,7 @@ var networkStats = function(basket,next){
 var availableCapacity = function(basket,next){
   basket.availableCapacity = Math.round(
     (
-      (100 * (basket.cpuIdle / basket.cpuTotal)) +
+      (basket.cpuUsed) +
       (2 * (100 * (basket.diskFree / basket.diskTotal)))
     ) / 3
   )
@@ -197,9 +240,9 @@ var save = function(basket,next){
 }
 
 var peerStats = new Collector()
+peerStats.collect(getCPU)
 peerStats.collect(getNetwork)
 peerStats.collect(getDiskFree)
-peerStats.collect(getCPU)
 peerStats.collect(getMemory)
 peerStats.collect(getServices)
 peerStats.process(availableCapacity)
