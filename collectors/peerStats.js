@@ -7,7 +7,7 @@ var Collector = require('../helpers/collector')
   , os = require('os')
   , ds = require('diskspace')
   , path = require('path')
-  , snmp = require('../helpers/SnmpClient')
+  , snmp = require('../helpers/SNMPClient')
   , async = require('async')
 
 var snmpSession = snmp.createSession()
