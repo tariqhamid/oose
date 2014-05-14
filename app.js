@@ -98,6 +98,7 @@ if(cluster.isMaster){
       //start the supervisor
       function(next){
         if(config.get('supervisor.enabled')){
+          logger.info('Starting supervisor')
           require('./supervisor').start(function(){
             logger.info('Supervisor started')
             next()
@@ -107,6 +108,7 @@ if(cluster.isMaster){
       //start Shredder
       function(next){
         if(config.get('shredder.enabled')){
+          logger.info('Starting shredder')
           shredder.start(function(err){
             if(!err){
               logger.info('Shredder started')

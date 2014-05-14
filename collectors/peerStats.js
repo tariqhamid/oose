@@ -32,7 +32,7 @@ var getNetwork = function(basket,next){
       //detect our interface index by tracing the default route
       // RFC1213-MIB::ipRouteIfIndex.0.0.0.0
       function(next){
-        snmpSession.get([snmp.mib.defaultRoute],function(err,result){
+        snmpSession.get([snmp.mib.ipRouteIfIndex('0.0.0.0')],function(err,result){
           if(err) return next(err)
           if(!result || !result[0]) return next('No result for ifIndex')
           ifInfo.index = result[0].value
@@ -44,7 +44,7 @@ var getNetwork = function(basket,next){
         snmpSession.get(
           [
             //get useful name from IF-MIB::ifAlias.<ifIndex>
-            snmp.mib.ifName(ifInfo.index),
+            snmp.mib.ifAlias(ifInfo.index),
             //get speed from IF-MIB::ifSpeed.<ifIndex>
             snmp.mib.ifSpeed(ifInfo.index),
             //get in counter from IF-MIB::ifInOctets.<ifIndex>
@@ -113,12 +113,25 @@ var getCPU = function(basket,next){
   async.series(
     [
       function(next){
-        snmpSession.getBulk([snmp.mib.cpuLoadTable],function(err,result){
+        snmpSession.getBulk([snmp.mib.hrDeviceType,snmp.mib.hrProcessorLoad],function(err,result){
           if(err) return next(err)
-          if(!result || !result[0] || !result[0].length) return next('Could not get CPU statistics from SNMP')
-          cpuCount = result[0].length
+          if(!result || !result[0] || !result[0].length || !result[1] || !result[1].length)
+            return next('Could not get CPU statistics from SNMP')
+          var cpus = []
           result[0].forEach(function(item){
-            cpuUsed += item.value
+            if(item.oid &&
+              snmp.ObjectType.OID === item.type &&
+              snmp.mib.hrDeviceTypes(3) === item.value
+              ) cpus.push(item.oid.split('.').slice(-1)[0])
+          })
+          result[1].forEach(function(item){
+            if(item.oid &&
+              snmp.ObjectType.Integer32 === item.type &&
+              cpus.indexOf(item.oid.split('.').slice(-1)[0]) !== -1
+              ){
+              cpuUsed += item.value
+              cpuCount++
+            }
           })
           cpuUsed = cpuUsed / cpuCount
           next()
