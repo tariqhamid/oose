@@ -16,11 +16,20 @@ var selectPeer = function(basket,done){
         if(!peer.hostname || !peer.ip){
           done('Can\'t select next peer: missing IP or hostname')
         } else {
-          basket.hostname = peer.hostname
+          ['hostname'
+          ,'ip'
+          ,'portMesh'
+          ,'portExport'
+          ,'portImport'
+          ,'portPrism'
+          ,'services'
+          ,'diskFree'
+          ,'availableCapacity'
+          ].forEach(function(k){
+            basket[k] = peer[k]
+          })
+          basket.ip = peer.ip || peer.netIp
           basket.domain = config.get('domain')
-          basket.ip = peer.ip
-          basket.port = peer.portImport
-          basket.availableCapacity = peer.availableCapacity
           done(null,basket)
         }
       })

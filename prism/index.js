@@ -11,6 +11,7 @@ var running = false
 
 app.use(express.urlencoded())
 
+
 /**
  * Build cache for prism
  * @param {string} sha1
@@ -107,7 +108,7 @@ app.post('/api/shredderJob',function(req,res){
       },
       //send the request to that peer
       function(next){
-        var client = commUtil.tcpSend('shred:job:push',req.body,peerNext.meshPort,peerNext.ip)
+        var client = commUtil.tcpSend('shred:job:push',req.body,peerNext.portMesh,peerNext.ip)
         client.once('readable',function(){
           //read our response
           var payload = commUtil.parse(client.read(client.read(2).readUInt16BE(0)))
