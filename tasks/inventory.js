@@ -19,6 +19,7 @@ exports.start = function(done){
   rdStream.on('warn',console.error)
   rdStream.on('error',console.error)
   rdStream.on('end',function(){
+    logger.info('Initial inventory is completed and read ' + fileCount + ' files')
     done(null,fileCount)
   })
   rdStream.on('data',function(entry){

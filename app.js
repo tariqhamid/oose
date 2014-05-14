@@ -118,9 +118,8 @@ if(cluster.isMaster){
       }
       //fire off initial scan
       if(config.get('store.enabled')){
-        require('./tasks/inventory').start(function(err,fileCount){
+        require('./tasks/inventory').start(function(err){
           if(err) logger.error(err)
-          else logger.info('Initial inventory is completed and read ' + fileCount + ' files')
         })
       }
       //start workers
