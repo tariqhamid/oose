@@ -136,7 +136,6 @@ exports.upload = function(req,res){
   })
   req.busboy.on('finish',function(){
     Q.all(fileQ).done(function(files){
-      logger.info(files)
       async.each(
         files,
         function(file,next){
@@ -145,8 +144,12 @@ exports.upload = function(req,res){
             [
               //decide whether to use shredder or raw import
               function(next){
-                var prismBaseUrl = 'http://' + config.get('gump.prism.host') + ':' + config.get('gump.prism.port')
-                var gumpBaseUrl = 'http://' + config.get('gump.host') + ':' + config.get('gump.port')
+                var prismHost = config.get('gump.prism.host') || '127.0.0.1'
+                  , prismPort = config.get('gump.prism.port') || 3003
+                  , prismBaseUrl = 'http://' + prismHost + ':' + prismPort
+                var gumpHost = config.get('gump.host') || '127.0.0.1'
+                var gumpPort = config.get('gump.port') || 3004
+                var gumpBaseUrl = 'http://' + gumpHost + ':' + gumpPort
                 if(file.mimeType.match(/^(video|audio)\//i)){
                   restler
                     .post(prismBaseUrl + '/api/shredderJob',{
