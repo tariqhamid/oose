@@ -100,7 +100,7 @@ var getDiskFree = function(basket,next){
   var root = path.resolve(config.get('root'))
   //Windows needs to call with only the drive letter
   if('win32' === os.platform()) root = root.substr(0,1)
-  ds.check(root,function(total,free){
+  ds.check(root,function(err,total,free){
     basket.diskFree = parseInt(free,10) || 0
     basket.diskTotal = parseInt(total,10) || 0
     next(null,basket)
@@ -242,6 +242,8 @@ var availableCapacity = function(basket,next){
       (2 * (100 * (basket.diskFree / basket.diskTotal)))
     ) / 3
   )
+  //issue #32 avail comes back infinity (this is a safeguard)
+  if('Infinity' === basket.availableCapacity) basket.availableCapacity = 100
   next(null,basket)
 }
 

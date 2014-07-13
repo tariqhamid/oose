@@ -83,27 +83,44 @@ var announceListen = function(){
         //save to storeList
         function(next){
           if(packet.services.indexOf('store') > 0){
-            redis.sadd('peer:store',packet.hostname,next)
+            redis.sadd('peer:store',packet.hostname,function(err){
+              if(err) err = 'Could not add to store list: ' + err
+              next(err)
+            })
           } else next()
         },
         function(next){
           if(packet.services.indexOf('store') > 0){
-            redis.zadd('peer:rank',parseInt(peer.availableCapacity,10),packet.hostname,next)
+            //issue #32 avail comes back infinity (this is a safeguard)
+            if('Infinity' === peer.availableCapacity) peer.availableCapacity = 100
+            redis.zadd('peer:rank',parseInt(peer.availableCapacity.toFixed(2),10),packet.hostname,function(err){
+              if(err) err = 'Could not store peer rank: ' + err
+              next(err)
+            })
           } else next()
         },
         //save to prism list
         function(next){
           if(packet.services.indexOf('prism') > 0){
-            redis.sadd('peer:prism',packet.hostname,next)
+            redis.sadd('peer:prism',packet.hostname,function(err){
+              if(err) err = 'Could not store to prism list: ' + err
+              next(err)
+            })
           } else next()
         },
         //save to peer ip map
         function(next){
-          redis.hset('peer:ip',peer.ip,peer.hostname,next)
+          redis.hset('peer:ip',peer.ip,peer.hostname,function(err){
+            if(err) err = 'Could not store to ip map: ' + err
+            next(err)
+          })
         },
         //save to redis
         function(next){
-          redis.hmset('peer:db:' + packet.hostname,peer,next)
+          redis.hmset('peer:db:' + packet.hostname,peer,function(err){
+            if(err) err = 'Could not store peer: ' + err
+            next(err)
+          })
         }
         //save to peerRank
       //process announce receipt
