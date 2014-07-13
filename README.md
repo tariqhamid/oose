@@ -98,38 +98,71 @@ $ apt-get -y install gcc g++ make git redis-server
 Optional packages
 
 ```
-$ apt-get -y install dstat vim screen
+$ apt-get -y install dstat vim screen mongodb
 ```
 
-Create an oose user
+**Note** MongoDB must be installed to use Gump
+
+Create a node user
 
 ```
-$ adduser oose
+$ adduser node
 ```
 
 Checkout the repo
 
 ```
-$ su - oose
+$ cd /opt
 $ git clone https://github.com/eSited/oose.git
+```
+
+Install PM2 and setup logging
+
+```
+$ npm -g install pm2
+$ mkdir /var/log/node
+$ chown -R node:node /opt/oose
 ```
 
 Install dependencies
 
 ```
-$ su - oose
-$ cd oose
+$ cd /opt/oose
 $ npm install
 ```
 
-Start app inside a screen
+Start with PM2
 
 ```
-$ screen -a -S oose
-$ su - oose
-$ cd oose
-$ node app
+$ cd /opt/oose
+$ pm2 start processes.json
 ```
+
+## Linux SNMP Notes
+
+SNMP needs to be installed on debian as follows
+
+```
+$ aptitude -y install snmpd
+```
+
+To get the proper data through SNMP the config must be updated at this part
+
+```
+###############################################################################
+#
+#  ACCESS CONTROL
+#
+
+                                                 #  system + hrSystem groups only
+view   systemonly  included   .1.3.6.1.2.1.1
+view   systemonly  included   .1.3.6.1.2.1.2
+view   systemonly  included   .1.3.6.1.2.1.4
+view   systemonly  included   .1.3.6.1.2.1.25
+view   systemonly  included   .1.3.6.1.2.1.31
+```
+
+After that simply restart snmpd before start oose.
 
 ## Changelog
 
