@@ -37,7 +37,7 @@
     "mkdirp": "0.3.5",
     "mmmagic": "^0.3.7",
     "moment": "^2.6.0",
-    "mongoose": "^3.8.8",
+    "mongoose": "3.8.8",
     "mongoose-list": "^0.2.1",
     "mongoose-merge-plugin": "0.0.4",
     "mongoose-validator": "^0.2.2",

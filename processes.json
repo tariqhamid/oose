@@ -3,7 +3,7 @@
     "name": "oose",
     "cwd": "/opt/oose",
     "script": "app.js",
-    "args": ["-v"],
+    "args": ["-vv"],
     "run_as_user": "node",
     "error_file": "/var/log/node/oose-error",
     "out_file": "/var/log/node/oose-out",
