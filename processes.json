@@ -1,0 +1,16 @@
+{
+  "apps": [{
+    "name": "oose",
+    "cwd": "/opt/oose",
+    "script": "app.js",
+    "args": ["-v"],
+    "run_as_user": "node",
+    "error_file": "/var/log/node/oose-error",
+    "out_file": "/var/log/node/oose-out",
+    "pid_file": "/var/run/oose.pid",
+    "exec_mode": "fork_mode",
+    "env": {
+      "NODE_ENV": "production"
+    }
+  }]
+}
