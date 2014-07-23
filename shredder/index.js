@@ -162,8 +162,8 @@ var runJob = function(job,done){
       //connect to the peer
       function(next){
         var peer = job.output.peer
-        logger.info('Connecting to destination store @ ' + peer.host + ':' + peer.port)
-        store = net.connect(peer.port,peer.host)
+        logger.info('Connecting to destination store @ ' + peer.ip + ':' + peer.portImport)
+        store = net.connect(peer.portImport,peer.ip)
         store.on('error',next)
         store.on('connect',next)
       },

@@ -6,6 +6,7 @@ var express = require('express')
   , fs = require('fs')
   , config = require('../config')
   , file = require('../helpers/file')
+  , FFmpeg = require('fluent-ffmpeg')
   , running = false
 
 app.get('/:sha1/:filename',function(req,res){
@@ -14,6 +15,7 @@ app.get('/:sha1/:filename',function(req,res){
     res.send('Invalid path')
   } else {
     var path = file.pathFromSha1(sha1)
+    //TODO: convert to async.series
     redis.hgetall('inventory:' + sha1,function(err,info){
       if(err){
         console.log(err)
@@ -37,6 +39,13 @@ app.get('/:sha1/:filename',function(req,res){
           //set headers
           res.set('Accept-Ranges','bytes')
           res.set('Content-Type',info.mimeType)
+          //start param support
+          if(req.query.start && 'video/mp4' === info.mimeType){
+            var ffmpeg = new FFmpeg({source: path})
+            ffmpeg.setStartTime(req.query.start)
+            ffmpeg.writeToStream(res,{end: true})
+            return
+          }
           //byte range support
           var range = {start: 0, end: stat.size - 1}
           var rangeRaw = req.get('range')

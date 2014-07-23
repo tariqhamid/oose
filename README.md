@@ -50,6 +50,19 @@ Second, start the system.
 $ node app
 ```
 
+## Port Layout
+
+By default OOSE starts several services, all of which run on different ports and listen on all interfaces.
+
+Here is a map of what services are on each port.
+
+* 3000 - MESH, the announcement and heartbeat system
+* 3001 - Export, the file retrieval system
+* 3002 - Import, accepts new files in a raw TCP stream
+* 3003 - Prism, the reflector and load balancer
+* 3004 - Gump, user interface for managing files
+* 3005 - LG, the cluster looking glass
+
 ## Redis Schema
 
 ### Peers
