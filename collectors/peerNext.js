@@ -1,40 +1,68 @@
 'use strict';
 var Collector = require('../helpers/collector')
+  , async = require('async')
   , logger = require('../helpers/logger').create('collector:peerNext')
   , redis = require('../helpers/redis')
   , config = require('../config')
 
+var publicParams = [
+  'hostname',
+  'ip',
+  'portMesh',
+  'portExport',
+  'portImport',
+  'portPrism',
+  'services',
+  'diskFree',
+  'availableCapacity'
+]
+
 var selectPeer = function(basket,done){
-  redis.zrevrangebyscore('peer:rank',100,0,function(err,peers){
-    if(err) logger.error(err)
-    if(!peers[0]){
-      done('Can\'t select next peer: no winner exists')
-    } else {
-      var hostname = peers[0]
-      redis.hgetall('peer:db:' + hostname,function(err,peer){
-        if(err) logger.error(err)
-        if(!peer.hostname || !peer.ip){
-          done('Can\'t select next peer: missing IP or hostname')
-        } else {
-          ['hostname'
-          ,'ip'
-          ,'portMesh'
-          ,'portExport'
-          ,'portImport'
-          ,'portPrism'
-          ,'services'
-          ,'diskFree'
-          ,'availableCapacity'
-          ].forEach(function(k){
-            basket[k] = peer[k]
-          })
-          basket.ip = peer.ip || peer.netIp
-          basket.domain = config.get('domain')
-          done(null,basket)
-        }
-      })
+  var peerInfo = {}
+  var peerList = []
+  async.series(
+    [
+      //get peers ordered by rank
+      function(next){
+        redis.zrevrangebyscore('peer:rank',100,0,function(err,results){
+          if(err) return next(err)
+          if(!results || !results.length) return next('No peers exist')
+          peerList = results
+          next()
+        })
+      },
+      //collect info for all the peers in parallel
+      function(next){
+        async.each(
+          peerList,
+          function(hostname,next){
+            redis.hgetall('peer:db:' + hostname,function(err,result){
+              var info = {}
+              if(err) return next(err)
+              if(!result) return next('Peer ' + hostname + ' doesnt exist in database')
+              if(!result.hostname || !result.ip) return next('Cant use ' + hostname + ': missing IP or hostname')
+              publicParams.forEach(function(k){
+                info[k] = result[k] || 'none'
+              })
+              info.ip = result.ip || result.netIp
+              info.domain = config.get('domain')
+              peerInfo[hostname] = JSON.stringify(info)
+              next()
+            })
+          },
+          next
+        )
+      }
+    ],
+    function(err){
+      if(err){
+        logger.error(err)
+        return done(err)
+      }
+      basket = peerInfo
+      done(null,basket)
     }
-  })
+  )
 }
 
 var save = function(basket,done){

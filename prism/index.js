@@ -77,10 +77,17 @@ var buildDestination = function(req,winner){
 }
 
 app.get('/api/peerNext',function(req,res){
-  redis.hgetall('peer:next',function(err,peer){
+  redis.hgetall('peer:next',function(err,results){
     if(err) return res.json({status: 'error', code: 1, message: err})
-    peer.host = peer.hostname + '.' + peer.domain
-    res.json({status: 'ok', code: 0, peer: peer})
+    var peers = []
+    for(var k in results){
+      if(!results.hasOwnProperty(k)) continue
+      var info = JSON.parse(results[k])
+      info.host = info.hostname
+      if(info.domain) info.host = info.hostname + '.' + info.domain
+      peers.push(info)
+    }
+    res.json({status: 'ok', code: 0, peers: peers})
   })
 })
 
