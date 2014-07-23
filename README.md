@@ -74,7 +74,7 @@ Here is a map of what services are on each port.
   * Description: A ranking of peers based on their availableCapacity
   * Type: Sorted Set
 * peer:next
-  * Description: The meta information of the winner of the peerNext selection
+  * Description: The meta information of the list for the peerNext selection, stored in a hash of JSON objects
   * Type: Hash
 * peer:prism
   * Description: List of peers running the prism service
