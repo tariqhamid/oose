@@ -7,6 +7,7 @@ var express = require('express')
   , config = require('../config')
   , file = require('../helpers/file')
   , Sniffer = require('../helpers/Sniffer')
+  , logger = require('../helpers/logger').create('export')
   , FFmpeg = require('fluent-ffmpeg')
   , async = require('async')
   , running = false
@@ -76,12 +77,11 @@ app.get('/:sha1/:filename',function(req,res){
     ],
     function(err){
       if(err){
-        if('string' === typeof err){
-          err = {code: 500, message: err}
-        }
-        console.log(err)
+        if('string' === typeof err) err = {code: 500, message: err}
+        logger.debug('Export error, code: ' + err.code + ', message: ' + err.message)
         res.status(err.code)
         res.send(err.message)
+        return
       }
       //setup output sniffer to track bytes sent regardless of output medium
       var sniff = new Sniffer()
