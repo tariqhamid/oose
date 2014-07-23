@@ -1,8 +1,8 @@
 {
-  "author": "SnailJS <developers@snailjs.org>",
+  "author": "ESITED LLC <developers@esited.com>",
   "name": "oose",
   "description": "Object Oriented Storage Engine",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "homepage": "http://oose.io/",
   "repository": {
     "type": "git",

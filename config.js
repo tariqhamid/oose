@@ -6,7 +6,7 @@ var ObjectManage = require('object-manage')
 var config = new ObjectManage()
 config.load({
   //options
-  version: '0.2.0',
+  version: '0.3.0',
   hostname: os.hostname(),
   domain: '',
   root: __dirname + '/data',
