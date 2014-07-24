@@ -177,7 +177,111 @@ view   systemonly  included   .1.3.6.1.2.1.31
 
 After that simply restart snmpd before start oose.
 
+## Shredder
+
+In short, Shredder is the transcoding system provided by OOSE nodes.
+It relies on a simple API format and the use of JSONP callbacks.
+
+### The API
+
+Shredder exposes itself through Prism, so it will always be important to know
+how to access the OOSE Prism to queue the job. This is done so that Prism
+can balance the jobs across the available nodes.
+
+### Queue a Job
+
+**Method:** JSONP
+**URL:** `/api/shredderJob`
+**Options**
+```js
+{
+  //options pertaining to the source file
+  source: {
+    filename: 'foo.mp4',
+    mimetype: 'video/mp4',
+    sha1: '0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33',
+    //the url used to download the source file, http and https are supported
+    url: 'http://localhost/tmp/24zsf',
+    //any additional headers that should be sent with the request
+    headers: ['User-Agent: Node'],
+    //if http basic auth is required enter that here
+    auth: {
+      username: 'foo',
+      password: 'bar'
+    }
+  },
+  //options that are used to receive job updates
+  callback: {
+    //url that OOSE will JSONP to send job updates to
+    url: 'http://localhost/myapp/jobUpdate'
+    //any additional headers that should be sent
+    headers: [],
+    //basic auth if needed
+    auth: {
+      username: 'foo',
+      password: 'bar'
+    }
+  },
+  //options that are used to formulate the output
+  output: {
+    [
+      //output a video transcoded to mp4
+      {
+        //the oose profile
+        profile: 'customTranscode',
+        //ffmpeg preset
+        preset: 'fast'
+        //ffmpeg crf
+        crf: 24,
+        //offset to start from (in seconds)
+        start: 0,
+        //length to capture (in seconds)
+        length: 0,
+        //video encoding options
+        video: {
+          codec: 'h264',
+          width: '600',
+          height: '400',
+          bitrate: 'something',
+          filters: []
+        },
+        //audio encoding options
+        audio: {
+          codec: 'libfaac',
+          bitrate: 'something'
+        },
+        mux: {
+          type: 'mp4'
+        }
+      },
+      //output a thumbnail
+      {
+        profile: 'thumbnail',
+        //skip to 30 seconds from the beginning or last frame when shorter
+        skip: 30
+      },
+      //output a thumbnail set
+      {
+        profile: 'thumbnailSet',
+        //snap a thumbnail every 15 seconds
+        interval: 15
+      }
+    ]
+  }
+```
+
 ## Changelog
+
+### 0.3.0
+* Fix next peer selection to be a list
+* Added start param support to export (MP4 pseudo streaming)
+* Added looking glass (lg) for cluster status
+* Added gump, for user file management interface
+* Added shredder transcoding system
+* Usage of SNMP for peer stat collection
+
+### 0.2.0
+* Never released
 
 ### 0.1.0
 * Initial release
