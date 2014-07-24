@@ -229,8 +229,8 @@ can balance the jobs across the available nodes.
     [
       //output a video transcoded to mp4
       {
-        //the oose profile
-        profile: 'customTranscode',
+        //the custom profile takes raw ffmpeg options with no defaults
+        profile: 'custom',
         //ffmpeg preset
         preset: 'fast'
         //ffmpeg crf
@@ -254,6 +254,17 @@ can balance the jobs across the available nodes.
         },
         mux: {
           type: 'mp4'
+        }
+      },
+      //output a file using the oose default mp4 presets
+      {
+        profile: 'mp4',
+      },
+      //output a file using the oose default mp4 preset with a custom filter on the video
+      {
+        profile: 'mp4',
+        video: {
+          filters: ['my custom filter']
         }
       },
       //output a thumbnail
