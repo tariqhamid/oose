@@ -197,21 +197,6 @@ can balance the jobs across the available nodes.
 **Options**
 ```js
 {
-  //options pertaining to the source file
-  source: {
-    filename: 'foo.mp4',
-    mimetype: 'video/mp4',
-    sha1: '0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33',
-    //the url used to download the source file, http and https are supported
-    url: 'http://localhost/tmp/24zsf',
-    //any additional headers that should be sent with the request
-    headers: ['User-Agent: Node'],
-    //if http basic auth is required enter that here
-    auth: {
-      username: 'foo',
-      password: 'bar'
-    }
-  },
   //options that are used to receive job updates
   callback: {
     //url that OOSE will JSONP to send job updates to
@@ -224,56 +209,123 @@ can balance the jobs across the available nodes.
       password: 'bar'
     }
   },
-  //options that are used to formulate the output
+  //options pertaining to the source file
+  resource: [
+    {
+      //the name is used to reference resource later
+      name: 'video',
+      //optional mimetype if its already known (skips the detection process)
+      mimetype: 'video/mp4',
+      //the url used to download the source file, http and https are supported
+      url: 'http://localhost/tmp/24zsf',
+      //any additional headers that should be sent with the request
+      headers: ['User-Agent: Node'],
+      //if http basic auth is required enter that here
+      auth: {
+        username: 'foo',
+        password: 'bar'
+      }
+    },
+    //if we want to watermark our video lets grab that image
+    {
+      name: 'watermark',
+      url: 'http://localhost/images/watermark.png'
+    },
+    //to make a dubbed version we want to download our dubbed audio track
+    {
+      name: 'dubbing',
+      url: 'http://localhost/tmp/asf25'
+    }
+  ],
+  //options that are used to control the encoding
   output: {
     [
-      //output a video transcoded to mp4
+      //when an object is used its considered a single pass encode
       {
-        //the custom profile takes raw ffmpeg options with no defaults
+        //the custom profile takes raw options with no defaults
         profile: 'custom',
-        //ffmpeg preset
-        preset: 'fast'
-        //ffmpeg crf
-        crf: 24,
-        //offset to start from (in seconds)
-        start: 0,
-        //length to capture (in seconds)
-        length: 0,
-        //video encoding options
-        video: {
-          codec: 'h264',
-          width: '600',
-          height: '400',
-          bitrate: 'something',
-          filters: []
-        },
-        //audio encoding options
-        audio: {
-          codec: 'libfaac',
-          bitrate: 'something'
-        },
-        mux: {
-          type: 'mp4'
-        }
+        //select the program to use
+        program: 'ffmpeg',
+        //arguments for the program
+        //key = the programs raw argument name, value; resources can be used with their name eg {watermark}
+        args: [
+          {key: 'metadata', value:'title="Video 1"'},
+          //video options
+          {key: 's', value: 'hd1080'},
+          {key: 'vf', value: '[in] movie={watermark},lutyuv=a=va1/2 [logo]; [logo] overlay=W-w:0 [out]'}
+          {key: 'vcodec', value: 'libx264'},
+          {key: 'vpre', value: 'medium'},
+          //encoder specific options
+          {key: 'tune', value: 'animation'},
+          {key: 'movflags', value: '+faststart'},
+          {key: 'pix_fmt', value: 'yuv420p'},
+          {key: 'crf', value: '23'},
+          //audio options
+          {key: 'acodec', value: 'copy'},
+          //mux options
+          {key: 'f', value: 'mp4'}
+        ]
       },
-      //output a file using the oose default mp4 presets
-      {
-        profile: 'mp4',
-      },
-      //output a file using the oose default mp4 preset with a custom filter on the video
-      {
-        profile: 'mp4',
-        video: {
-          filters: ['my custom filter']
+      //this is an example of using a utility chain
+      [
+        {
+          //the custom profile takes raw options with no defaults
+          profile: 'custom',
+          //select the program to use
+          program: 'ffmpeg',
+          //arguments for the program
+          //key = the programs raw argument name, value; resources can be used with their name eg {watermark}
+          args: [
+            {key: 'metadata', value:'title="Video 1"'},
+            //video options
+            {key: 's', value: 'hd1080'},
+            {key: 'vf', value: '[in] movie={watermark},lutyuv=a=va1/2 [logo]; [logo] overlay=W-w:0 [out]'}
+            {key: 'vcodec', value: 'libx264'},
+            {key: 'vpre', value: 'medium'},
+            //encoder specific options
+            {key: 'tune', value: 'animation'},
+            {key: 'movflags', value: '+faststart'},
+            {key: 'pix_fmt', value: 'yuv420p'},
+            {key: 'crf', value: '23'},
+            //audio options
+            {key: 'acodec', value: 'copy'},
+            //mux options
+            {key: 'f', value: 'mp4'}
+          ]
+        },
+        {
+          profile: 'custom',
+          program: 'mp4box',
+          args: [
+            {key: 'inter', value: '1250'},
+            {key: 'hint'},
+            {key: 'isma'},
+            {key: 'noprog'}
+          ]
         }
+      ]
+      //profiles can be used to populate defaults
+      [
+        {profile: 'ffmpegToMp4'},
+        {profile: 'mp4boxHint'}
+      ]
+      //profiles can be extended
+      {
+        profile: 'ffmpegTpMp4',
+        args: [
+          {key: 'vf', value: '[in] movie={watermark},lutyuv=a=va1/2 [logo]; [logo] overlay=W-w:0 [out]'}
+        ]
       },
       //output a thumbnail
       {
         profile: 'thumbnail',
         //skip to 30 seconds from the beginning or last frame when shorter
-        skip: 30
+        args: [
+          {key: 'ss', value: '30'}
+        ]
       },
-      //output a thumbnail set
+      //some profiles are a macro for more advanced logic and take their own options
+      //eg: output a thumbnail set
       {
         profile: 'thumbnailSet',
         //snap a thumbnail every 15 seconds
