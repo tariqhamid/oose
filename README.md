@@ -191,7 +191,9 @@ can balance the jobs across the available nodes.
 ### Queue a Job
 
 **Method:** JSONP
+
 **URL:** `/api/shredderJob`
+
 **Options**
 ```js
 {
