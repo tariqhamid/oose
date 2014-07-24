@@ -311,7 +311,7 @@ can balance the jobs across the available nodes.
       ]
       //profiles can be extended
       {
-        profile: 'ffmpegTpMp4',
+        profile: 'ffmpegToMp4',
         args: [
           {key: 'vf', value: '[in] movie={watermark},lutyuv=a=va1/2 [logo]; [logo] overlay=W-w:0 [out]'}
         ]
