@@ -216,6 +216,8 @@ can balance the jobs across the available nodes.
       name: 'video',
       //optional mimetype if its already known (skips the detection process)
       mimetype: 'video/mp4',
+      //set the driver (by default it is http)
+      driver: 'http',
       //the url used to download the source file, http and https are supported
       url: 'http://localhost/tmp/24zsf',
       //any additional headers that should be sent with the request
@@ -229,78 +231,110 @@ can balance the jobs across the available nodes.
     //if we want to watermark our video lets grab that image
     {
       name: 'watermark',
-      url: 'http://localhost/images/watermark.png'
+      driver: 'ftp',
+      host: 'localhost',
+      path: '/watermark.png',
+      auth: {
+        username: 'foo',
+        password: 'bar'
+      }
     },
     //to make a dubbed version we want to download our dubbed audio track
     {
       name: 'dubbing',
-      url: 'http://localhost/tmp/asf25'
+      driver: 'scp',
+      host: 'localhost',
+      path: '/myfiles/dubbed.mp3',
+      auth: {
+        username: 'blah',
+        password: 'bar'
+      }
+    }
+    //maybe we need to get another video from rtmp
+    {
+      name: 'hdvideo',
+      driver: 'rtmpdump',
+      args: [
+        {key: '-r', value: 'localhost'},
+        {key: '--swfVfy', value: 'swf url'},
+        {key: '-y', value: 'stream file'},
+        {key: '-p', value: 'page url'},
+        {key: '-T', value: 'token'},
+        {key: '-t', value: 'localhost'}
+      ]
     }
   ],
   //options that are used to control the encoding
-  output: {
+  encoding: {
     [
       //when an object is used its considered a single pass encode
       {
-        //the custom profile takes raw options with no defaults
-        profile: 'custom',
         //select the program to use
-        program: 'ffmpeg',
+        driver: 'ffmpeg',
         //arguments for the program
         //key = the programs raw argument name, value; resources can be used with their name eg {watermark}
         args: [
-          {key: 'metadata', value:'title="Video 1"'},
+          //input
+          {key: '-i', value: '{hdvideo}'},
+          //meta data
+          {key: '-metadata', value:'title="Video 1"'},
           //video options
-          {key: 's', value: 'hd1080'},
-          {key: 'vf', value: '[in] movie={watermark},lutyuv=a=va1/2 [logo]; [logo] overlay=W-w:0 [out]'}
-          {key: 'vcodec', value: 'libx264'},
-          {key: 'vpre', value: 'medium'},
+          {key: '-s', value: 'hd1080'},
+          {key: '-vf', value: '[in] movie={watermark},lutyuv=a=va1/2 [logo]; [logo] overlay=W-w:0 [out]'}
+          {key: '-vcodec', value: 'libx264'},
+          {key: '-vpre', value: 'medium'},
           //encoder specific options
-          {key: 'tune', value: 'animation'},
-          {key: 'movflags', value: '+faststart'},
-          {key: 'pix_fmt', value: 'yuv420p'},
-          {key: 'crf', value: '23'},
+          {key: '-tune', value: 'animation'},
+          {key: '-movflags', value: '+faststart'},
+          {key: '-pix_fmt', value: 'yuv420p'},
+          {key: '-crf', value: '23'},
           //audio options
-          {key: 'acodec', value: 'copy'},
+          {key: '-acodec', value: 'copy'},
           //mux options
-          {key: 'f', value: 'mp4'}
+          {key: '-f', value: 'mp4'},
+          //output
+          {key: '-y', value: '{hdvideoAsMP4}'
         ]
       },
       //this is an example of using a utility chain
       [
         {
           //the custom profile takes raw options with no defaults
-          profile: 'custom',
           //select the program to use
-          program: 'ffmpeg',
+          driver: 'ffmpeg',
           //arguments for the program
           //key = the programs raw argument name, value; resources can be used with their name eg {watermark}
           args: [
-            {key: 'metadata', value:'title="Video 1"'},
+            //input
+            {key: '-i', value: '{video}'},
+            //metadata
+            {key: '-metadata', value:'title="Video 1"'},
             //video options
-            {key: 's', value: 'hd1080'},
-            {key: 'vf', value: '[in] movie={watermark},lutyuv=a=va1/2 [logo]; [logo] overlay=W-w:0 [out]'}
-            {key: 'vcodec', value: 'libx264'},
-            {key: 'vpre', value: 'medium'},
+            {key: '-s', value: 'hd1080'},
+            {key: '-vf', value: '[in] movie={watermark},lutyuv=a=va1/2 [logo]; [logo] overlay=W-w:0 [out]'}
+            {key: '-vcodec', value: 'libx264'},
+            {key: '-vpre', value: 'medium'},
             //encoder specific options
-            {key: 'tune', value: 'animation'},
-            {key: 'movflags', value: '+faststart'},
-            {key: 'pix_fmt', value: 'yuv420p'},
-            {key: 'crf', value: '23'},
+            {key: '-tune', value: 'animation'},
+            {key: '-movflags', value: '+faststart'},
+            {key: '-pix_fmt', value: 'yuv420p'},
+            {key: '-crf', value: '23'},
             //audio options
-            {key: 'acodec', value: 'copy'},
+            {key: '-acodec', value: 'copy'},
             //mux options
-            {key: 'f', value: 'mp4'}
+            {key: '-f', value: 'mp4'},
+            //output
+            {key: '-y', value: '{videoAsMP4}'
           ]
         },
         {
-          profile: 'custom',
-          program: 'mp4box',
+          driver: 'mp4box',
           args: [
             {key: 'inter', value: '1250'},
             {key: 'hint'},
             {key: 'isma'},
-            {key: 'noprog'}
+            {key: 'noprog'},
+            {value: '{videoAsMP4}'}
           ]
         }
       ]
@@ -313,7 +347,7 @@ can balance the jobs across the available nodes.
       {
         profile: 'ffmpegToMp4',
         args: [
-          {key: 'vf', value: '[in] movie={watermark},lutyuv=a=va1/2 [logo]; [logo] overlay=W-w:0 [out]'}
+          {key: '-vf', value: '[in] movie={watermark},lutyuv=a=va1/2 [logo]; [logo] overlay=W-w:0 [out]'}
         ]
       },
       //output a thumbnail
@@ -321,17 +355,20 @@ can balance the jobs across the available nodes.
         profile: 'thumbnail',
         //skip to 30 seconds from the beginning or last frame when shorter
         args: [
-          {key: 'ss', value: '30'}
+          {key: '-ss', value: '30'}
         ]
       },
-      //some profiles are a macro for more advanced logic and take their own options
       //eg: output a thumbnail set
       {
-        profile: 'thumbnailSet',
+        driver: 'thumbnailSet',
+        input: '{hdvideoAsMP4}',
+        output: '{thumbnailSet}', //save the resulting files to the thumbnailSet resource
         //snap a thumbnail every 15 seconds
         interval: 15
       }
-    ]
+    ],
+    //tell the system what resources to save, any resources not named here will be discarded
+    save: ['hdVideoAsMP4','videoAsMP4','thumbnailSet','thumbnail']
   }
 ```
 
