@@ -39,7 +39,7 @@ exports.run = function(options,done){
     driver.tempFileCreate('http',function(err,info){
       if(err) return done(err)
       var tmp = fs.createWriteStream(info.path)
-      res.on('end',function(){
+      tmp.on('finish',function(){
         done()
       })
       res.pipe(tmp)
