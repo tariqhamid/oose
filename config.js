@@ -52,13 +52,7 @@ config.load({
     }
   },
   shredder: {
-    enabled: false,
-    concurrency: 1,
-    transcode: {
-      videos: {
-        enabled: false
-      }
-    }
+    enabled: false
   },
   gump: {
     enabled: false,

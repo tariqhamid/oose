@@ -153,7 +153,7 @@ $ pm2 start processes.json
 
 ## Linux SNMP Notes
 
-SNMP needs to be installed on debian as follows
+SNMP needs to be installed on Debian as follows
 
 ```
 $ aptitude -y install snmpd
@@ -175,7 +175,7 @@ view   systemonly  included   .1.3.6.1.2.1.25
 view   systemonly  included   .1.3.6.1.2.1.31
 ```
 
-After that simply restart snmpd before start oose.
+After that simply restart SNMPD before starting OOSE.
 
 ## Shredder
 
@@ -184,9 +184,7 @@ It relies on a simple API format and the use of JSONP callbacks.
 
 ### The API
 
-Shredder exposes itself through Prism, so it will always be important to know
-how to access the OOSE Prism to queue the job. This is done so that Prism
-can balance the jobs across the available nodes.
+Shredder exposes itself through an HTTP JSONP API.
 
 ### Queue a Job
 

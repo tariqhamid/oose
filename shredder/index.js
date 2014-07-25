@@ -6,7 +6,7 @@ var fs = require('fs')
   , redis = require('../helpers/redis')
   , config = require('../config')
   , async = require('async')
-  , logger = require('../helpers/logger').create('shredder')
+  , Logger = require('../helpers/logger')
   , crypto = require('crypto')
   , ffmpeg = require('fluent-ffmpeg')
   , temp = require('temp')
@@ -18,6 +18,8 @@ var fs = require('fs')
   , mesh = require('../mesh')
 var commUtil = require('../helpers/communicator').util
 var testing = !!config.get('shredder.testing')
+var logger = Logger.create('shredder')
+var running = false
 
 
 /**
@@ -125,7 +127,7 @@ var runJob = function(job,done){
   var store, ffProcess
   // replace the global logger with the job-specific one
   var logger = job.logger // NOTE - SCOPE SMASHING HERE
-
+  job.description = JSON.parse(job.description)
   logger.info('Starting')
   async.series(
     [
@@ -237,13 +239,12 @@ var q = async.queue(
     if('undefined' === typeof job.handle || null === job.handle || !job.handle)
       done('ERROR: Job.handle not set')
     //now that the job is running, overload the main logger for this scope
-    var logger = require('../helpers/logger').create('shredder:job:'+job.handle)
-    job.logger = logger
+    job.logger = Logger.create('shredder:job:'+job.handle)
     runJob(job,function(err){
       if(err){
-        logger.error('Import failed: ' + err)
+        job.logger.error('Import failed: ' + err)
       } else {
-        logger.info('Import successful')
+        job.logger.info('Import successful')
         jobComplete(job)
       }
       done()
@@ -257,21 +258,13 @@ var q = async.queue(
  * Set up Mesh event listener
  * @param {function} done Callback
  */
-var meshListen = function(done){
+var meshStart = function(done){
   // shred:job:push - queue entry acceptor
   mesh.tcp.on('shred:job:push',function(message,socket){
     //build job description
     var job = {
       handle: shortId.generate().toUpperCase(),
-      logger: logger,
-      source: {
-        url: message.source,
-        sha1: message.sha1,
-        mimeType: message.mimeType,
-        filename: message.filename
-      },
-      output: message.output,
-      callback: message.callback
+      description: message.description
     }
     //jab job into local q
     logger.info('Job queued locally as ' + job.handle)
@@ -282,7 +275,17 @@ var meshListen = function(done){
       {status: 'ok', handle: job.handle, position: q.length()}
     )))
   })
-  logger.info('Listening for jobs')
+  logger.info('Listening for shredder jobs')
+  done()
+}
+
+
+/**
+ * Stop mesh listening
+ * @param {function} done
+ */
+var meshStop = function(done){
+  mesh.tcp.removeAllListeners('shred:job:push')
   done()
 }
 
@@ -293,23 +296,46 @@ var meshListen = function(done){
  * @return {*}
  */
 exports.start = function(done){
-  //check if root exists
-  if(!config.get('shredder.root'))
-    config.set('shredder.root',path.resolve(config.get('root')))
-  //make sure the root folder exists
-  if(!fs.existsSync(config.get('shredder.root')))
-    mkdirp.sync(config.get('shredder.root'))
-  if(!fs.existsSync(config.get('shredder.root')))
-    return done('Root folder [' + path.resolve(config.get('shredder.root')) + '] does not exist')
-  //listen on mesh
-  meshListen(done)
+  if('function' !== typeof done) done = function(){}
+  async.series(
+    [
+      //setup root folder for processing jobs
+      function(next){
+        //check if root exists
+        if(!config.get('shredder.root'))
+          config.set('shredder.root',path.resolve(config.get('root')))
+        //make sure the root folder exists
+        if(!fs.existsSync(config.get('shredder.root')))
+          mkdirp.sync(config.get('shredder.root'))
+        if(!fs.existsSync(config.get('shredder.root')))
+          return next('Root folder [' + path.resolve(config.get('shredder.root')) + '] does not exist')
+        next()
+      },
+      //start listening on mesh
+      function(next){
+        meshStart(next)
+      }
+    ],
+    function(err){
+      if(err) return done(err)
+      running = true
+      done()
+    }
+  )
 }
 
 
 /**
- * Stop processing
+ * Stop server
  * @param {function} done
  */
 exports.stop = function(done){
-  done()
+  if('function' !== typeof done) done = function(){}
+  if(running){
+    meshStop(function(err){
+      if(err) return done(err)
+      running = false
+      done()
+    })
+  }
 }

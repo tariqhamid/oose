@@ -91,64 +91,6 @@ app.get('/api/peerNext',function(req,res){
   })
 })
 
-app.post('/api/shredderJob',function(req,res){
-  var peerNext, jobHandle
-  async.series(
-    [
-      //validate input
-      function(next){
-        if(!req.body.filename) return next('filename is required')
-        if(!req.body.mimetype) return next('mimeType is required')
-        if(!req.body.sha1) return next('sha1 is required')
-        if(!req.body.source) return next('source url is required')
-        if(!req.body.callback) return next('callback url is required')
-        next()
-      },
-      //figure out next peer
-      function(next){
-        redis.hgetall('peer:next',function(err,result){
-          if(err) return next(err)
-          if(!result) return next('could not find next peer')
-          peerNext = result
-          next()
-        })
-      },
-      //send the request to that peer
-      function(next){
-        var client = commUtil.tcpSend('shred:job:push',req.body,peerNext.portMesh,peerNext.ip)
-        client.once('readable',function(){
-          //read our response
-          var payload = commUtil.parse(client.read(client.read(2).readUInt16BE(0)))
-          //close the connection
-          client.end()
-          //check if we got an error
-          if('ok' !== payload.message.status) return next(payload.message.message)
-          //make sure the response is our sha1
-          if(req.body.sha1 !== payload.command) return next('Wrong command response for ' + req.body.sha1)
-          if(!payload.message.handle) return next('No job handle created for ' + req.body.sha1)
-          jobHandle = payload.message.handle
-          next()
-        })
-        client.on('error',next)
-      }
-    ],
-    function(err){
-      if(err){
-        return res.json({
-          status: 'error',
-          code: 1,
-          message: err
-        })
-      }
-      return res.json({
-        status: 'ok',
-        code: 0,
-        handle: jobHandle
-      })
-    }
-  )
-})
-
 app.get('/:sha1/:filename',function(req,res){
   var sha1 = req.params.sha1
   var existsInCache = false
@@ -208,6 +150,61 @@ app.get('/:sha1/:filename',function(req,res){
     function(err){
       if(err) return res.send({status: 'error', code: 1, message: err})
       res.redirect(buildDestination(req,winner))
+    }
+  )
+})
+
+
+app.post('/api/shredderJob',function(req,res){
+  var peerNext, jobHandle
+  async.series(
+    [
+      //figure out next peer
+      function(next){
+        redis.hgetall('peer:next',function(err,results){
+          if(err) return next(err)
+          if(!results) return next('could not find next peer')
+          peerNext = JSON.parse(results[0])
+          next()
+        })
+      },
+      //send the request to that peer
+      function(next){
+        var client = commUtil.tcpSend(
+          'shred:job:push',
+          {description: JSON.stringify(req.body)},
+          peerNext.portMesh,
+          peerNext.ip
+        )
+        client.once('readable',function(){
+          //read our response
+          var payload = commUtil.parse(client.read(client.read(2).readUInt16BE(0)))
+          //close the connection
+          client.end()
+          //check if we got an error
+          if('ok' !== payload.message.status) return next(payload.message.message)
+          //make sure the response is our sha1
+          if(req.body.sha1 !== payload.command) return next('Wrong command response for ' + req.body.sha1)
+          if(!payload.message.handle) return next('No job handle created for ' + req.body.sha1)
+          jobHandle = payload.message.handle
+          next()
+        })
+        client.on('error',next)
+      }
+    ],
+    function(err){
+      if(err){
+        return res.json({
+          status: 'error',
+          code: 1,
+          message: err
+        })
+      }
+      return res.json({
+        status: 'ok',
+        code: 0,
+        handle: jobHandle
+      })
     }
   )
 })
