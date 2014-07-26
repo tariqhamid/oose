@@ -25,6 +25,7 @@ var Resource = function(options){
   that.options.load(options)
   //define our resource handler
   that.resources = {}
+  process.on('exit',that.cleanup.call(that))
 }
 Resource.prototype = Object.create(EventEmitter.prototype)
 
@@ -137,6 +138,19 @@ Resource.prototype.render = function(string){
   }
   this.emit('render',originalString,string)
   return string
+}
+
+
+/**
+ * Cleanup resources and remove them from the file system
+ */
+Resource.prototype.cleanup = function(){
+  for(var i in this.resources){
+    if(!this.resources.hasOwnProperty(i)) continue
+    var info = this.resources[i]
+    if(!fs.existsSync(info.path)) continue
+    fs.unlinkSync(info.path)
+  }
 }
 
 
