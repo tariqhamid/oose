@@ -1,7 +1,7 @@
 'use strict';
 var restler = require('restler')
   , fs = require('fs')
-  , driver = require('./driver')
+  , driver = require('../helpers/driver')
 
 
 /**
