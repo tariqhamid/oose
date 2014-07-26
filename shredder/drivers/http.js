@@ -1,7 +1,7 @@
 'use strict';
 var restler = require('restler')
-  , fs = require('fs')
-  , driver = require('../helpers/driver')
+var fs = require('fs')
+//  , driver = require('../helpers/driver')
 
 
 /**
@@ -27,16 +27,17 @@ exports.description = 'Offers ability to use http as a resource retrieval method
 
 /**
  * Execute the driver with the given options
+ * @param {Resource} resource manager
  * @param {object} options
  * @param {function} done
  */
-exports.run = function(options,done){
+exports.run = function(resource,options,done){
   var req = restler.get(options.url,options.options)
   req.on('error',function(err){
     done(err)
   })
   req.on('response',function(res){
-    driver.tempFileCreate('http',function(err,info){
+    resource.create(options.name,function(err,info){
       if(err) return done(err)
       var tmp = fs.createWriteStream(info.path)
       tmp.on('finish',function(){

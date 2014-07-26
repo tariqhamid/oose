@@ -1,8 +1,21 @@
 'use strict';
 var ObjectManage = require('object-manage')
 var EventEmitter = require('events').EventEmitter
+var async = require('async')
+var temp = require('temp')
+var mkdirp = require('mkdirp')
+var fs = require('fs')
+var path = require('path')
+var config = require('../../config')
+var tmpDir = path.resolve(config.get('shredder.root') + '/tmp')
 
 
+
+/**
+ * Resource manager
+ * @param {object} options
+ * @constructor
+ */
 var Resource = function(options){
   var that = this
   EventEmitter.call(that)
@@ -24,6 +37,51 @@ Resource.prototype.defaultOptions = {}
 
 
 /**
+ * Create a temp file and assign it to a resource and return the info about it
+ * @param {string} name
+ * @param {function} done
+ * @return {null}
+ */
+Resource.prototype.create = function(name,done){
+  var that = this
+  var tmp
+  //if we already have a resource by that name return it
+  if('undefined' !== typeof that.resources[name]){
+    return done(null,that.resources[name])
+  }
+  async.series(
+    [
+      //check if the root folder exists, if not create it
+      function(next){
+        fs.exists(tmpDir,function(exists){
+          if(exists) return next()
+          mkdirp(tmpDir,function(err){
+            if(err) return next(err)
+            next()
+          })
+        })
+      },
+      //create the temp path in the folder
+      function(next){
+        temp.open(name || 'shredderResource',function(err,info){
+          if(err) return next(err)
+          tmp = info
+          next()
+        })
+      }
+    ],
+    function(err){
+      if(err) return done(err)
+      //add resource
+      that.add(name,tmp)
+      //return tempfile
+      done(null,tmp)
+    }
+  )
+}
+
+
+/**
  * Add a resource
  * @param {string} name
  * @param {object} info
@@ -31,6 +89,26 @@ Resource.prototype.defaultOptions = {}
 Resource.prototype.add = function(name,info){
   this.emit('add',name,info)
   this.resources[name] = info
+}
+
+
+/**
+ * Check if a resource exists
+ * @param {string} name
+ * @return {boolean} exists
+ */
+Resource.prototype.exists = function(name){
+  return ('object' === typeof this.resources[name])
+}
+
+
+/**
+ * Get a resource
+ * @param {string} name
+ * @return {object} resource
+ */
+Resource.prototype.get = function(name){
+  return this.resources[name]
 }
 
 
