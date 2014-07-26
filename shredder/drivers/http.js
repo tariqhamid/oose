@@ -27,11 +27,13 @@ exports.description = 'Offers ability to use http as a resource retrieval method
 
 /**
  * Execute the driver with the given options
+ * @param {Logger} logger
  * @param {Resource} resource manager
  * @param {object} options
  * @param {function} done
  */
-exports.run = function(resource,options,done){
+exports.run = function(logger,resource,options,done){
+  logger.info('Retrieving resource from ' + options.url)
   var req = restler.get(options.url,options.options)
   req.on('error',function(err){
     done(err)
@@ -41,6 +43,7 @@ exports.run = function(resource,options,done){
       if(err) return done(err)
       var tmp = fs.createWriteStream(info.path)
       tmp.on('finish',function(){
+        logger.info('Successfully retrieved resource from ' + options.url)
         done()
       })
       res.pipe(tmp)

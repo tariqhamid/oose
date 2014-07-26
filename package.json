@@ -25,6 +25,7 @@
     "caterpillar-human": "^2.1.2",
     "cli-table": "^0.3.0",
     "cluster-master": "^0.2.0",
+    "command": "0.0.5",
     "commander": "^2.2.0",
     "connect-busboy": "0.0.1",
     "connect-flash": "^0.1.1",
