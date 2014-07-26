@@ -10,6 +10,17 @@ var config = require('../../config')
 var tmpDir = path.resolve(config.get('shredder.root') + '/tmp')
 
 
+/**
+ * Save a resource to OOSE
+ * @param {string} name
+ * @param {object} info
+ * @param {function} next
+ */
+var saveResource = function(name,info,next){
+  //TODO: save this to OOSE somehow
+}
+
+
 
 /**
  * Resource manager
@@ -114,11 +125,14 @@ Resource.prototype.get = function(name){
 
 
 /**
- * Remove a resource
+ * Remove a resource (and its underlying file)
  * @param {string} name
  */
 Resource.prototype.remove = function(name){
-  this.emit('remove',name,this.resources[name])
+  var resource = this.resources[name]
+  this.emit('remove',name,resource)
+  if(fs.existsSync(resource.path))
+    fs.unlinkSync(resource.path)
   delete this.resources[name]
 }
 
@@ -151,6 +165,25 @@ Resource.prototype.cleanup = function(){
     if(!fs.existsSync(info.path)) continue
     fs.unlinkSync(info.path)
   }
+}
+
+
+/**
+ * Save resources to OOSE
+ * @param {Array} resources
+ * @param {function} next
+ */
+Resource.prototype.save = function(resources,next){
+  var that = this
+  async.each(
+    resources,
+    function(name,next){
+      var resource = that.resources[name]
+      if('undefined' === typeof resource) return next()
+      saveResource(name,resource,next)
+    },
+    next
+  )
 }
 
 
