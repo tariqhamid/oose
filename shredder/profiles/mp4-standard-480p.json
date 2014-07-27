@@ -1,0 +1,29 @@
+[
+  {
+    "driver": "ffmpeg",
+    "args": [
+      {"key": "-i", "value": "{video}"},
+      {"key": "-metadata", "value":"title=\"Video 1\""},
+      {"key": "-s", "value": "hd720"},
+      {"key": "-vcodec", "value": "libx264"},
+      {"key": "-vpre", "value": "medium"},
+      {"key": "-tune", "value": "animation"},
+      {"key": "-movflags", "value": "+faststart"},
+      {"key": "-pix_fmt", "value": "yuv420p"},
+      {"key": "-crf", "value": "23"},
+      {"key": "-acodec", "value": "copy"},
+      {"key": "-f", "value": "mp4"},
+      {"key": "-y", "value": "{mp4-standard-480p}"}
+    ]
+  },
+  {
+    "driver": "mp4box",
+    "args": [
+      {"key": "inter", "value": "1250"},
+      {"key": "hint"},
+      {"key": "isma"},
+      {"key": "noprog"},
+      {"value": "{mp4-standard-480p}"}
+    ]
+  }
+]

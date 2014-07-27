@@ -1,5 +1,6 @@
 'use strict';
 var fs = require('fs')
+var ObjectManage = require('object-manage')
 //var util = require('util')
 var path = require('path')
 //var net = require('net')
@@ -21,6 +22,29 @@ var commUtil = require('../helpers/communicator').util
 //var testing = !!config.get('shredder.testing')
 var logger = Logger.create('shredder')
 var running = false
+
+
+/**
+ * Load a profile if there is one
+ * @param {object} input
+ * @return {ObjectManage}
+ */
+var loadProfile = function(input){
+  //setup a new object manage
+  var obj = new ObjectManage()
+  //load our input
+  obj.load(input)
+  //if there is not a profile we are done
+  if(!input.profile) return obj
+  //figure out profile location
+  var file = path.resolve('../profiles/' + input.profile + '.json')
+  if(!fs.existsSync(file)) return obj
+  //since we have an existing profile lets grab it
+  obj.load(JSON.parse(fs.readFileSync(file)))
+  //load our input over it again for overrides
+  obj.load(input)
+  return obj
+}
 
 
 /**
@@ -133,7 +157,8 @@ var runJob = function(job,done){
   // replace the global logger with the job-specific one
   var logger = job.logger // NOTE - SCOPE SMASHING HERE
   //blow up job description from JSON
-  job.spec = JSON.parse(job.description)
+  var description = new ObjectManage()
+  description.load(JSON.parse(job.description))
   logger.info('Starting to process job')
   //setup resource manager
   var resource = new Resource()
@@ -142,15 +167,16 @@ var runJob = function(job,done){
       //step 1: obtain resources
       function(next){
         //make sure we have a resource section if not we cant do anything
-        if(!job.spec.resource || !job.spec.resource.length)
+        if(!description.exists('resource') || !description.get('resource').length)
           return next('No resources defined')
         async.each(
-          job.spec.resource,
+          description.get('resource'),
           function(item,next){
+            item = loadProfile(item)
             //set the default driver if we dont already have it
-            if(!item.driver) item.driver = 'http'
+            if(!item.exists('driver')) item.set('driver','http')
             //check to see if the driver exists
-            if(!drivers[item.driver]) return next('Driver ' + item.driver + ' doesnt exist')
+            if(!drivers[item.get('driver')]) return next('Driver ' + item.get('driver') + ' doesnt exist')
             //run the driver
             drivers[item.driver].run(logger,resource,item,next)
           },
@@ -160,21 +186,22 @@ var runJob = function(job,done){
       //step 2: execute encoding operations
       function(next){
         //if there are no encoding operation just continue
-        if(!job.spec.encoding || !job.spec.encoding.lenght) return next()
+        if(!description.exists('encoding') || !description.get('encoding').length) return next()
         async.eachSeries(
-          job.spec.encoding,
+          description.get('encoding'),
           function(items,next){
             //if item is not an array make it an array
             if(!(items instanceof Array)) items = [items]
             async.eachSeries(
               items,
               function(item,next){
+                item = loadProfile(item)
                 //make sure a driver was supplied
-                if(!item.driver) return next('No driver defined: ' + JSON.stringify(item))
+                if(!item.exists('driver')) return next('No driver defined: ' + JSON.stringify(item.data))
                 //make sure the driver exists
-                if(!drivers[item.driver]) return next('Driver: ' + item.driver + ' doesnt exist')
+                if(!drivers[item.get('driver')]) return next('Driver: ' + item.get('driver') + ' doesnt exist')
                 //run the driver
-                drivers[item.driver].run(logger,resource,item,next)
+                drivers[item.get('driver')].run(logger,resource,item,next)
               },
               next
             )
@@ -185,12 +212,12 @@ var runJob = function(job,done){
       //step 3: save any resources after processing has finished
       function(next){
         //if there is no save section defined, warn and move on
-        if(!job.spec.save || !job.spec.save.length){
+        if(!description.exists('save') || !description.get('save').length){
           logger.warning('No resources will be saved')
           return next()
         }
         //save the resources
-        resource.save(job.spec.save,next)
+        resource.save(description.get('save'),next)
       }
     ],
     done
