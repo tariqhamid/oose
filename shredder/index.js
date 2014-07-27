@@ -1,23 +1,24 @@
 'use strict';
 var fs = require('fs')
-  , util = require('util')
-  , path = require('path')
-  , net = require('net')
-  , redis = require('../helpers/redis')
-  , config = require('../config')
-  , async = require('async')
-  , Logger = require('../helpers/logger')
-  , crypto = require('crypto')
-  , ffmpeg = require('fluent-ffmpeg')
-  , temp = require('temp')
-  , mkdirp = require('mkdirp')
-  , gpac = require('./plugins/gpac')
-  , Sniffer = require('../helpers/Sniffer')
-  , restler = require('restler')
-  , shortId = require('shortid')
-  , mesh = require('../mesh')
+//var util = require('util')
+var path = require('path')
+//var net = require('net')
+//var redis = require('../helpers/redis')
+var config = require('../config')
+var async = require('async')
+var Logger = require('../helpers/logger')
+//var crypto = require('crypto')
+//var ffmpeg = require('fluent-ffmpeg')
+//var temp = require('temp')
+var mkdirp = require('mkdirp')
+//var Sniffer = require('../helpers/Sniffer')
+var restler = require('restler')
+var shortId = require('shortid')
+var mesh = require('../mesh')
+var drivers = require('./drivers')
+var Resource = require('./helpers/resource')
 var commUtil = require('../helpers/communicator').util
-var testing = !!config.get('shredder.testing')
+//var testing = !!config.get('shredder.testing')
 var logger = Logger.create('shredder')
 var running = false
 
@@ -44,7 +45,7 @@ var jobComplete = function(job){
 /**
  * Call prism for nextPeer
  * @param {function} done Callback
- */
+ *
 var nextPeer = function(done){
   redis.hgetall('peer:next',function(err,peer){
     if('undefined' === typeof peer || null === peer){
@@ -56,13 +57,14 @@ var nextPeer = function(done){
     } else done(err)
   })
 }
+*/
 
 
 /**
  * Get source file into a local temp file
  * @param {object} job Job description
  * @param {function} done Callback
- */
+ *
 var getSource = function(job,done){
   //setup temp folder
   var tmpDir = config.get('shredder.root') + '/tmp'
@@ -77,13 +79,14 @@ var getSource = function(job,done){
     })
   })
 }
+*/
 
 
 /**
  * Get source video metadata (info)
  * @param {string} path Full path of file to process
  * @param {function} done Callback
- */
+ *
 var getVideoInfo = function(path,done){
   var ffmeta = ffmpeg.Metadata
   ffmeta(path,function(metadata,err){
@@ -92,13 +95,14 @@ var getVideoInfo = function(path,done){
     } else done(err)
   })
 }
+*/
 
 
 /**
  * Process video
  * @param {string} path Full path of file to process
  * @param {function} done Callback
- */
+ *
 var processVideo = function(path,done){
   var infs = fs.createReadStream(path)
   infs.on('error',done) // calls as done(err) so skipped the closure - FIXME ?
@@ -116,6 +120,7 @@ var processVideo = function(path,done){
   ffproc.addOption('-movflags','+faststart')
   done(null,ffproc)
 }
+*/
 
 
 /**
@@ -124,11 +129,73 @@ var processVideo = function(path,done){
  * @param {function} done Callback
  */
 var runJob = function(job,done){
-  var store, ffProcess
+  //var store, ffProcess
   // replace the global logger with the job-specific one
   var logger = job.logger // NOTE - SCOPE SMASHING HERE
-  job.description = JSON.parse(job.description)
-  logger.info('Starting')
+  //blow up job description from JSON
+  job.spec = JSON.parse(job.description)
+  logger.info('Starting to process job')
+  //setup resource driver
+  var resource = new Resource()
+  async.series(
+    [
+      //step 1: obtain resources
+      function(next){
+        //make sure we have a resource section if not we cant do anything
+        if(!job.spec.resource || !job.spec.resource.length)
+          return next('No resources defined')
+        async.each(
+          job.spec.resource,
+          function(item,next){
+            //set the default driver if we dont already have it
+            if(!item.driver) item.driver = 'http'
+            //check to see if the driver exists
+            if(!drivers[item.driver]) return next('Driver ' + item.driver + ' doesnt exist')
+            //run the driver
+            drivers[item.driver].run(logger,resource,item,next)
+          },
+          next
+        )
+      },
+      //step 2: execute encoding operations
+      function(next){
+        //if there are no encoding operation just continue
+        if(!job.spec.encoding || !job.spec.encoding.lenght) return next()
+        async.eachSeries(
+          job.spec.encoding,
+          function(items,next){
+            //if item is not an array make it an array
+            if(!(items instanceof Array)) items = [items]
+            async.eachSeries(
+              items,
+              function(item,next){
+                //make sure a driver was supplied
+                if(!item.driver) return next('No driver defined: ' + JSON.stringify(item))
+                //make sure the driver exists
+                if(!drivers[item.driver]) return next('Driver: ' + item.driver + ' doesnt exist')
+                //run the driver
+                drivers[item.driver].run(logger,resource,item,next)
+              },
+              next
+            )
+          },
+          next
+        )
+      },
+      //step 3: save any resources after processing has finished
+      function(next){
+        //if there is no save section defined, warn and move on
+        if(!job.spec.save || !job.spec.save.length){
+          logger.warning('No resources will be saved')
+          return next()
+        }
+        //save the resources
+        resource.save(job.spec.save,next)
+      }
+    ],
+    done
+  )
+  /*
   async.series(
     [
       //grab the source file
@@ -228,6 +295,7 @@ var runJob = function(job,done){
       } else done(err)
     }
   )
+  */
 }
 
 
