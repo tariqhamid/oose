@@ -53,20 +53,7 @@
     "shortid": "^2.0.0",
     "temp": "^0.7.0"
   },
-  "devDependencies": {
-    "grunt-concurrent": "^0.5.0",
-    "grunt-contrib-jshint": "^0.10.0",
-    "grunt-contrib-watch": "^0.6.1",
-    "grunt-mocha-test": "^0.10.2",
-    "grunt-nodemon": "^0.2.1",
-    "grunt-project-update": "^0.2.3",
-    "mocha": "^1.18.2",
-    "chai": "^1.9.1",
-    "jshint-stylish": "^0.2.0"
-  },
   "scripts": {
-    "start": "grunt start",
-    "help": "grunt --help",
-    "test": "grunt test"
+    "start": "node app"
   }
 }

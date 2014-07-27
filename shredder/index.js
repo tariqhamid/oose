@@ -135,7 +135,7 @@ var runJob = function(job,done){
   //blow up job description from JSON
   job.spec = JSON.parse(job.description)
   logger.info('Starting to process job')
-  //setup resource driver
+  //setup resource manager
   var resource = new Resource()
   async.series(
     [
