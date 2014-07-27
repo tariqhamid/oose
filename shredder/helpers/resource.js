@@ -18,6 +18,7 @@ var tmpDir = path.resolve(config.get('shredder.root') + '/tmp')
  */
 var saveResource = function(name,info,next){
   //TODO: save this to OOSE somehow
+  next()
 }
 
 
@@ -84,6 +85,8 @@ Resource.prototype.create = function(name,done){
     ],
     function(err){
       if(err) return done(err)
+      //emit create event
+      that.emit('create',name,tmp)
       //add resource
       that.add(name,tmp)
       //return tempfile
@@ -140,18 +143,38 @@ Resource.prototype.remove = function(name){
 /**
  * Render a string and replace named resources with paths
  * @param {string} string
- * @return {string} The replaced string
+ * @param {function} done
  */
-Resource.prototype.render = function(string){
+Resource.prototype.render = function(string,done){
+  var that = this
   var originalString = string
-  var regexp
-  for(var i in this.resources){
-    if(!this.resources.hasOwnProperty(i)) continue
-    regexp = new RegExp('{' + i + '}','i')
-    string = string.replace(regexp,this.resources[i].path)
-  }
-  this.emit('render',originalString,string)
-  return string
+  //match any named resources in the string
+  var match = string.match(/{([0-9a-z]+)}/ig)
+  match.shift()
+  async.each(
+    match,
+    function(m,next){
+      //if the resource already exists continue
+      if(that.exists(m)) return next()
+      //create any reosurces that dont exist yet
+      that.create(m,function(err){
+        if(err) return next(err)
+        next()
+      })
+    },
+    function(err){
+      if(err) return done(err)
+      //replace any resource references with their paths
+      var regexp
+      for(var i in that.resources){
+        if(!that.resources.hasOwnProperty(i)) continue
+        regexp = new RegExp('{' + i + '}','i')
+        string = string.replace(regexp,that.resources[i].path)
+      }
+      this.emit('render',originalString,string)
+      done(null,string)
+    }
+  )
 }
 
 
