@@ -142,10 +142,11 @@ exports.upload = function(req,res){
       [
         //ask for nextPeer
         function(next){
-          restler.get(prismBaseUrl() + '/api/peerNext').on('complete',function(result){
+          var url = prismBaseUrl() + '/api/peerNext'
+          restler.get(url).on('complete',function(result){
             if(result instanceof Error) return next(result)
-            if(!result.peer) return next('Next peer could not be found')
-            peerNext = result.peer
+            if(!result.peers || !result.peers.length) return next('Next peer could not be found')
+            peerNext = result.peers[0]
             next()
           })
         },

@@ -35,9 +35,10 @@ var clone = function(job,cb){
       peer = JSON.parse(result[k])
       break
     }
+    if(!peer) return done('Could not locate an available peer to accept the clone')
     //setup streams
     var rs = fs.createReadStream(file.pathFromSha1(job.sha1))
-    var ws = net.connect(peer.port,peer.ip)
+    var ws = net.connect(peer.portImport,peer.ip)
     ws.on('connect',function(){
       rs.pipe(ws)
     })
