@@ -123,7 +123,13 @@ exports.upload = function(req,res){
             }
           ],
           encoding: [
-            {profile: 'mp4-standard-480p'}
+            {
+              template: 'mp4-standard-480p',
+              parameters: {
+                title: 'Foo',
+                test: 'blah'
+              }
+            }
           ],
           save: ['video']
         }

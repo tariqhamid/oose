@@ -8,6 +8,7 @@ var fs = require('fs')
 var path = require('path')
 var config = require('../../config')
 var tmpDir = path.resolve(config.get('shredder.root') + '/tmp')
+var resourceExp = /\{([^}]+)\}/ig
 
 
 /**
@@ -37,7 +38,7 @@ var Resource = function(options){
   that.options.load(options)
   //define our resource handler
   that.resources = {}
-  process.on('exit',that.cleanup.call(that))
+  process.on('exit',that.cleanup.bind(that))
 }
 Resource.prototype = Object.create(EventEmitter.prototype)
 
@@ -144,15 +145,20 @@ Resource.prototype.remove = function(name){
  * Render a string and replace named resources with paths
  * @param {string} string
  * @param {function} done
+ * @return {*}
  */
 Resource.prototype.render = function(string,done){
   var that = this
   var originalString = string
   //match any named resources in the string
-  var match = string.match(/{([0-9a-z]+)}/ig)
-  match.shift()
+  var match, matches = []
+  while((match = resourceExp.exec(string))){
+    if(!match[1]) continue
+    matches.push(match[1])
+  }
+  if(!(matches instanceof Array) || !matches.length) return done(null,string)
   async.each(
-    match,
+    matches,
     function(m,next){
       //if the resource already exists continue
       if(that.exists(m)) return next()
@@ -165,13 +171,11 @@ Resource.prototype.render = function(string,done){
     function(err){
       if(err) return done(err)
       //replace any resource references with their paths
-      var regexp
       for(var i in that.resources){
         if(!that.resources.hasOwnProperty(i)) continue
-        regexp = new RegExp('{' + i + '}','i')
-        string = string.replace(regexp,that.resources[i].path)
+        string = string.replace(new RegExp('{' + i + '}','i'),that.resources[i].path)
       }
-      this.emit('render',originalString,string)
+      that.emit('render',originalString,string)
       done(null,string)
     }
   )

@@ -265,92 +265,93 @@ Shredder exposes itself through an HTTP JSONP API.
   //options that are used to control the encoding
   encoding: {
     [
-      //when an object is used its considered a single pass encode
       {
-        //select the program to use
-        driver: 'ffmpeg',
-        //arguments for the program
-        //key = the programs raw argument name, value; resources can be used with their name eg {watermark}
-        args: [
-          //input
-          {key: '-i', value: '{hdvideo}'},
-          //meta data
-          {key: '-metadata', value:'title="Video 1"'},
-          //video options
-          {key: '-s', value: 'hd1080'},
-          {key: '-vf', value: '[in] movie={watermark},lutyuv=a=va1/2 [logo]; [logo] overlay=W-w:0 [out]'}
-          {key: '-vcodec', value: 'libx264'},
-          {key: '-vpre', value: 'medium'},
-          //encoder specific options
-          {key: '-tune', value: 'animation'},
-          {key: '-movflags', value: '+faststart'},
-          {key: '-pix_fmt', value: 'yuv420p'},
-          {key: '-crf', value: '23'},
-          //audio options
-          {key: '-acodec', value: 'copy'},
-          //mux options
-          {key: '-f', value: 'mp4'},
-          //output
-          {key: '-y', value: '{hdvideoAsMP4}'
+        //define a template, or omit this or title it none for a custom chain
+        template: 'none',
+        //define a job chain
+        jobs: [
+          {
+            //set the position of the job (this is important for injecting jobs in templates)
+            position: 0,
+            //select the program to use
+            driver: 'ffmpeg',
+            //arguments for the program
+            //key = the programs raw argument name, value; resources can be used with their name eg {watermark}
+            args: [
+              //input
+              {key: '-i', value: '{hdvideo}'},
+              //meta data
+              {key: '-metadata', value:'title="Video 1"'},
+              //video options
+              {key: '-s', value: 'hd1080'},
+              {key: '-vf', value: '[in] movie={watermark},lutyuv=a=va1/2 [logo]; [logo] overlay=W-w:0 [out]'}
+              {key: '-vcodec', value: 'libx264'},
+              {key: '-vpre', value: 'medium'},
+              //encoder specific options
+              {key: '-tune', value: 'animation'},
+              {key: '-movflags', value: '+faststart'},
+              {key: '-pix_fmt', value: 'yuv420p'},
+              {key: '-crf', value: '23'},
+              //audio options
+              {key: '-acodec', value: 'copy'},
+              //mux options
+              {key: '-f', value: 'mp4'},
+              //output
+              {key: '-y', value: '{hdvideoAsMP4}'
+            ]
+          },
         ]
       },
       //this is an example of using a utility chain
-      [
-        {
-          //the custom profile takes raw options with no defaults
-          //select the program to use
-          driver: 'ffmpeg',
-          //arguments for the program
-          //key = the programs raw argument name, value; resources can be used with their name eg {watermark}
-          args: [
-            //input
-            {key: '-i', value: '{video}'},
-            //metadata
-            {key: '-metadata', value:'title="Video 1"'},
-            //video options
-            {key: '-s', value: 'hd1080'},
-            {key: '-vf', value: '[in] movie={watermark},lutyuv=a=va1/2 [logo]; [logo] overlay=W-w:0 [out]'}
-            {key: '-vcodec', value: 'libx264'},
-            {key: '-vpre', value: 'medium'},
-            //encoder specific options
-            {key: '-tune', value: 'animation'},
-            {key: '-movflags', value: '+faststart'},
-            {key: '-pix_fmt', value: 'yuv420p'},
-            {key: '-crf', value: '23'},
-            //audio options
-            {key: '-acodec', value: 'copy'},
-            //mux options
-            {key: '-f', value: 'mp4'},
-            //output
-            {key: '-y', value: '{videoAsMP4}'
-          ]
-        },
-        {
-          driver: 'mp4box',
-          args: [
-            {key: 'inter', value: '1250'},
-            {key: 'hint'},
-            {key: 'isma'},
-            {key: 'noprog'},
-            {value: '{videoAsMP4}'}
-          ]
-        }
-      ]
-      //profiles can be used to populate defaults
-      [
-        {profile: 'ffmpegToMp4'},
-        {profile: 'mp4boxHint'}
-      ]
-      //profiles can be extended
       {
-        profile: 'ffmpegToMp4',
-        args: [
-          {key: '-vf', value: '[in] movie={watermark},lutyuv=a=va1/2 [logo]; [logo] overlay=W-w:0 [out]'}
+        jobs: [
+          {
+            position: 10,
+            //select the program to use
+            driver: 'ffmpeg',
+            //arguments for the program
+            //key = the programs raw argument name, value; resources can be used with their name eg {watermark}
+            args: [
+              //input
+              {key: '-i', value: '{video}'},
+              //metadata
+              {key: '-metadata', value:'title="Video 1"'},
+              //video options
+              {key: '-s', value: 'hd1080'},
+              {key: '-vf', value: '[in] movie={watermark},lutyuv=a=va1/2 [logo]; [logo] overlay=W-w:0 [out]'}
+              {key: '-vcodec', value: 'libx264'},
+              {key: '-vpre', value: 'medium'},
+              //encoder specific options
+              {key: '-tune', value: 'animation'},
+              {key: '-movflags', value: '+faststart'},
+              {key: '-pix_fmt', value: 'yuv420p'},
+              {key: '-crf', value: '23'},
+              //audio options
+              {key: '-acodec', value: 'copy'},
+              //mux options
+              {key: '-f', value: 'mp4'},
+              //output
+              {key: '-y', value: '{videoAsMP4}'
+            ]
+          },
+          {
+            position: 20,
+            driver: 'mp4box',
+            args: [
+              {key: 'inter', value: '1250'},
+              {key: 'hint'},
+              {key: 'isma'},
+              {key: 'noprog'},
+              {value: '{videoAsMP4}'}
+            ]
+          }
         ]
       },
+      //templates can be used to populate defaults
+      {template: 'ffmpegToMp4'}
       //output a thumbnail
       {
-        profile: 'thumbnail',
+        template: 'thumbnail',
         //skip to 30 seconds from the beginning or last frame when shorter
         args: [
           {key: '-ss', value: '30'}

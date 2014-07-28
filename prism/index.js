@@ -164,7 +164,11 @@ app.post('/api/shredderJob',function(req,res){
         redis.hgetall('peer:next',function(err,results){
           if(err) return next(err)
           if(!results) return next('could not find next peer')
-          peerNext = JSON.parse(results[0])
+          for(var i in results){
+            if(!results.hasOwnProperty(i)) continue
+            peerNext = JSON.parse(results[i])
+            break
+          }
           next()
         })
       },
@@ -183,9 +187,7 @@ app.post('/api/shredderJob',function(req,res){
           client.end()
           //check if we got an error
           if('ok' !== payload.message.status) return next(payload.message.message)
-          //make sure the response is our sha1
-          if(req.body.sha1 !== payload.command) return next('Wrong command response for ' + req.body.sha1)
-          if(!payload.message.handle) return next('No job handle created for ' + req.body.sha1)
+          if(!payload.message.handle) return next('No job handle created')
           jobHandle = payload.message.handle
           next()
         })

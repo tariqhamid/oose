@@ -1,5 +1,6 @@
 'use strict';
 var fs = require('fs')
+var os = require('os')
 var ObjectManage = require('object-manage')
 var path = require('path')
 var config = require('../config')
@@ -11,27 +12,28 @@ var shortId = require('shortid')
 var mesh = require('../mesh')
 var drivers = require('./drivers')
 var Resource = require('./helpers/resource')
+var Parameter = require('./helpers/parameter')
 var commUtil = require('../helpers/communicator').util
 var logger = Logger.create('shredder')
 var running = false
 
 
 /**
- * Load a profile if there is one
+ * Load a template if there is one
  * @param {object} input
  * @return {ObjectManage}
  */
-var loadProfile = function(input){
+var loadTemplate = function(input){
   //setup a new object manage
   var obj = new ObjectManage()
   //load our input
   obj.load(input)
-  //if there is not a profile we are done
-  if(!input.profile) return obj
-  //figure out profile location
-  var file = path.resolve('../profiles/' + input.profile + '.json')
+  //if there is not a template we are done
+  if(!input.template) return obj
+  //figure out template location
+  var file = path.resolve(__dirname + '/templates/' + input.template + '.json')
   if(!fs.existsSync(file)) return obj
-  //since we have an existing profile lets grab it
+  //since we have an existing template lets grab it
   obj.load(JSON.parse(fs.readFileSync(file)))
   //load our input over it again for overrides
   obj.load(input)
@@ -80,44 +82,58 @@ var runJob = function(job,done){
         //make sure we have a resource section if not we cant do anything
         if(!description.exists('resource') || !description.get('resource').length)
           return next('No resources defined')
+        logger.info('Starting to collect defined resources')
         async.each(
           description.get('resource'),
           function(item,next){
-            item = loadProfile(item)
+            item = loadTemplate(item)
+            //load the parameters
+            var param = new Parameter()
+            if(item.exists('parameters')) param.load(item.get('parameters'))
             //set the default driver if we dont already have it
             if(!item.exists('driver')) item.set('driver','http')
             //check to see if the driver exists
             if(!drivers[item.get('driver')]) return next('Driver ' + item.get('driver') + ' doesnt exist')
             //run the driver
-            drivers[item.driver].run(logger,resource,item,next)
+            drivers[item.get('driver')].run(logger,resource,param,item,next)
           },
-          next
+          function(err){
+            if(err) return next(err)
+            logger.info('Resource collection finished')
+            next()
+          }
         )
       },
       //step 2: execute encoding operations
       function(next){
         //if there are no encoding operation just continue
         if(!description.exists('encoding') || !description.get('encoding').length) return next()
+        logger.info('Starting to execute encoding jobs')
         async.eachSeries(
           description.get('encoding'),
-          function(items,next){
-            //if item is not an array make it an array
-            if(!(items instanceof Array)) items = [items]
+          function(item,next){
+            item = loadTemplate(item)
+            //load the parameters
+            var param = new Parameter()
+            if(item.exists('parameters')) param.load(item.get('parameters'))
             async.eachSeries(
-              items,
+              item.get('jobs'),
               function(item,next){
-                item = loadProfile(item)
                 //make sure a driver was supplied
-                if(!item.exists('driver')) return next('No driver defined: ' + JSON.stringify(item.data))
+                if(!item.driver) return next('No driver defined: ' + JSON.stringify(item))
                 //make sure the driver exists
-                if(!drivers[item.get('driver')]) return next('Driver: ' + item.get('driver') + ' doesnt exist')
+                if(!drivers[item.driver]) return next('Driver: ' + item.driver + ' doesnt exist')
                 //run the driver
-                drivers[item.get('driver')].run(logger,resource,item,next)
+                drivers[item.driver].run(logger,resource,param,item,next)
               },
               next
             )
           },
-          next
+          function(err){
+            if(err) return next(err)
+            logger.info('Finished executing encoding jobs')
+            next()
+          }
         )
       },
       //step 3: save any resources after processing has finished
@@ -147,15 +163,15 @@ var q = async.queue(
     job.logger = Logger.create('shredder:job:'+job.handle)
     runJob(job,function(err){
       if(err){
-        job.logger.error('Import failed: ' + err)
+        job.logger.error('Job processing failed: ' + err)
       } else {
-        job.logger.info('Import successful')
+        job.logger.info('Job processing successful')
         jobComplete(job)
       }
       done()
     })
   },
-  config.get('shredder.concurrency') || 1
+  config.get('shredder.concurrency') || os.cpus().length || 1
 )
 
 
@@ -176,7 +192,7 @@ var meshStart = function(done){
     q.push(job)
     //respond to the request with the assigned handle and queue position
     socket.end(commUtil.withLength(commUtil.build(
-      job.source.sha1,
+      job.handle,
       {status: 'ok', handle: job.handle, position: q.length()}
     )))
   })
