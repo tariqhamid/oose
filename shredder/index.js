@@ -1,25 +1,17 @@
 'use strict';
 var fs = require('fs')
 var ObjectManage = require('object-manage')
-//var util = require('util')
 var path = require('path')
-//var net = require('net')
-//var redis = require('../helpers/redis')
 var config = require('../config')
 var async = require('async')
 var Logger = require('../helpers/logger')
-//var crypto = require('crypto')
-//var ffmpeg = require('fluent-ffmpeg')
-//var temp = require('temp')
 var mkdirp = require('mkdirp')
-//var Sniffer = require('../helpers/Sniffer')
 var restler = require('restler')
 var shortId = require('shortid')
 var mesh = require('../mesh')
 var drivers = require('./drivers')
 var Resource = require('./helpers/resource')
 var commUtil = require('../helpers/communicator').util
-//var testing = !!config.get('shredder.testing')
 var logger = Logger.create('shredder')
 var running = false
 
@@ -64,87 +56,6 @@ var jobComplete = function(job){
   if(job.output.imageSha1) response.manifest.image = job.output.imageSha1
   restler.post(job.callback,{data: response})
 }
-
-
-/**
- * Call prism for nextPeer
- * @param {function} done Callback
- *
-var nextPeer = function(done){
-  redis.hgetall('peer:next',function(err,peer){
-    if('undefined' === typeof peer || null === peer){
-      err = 'Could not obtain a peer from redis'
-    }
-    if(!err){
-      peer.host = peer.hostname + '.' + peer.domain
-      done(null,peer)
-    } else done(err)
-  })
-}
-*/
-
-
-/**
- * Get source file into a local temp file
- * @param {object} job Job description
- * @param {function} done Callback
- *
-var getSource = function(job,done){
-  //setup temp folder
-  var tmpDir = config.get('shredder.root') + '/tmp'
-  if(!fs.existsSync(tmpDir)) mkdirp.sync(tmpDir)
-  restler.get(job.source.url).on('complete',function(result){
-    if(result instanceof Error) return done(result)
-    var tempfile = temp.path({dir: tmpDir})
-    fs.writeFile(tempfile,result,function(err){
-      if(!err){
-        done(null,tempfile)
-      } else done(err)
-    })
-  })
-}
-*/
-
-
-/**
- * Get source video metadata (info)
- * @param {string} path Full path of file to process
- * @param {function} done Callback
- *
-var getVideoInfo = function(path,done){
-  var ffmeta = ffmpeg.Metadata
-  ffmeta(path,function(metadata,err){
-    if(!err){
-      done(null,metadata)
-    } else done(err)
-  })
-}
-*/
-
-
-/**
- * Process video
- * @param {string} path Full path of file to process
- * @param {function} done Callback
- *
-var processVideo = function(path,done){
-  var infs = fs.createReadStream(path)
-  infs.on('error',done) // calls as done(err) so skipped the closure - FIXME ?
-  var ffproc = new ffmpeg({source:infs,nolog:true})
-  ffproc.on('error',done) // calls as done(err) so skipped the closure - FIXME ?
-//  ffproc.withSize('?x360')
-  ffproc.addOption('-preset','medium')
-  ffproc.withVideoCodec('libx264')
-  ffproc.withVideoBitrate('200k')
-  ffproc.addOption('-crf',23)
-  ffproc.withAudioCodec('libfaac')
-  ffproc.withAudioChannels(2)
-  ffproc.withAudioBitrate('128k')
-  ffproc.toFormat('mp4')
-  ffproc.addOption('-movflags','+faststart')
-  done(null,ffproc)
-}
-*/
 
 
 /**
@@ -222,107 +133,6 @@ var runJob = function(job,done){
     ],
     done
   )
-  /*
-  async.series(
-    [
-      //grab the source file
-      function(next){
-        getSource(job,function(err,result){
-          if(!err){
-            job.source.tempfile = result
-            next()
-          } else next(err)
-        })
-      },
-      //check to see if this is a video file and if so obtain metadata (info)
-      function(next){
-        if(!config.get('shredder.transcode.videos.enabled')) return next()
-        getVideoInfo(job.source.tempfile,function(err,result){
-          if(!err){
-            job.source.videoInfo = result
-            logger.info('videoInfo:' + util.inspect(job.source.videoInfo))
-            next()
-          } else next(err)
-        })
-      },
-      //figure out our peer
-      function(next){
-        logger.info('Checking nextPeer')
-        nextPeer(function(err,result){
-          if(!err){
-            job.output.peer = result
-            next()
-          } else next(err)
-        })
-      },
-      //connect to the peer
-      function(next){
-        var peer = job.output.peer
-        logger.info('Connecting to destination store @ ' + peer.ip + ':' + peer.portImport)
-        store = net.connect(peer.portImport,peer.ip)
-        store.on('error',next)
-        store.on('connect',next)
-      },
-      //set up our processing chain
-      function(next){
-        processVideo(job.source.tempfile,function(err,result){
-          if(!err){
-            ffProcess = result
-            next()
-          } else next(err)
-        })
-      },
-      //send file to peer
-      function(next){
-        var readable
-        var shasum = crypto.createHash('sha1')
-        var sniff = new Sniffer()
-        sniff.on('data',function(data){
-          shasum.update(data)
-        })
-        sniff.on('end',function(){
-          job.output.videoSha1 = shasum.digest('hex')
-        })
-        store.on('end',next)
-        if(!ffProcess){
-          readable = fs.createReadStream(path)
-          readable.on('error',next)
-          readable.pipe(sniff).pipe(store)
-        } else {
-          var tmpPath = job.output.tempfile
-          ffProcess.on('end',function(){
-            //rail through mp4box
-            gpac.hint(tmpPath,function(err){
-              if(!err){
-                readable = fs.createReadStream(tmpPath)
-                readable.on('error',function(err){
-                  fs.unlinkSync(tmpPath)
-                  next(err)
-                })
-                readable.on('end',function(){
-                  fs.unlinkSync(tmpPath)
-                })
-                readable.pipe(sniff).pipe(store)
-              } else next(err)
-            })
-          })
-          ffProcess.saveToFile(tmpPath)
-        }
-      },
-      //remove the original file
-      function(next){
-        if(!testing){
-          fs.unlink(path,next)
-        } else next()
-      }
-    ],
-    function(err){
-      if(!err){
-        done(null,job)
-      } else done(err)
-    }
-  )
-  */
 }
 
 

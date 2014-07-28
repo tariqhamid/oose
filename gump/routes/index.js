@@ -112,14 +112,20 @@ exports.upload = function(req,res){
     restler
       .post(prismBaseUrl() + '/api/shredderJob',{
         data: {
-          mimetype: file.mimetype,
-          filename: file.filename,
-          sha1: file.sha1,
-          source: gumpBaseUrl() + '/tmp/' + require('path').basename(file.tmp),
-          callback: gumpBaseUrl() + '/api/importJobUpdate',
-          output: {
-            preset: 'mp4Stream'
-          }
+          callback: {
+            url: gumpBaseUrl() + '/api/importJobUpdate'
+          },
+          resource: [
+            {
+              name: 'video',
+              driver: 'http',
+              url: gumpBaseUrl() + '/tmp/' + require('path').basename(file.tmp)
+            }
+          ],
+          encoding: [
+            {profile: 'mp4-standard-480p'}
+          ],
+          save: ['video']
         }
       })
       .on('complete',function(result){
