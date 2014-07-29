@@ -18,6 +18,7 @@ var listen = function(port,host,done){
       else logger.info('Closed import connection from ' + remoteAddress + ':' + remotePort)
     })
     file.fromReadable(socket,function(err,sha1){
+      socket.end(sha1)
       logger.info(sha1 + ' received on port ' + port)
       if(err) logger.warn(err)
       else logger.info(sha1 + ' imported successfully')

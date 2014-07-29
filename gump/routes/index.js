@@ -131,7 +131,7 @@ exports.upload = function(req,res){
               }
             }
           ],
-          save: ['video']
+          save: ['mp4-standard-480p']
         }
       })
       .on('complete',function(result){
