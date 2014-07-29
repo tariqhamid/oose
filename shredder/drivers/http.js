@@ -1,7 +1,6 @@
 'use strict';
-var restler = require('restler')
+var request = require('request')
 var fs = require('fs')
-//  , driver = require('../helpers/driver')
 
 
 /**
@@ -35,16 +34,16 @@ exports.description = 'Offers ability to use http as a resource retrieval method
  */
 exports.run = function(logger,resource,parameter,options,done){
   logger.info('Retrieving resource from ' + options.get('url'))
-  var req = restler.get(options.get('url'),options.get('options') || {})
-  req.on('error',function(err){
-    done(err)
-  })
-  req.on('response',function(res){
-    resource.create(options.get('name'),function(err,info){
-      if(err) return done(err)
+  resource.create(options.get('name'),function(err,info){
+    if(err) return done(err)
+    var req = request.get(options.data)
+    req.on('error',function(err){
+      done(err)
+    })
+    req.on('response',function(res){
       var tmp = fs.createWriteStream(info.path)
       tmp.on('finish',function(){
-        logger.info('Successfully retrieved resource from ' + options.get('url'))
+        logger.info('Successfully retrieved resource from ' + options.get('url') + ' and saved to ' + info.path)
         done()
       })
       res.pipe(tmp)

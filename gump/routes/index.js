@@ -189,6 +189,7 @@ exports.upload = function(req,res){
     })
     writable.on('finish',function(){
       file.sha1 = shasum.digest('hex')
+      console.log(file.sha1)
       async.series(
         [
           //send to oose or shredder

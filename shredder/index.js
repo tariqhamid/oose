@@ -51,12 +51,13 @@ var jobComplete = function(job){
     status: 'complete',
     message: 'Job has completed successfully'
   }
-  if(job.output.framesTotal) response.framesTotal = job.output.framesTotal
+  /**if(job.output.framesTotal) response.framesTotal = job.output.framesTotal
   if(job.output.framesComplete) response.framesComplete = job.output.framesComplete
   response.manifest = {}
   if(job.output.videoSha1) response.manifest.video = job.output.videoSha1
   if(job.output.imageSha1) response.manifest.image = job.output.imageSha1
-  restler.post(job.callback,{data: response})
+  **/
+  restler.post(job.callback.url,{data: response})
 }
 
 

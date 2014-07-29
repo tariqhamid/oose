@@ -53,28 +53,6 @@
           "value": "{mp4-standard-480p}"
         }
       ]
-    },
-    {
-      "position": "20",
-      "driver": "mp4box",
-      "args": [
-        {
-          "key": "-inter",
-          "value": "1250"
-        },
-        {
-          "key": "-hint"
-        },
-        {
-          "key": "-isma"
-        },
-        {
-          "key": "-quiet"
-        },
-        {
-          "key": "{mp4-standard-480p}"
-        }
-      ]
     }
   ]
 }

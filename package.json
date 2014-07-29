@@ -25,7 +25,6 @@
     "caterpillar-human": "^2.1.2",
     "cli-table": "^0.3.0",
     "cluster-master": "^0.2.0",
-    "command": "0.0.5",
     "commander": "^2.2.0",
     "connect-busboy": "0.0.1",
     "connect-flash": "^0.1.1",
@@ -49,6 +48,7 @@
     "q": "^1.0.1",
     "readdirp": "^1.0.1",
     "redis": "^0.10.1",
+    "request": "^2.39.0",
     "restler": "^3.2.2",
     "shortid": "^2.0.0",
     "temp": "^0.7.0"

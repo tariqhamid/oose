@@ -1,7 +1,6 @@
 'use strict';
 var async = require('async')
-var command = require('command')
-var config = require('../../config')
+var cp = require('child_process')
 
 
 /**
@@ -16,19 +15,15 @@ exports.commandCompileArgs = function(resource,parameter,args,done){
   async.each(
     args,
     function(v,next){
-      var string = ''
-      string += v.key
-      string += v.join || ' '
+      parsed.push(v.key)
       if(!v.value){
-        parsed.push(string)
         return next()
       }
       v.value = parameter.render(v.value)
       resource.render(v.value,function(err,result){
         if(err) return next(err)
         v.value = result
-        string += v.value
-        parsed.push(string)
+        parsed.push(v.value)
         next()
       })
     },
@@ -63,17 +58,22 @@ exports.executeCommand = function(cmd,logger,resource,parameter,options,done){
       },
       //execute the command
       function(next){
-        command.open(config.get('shredder.root'))
-          .on('stdout',function(data){
-            logger.info(data)
-          })
-          .on('stderr',function(data){
-            logger.error(data)
-          })
-          .exec(cmd,args)
-          .then(function() {
-            next()
-          })
+        logger.info('Executing command: ' + cmd + ' ' + args.join(' '))
+        var q = cp.spawn(cmd,args)
+        q.stdout.setEncoding('utf-8')
+        q.stdout.on('data',function(data){
+          logger.info(data)
+        })
+        q.stderr.setEncoding('utf-8')
+        q.stderr.on('data',function(data){
+          logger.warning(data)
+        })
+        q.on('error',function(err){
+          next(err)
+        })
+        q.on('close',function(){
+          next()
+        })
       }
     ],
     function(err){

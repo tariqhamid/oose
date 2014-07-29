@@ -58,7 +58,7 @@ config.load({
     enabled: false,
     port: 3004,
     host: null,
-    tmpDir: __dirname + '/gump/tmp',
+    tmpDir: __dirname + '/gump/public/tmp',
     embed: {
       seed: '3123572'
     },
