@@ -196,17 +196,41 @@ Shredder exposes itself through an HTTP JSONP API.
 ```js
 {
   //options that are used to receive job updates
-  callback: {
-    //url that OOSE will JSONP to send job updates to
-    url: 'http://localhost/myapp/jobUpdate'
-    //any additional headers that should be sent
-    headers: [],
-    //basic auth if needed
-    auth: {
-      username: 'foo',
-      password: 'bar'
+  callback: [
+    //register a callback handler
+    {
+      //make an http JSON post request to a callback
+      driver: 'http'
+      //define types of messages to receive
+      level: ['error','completion'],
+      //url that OOSE will JSONP to send job updates to
+      url: 'http://localhost/myapp/jobUpdate'
+      //any additional headers that should be sent
+      headers: [],
+      //basic auth if needed
+      auth: {
+        username: 'foo',
+        password: 'bar'
+      }
+    },
+    //sometimes its useful for many parties to get updates
+    {
+      //define types of messages to receive
+      level: ['progress'],
+      //use udp to send job updates
+      driver: 'udp',
+      host: 'localhost',
+      port: '3010'
     }
-  },
+    //maybe tcp connections for firewall reasons (this will use a the same socket for the life of the job)
+    //the tcp driver sends line separated stanzas of JSON
+    {
+      driver: 'tcp',
+      level: 'error'
+      host: 'localhost',
+      port: '3011'
+    }
+  ],
   //options pertaining to the source file
   resource: [
     {
