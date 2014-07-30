@@ -26,15 +26,14 @@ exports.description = 'Offers ability to use http as a resource retrieval method
 
 /**
  * Execute the driver with the given options
- * @param {Logger} logger
- * @param {Resource} resource manager
+ * @param {Job} job manager
  * @param {Parameter} parameter manager
  * @param {object} options
  * @param {function} done
  */
-exports.run = function(logger,resource,parameter,options,done){
-  logger.info('Retrieving resource from ' + options.get('url'))
-  resource.create(options.get('name'),function(err,info){
+exports.run = function(job,parameter,options,done){
+  job.logger.info('Retrieving resource from ' + options.get('url'))
+  job.resource.create(options.get('name'),function(err,info){
     if(err) return done(err)
     var req = request.get(options.data)
     req.on('error',function(err){
@@ -43,7 +42,7 @@ exports.run = function(logger,resource,parameter,options,done){
     req.on('response',function(res){
       var tmp = fs.createWriteStream(info.path)
       tmp.on('finish',function(){
-        logger.info('Successfully retrieved resource from ' + options.get('url') + ' and saved to ' + info.path)
+        job.logger.info('Successfully retrieved resource from ' + options.get('url') + ' and saved to ' + info.path)
         done()
       })
       res.pipe(tmp)

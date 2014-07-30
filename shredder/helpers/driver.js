@@ -38,19 +38,18 @@ exports.commandCompileArgs = function(resource,parameter,args,done){
 /**
  * Execute a command using the shredder api format
  * @param {string} cmd
- * @param {Logger} logger
- * @param {Resource} resource manager
+ * @param {Job} job manager
  * @param {Parameter} parameter manager
  * @param {object} options
  * @param {function} done
  */
-exports.executeCommand = function(cmd,logger,resource,parameter,options,done){
+exports.executeCommand = function(cmd,job,parameter,options,done){
   var args = []
   async.series(
     [
       //parse the args into a command replacing template vars and resources
       function(next){
-        exports.commandCompileArgs(resource,parameter,options.args,function(err,result){
+        exports.commandCompileArgs(job.resource,parameter,options.get('args'),function(err,result){
           if(err) return next(err)
           args = result
           next()
@@ -58,15 +57,15 @@ exports.executeCommand = function(cmd,logger,resource,parameter,options,done){
       },
       //execute the command
       function(next){
-        logger.info('Executing command: ' + cmd + ' ' + args.join(' '))
+        job.logger.info('Executing command: ' + cmd + ' ' + args.join(' '))
         var q = cp.spawn(cmd,args)
         q.stdout.setEncoding('utf-8')
         q.stdout.on('data',function(data){
-          logger.info(data)
+          job.logger.info(data)
         })
         q.stderr.setEncoding('utf-8')
         q.stderr.on('data',function(data){
-          logger.warning(data)
+          job.logger.warning(data)
         })
         q.on('error',function(err){
           next(err)

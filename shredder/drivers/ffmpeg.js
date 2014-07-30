@@ -25,12 +25,11 @@ exports.description = 'FFMPEG video encoding platform'
 
 /**
  * Execute the driver with the given options
- * @param {Logger} logger
- * @param {Resource} resource manager
+ * @param {Job} job manager
  * @param {Parameter} parameter manager
  * @param {object} options
  * @param {function} done
  */
-exports.run = function(logger,resource,parameter,options,done){
-  driver.executeCommand('ffmpeg',logger,resource,parameter,options,done)
+exports.run = function(job,parameter,options,done){
+  driver.executeCommand('ffmpeg',job,parameter,options,done)
 }

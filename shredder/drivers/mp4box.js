@@ -25,12 +25,11 @@ exports.description = 'GPAC video encoding platform'
 
 /**
  * Execute the driver with the given options
- * @param {Logger} logger
- * @param {Resource} resource manager
+ * @param {Job} job manager
  * @param {Parameter} parameter manager
  * @param {object} options
  * @param {function} done
  */
-exports.run = function(logger,resource,parameter,options,done){
-  driver.executeCommand('MP4Box',logger,resource,parameter,options,done)
+exports.run = function(job,parameter,options,done){
+  driver.executeCommand('MP4Box',job,parameter,options,done)
 }

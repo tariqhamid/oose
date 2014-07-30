@@ -9,7 +9,7 @@ var crypto = require('crypto')
  * Select next peer
  * @param {function} next
  */
-exports.nextPeer = function(next){
+exports.next = function(next){
   var peerNext
   redis.hgetall('peer:next',function(err,results){
     if(err) return next(err)

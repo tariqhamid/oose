@@ -12,10 +12,12 @@ var drivers = require('../drivers')
 
 /**
  * Load a template if there is one
+ * @param {Job} job manager
  * @param {object} input
  * @return {ObjectManage}
  */
-var loadTemplate = function(input){
+var loadTemplate = function(job,input){
+  if(input instanceof ObjectManage) input = JSON.parse(JSON.stringify(input.data))
   //setup a new object manage
   var obj = new ObjectManage()
   //load our input
@@ -23,8 +25,11 @@ var loadTemplate = function(input){
   //if there is not a template we are done
   if(!input.template) return obj
   //figure out template location
-  var file = path.resolve(__dirname + '/templates/' + input.template + '.json')
-  if(!fs.existsSync(file)) return obj
+  var file = path.resolve(__dirname + '/../templates/' + input.template + '.json')
+  if(!fs.existsSync(file)){
+    job.logger.warning('Requested template ' + input.template + ' doesnt exist')
+    return obj
+  }
   //since we have an existing template lets grab it
   obj.load(JSON.parse(fs.readFileSync(file)))
   //load our input over it again for overrides
@@ -95,21 +100,21 @@ Job.prototype.update = function(changes,done){
  * @return {*}
  */
 Job.prototype.runDriver = function(category,options,done){
+  var that = this
   if(!(options instanceof Array)) options = [options]
   async.eachSeries(
     options,
     function(options,next){
-      var that = this
-      options = loadTemplate(options)
+      options = loadTemplate(that,options)
       //load the parameters
       var param = new Parameter()
       if(options.exists('parameters')) param.load(options.get('parameters'))
       //set the default driver if we dont already have it
       if('resource' === category && !options.exists('driver')) options.set('driver','http')
       //check to see if the driver exists
-      if(!options[options.get('driver')]) return next('Driver ' + options.get('driver') + ' doesnt exist')
+      if(!drivers[options.get('driver')]) return next('Driver ' + options.get('driver') + ' doesnt exist')
       //run the driver
-      drivers[options.get('driver')](that,param,next)
+      drivers[options.get('driver')].run(that,param,options,next)
     },
     done
   )
@@ -154,13 +159,16 @@ Job.prototype.encode = function(next){
   async.eachSeries(
     that.description.get('encoding'),
     function(item,next){
-      item = loadTemplate(item)
+      item = loadTemplate(that,item)
+      console.log(item)
       //load the parameters
       var param = new Parameter()
       if(item.exists('parameters')) param.load(item.get('parameters'))
+      if(!item.get('jobs') || !item.get('jobs').length) return next()
       async.eachSeries(
         item.get('jobs'),
         function(item,next){
+          console.log(item)
           that.runDriver('encoder',item,next)
         },
         next
@@ -190,3 +198,10 @@ Job.prototype.save = function(next){
   //save the resources
   that.resource.save(that.description.get('save'),next)
 }
+
+
+/**
+ * Export Job manager
+ * @type {Job}
+ */
+module.exports = Job
