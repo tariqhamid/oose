@@ -7,6 +7,7 @@ var mkdirp = require('mkdirp')
 var fs = require('fs')
 var path = require('path')
 var config = require('../../config')
+var peer = require('../../helpers/peer')
 var tmpDir = path.resolve(config.get('shredder.root') + '/tmp')
 var resourceExp = /\{([^}]+)\}/ig
 
@@ -18,8 +19,29 @@ var resourceExp = /\{([^}]+)\}/ig
  * @param {function} next
  */
 var saveResource = function(name,info,next){
-  //TODO: save this to OOSE somehow
-  next()
+  var peerNext, sha1
+  async.series(
+    [
+      //select next peer
+      function(next){
+        peer.next(function(err,result){
+          peerNext = result
+          next()
+        })
+      },
+      //setup connection to input
+      function(next){
+        peer.sendFromReadable(peerNext,fs.createReadStream(info.path),function(err,result){
+          sha1 = result
+          next()
+        })
+      }
+    ],
+    function(err){
+      if(err) return next(err)
+      next(null,sha1)
+    }
+  )
 }
 
 

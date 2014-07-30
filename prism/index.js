@@ -5,6 +5,7 @@ var express = require('express')
   , config = require('../config')
   , redis = require('../helpers/redis')
   , async = require('async')
+  , peer = require('../helpers/peer')
 var commUtil = require('../helpers/communicator').util
 
 var running = false
@@ -161,14 +162,9 @@ app.post('/api/shredderJob',function(req,res){
     [
       //figure out next peer
       function(next){
-        redis.hgetall('peer:next',function(err,results){
+        peer.next(function(err,result){
           if(err) return next(err)
-          if(!results) return next('could not find next peer')
-          for(var i in results){
-            if(!results.hasOwnProperty(i)) continue
-            peerNext = JSON.parse(results[i])
-            break
-          }
+          peerNext = result
           next()
         })
       },
