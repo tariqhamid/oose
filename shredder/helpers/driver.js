@@ -15,15 +15,12 @@ exports.commandCompileArgs = function(resource,parameter,args,done){
   async.each(
     args,
     function(v,next){
-      parsed.push(v.key)
-      if(!v.value){
-        return next()
-      }
+      if(v.key) parsed.push(v.key)
+      if(!v.value) return next()
       v.value = parameter.render(v.value)
       resource.render(v.value,function(err,result){
         if(err) return next(err)
-        v.value = result
-        parsed.push(v.value)
+        parsed.push(result)
         next()
       })
     },

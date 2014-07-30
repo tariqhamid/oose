@@ -50,7 +50,7 @@
         },
         {
           "key": "-y",
-          "value": "{mp4-standard-480p}"
+          "value": "{mp4-standard-480p-ffmpeg}"
         }
       ]
     },
@@ -72,7 +72,11 @@
           "key": "-quiet"
         },
         {
-          "key": "{mp4-standard-480p}"
+          "key": "-out",
+          "value": "{mp4-standard-480p}"
+        },
+        {
+          "value": "{mp4-standard-480p-ffmpeg}"
         }
       ]
     }

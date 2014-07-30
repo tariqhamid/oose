@@ -33,8 +33,12 @@ exports.next = function(next){
 exports.sendFromReadable = function(peer,stream,next){
   var shasum = crypto.createHash('sha1')
   var sniff = new Sniffer()
+  var sha1
   sniff.on('data',function(data){
     shasum.update(data)
+  })
+  sniff.on('end',function(){
+    sha1 = shasum.digest('hex')
   })
   var client = net.connect(peer.portImport,peer.ip)
   client.on('error',function(err){
@@ -42,12 +46,11 @@ exports.sendFromReadable = function(peer,stream,next){
   })
   client.on('connect',function(){
     stream.pipe(sniff).pipe(client)
-    stream.on('end',function(){
-      var sha1 = shasum.digest('hex')
-      next(null,sha1)
-    })
     stream.on('error',function(err){
       next(err)
     })
+  })
+  client.on('end',function(){
+    next(null,sha1)
   })
 }

@@ -31,6 +31,5 @@ exports.description = 'FFMPEG video encoding platform'
  * @param {function} done
  */
 exports.run = function(job,parameter,options,done){
-  console.log(options)
   driver.executeCommand('ffmpeg',job,parameter,options,done)
 }

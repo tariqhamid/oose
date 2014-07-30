@@ -35,7 +35,8 @@ exports.run = function(job,parameter,options,done){
   job.logger.info('Retrieving resource from ' + options.get('url'))
   job.resource.create(options.get('name'),function(err,info){
     if(err) return done(err)
-    var req = request.get(options.data)
+    if(!options.exists('url')) return done('No URL for retrieval of ' + (options.get('name') || 'no name'))
+    var req = request.get(options.get())
     req.on('error',function(err){
       done(err)
     })

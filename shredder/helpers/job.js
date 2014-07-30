@@ -133,7 +133,7 @@ Job.prototype.obtainResources = function(next){
   async.each(
     that.description.get('resource'),
     function(item,next){
-      that.runDriver('resource',item,new Parameter(),next)
+      that.runDriver('resource',new Parameter(),item,next)
     },
     function(err){
       if(err) return next(err)
@@ -163,7 +163,7 @@ Job.prototype.encode = function(next){
       async.eachSeries(
         item.get('jobs') || [],
         function(item,next){
-          that.runDriver('encoder',item,param,next)
+          that.runDriver('encoder',param,item,next)
         },
         next
       )
