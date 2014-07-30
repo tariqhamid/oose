@@ -110,9 +110,9 @@ Job.prototype.runDriver = function(category,parameter,options,done){
       //set the default driver if we dont already have it
       if('resource' === category && !options.exists('driver')) options.set('driver','http')
       //check to see if the driver exists
-      if(!drivers[options.get('driver')]) return next('Driver ' + options.get('driver') + ' doesnt exist')
+      if(!drivers[category][options.get('driver')]) return next('Driver ' + options.get('driver') + ' doesnt exist')
       //run the driver
-      drivers[options.get('driver')].run(that,parameter,options,next)
+      drivers[category][options.get('driver')].run(that,parameter,options,next)
     },
     done
   )
@@ -168,7 +168,7 @@ Job.prototype.encode = function(next){
       async.eachSeries(
         jobs,
         function(item,next){
-          that.runDriver('encoder',param,item,next)
+          that.runDriver('encode',param,item,next)
         },
         next
       )

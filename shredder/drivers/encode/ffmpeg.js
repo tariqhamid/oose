@@ -1,26 +1,26 @@
 'use strict';
-var driver = require('../helpers/driver')
+var driver = require('../../helpers/driver')
 
 
 /**
  * Driver name
  * @type {string}
  */
-exports.name = 'mp4box'
+exports.name = 'ffmpeg'
 
 
 /**
  * Driver Category
  * @type {string}
  */
-exports.category = 'encoder'
+exports.category = 'encode'
 
 
 /**
  * Driver description
  * @type {string}
  */
-exports.description = 'GPAC video encoding platform'
+exports.description = 'FFMPEG video encoding platform'
 
 
 /**
@@ -31,5 +31,5 @@ exports.description = 'GPAC video encoding platform'
  * @param {function} done
  */
 exports.run = function(job,parameter,options,done){
-  driver.executeCommand('MP4Box',job,parameter,options,done)
+  driver.executeCommand('ffmpeg',job,parameter,options,done)
 }

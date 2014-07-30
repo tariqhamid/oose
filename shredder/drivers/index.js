@@ -2,21 +2,21 @@
 
 
 /**
- * FFMpeg driver
+ * HTTP Resource Driver
  * @type {exports}
  */
-exports.ffmpeg = require('./ffmpeg')
+exports.resource.http = require('./resource/http')
 
 
 /**
- * HTTP Driver
+ * FFMpeg driver
  * @type {exports}
  */
-exports.http = require('./http')
+exports.encode.ffmpeg = require('./encode/ffmpeg')
 
 
 /**
  * MP4Box driver
  * @type {exports}
  */
-exports.mp4box = require('./mp4box')
+exports.encode.mp4box = require('./encode/mp4box')
