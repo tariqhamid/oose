@@ -62,7 +62,7 @@ app.get('/:sha1/:filename',function(req,res){
         res.set('Accept-Ranges','bytes')
         res.set('Content-Type',info.mimeType)
         //byte range support
-        range = {start: 0, end: stat.size - 1}
+        range = {start: 0, end: (stat.size - 1 || 0)}
         var rangeRaw = req.get('range')
         if(rangeRaw){
           var match = rangeRaw.match(/(\d+)-(\d*)/)

@@ -72,11 +72,11 @@
           "key": "-quiet"
         },
         {
-          "key": "-out",
-          "value": "{mp4-standard-480p}"
+          "value": "{mp4-standard-480p-ffmpeg}"
         },
         {
-          "value": "{mp4-standard-480p-ffmpeg}"
+          "key": "-out",
+          "value": "{mp4-standard-480p}"
         }
       ]
     }
