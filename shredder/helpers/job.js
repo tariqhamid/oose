@@ -160,8 +160,13 @@ Job.prototype.encode = function(next){
       item = loadTemplate(that,item)
       var param = new Parameter()
       if(item.exists('parameters')) param.load(item.get('parameters'))
+      var jobs = item.get('jobs') || []
+      //sort jobs by their position
+      jobs.sort(function(a,b){
+        return (parseInt(a.position,10) - parseInt(b.position,10))
+      })
       async.eachSeries(
-        item.get('jobs') || [],
+        jobs,
         function(item,next){
           that.runDriver('encoder',param,item,next)
         },
