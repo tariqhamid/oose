@@ -95,26 +95,24 @@ Job.prototype.update = function(changes,done){
 /**
  * Run a driver for the job
  * @param {string} category
+ * @param {Parameter} parameter manager
  * @param {object} options
  * @param {function} done
  * @return {*}
  */
-Job.prototype.runDriver = function(category,options,done){
+Job.prototype.runDriver = function(category,parameter,options,done){
   var that = this
   if(!(options instanceof Array)) options = [options]
   async.eachSeries(
     options,
     function(options,next){
       options = loadTemplate(that,options)
-      //load the parameters
-      var param = new Parameter()
-      if(options.exists('parameters')) param.load(options.get('parameters'))
       //set the default driver if we dont already have it
       if('resource' === category && !options.exists('driver')) options.set('driver','http')
       //check to see if the driver exists
       if(!drivers[options.get('driver')]) return next('Driver ' + options.get('driver') + ' doesnt exist')
       //run the driver
-      drivers[options.get('driver')].run(that,param,options,next)
+      drivers[options.get('driver')].run(that,parameter,options,next)
     },
     done
   )
@@ -135,7 +133,7 @@ Job.prototype.obtainResources = function(next){
   async.each(
     that.description.get('resource'),
     function(item,next){
-      that.runDriver('resource',item,next)
+      that.runDriver('resource',item,new Parameter(),next)
     },
     function(err){
       if(err) return next(err)
@@ -160,16 +158,12 @@ Job.prototype.encode = function(next){
     that.description.get('encoding'),
     function(item,next){
       item = loadTemplate(that,item)
-      console.log(item)
-      //load the parameters
       var param = new Parameter()
       if(item.exists('parameters')) param.load(item.get('parameters'))
-      if(!item.get('jobs') || !item.get('jobs').length) return next()
       async.eachSeries(
-        item.get('jobs'),
+        item.get('jobs') || [],
         function(item,next){
-          console.log(item)
-          that.runDriver('encoder',item,next)
+          that.runDriver('encoder',item,param,next)
         },
         next
       )
