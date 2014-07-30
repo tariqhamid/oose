@@ -75,19 +75,18 @@ Job.prototype.defaultMetrics = {
  * @param {function} done
  */
 Job.prototype.update = function(changes,done){
+  var that = this
   //apply changes
-  this.metrics.load(changes)
-  //message client
-  request(
-    {
-      method: 'POST',
-      url: this.description.get('callback').url,
-      json: this.metrics.get()
+  that.metrics.load(changes)
+  //make sure we have an array of callbacks to execute
+  if(!(that.description.callback instanceof Array)) that.description.callback = [that.description.callback]
+  async.each(
+    that.description.callback,
+    function(item,next){
+      item = loadTemplate(item)
+      that.runDriver('callback',new Parameter(),item,next)
     },
-    function(err){
-      if(err) return done(err)
-      done()
-    }
+    done
   )
 }
 

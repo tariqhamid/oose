@@ -20,3 +20,10 @@ exports.encode.ffmpeg = require('./encode/ffmpeg')
  * @type {exports}
  */
 exports.encode.mp4box = require('./encode/mp4box')
+
+
+/**
+ * HTTP callback driver
+ * @type {exports}
+ */
+exports.callback.http = require('./callback/http')
