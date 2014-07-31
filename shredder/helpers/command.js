@@ -1,16 +1,32 @@
 'use strict';
 var async = require('async')
+var EventEmitter = require('events').EventEmitter
 var cp = require('child_process')
+
+
+
+/**
+ * Sherder Command helper
+ * @param {object} job
+ * @param {string} command
+ * @constructor
+ */
+var Command = function(job,command){
+  EventEmitter.call(this)
+  this.job = job
+  this.command = command
+}
+Command.prototype = Object.create(EventEmitter.prototype)
 
 
 /**
  * Compile arguments from shredder API
- * @param {Resource} resource manager
  * @param {Parameter} parameter manager
  * @param {array} args
  * @param {function} done
  */
-exports.commandCompileArgs = function(resource,parameter,args,done){
+Command.prototype.compile = function(parameter,args,done){
+  var that = this
   var parsed = []
   async.each(
     args,
@@ -18,7 +34,7 @@ exports.commandCompileArgs = function(resource,parameter,args,done){
       if(v.key) parsed.push(v.key)
       if(!v.value) return next()
       v.value = parameter.render(v.value)
-      resource.render(v.value,function(err,result){
+      that.job.resource.render(v.value,function(err,result){
         if(err) return next(err)
         parsed.push(result)
         next()
@@ -33,36 +49,34 @@ exports.commandCompileArgs = function(resource,parameter,args,done){
 
 
 /**
- * Execute a command using the shredder api format
- * @param {string} cmd
- * @param {Job} job manager
- * @param {Parameter} parameter manager
- * @param {object} options
- * @param {function} done
+ * Execute command
+ * @param {Parameter} parameter
+ * @param {Array} args
  */
-exports.executeCommand = function(cmd,job,parameter,options,done){
-  var args = []
+Command.prototype.execute = function(parameter,args){
+  var that = this
   async.series(
     [
       //parse the args into a command replacing template vars and resources
       function(next){
-        exports.commandCompileArgs(job.resource,parameter,options.get('args'),function(err,result){
+        that.compile(parameter,args,function(err,result){
           if(err) return next(err)
+          that.emit('compile',that.command,result)
           args = result
           next()
         })
       },
       //execute the command
       function(next){
-        job.logger.info('Executing command: ' + cmd + ' ' + args.join(' '))
-        var q = cp.spawn(cmd,args)
+        that.job.logger.info('Executing command: ' + that.command + ' ' + args.join(' '))
+        var q = cp.spawn(that.command,args)
         q.stdout.setEncoding('utf-8')
         q.stdout.on('data',function(data){
-          job.logger.info(data)
+          that.emit('stdout',data)
         })
         q.stderr.setEncoding('utf-8')
         q.stderr.on('data',function(data){
-          job.logger.warning(data)
+          that.emit('stderr',data)
         })
         q.on('error',function(err){
           next(err)
@@ -73,8 +87,8 @@ exports.executeCommand = function(cmd,job,parameter,options,done){
       }
     ],
     function(err){
-      if(err) return done(err)
-      done()
+      if(err) return that.emit('error',err)
+      that.emit('end')
     }
   )
 }

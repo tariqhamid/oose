@@ -1,5 +1,5 @@
 'use strict';
-var driver = require('../../helpers/driver')
+var Command = require('../../helpers/command')
 
 
 /**
@@ -31,5 +31,18 @@ exports.description = 'FFMPEG video encoding platform'
  * @param {function} done
  */
 exports.run = function(job,parameter,options,done){
-  driver.executeCommand('ffmpeg',job,parameter,options,done)
+  var cmd = new Command(job,'ffmpeg')
+  cmd.on('stderror',function(data){
+    job.logger.warning(data)
+  })
+  cmd.on('stdout',function(data){
+    job.logger.info(data)
+  })
+  cmd.on('error',function(err){
+    done(err)
+  })
+  cmd.on('end',function(){
+    done()
+  })
+  cmd.execute(parameter,options.get('args'))
 }

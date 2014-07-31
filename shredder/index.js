@@ -25,18 +25,59 @@ var runJob = function(job,done){
     [
       //step 1: obtain resources
       function(next){
+        job.update({
+          status: 'ok',
+          message: 'Obtaining resources',
+          steps: {
+            complete: 0,
+            total: 3
+          }
+        })
         job.obtainResources(next)
       },
       //step 2: execute encoding operations
       function(next){
+        job.update({
+          status: 'ok',
+          message: 'Executing encoding jobs',
+          steps: {
+            complete: 1,
+            total: 3
+          }
+        })
         job.encode(next)
       },
       //step 3: save any resources after processing has finished
       function(next){
+        job.update({
+          status: 'ok',
+          message: 'Saving resources',
+          steps: {
+            complete: 2,
+            total: 3
+          }
+        })
         job.save(next)
       }
     ],
-    done
+    function(err){
+      if(err){
+        job.update({
+          status: 'error',
+          message: err
+        })
+        return done()
+      }
+      job.update({
+        status: 'ok',
+        message: 'Processing complete',
+        steps: {
+          complete: 3,
+          total: 3
+        }
+      })
+      done()
+    }
   )
 }
 

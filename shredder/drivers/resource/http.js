@@ -41,10 +41,20 @@ exports.run = function(job,parameter,options,done){
       done(err)
     })
     req.on('response',function(res){
+      var frames = {
+        description: 'HTTP Resource Driver, downloading ' + options.get('url'),
+        complete: 0,
+        total: res.headers['content-length'] || 1
+      }
       var tmp = fs.createWriteStream(info.path)
       tmp.on('finish',function(){
         job.logger.info('Successfully retrieved resource from ' + options.get('url') + ' and saved to ' + info.path)
         done()
+      })
+      res.on('data',function(data){
+        frames.complete += data.length
+        if(frames.complete > frames.total) frames.total = frames.compelte
+        job.update({frames: frames})
       })
       res.pipe(tmp)
     })

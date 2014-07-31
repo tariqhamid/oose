@@ -6,7 +6,6 @@ var ObjectManage = require('object-manage')
 var Resource = require('./resource')
 var Parameter = require('./parameter')
 var Logger = require('../../helpers/logger')
-var request = require('request')
 var drivers = require('../drivers')
 
 
@@ -62,7 +61,12 @@ var Job = function(handle,description){
 Job.prototype.defaultMetrics = {
   status: '',
   message: '',
+  steps: {
+    complete: 0,
+    total: 1
+  },
   frames: {
+    description: '',
     complete: 0,
     total: 1
   }
