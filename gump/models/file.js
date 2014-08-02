@@ -47,13 +47,19 @@ schema = new mongoose.Schema({
     default: 'application/octet-stream'
   },
   embedHandle: String,
-  importError: String,
-  importJob: {
+  shredder: {
     handle: String,
     status: String,
     message: String,
-    framesTotal: Number,
-    framesComplete: Number
+    steps: {
+      complete: Number,
+      total: Number
+    },
+    frames: {
+      complete: Number,
+      total: Number
+    },
+    resources: Object
   },
   status: {
     type: String,

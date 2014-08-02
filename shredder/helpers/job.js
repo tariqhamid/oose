@@ -51,6 +51,7 @@ var Job = function(handle,description){
   this.description.load(JSON.parse(description))
   this.metrics = new ObjectManage()
   this.metrics.load(JSON.parse(JSON.stringify(this.defaultMetrics)))
+  this.metrics.set('handle',handle)
 }
 
 
@@ -59,6 +60,7 @@ var Job = function(handle,description){
  * @type {{}}
  */
 Job.prototype.defaultMetrics = {
+  handle: '',
   status: '',
   message: '',
   steps: {
@@ -69,7 +71,8 @@ Job.prototype.defaultMetrics = {
     description: '',
     complete: 0,
     total: 1
-  }
+  },
+  resources: {}
 }
 
 
@@ -77,17 +80,20 @@ Job.prototype.defaultMetrics = {
  * Send job update to the registered callback
  * @param {object} changes
  * @param {function} done
+ * @return {*}
  */
 Job.prototype.update = function(changes,done){
   var that = this
   //apply changes
   that.metrics.load(changes)
+  var callback = that.description.get('callback')
+  //if there are no callbacks defined just return
+  if('undefined' === callback) return done()
   //make sure we have an array of callbacks to execute
-  if(!(that.description.callback instanceof Array)) that.description.callback = [that.description.callback]
+  if(!(callback instanceof Array)) callback = [callback]
   async.each(
-    that.description.callback,
+    callback,
     function(item,next){
-      item = loadTemplate(item)
       that.runDriver('callback',new Parameter(),item,next)
     },
     done
@@ -198,7 +204,10 @@ Job.prototype.save = function(next){
     return next()
   }
   //save the resources
-  that.resource.save(that.description.get('save'),next)
+  that.resource.save(that.description.get('save'),function(err,result){
+    if(err) return next(err)
+    next(null,result)
+  })
 }
 
 

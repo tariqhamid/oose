@@ -2,28 +2,28 @@
 
 
 /**
- * HTTP Resource Driver
- * @type {exports}
+ * Resource drivers
+ * @type {{}}
  */
-exports.resource.http = require('./resource/http')
+exports.resource = {
+  http: require('./resource/http')
+}
 
 
 /**
- * FFMpeg driver
- * @type {exports}
+ * Encode drivers
+ * @type {{}}
  */
-exports.encode.ffmpeg = require('./encode/ffmpeg')
+exports.encode = {
+  ffmpeg: require('./encode/ffmpeg'),
+  mp4box: require('./encode/mp4box')
+}
 
 
 /**
- * MP4Box driver
+ * Callback driver
  * @type {exports}
  */
-exports.encode.mp4box = require('./encode/mp4box')
-
-
-/**
- * HTTP callback driver
- * @type {exports}
- */
-exports.callback.http = require('./callback/http')
+exports.callback = {
+  http: require('./callback/http')
+}

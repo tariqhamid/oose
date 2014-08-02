@@ -17,13 +17,13 @@ schema = new mongoose.Schema({
     image: [
       {
         offset: Number,
-        image: String
+        sha1: String
       }
     ],
     video: [
       {
         quality: String,
-        video: String
+        sha1: String
       }
     ]
   }

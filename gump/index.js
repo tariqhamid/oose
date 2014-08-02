@@ -19,6 +19,7 @@ app.set('view engine','jade')
 
 app.use(express.static(__dirname + '/public'))
 app.use(express.urlencoded())
+app.use(express.json())
 app.use(busboy())
 app.use(express.cookieParser(config.get('gump.cookie.secret')))
 app.use(express.session({
@@ -33,14 +34,38 @@ app.use(function(req,res,next){
   res.locals.flash = req.flash.bind(req)
   next()
 })
+
+//login functionality
 app.use(function(req,res,next){
+  //allow public routes
+  if(req.url.match(/\/(api|download|embed)\//)) return next()
+  //dont redirect loop the login page however makr sure we are there when not logged in
   if(!req.session.user && req.url.indexOf('/login') < 0){
-    res.redirect('/login')
-  } else {
-    app.locals.user = req.session.user
-    next()
+    return res.redirect('/login')
   }
+  //normally user is logged in
+  app.locals.user = req.session.user
+  next()
 })
+
+//----------------
+//public routes
+//----------------
+
+//api
+app.get('/api/embedDetails/:handle',routes.embed.apiDetails)
+app.post('/api/shredderUpdate',routes.shredderUpdate)
+
+//download
+app.get('/download',routes.download)
+
+//embed
+app.get('/embed/:handle',routes.embed.render)
+
+
+//----------------
+//private routes
+//----------------
 
 //auth
 app.post('/login',routes.user.login)
@@ -60,16 +85,6 @@ app.post('/folderCreate',routes.folderCreate)
 app.post('/',routes.fileRemove)
 app.get('/file',routes.file)
 app.get('/',routes.index)
-
-//download
-app.get('/download',routes.download)
-
-//embed
-app.get('/embed/:handle',routes.embed.render)
-
-//api
-app.get('/api/embedDetails/:handle',routes.embed.apiDetails)
-app.post('/api/importJobUpdate',routes.importJobUpdate)
 
 
 /**

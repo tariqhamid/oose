@@ -32,10 +32,19 @@ exports.description = 'Sends job updates via HTTP JSON POST'
  * @return {*}
  */
 exports.run = function(job,parameter,options,done){
-  options.set('method','POST')
-  options.set('json',job.metrics.get())
+  var metrics = job.metrics.get()
+  options = options.data
+  if(!options.url) return done('No callback URL set')
+  job.logger.info(
+    'Sending job update to ' +
+    options.url +
+    ' with metrics ' +
+    JSON.stringify(metrics)
+  )
+  options.method = 'POST'
+  options.json = metrics
   //message client
-  request(options.get(),function(err){
+  request(options,function(err){
     if(err) return done(err)
     done()
   })

@@ -26,7 +26,7 @@ var runJob = function(job,done){
       //step 1: obtain resources
       function(next){
         job.update({
-          status: 'ok',
+          status: 'resource',
           message: 'Obtaining resources',
           steps: {
             complete: 0,
@@ -38,11 +38,15 @@ var runJob = function(job,done){
       //step 2: execute encoding operations
       function(next){
         job.update({
-          status: 'ok',
+          status: 'encode',
           message: 'Executing encoding jobs',
           steps: {
             complete: 1,
             total: 3
+          },
+          frames: {
+            complete: 0,
+            total: 1
           }
         })
         job.encode(next)
@@ -50,14 +54,24 @@ var runJob = function(job,done){
       //step 3: save any resources after processing has finished
       function(next){
         job.update({
-          status: 'ok',
+          status: 'saving',
           message: 'Saving resources',
           steps: {
             complete: 2,
             total: 3
+          },
+          frames: {
+            complete: 0,
+            total: 1
           }
         })
-        job.save(next)
+        job.save(function(err,result){
+          if(err) return next(err)
+          job.update({
+            resources: result
+          })
+          next()
+        })
       }
     ],
     function(err){
@@ -69,7 +83,7 @@ var runJob = function(job,done){
         return done()
       }
       job.update({
-        status: 'ok',
+        status: 'complete',
         message: 'Processing complete',
         steps: {
           complete: 3,

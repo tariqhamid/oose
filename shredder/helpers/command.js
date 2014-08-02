@@ -92,3 +92,10 @@ Command.prototype.execute = function(parameter,args){
     }
   )
 }
+
+
+/**
+ * Export class
+ * @type {Command}
+ */
+module.exports = Command

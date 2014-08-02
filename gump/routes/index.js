@@ -8,10 +8,12 @@ var temp = require('temp')
   , crypto = require('crypto')
   , restler = require('restler')
   , Sniffer = require('../../helpers/Sniffer')
+  , Logger = require('../../helpers/logger')
   , Q = require('q')
 
 var File = require('../models/file').model
 var Embed = require('../models/embed').model
+var logger = Logger.create('gump')
 
 
 /**
@@ -112,9 +114,12 @@ exports.upload = function(req,res){
     restler
       .post(prismBaseUrl() + '/api/shredderJob',{
         data: {
-          callback: {
-            url: gumpBaseUrl() + '/api/importJobUpdate'
-          },
+          callback: [
+            {
+              driver: 'http',
+              url: gumpBaseUrl() + '/api/shredderUpdate'
+            }
+          ],
           resource: [
             {
               name: 'video',
@@ -215,7 +220,7 @@ exports.upload = function(req,res){
             doc.path = currentPath
             doc.mimetype = file.mimetype
             if(file.importJob){
-              doc.importJob.handle = file.importJob
+              doc.shredder.handle = file.importJob
               doc.status = 'processing'
             } else {
               doc.status = 'ok'
@@ -359,17 +364,17 @@ exports.file = function(req,res){
 
 
 /**
- * Job Import updates
+ * Shredder update
  * @param {object} req
  * @param {object} res
  */
-exports.importJobUpdate = function(req,res){
+exports.shredderUpdate = function(req,res){
   var file
   async.series(
     [
       //find file by job
       function(next){
-        File.findOne({'importJob.handle': req.body.handle},function(err,result){
+        File.findOne({'shredder.handle': req.body.handle},function(err,result){
           if(err) return next(err.message)
           if(!result) return next('could not find file by handle')
           file = result
@@ -378,16 +383,18 @@ exports.importJobUpdate = function(req,res){
       },
       //update job status
       function(next){
-        file.importJob.status = req.body.status
-        file.importJob.message = req.body.message
-        if(req.body.framesTotal) file.importJob.framesTotal = req.body.framesTotal
-        if(req.body.framesComplete) file.importJob.framesComplete = req.body.framesComplete
-        if(req.body.manifest) file.importJob.manifest = req.body.manifest
+        file.shredder.status = req.body.status
+        file.shredder.message = req.body.message
+        file.shredder.steps.complete = req.body.steps.complete
+        file.shredder.steps.total = req.body.steps.total
+        file.shredder.frames.complete = req.body.frames.complete
+        file.shredder.frames.total = req.body.frames.total
+        file.shredder.resources = req.body.resources
         next()
       },
       //handle complete status
       function(next){
-        if('complete' !== file.importJob.status) return next()
+        if('complete' !== file.shredder.status) return next()
         file.status = 'ok'
         async.series(
           [
@@ -401,25 +408,37 @@ exports.importJobUpdate = function(req,res){
               file.embedHandle = embedHandle
               var doc = new Embed()
               doc.handle = embedHandle
-              doc.title = file.filename
-              doc.keywords = file.filename.split(' ').join(',')
+              doc.title = file.name
+              doc.keywords = file.name.split(' ').join(',')
               doc.template = 'standard'
-              if(file.manifest.image) doc.media.image = file.manifest.image
-              if(file.manifest.video) doc.media.video = file.manifest.video
+              if(file.shredder.resources.thumbnail){
+                doc.media.image.push({
+                  offset: 30,
+                  sha1: file.shredder.resources.thumbnail
+                })
+              }
+              if(file.shredder.resources['mp4-standard-480p']){
+                doc.media.video.push({
+                  quality: 'standard',
+                  sha1: file.shredder.resources['mp4-standard-480p']
+                })
+              }
               doc.save(function(err){
                 if(err) return next(err.message)
                 next()
               })
             }
           ],
-          next
+          function(err){
+            if(err) return next(err)
+            next()
+          }
         )
 
       },
       //handle error status
       function(next){
-        if('error' !== file.importJob.status) return next()
-        file.importError = req.body.message
+        if('error' !== file.shredder.status) return next()
         fs.unlink(file.tmp,next)
       },
       //save job
@@ -432,6 +451,7 @@ exports.importJobUpdate = function(req,res){
     ],
     function(err){
       if(err){
+        logger.error('Job update failed: ' + err)
         return res.json({
           status: 'error',
           code: 1,

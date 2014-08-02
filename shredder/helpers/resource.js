@@ -224,14 +224,24 @@ Resource.prototype.cleanup = function(){
  */
 Resource.prototype.save = function(resources,next){
   var that = this
+  var map = {}
   async.each(
     resources,
     function(name,next){
       var resource = that.resources[name]
       if('undefined' === typeof resource) return next()
-      saveResource(name,resource,next)
+      saveResource(name,resource,function(err,result){
+        if(err) return next(err)
+        if(!result) return next('No sha1 returned with result')
+        //save the resource map
+        map[name] = result
+        next()
+      })
     },
-    next
+    function(err){
+      if(err) return next(err)
+      next(null,map)
+    }
   )
 }
 
