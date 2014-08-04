@@ -1,0 +1,34 @@
+doctype html
+html(lang='end')
+  head
+    title= embed.name
+    meta(charset='utf-8')
+    meta(name='keywords', content=embed.name)
+    meta(name='description', content=embed.description)
+    meta(name='medium', content='video')
+    meta(property="og:title", content=embed.name)
+    meta(property="og:description", content=embed.description)
+    meta(property="og:image", content=embed.preview())
+    meta(property="og:video", content=embed.video('480p'))
+    link(rel='stylesheet', type='text/css', href='//bowercdn.net/c/html5-boilerplate-4.3.0/css/normalize.css')
+    link(rel='stylesheet', type='text/css', href='//bowercdn.net/c/html5-boilerplate-4.3.0/css/main.css')
+  body(style='background: #000; overflow: hidden;')
+    #player
+
+    block js
+      script(src='//bowercdn.net/c/jquery-1.11.1/dist/jquery.min.js')
+      script(src='http://jwpsrv.com/library/_PCU1iT8EeOkkyIACusDuQ.js')
+      //Player
+      script.
+        $(window).resize(function(){
+          jwplayer().resize($(window).width(),$(window).height())
+        })
+        jwplayer.key = 'ebCuApAoDKLSDkhP4/9EH7+wNUhK2WvnnhOSZw=='
+        jwplayer('player').setup({
+          file: '#{embed.video('480p')}',
+          image: '#{embed.preview()}',
+          width: $(window).width(),
+          height: $(window).height(),
+          abouttext: 'OOSE',
+          aboutlink: 'http://oose.io'
+        })

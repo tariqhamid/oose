@@ -1,8 +1,9 @@
 'use strict';
 var fs = require('fs')
-  , async = require('async')
-  , logger = require('../../helpers/logger').create('gump:embed')
-  , Embed = require('../models/embed').model
+var path = require('path')
+var async = require('async')
+var logger = require('../../helpers/logger').create('gump:embed')
+var Embed = require('../models/embed').model
 
 
 /**
@@ -57,21 +58,18 @@ exports.render = function(req,res){
       res.status(500)
       res.send('There was an error accessing the back end.')
       logger.warn('Error looking up embed object: ' + err.message)
-    } else if(!embed){
+      return
+    }
+    if(!embed){
       res.status(404)
       res.send('Embed object not found')
-    } else if(!fs.existsSync(__dirname + '/views/' + embed.template)){
+      return
+    }
+    if(!fs.existsSync(path.resolve(__dirname + '/../views/embed/' + embed.template + '.jade'))){
       res.status(500)
       res.send('Embed template doesnt exist')
-    } else {
-      res.render(
-        embed.template,
-        {
-          media: embed.media,
-          title: embed.title,
-          keywords: embed.keywords
-        }
-      )
+      return
     }
+    res.render('embed/' + embed.template,{embed: embed})
   })
 }

@@ -60,7 +60,9 @@ config.load({
     host: null,
     tmpDir: __dirname + '/gump/public/tmp',
     embed: {
-      seed: '3123572'
+      seed: '3123572',
+      prismUrl: 'http://localhost:3003/',
+      defaultPreviewImageUrl: '/images/defaultPreview.png'
     },
     cookie: {
       secret: 'oose',

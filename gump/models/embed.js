@@ -1,8 +1,8 @@
 'use strict';
 var mongoose = require('mongoose')
-  , config = require('../../config')
-  , shortid = require('shortid')
-  , schema
+var config = require('../../config')
+var shortid = require('shortid')
+var schema
 
 schema = new mongoose.Schema({
   handle: {
@@ -17,17 +17,50 @@ schema = new mongoose.Schema({
     image: [
       {
         offset: Number,
-        sha1: String
+        sha1: String,
+        filename: String
       }
     ],
     video: [
       {
         quality: String,
-        sha1: String
+        sha1: String,
+        filename: String
       }
     ]
   }
 })
+
+
+/**
+ * Get the OOSE URL to the preview image
+ * @this Document
+ * @return {string}
+ */
+schema.methods.preview = function(){
+  var image
+  if(this.media.image[0]) image = this.media.image[0]
+  if(!image) return config.get('gump.embed.defaultPreviewImageUrl')
+  return config.get('gump.embed.prismUrl') + image.sha1 + '/' + (image.filename || 'image.png')
+}
+
+
+/**
+ * Get an OOSE url for a particular video quality
+ * @param {string} quality
+ * @this Document
+ * @return {string|boolean}
+ */
+schema.methods.video = function(quality){
+  var video
+  this.media.video.forEach(function(item){
+    if(item.quality !== quality) return
+    video = item
+  })
+  if(!video) video = this.media.video[0]
+  if(!video) return false
+  return config.get('gump.embed.prismUrl') + video.sha1 + '/' + (video.filename || 'video.mp4')
+}
 
 
 /**

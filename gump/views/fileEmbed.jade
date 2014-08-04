@@ -3,4 +3,4 @@ block content
   .container
     h1= file.name
     +pathTree(god,file.relativeParent(god),file.name)
-    iframe(src='/embed/#{file.embedHandle}')
+    iframe(src='/embed/#{file.embedHandle}', style='width: 1000px; height: 562px;')
