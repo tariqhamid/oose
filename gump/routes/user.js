@@ -99,7 +99,12 @@ exports.login = function(req,res){
         res.render('login')
       } else {
         req.session.user = user.toJSON()
-        res.redirect('/')
+        var to = '/'
+        if(req.session.loginFrom){
+          to = req.session.loginFrom
+          delete req.session.loginFrom
+        }
+        res.redirect(to)
       }
     })
   } else {

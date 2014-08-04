@@ -41,6 +41,7 @@ app.use(function(req,res,next){
   if(req.url.match(/\/(api|download|embed)\//)) return next()
   //dont redirect loop the login page however makr sure we are there when not logged in
   if(!req.session.user && req.url.indexOf('/login') < 0){
+    req.session.loginFrom = req.url
     return res.redirect('/login')
   }
   //normally user is logged in
