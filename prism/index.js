@@ -47,9 +47,13 @@ var buildCache = function(sha1,done){
     //add the result to cache
     function(err){
       if(err) return done(err)
-      redis.sadd('prism:' + sha1,Object.keys(exists),function(err){
+      var hosts = Object.keys(exists)
+      if(!hosts.length) return done('file not found')
+      redis.sadd('prism:' + sha1,hosts,function(err){
         if(err) return done(err)
-        redis.expire('prism:' + sha1,config.get('prism.cache.expire'),done)
+        redis.expire('prism:' + sha1,config.get('prism.cache.expire'),function(){
+          done()
+        })
       })
     }
   )
@@ -149,6 +153,11 @@ app.get('/:sha1/:filename',function(req,res){
     ],
     //send the response
     function(err){
+      if('file not found' === err){
+        res.status(404)
+        res.send('File not found')
+        return
+      }
       if(err) return res.send({status: 'error', code: 1, message: err})
       res.redirect(buildDestination(req,winner))
     }
