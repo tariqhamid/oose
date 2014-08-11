@@ -263,6 +263,7 @@ if(cluster.isWorker){
     , prism = require('./prism')
     , mongoose = require('mongoose')
     , gump = require('./gump')
+    , hideout = require('./hideout')
     , lg = require('./lg')
   async.parallel(
     [
@@ -289,6 +290,11 @@ if(cluster.isWorker){
       function(next){
         if(config.get('mongoose.enabled') && config.get('gump.enabled')){
           gump.start(next)
+        } else next()
+      },
+      function(next){
+        if(config.get('mongoose.enabled') && config.get('hideout.enabled')){
+          hideout.start(next)
         } else next()
       },
       function(next){
@@ -323,6 +329,11 @@ if(cluster.isWorker){
         function(next){
           if(config.get('gump.enabled'))
             gump.stop(next)
+          else next()
+        },
+        function(next){
+          if(config.get('hideout.enabled'))
+            hideout.stop(next)
           else next()
         },
         function(next){

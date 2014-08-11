@@ -11,8 +11,8 @@ var temp = require('temp')
   , Logger = require('../../helpers/logger')
   , Q = require('q')
 
-var File = require('../models/file').model
-var Embed = require('../models/embed').model
+var File = require('../../models/file').model
+var Embed = require('../../models/embed').model
 var logger = Logger.create('gump')
 
 

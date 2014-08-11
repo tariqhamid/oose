@@ -62,6 +62,7 @@ Here is a map of what services are on each port.
 * 3003 - Prism, the reflector and load balancer
 * 3004 - Gump, user interface for managing files
 * 3005 - LG, the cluster looking glass
+* 3006 - Hideout, key value store for caching
 
 ## Redis Schema
 

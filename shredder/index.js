@@ -11,6 +11,7 @@ var mesh = require('../mesh')
 var Job = require('./helpers/job')
 var commUtil = require('../helpers/communicator').util
 var logger = Logger.create('shredder')
+var request = require('request')
 var running = false
 
 
@@ -23,7 +24,11 @@ var runJob = function(job,done){
   job.logger.info('Starting to process job')
   async.series(
     [
-      //step 1: obtain resources
+      //check to see if this job was already processed in the past
+      function(next){
+        job.cacheCheck(next)
+      },
+      //step 2: obtain resources
       function(next){
         job.update({
           status: 'resource',
@@ -35,7 +40,7 @@ var runJob = function(job,done){
         })
         job.obtainResources(next)
       },
-      //step 2: execute encoding operations
+      //step 3: execute encoding operations
       function(next){
         job.update({
           status: 'encode',
@@ -51,7 +56,7 @@ var runJob = function(job,done){
         })
         job.encode(next)
       },
-      //step 3: save any resources after processing has finished
+      //step 4: save any resources after processing has finished
       function(next){
         job.update({
           status: 'saving',

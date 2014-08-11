@@ -86,7 +86,7 @@ schema = new mongoose.Schema({
 
 //make sure and remove descendants and delete files
 schema.pre('remove',function(next){
-  var Model = require('../models/file').model
+  var Model = require('file').model
   var path = this.path
   //remove direct descendants and let the waterfall happen
   if(!path instanceof Array) path = path.split('/')

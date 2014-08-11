@@ -3,7 +3,7 @@ var fs = require('fs')
 var path = require('path')
 var async = require('async')
 var logger = require('../../helpers/logger').create('gump:embed')
-var Embed = require('../models/embed').model
+var Embed = require('../../models/embed').model
 
 
 /**

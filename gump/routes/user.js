@@ -1,6 +1,6 @@
 'use strict';
 var list = require('../../helpers/list')
-  , Model = require('../models/user').model
+  , Model = require('../../models/user').model
 
 
 /**

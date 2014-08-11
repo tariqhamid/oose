@@ -7,6 +7,9 @@ var Resource = require('./resource')
 var Parameter = require('./parameter')
 var Logger = require('../../helpers/logger')
 var drivers = require('../drivers')
+var crypto = require('crypto')
+var config = require('../../config')
+var request = require('request')
 
 
 /**
@@ -37,6 +40,18 @@ var loadTemplate = function(job,input){
 }
 
 
+/**
+ * Create a job signature
+ * @param {string} description
+ * @return {sha1}
+ */
+var createSignature = function(description){
+  var shasum = crypto.createHash('sha1')
+  shasum.update(description)
+  return shasum.digest('hex')
+}
+
+
 
 /**
  * Job processor
@@ -47,6 +62,7 @@ var loadTemplate = function(job,input){
 var Job = function(handle,description){
   this.logger = Logger.create('shredder:job:' + handle)
   this.resource = new Resource()
+  this.signature = createSignature(description)
   this.description = new ObjectManage()
   this.description.load(JSON.parse(description))
   this.metrics = new ObjectManage()
@@ -208,6 +224,31 @@ Job.prototype.save = function(next){
     if(err) return next(err)
     next(null,result)
   })
+}
+
+
+/**
+ * Check to see if the job has alread
+ * @param {function} next
+ */
+Job.prototype.cacheCheck = function(next){
+  var that = this
+  request(
+    {
+      url: config.get('shredder.hideout.url') + '/get/' + that.signature,
+      auth: {
+        user: config.get('shredder.hideout.user'),
+        password: config.get('shredder.hideout.password')
+      }
+    },
+    function(err,res,body){
+      console.log(body)
+      if(err) return next(err)
+      if(200 !== res.statusCode) return next('Unexpected status code from hideout ' + res.statusCode)
+      //if the request exists go ahead and make the second request to get the content
+      process.exit()
+    }
+  )
 }
 
 

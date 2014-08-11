@@ -1,6 +1,6 @@
 'use strict';
 var mongoose = require('mongoose')
-var config = require('../../config')
+var config = require('../config')
 var shortid = require('shortid')
 var schema
 

@@ -2,8 +2,8 @@
 var program = require('commander')
   , Table = require('cli-table')
   , mongoose = require('mongoose')
-  , config = require('../../config')
-  , logger = require('../../helpers/logger').create('gump:user')
+  , config = require('../config')
+  , logger = require('../helpers/logger').create('gump:user')
   , User = require('../models/user').model
 
 mongoose.connect(config.get('mongoose.dsn'),config.get('mongoose.options'),function(err){
