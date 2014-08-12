@@ -11,7 +11,6 @@ var mesh = require('../mesh')
 var Job = require('./helpers/job')
 var commUtil = require('../helpers/communicator').util
 var logger = Logger.create('shredder')
-var request = require('request')
 var running = false
 
 
@@ -26,7 +25,24 @@ var runJob = function(job,done){
     [
       //check to see if this job was already processed in the past
       function(next){
-        job.cacheCheck(next)
+        job.cacheCheck(function(err,result){
+          if(err) return next(err)
+          if(!result) return next()
+          job.update({
+            status: 'complete',
+            message: 'Complete, cache hit found',
+            steps: {
+              complete: 1,
+              total: 1
+            },
+            frames: {
+              complete: 1,
+              total: 1
+            },
+            resources: result
+          })
+          done()
+        })
       },
       //step 2: obtain resources
       function(next){
@@ -77,6 +93,10 @@ var runJob = function(job,done){
           })
           next()
         })
+      },
+      //step 5: save the build to cache
+      function(next){
+        job.cacheStore(next)
       }
     ],
     function(err){

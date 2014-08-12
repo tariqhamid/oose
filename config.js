@@ -52,17 +52,13 @@ config.load({
     }
   },
   shredder: {
-    enabled: false,
-    hideout: {
-      url: 'http://localhost:3006',
-      user: 'oose',
-      password: null
-    }
+    enabled: false
   },
   hideout: {
     enabled: false,
     port: 3006,
     host: null,
+    url: 'http://localhost:3006',
     user: 'oose',
     password: null
   },

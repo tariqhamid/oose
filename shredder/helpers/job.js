@@ -9,7 +9,7 @@ var Logger = require('../../helpers/logger')
 var drivers = require('../drivers')
 var crypto = require('crypto')
 var config = require('../../config')
-var request = require('request')
+var hideout = require('../../helpers/hideout')
 
 
 /**
@@ -68,6 +68,7 @@ var Job = function(handle,description){
   this.metrics = new ObjectManage()
   this.metrics.load(JSON.parse(JSON.stringify(this.defaultMetrics)))
   this.metrics.set('handle',handle)
+  this.result = {}
 }
 
 
@@ -222,6 +223,7 @@ Job.prototype.save = function(next){
   //save the resources
   that.resource.save(that.description.get('save'),function(err,result){
     if(err) return next(err)
+    that.result = result
     next(null,result)
   })
 }
@@ -233,22 +235,29 @@ Job.prototype.save = function(next){
  */
 Job.prototype.cacheCheck = function(next){
   var that = this
-  request(
-    {
-      url: config.get('shredder.hideout.url') + '/get/' + that.signature,
-      auth: {
-        user: config.get('shredder.hideout.user'),
-        password: config.get('shredder.hideout.password')
-      }
-    },
-    function(err,res,body){
-      console.log(body)
+  hideout.exists(that.signature,function(err,result){
+    if(err) return next(err)
+    if(!result) return next()
+    //get the value if it exists
+    hideout.get(that.signature,function(err,result){
       if(err) return next(err)
-      if(200 !== res.statusCode) return next('Unexpected status code from hideout ' + res.statusCode)
-      //if the request exists go ahead and make the second request to get the content
-      process.exit()
-    }
-  )
+      if(!result.value) return next()
+      next(null,result.value)
+    })
+  })
+}
+
+
+/**
+ * Store the result of the job in hideout
+ * @param {function} next
+ */
+Job.prototype.cacheStore = function(next){
+  var that = this
+  hideout.set(that.signature,that.result,function(err){
+    if(err) return next(err)
+    next()
+  })
 }
 
 
