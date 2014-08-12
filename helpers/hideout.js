@@ -13,6 +13,7 @@ var config = require('../config')
  */
 var buildRequest = function(type,key,value){
   var req = {
+    method: 'POST',
     url: config.get('hideout.url') + '/' + type,
     auth: {
       user: config.get('hideout.user'),
@@ -20,9 +21,13 @@ var buildRequest = function(type,key,value){
     }
   }
   if('get' === type || 'exists' === type){
-    req.url += '/' + key
-  } else if('set' === type){
     req.json = {
+      key: key
+    }
+  }
+  if('set' === type){
+    req.json = {
+      key: key,
       value: value
     }
   }
@@ -41,7 +46,7 @@ var executeRequest = function(req,done){
     logger.info('Response',body)
     if(err) return done(err)
     if(200 !== res.statusCode) return done('Unexpected status code from hideout ' + res.statusCode)
-    var result = JSON.parse(body)
+    var result = body
     if('ok' !== result.status) return done(result.message)
     done(null,result,body)
   })
@@ -57,6 +62,7 @@ exports.exists = function(key,done){
   var req = buildRequest('exists',key)
   executeRequest(req,function(err,result){
     if(err) return done(err)
+    console.log(result)
     done(null,(result.exists === '1'))
   })
 }

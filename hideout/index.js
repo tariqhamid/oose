@@ -54,18 +54,18 @@ app.post('/set',function(req,res){
   )
 })
 
-app.get('/get/:key',function(req,res){
+app.post('/get',function(req,res){
   var doc
   async.series(
     [
       //validate input
       function(next){
-        if(!req.params.key) return next('No key provided')
+        if(!req.body.key) return next('No key provided')
         next()
       },
       //try to get key
       function(next){
-        Hideout.findOne({key: req.params.key},function(err,result){
+        Hideout.findOne({key: req.body.key},function(err,result){
           if(err) return next(err.message)
           if(!result) return next('No record found')
           doc = result
@@ -93,18 +93,18 @@ app.get('/get/:key',function(req,res){
   )
 })
 
-app.get('/exists/:key',function(req,res){
+app.post('/exists',function(req,res){
   var exists
   async.series(
     [
       //validate input
       function(next){
-        if(!req.params.key) return next('No key provided')
+        if(!req.body.key) return next('No key provided')
         next()
       },
       //check if key exists
       function(next){
-        Hideout.count({key: req.params.key},function(err,count){
+        Hideout.count({key: req.body.key},function(err,count){
           if(err) return next(err.message)
           if(0 === count) exists = false
           if(count > 0) exists = true
