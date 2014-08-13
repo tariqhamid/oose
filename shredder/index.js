@@ -15,6 +15,34 @@ var running = false
 
 
 /**
+ * Check a job for a cached result
+ * @param {Job} job
+ * @param {function} next
+ * @param {function} done
+ */
+var jobCacheCheck = function(job,next,done){
+  job.cacheCheck(function(err,result){
+    if(err) return next(err)
+    if(!result) return next()
+    job.update({
+      status: 'complete',
+      message: 'Complete, cache hit found',
+      steps: {
+        complete: 1,
+        total: 1
+      },
+      frames: {
+        complete: 1,
+        total: 1
+      },
+      resources: result
+    })
+    done()
+  })
+}
+
+
+/**
  * Run a job
  * @param {object} job Job structure
  * @param {function} done Callback
@@ -25,24 +53,7 @@ var runJob = function(job,done){
     [
       //check to see if this job was already processed in the past
       function(next){
-        job.cacheCheck(function(err,result){
-          if(err) return next(err)
-          if(!result) return next()
-          job.update({
-            status: 'complete',
-            message: 'Complete, cache hit found',
-            steps: {
-              complete: 1,
-              total: 1
-            },
-            frames: {
-              complete: 1,
-              total: 1
-            },
-            resources: result
-          })
-          done()
-        })
+        jobCacheCheck(job,next,done)
       },
       //step 2: obtain resources
       function(next){
@@ -55,6 +66,10 @@ var runJob = function(job,done){
           }
         })
         job.obtainResources(next)
+      },
+      //now that we have resources check the cache again
+      function(next){
+        jobCacheCheck(job,next,done)
       },
       //step 3: execute encoding operations
       function(next){

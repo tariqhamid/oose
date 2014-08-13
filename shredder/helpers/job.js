@@ -41,13 +41,38 @@ var loadTemplate = function(job,input){
 
 
 /**
- * Create a job signature
- * @param {string} description
+ * Generate a job signature
+ * @param {object} description
  * @return {sha1}
  */
-var createSignature = function(description){
+var generateSignature = function(description){
+  //we need to extract parts of the description to determine the jobs uniqueness
+  //things like source urls dont help, and if we dont have sha1's of our source
+  //files it is impossible to generate a reusable signature
+  //thus the signature formula is encode + save + source sha1's
+  //make sure we have available information
+  var valid = true
+  description.get('resource').forEach(function(item){
+    if(!item.sha1 || 40 !== item.sha1.length) valid = false
+  })
+  //if we dont have all the required information then there is no chance of creating a signature
+  if(!valid) return null
+  //start to assemble the fingerprint that will be hashed to generate the job signature
+  var fingerprint = {}
+  //add sha1's of the resources
+  fingerprint.resource = []
+  description.get('resource').forEach(function(item){
+    fingerprint.push(item.sha1)
+  })
+  //add the entire encoding stanza (any difference here will yield a different result
+  fingerprint.encoding = description.get('encoding')
+  //add the entire save section as this will also yield different output
+  fingerprint.save = description.get('save')
+  //create our sha1 hasher
   var shasum = crypto.createHash('sha1')
-  shasum.update(description)
+  //convert our fingerprint to JSON and then dump it into the hasher
+  shasum.update(JSON.stringify(fingerprint))
+  //the resulting digest will be our signature
   return shasum.digest('hex')
 }
 
@@ -62,9 +87,9 @@ var createSignature = function(description){
 var Job = function(handle,description){
   this.logger = Logger.create('shredder:job:' + handle)
   this.resource = new Resource()
-  this.signature = createSignature(description)
   this.description = new ObjectManage()
   this.description.load(JSON.parse(description))
+  this.signature = null
   this.metrics = new ObjectManage()
   this.metrics.load(JSON.parse(JSON.stringify(this.defaultMetrics)))
   this.metrics.set('handle',handle)
@@ -232,9 +257,15 @@ Job.prototype.save = function(next){
 /**
  * Check to see if the job has alread
  * @param {function} next
+ * @return {*}
  */
 Job.prototype.cacheCheck = function(next){
   var that = this
+  //try to generate a signature first
+  if(null === that.signature) that.signature = generateSignature(that.description)
+  //if our signature is still null just return
+  if(null === that.signature) return next()
+  //since we do have a signature try to see if hideout has a record of this build
   hideout.exists(that.signature,function(err,result){
     if(err) return next(err)
     if(!result) return next()
@@ -251,9 +282,17 @@ Job.prototype.cacheCheck = function(next){
 /**
  * Store the result of the job in hideout
  * @param {function} next
+ * @return {*}
  */
 Job.prototype.cacheStore = function(next){
   var that = this
+  //if there is no signature try to gen one
+  if(null === that.signature) that.signature = generateSignature(that.description)
+  //if there is still no signature just return
+  if(null === that.signature) return next()
+  //make sure there is a result to store
+  if('object' !== typeof that.result || 0 === Object.keys(that.result).length) return next()
+  //now that we have our signature and result send it to hideout
   hideout.set(that.signature,that.result,function(err){
     if(err) return next(err)
     next()
