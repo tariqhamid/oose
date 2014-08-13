@@ -125,8 +125,9 @@ Resource.prototype.create = function(name,done){
  * @param {object} info
  */
 Resource.prototype.add = function(name,info){
-  this.emit('add',name,info)
-  this.resources[name] = info
+  var details = new ObjectManage(info)
+  this.emit('add',name,details)
+  this.resources[name] = details
 }
 
 
@@ -146,7 +147,17 @@ Resource.prototype.exists = function(name){
  * @return {object} resource
  */
 Resource.prototype.get = function(name){
-  return this.resources[name]
+  return this.resources[name].data
+}
+
+
+/**
+ * Load settings into a resource
+ * @param {string} name
+ * @param {object} info
+ */
+Resource.prototype.load = function(name,info){
+  this.resources[name].load(info)
 }
 
 
@@ -157,8 +168,8 @@ Resource.prototype.get = function(name){
 Resource.prototype.remove = function(name){
   var resource = this.resources[name]
   this.emit('remove',name,resource)
-  if(fs.existsSync(resource.path))
-    fs.unlinkSync(resource.path)
+  if(fs.existsSync(resource.get('path')))
+    fs.unlinkSync(resource.get('path'))
   delete this.resources[name]
 }
 
@@ -195,7 +206,7 @@ Resource.prototype.render = function(string,done){
       //replace any resource references with their paths
       for(var i in that.resources){
         if(!that.resources.hasOwnProperty(i)) continue
-        string = string.replace(new RegExp('{' + i + '}','i'),that.resources[i].path)
+        string = string.replace(new RegExp('{' + i + '}','i'),that.resources[i].get('path'))
       }
       that.emit('render',originalString,string)
       done(null,string)
@@ -211,8 +222,8 @@ Resource.prototype.cleanup = function(){
   for(var i in this.resources){
     if(!this.resources.hasOwnProperty(i)) continue
     var info = this.resources[i]
-    if(!fs.existsSync(info.path)) continue
-    fs.unlinkSync(info.path)
+    if(!fs.existsSync(info.get('path'))) continue
+    fs.unlinkSync(info.get('path'))
   }
 }
 
