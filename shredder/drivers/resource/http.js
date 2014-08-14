@@ -1,5 +1,7 @@
 'use strict';
 var request = require('request')
+var Sniffer = require('../../../helpers/Sniffer')
+var crypto = require('crypto')
 var fs = require('fs')
 
 
@@ -46,8 +48,14 @@ exports.run = function(job,parameter,options,done){
         complete: 0,
         total: res.headers['content-length'] || 1
       }
+      var shasum = crypto.createHash('sha1')
+      var sniff = new Sniffer()
+      sniff.on('data',function(data){
+        shasum.update(data)
+      })
       var tmp = fs.createWriteStream(info.path)
       tmp.on('finish',function(){
+        job.resource.load(options.get('name'),{sha1: shasum.digest('hex')})
         job.logger.info('Successfully retrieved resource from ' + options.get('url') + ' and saved to ' + info.path)
         done()
       })
@@ -56,7 +64,7 @@ exports.run = function(job,parameter,options,done){
         if(frames.complete > frames.total) frames.total = frames.compelte
         job.update({frames: frames})
       })
-      res.pipe(tmp)
+      res.pipe(sniff).pipe(tmp)
     })
   })
 }

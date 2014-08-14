@@ -63,7 +63,7 @@ exports.exists = function(key,done){
   executeRequest(req,function(err,result){
     if(err) return done(err)
     console.log(result)
-    done(null,(result.exists === '1'))
+    done(null,(result.exists === 1))
   })
 }
 

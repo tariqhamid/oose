@@ -22,8 +22,12 @@ var running = false
  */
 var jobCacheCheck = function(job,next,done){
   job.cacheCheck(function(err,result){
-    if(err) return next(err)
+    if(err){
+      job.logger.info('Cache hit failed: ' + err)
+      return next()
+    }
     if(!result) return next()
+    job.logger.info('Cache hit successful!',result)
     job.update({
       status: 'complete',
       message: 'Complete, cache hit found',

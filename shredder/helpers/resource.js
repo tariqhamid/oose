@@ -31,7 +31,7 @@ var saveResource = function(name,info,next){
       },
       //setup connection to input
       function(next){
-        peer.sendFromReadable(peerNext,fs.createReadStream(info.path),function(err,result){
+        peer.sendFromReadable(peerNext,fs.createReadStream(info.get('path')),function(err,result){
           sha1 = result
           next()
         })
@@ -147,7 +147,8 @@ Resource.prototype.exists = function(name){
  * @return {object} resource
  */
 Resource.prototype.get = function(name){
-  return this.resources[name].data
+  if(this.resources[name]) return this.resources[name].data
+  return null
 }
 
 

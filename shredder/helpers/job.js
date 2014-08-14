@@ -42,18 +42,24 @@ var loadTemplate = function(job,input){
 
 /**
  * Generate a job signature
- * @param {object} description
+ * @param {Job} job
  * @return {sha1}
  */
-var generateSignature = function(description){
+var generateSignature = function(job){
   //we need to extract parts of the description to determine the jobs uniqueness
   //things like source urls dont help, and if we dont have sha1's of our source
   //files it is impossible to generate a reusable signature
   //thus the signature formula is encode + save + source sha1's
   //make sure we have available information
   var valid = true
-  description.get('resource').forEach(function(item){
-    if(!item.sha1 || 40 !== item.sha1.length) valid = false
+  job.description.get('resource').forEach(function(item,i){
+    var resource = job.resource.get(item.name)
+    if(resource && resource.sha1){
+      job.description.data.resource[i].sha1 = resource.sha1
+      return
+    }
+    if(item.sha1 && 40 === item.sha1.length) return
+    valid = false
   })
   //if we dont have all the required information then there is no chance of creating a signature
   if(!valid) return null
@@ -61,13 +67,13 @@ var generateSignature = function(description){
   var fingerprint = {}
   //add sha1's of the resources
   fingerprint.resource = []
-  description.get('resource').forEach(function(item){
-    fingerprint.push(item.sha1)
+  job.description.get('resource').forEach(function(item){
+    fingerprint.resource.push(item.sha1)
   })
   //add the entire encoding stanza (any difference here will yield a different result
-  fingerprint.encoding = description.get('encoding')
+  fingerprint.encoding = job.description.get('encoding')
   //add the entire save section as this will also yield different output
-  fingerprint.save = description.get('save')
+  fingerprint.save = job.description.get('save')
   //create our sha1 hasher
   var shasum = crypto.createHash('sha1')
   //convert our fingerprint to JSON and then dump it into the hasher
@@ -262,17 +268,17 @@ Job.prototype.save = function(next){
 Job.prototype.cacheCheck = function(next){
   var that = this
   //try to generate a signature first
-  if(null === that.signature) that.signature = generateSignature(that.description)
+  if(null === that.signature) that.signature = generateSignature(that)
   //if our signature is still null just return
-  if(null === that.signature) return next()
+  if(null === that.signature) return next('no signature')
   //since we do have a signature try to see if hideout has a record of this build
-  hideout.exists(that.signature,function(err,result){
+  hideout.exists(that.signature,function(err,exists){
     if(err) return next(err)
-    if(!result) return next()
+    if(!exists) return next('does not exist')
     //get the value if it exists
     hideout.get(that.signature,function(err,result){
       if(err) return next(err)
-      if(!result.value) return next()
+      if(!result.value) return next('no value defined')
       next(null,result.value)
     })
   })
@@ -287,7 +293,7 @@ Job.prototype.cacheCheck = function(next){
 Job.prototype.cacheStore = function(next){
   var that = this
   //if there is no signature try to gen one
-  if(null === that.signature) that.signature = generateSignature(that.description)
+  if(null === that.signature) that.signature = generateSignature(that)
   //if there is still no signature just return
   if(null === that.signature) return next()
   //make sure there is a result to store
