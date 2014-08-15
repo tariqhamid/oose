@@ -25,4 +25,14 @@ block content
             td= row.version
             td= new Date(row.metrics.dateModified).toDateString()
             td= row.status
-      +tableFooter(page,count)
+      div
+        .pull-right.btn-group
+          a.btn.btn-default(href='/shows?start=#{page.previous}&search=#{search}') Previous
+          a.btn.btn-default(href='/shows?start=#{page.next}&search=#{search}') Next
+        span #{page.start + 1} - #{page.end} of #{count} entries
+        div
+          button.btn.btn-warning(name='restart', value='true', type='submit') Restart
+          button.btn.btn-primary(name='upgrade', value='true', type='submit') Upgrade
+          button.btn.btn-success(name='start', value='true', type='submit') Start
+          button.btn.btn-danger(name='stop', value='true', type='submit') Stop
+          button.btn.btn-danger#tableDelete(name='delete', value='true', type='submit') Delete Checked

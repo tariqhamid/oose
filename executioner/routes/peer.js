@@ -10,6 +10,27 @@ var config = require('../../config')
 var list = require('../helpers/list')
 var uptimeExp = /^\d{2}:\d{2}:\d{2}\s+up\s+([^,]+,\s+\d{2}:\d{2}),\s+\d+\s+use(r|rs),\s+load average:\s+([^\n]+)/i
 var versionExp = /\s{2}version:\s+'([^']+)',\n/ig
+var actionPeerRestart = {
+  name: 'restart',
+  status: 'ok',
+  finalStatusSuccess: 'ok',
+  finalStatusError: 'stopped',
+  cmd: 'pm2 -s --no-color restart oose'
+}
+var actionPeerStop = {
+  name: 'stop',
+  status: 'stopped|ok|error',
+  finalStatusSuccess: 'stopped',
+  finalStatusError: 'stopped',
+  cmd: 'pm2 --no-color -s delete oose'
+}
+var actionPeerStart = {
+  name: 'start',
+  status: 'stopped|error',
+  finalStatusSuccess: 'ok',
+  finalStatusError: 'stopped',
+  cmd: 'pm2 -s --no-color start /opt/oose/processes.json'
+}
 
 
 /**
@@ -151,19 +172,205 @@ var sshStreamScript = function(client,res,script,next){
 
 
 /**
+ * Upgrade a peer
+ * @param {ObjectID} id
+ * @param {Stream.Writable} writable
+ * @param {function} next
+ */
+var peerUpgrade = function(id,writable,next){
+  var peer
+  async.series(
+    [
+      //retrieve the peer
+      function(next){
+        Peer.findById(id,function(err,result){
+          if(err) return next(err.message)
+          if(!result) return next('Could not find peer')
+          peer = result
+          next()
+        })
+      },
+      //check if the peer is at the right status
+      function(next){
+        if(!peer.status.match(/started|stopped|error|ok/i))
+          return next('Peer not ready to be upgraded, make sure it is installed')
+        next()
+      },
+      //attempt to login to the peer with ssh
+      function(next){
+        var client = sshConnect(peer)
+        client.on('ready',function(){
+          sshStreamScript(client,writable,__dirname + '/../scripts/upgrade.sh',next)
+        })
+        client.on('error',function(err){
+          next('Failed to connect to peer: ' + err)
+        })
+        client.doConnect()
+      }
+    ],
+    function(err){
+      //log this attempt
+      async.series(
+        [
+          function(next){
+            if(err){
+              peer.log.push({message: err,level: 'error'})
+            }
+            else{
+              peer.log.push({message: 'Successfully upgraded peer',level: 'success'})
+            }
+            peer.save(function(err){
+              if(err) return next(err.message)
+              next()
+            })
+          }
+        ],
+        function(error){
+          if(err) return next(err)
+          if(error) return next(error)
+          next()
+        }
+      )
+    }
+  )
+}
+
+
+/**
+ * Peer action (start,stop,restart)
+ * @param {ObjectId} id
+ * @param {object} action
+ * @param {function} next
+ */
+var peerAction = function(id,action,next){
+  var peer
+  async.series(
+    [
+      //retrieve the peer
+      function(next){
+        Peer.findById(id,function(err,result){
+          if(err) return next(err.message)
+          if(!result) return next('Could not find peer')
+          peer = result
+          next()
+        })
+      },
+      //check if the peer is at the right status
+      function(next){
+        if(!peer.status.match(new RegExp(action.status,'i')))
+          return next('Peer not ready or already running, cannot ' + action.name)
+        next()
+      },
+      //attempt to login to the peer with ssh
+      function(next){
+        var client = sshConnect(peer)
+        client.on('ready',function(){
+          sshBufferCommand(client,action.cmd,function(err){
+            if(err) return next(err)
+            next()
+          })
+        })
+        client.on('error',function(err){
+          next('Failed to connect to peer: ' + err)
+        })
+        client.doConnect()
+      }
+    ],
+    function(err){
+      //log this attempt
+      async.series(
+        [
+          function(next){
+            if(err){
+              peer.log.push({message: err,level: 'warning'})
+              if(action.finalStatusError) peer.status = action.finalStatusError
+            }
+            else{
+              peer.log.push({message: 'Successfully ' + action.name + 'ed peer',level: 'info'})
+              if(action.finalStatusSuccess) peer.status = action.finalStatusSuccess
+            }
+            peer.save(function(err){
+              if(err) return next(err.message)
+              next()
+            })
+          }
+        ],function(error){
+          if(err) return next(err)
+          if(error) return next(error)
+          next()
+        }
+      )
+    }
+  )
+}
+
+
+/**
  * List peers
  * @param {object} req
  * @param {object} res
  */
 exports.list = function(req,res){
   if('post' === req.method.toLowerCase() && req.body.remove && req.body.remove.length){
-    list.remove(Peer,req.body.remove,function(err,count){
-      if(err) req.flash('error','Removed ' + count + ' item(s) before removal failed ' + err)
-      else {
-        req.flash('success','Deleted ' + count + ' item(s)')
-        res.redirect('/peer')
-      }
-    })
+    if(req.body.upgrade){
+      async.each(
+        req.body.remove,
+        function(id,next){
+          peerUpgrade(id,res,next)
+        },
+        function(err){
+          if(err) res.end('ERROR: ' + err)
+          else res.end('COMPLETE')
+        }
+      )
+    } else if (req.body.start){
+      async.each(
+        req.body.remove,
+        function(id,next){
+          peerAction(id,actionPeerStart,next)
+        },
+        function(err){
+          if(err) req.flash('error',err)
+          else req.flash('success','Peers started')
+          res.redirect('/peer')
+        }
+      )
+    } else if (req.body.stop){
+      async.each(
+        req.body.remove,
+        function(id,next){
+          peerAction(id,actionPeerStop,next)
+        },
+        function(err){
+          if(err) req.flash('error',err)
+          else req.flash('success','Peers stopped')
+          res.redirect('/peer')
+        }
+      )
+    } else if (req.body.restart){
+      async.each(
+        req.body.remove,
+        function(id,next){
+          peerAction(id,actionPeerRestart,next)
+        },
+        function(err){
+          if(err) req.flash('error',err)
+          else req.flash('success','Peers restarted')
+          res.redirect('/peer')
+        }
+      )
+    } else if (req.body.delete){
+      list.remove(Peer,req.body.remove,function(err,count){
+        if(err) req.flash('error','Removed ' + count + ' item(s) before removal failed ' + err)
+        else{
+          req.flash('success','Deleted ' + count + ' item(s)')
+          res.redirect('/peer')
+        }
+      })
+    } else {
+      req.flash('warning','No action submitted')
+      res.redirect('/peer')
+    }
   } else {
     var limit = parseInt(req.query.limit,10) || 10
     var start = parseInt(req.query.start,10) || 0
@@ -657,7 +864,6 @@ exports.install = function(req,res){
  * @param {object} res
  */
 exports.upgrade = function(req,res){
-  var peer
   var banner = function(msg){
     res.write('\n---------------------\n')
     res.write(msg + '\n')
@@ -665,57 +871,15 @@ exports.upgrade = function(req,res){
   }
   async.series(
     [
-      //retrieve the peer
       function(next){
-        Peer.findById(req.query.id,function(err,result){
-          if(err) return next(err.message)
-          if(!result) return next('Could not find peer')
-          peer = result
-          next()
-        })
-      },
-      //check if the peer is at the right status
-      function(next){
-        if(!peer.status.match(/started|stopped|error|ok/i))
-          return next('Peer not ready to be upgraded, make sure it is installed')
-        next()
-      },
-      //attempt to login to the peer with ssh
-      function(next){
-        var client = sshConnect(peer)
-        client.on('ready',function(){
-          sshStreamScript(client,res,__dirname + '/../scripts/upgrade.sh',next)
-        })
-        client.on('error',function(err){
-          next('Failed to connect to peer: ' + err)
-        })
-        client.doConnect()
+        peerUpgrade(req.query.id,res,next)
       }
     ],
     function(err){
-      //log this attempt
-      async.series(
-        [
-          function(next){
-            if(err){
-              peer.log.push({message: err, level: 'error'})
-            } else {
-              peer.log.push({message: 'Successfully upgraded peer', level: 'success'})
-            }
-            peer.save(function(err){
-              if(err) return next(err.message)
-              next()
-            })
-          }
-        ],
-        function(error){
-          if(err) req.flash('error',error)
-          if(err) req.flash('error',err)
-          else req.flash('success','Peer upgraded')
-          banner('Operation Complete, close this window and refresh')
-          res.end()
-        }
-      )
+      if(err) req.flash('error',err)
+      else req.flash('success','Peer upgraded')
+      banner('Operation Complete, close this window and refresh')
+      res.end()
     }
   )
 }
@@ -799,64 +963,16 @@ exports.updateConfig = function(req,res){
  * @param {object} res
  */
 exports.start = function(req,res){
-  var peer
   async.series(
     [
-      //retrieve the peer
       function(next){
-        Peer.findById(req.query.id,function(err,result){
-          if(err) return next(err.message)
-          if(!result) return next('Could not find peer')
-          peer = result
-          next()
-        })
-      },
-      //check if the peer is at the right status
-      function(next){
-        if(!peer.status.match(/stopped|error/i))
-          return next('Peer not ready or already running, cannot start')
-        next()
-      },
-      //attempt to login to the peer with ssh
-      function(next){
-        var client = sshConnect(peer)
-        client.on('ready',function(){
-          var cmd = 'pm2 -s --no-color start /opt/oose/processes.json'
-          sshBufferCommand(client,cmd,function(err){
-            if(err) return next(err)
-            next()
-          })
-        })
-        client.on('error',function(err){
-          next('Failed to connect to peer: ' + err)
-        })
-        client.doConnect()
+        peerAction(req.query.id,actionPeerStart,next)
       }
     ],
     function(err){
-      //log this attempt
-      async.series(
-        [
-          function(next){
-            if(err){
-              peer.log.push({message: err, level: 'warning'})
-            } else {
-              peer.log.push({message: 'Successfully started peer', level: 'info'})
-              peer.status = 'ok'
-            }
-            peer.save(function(err){
-              if(err) return next(err.message)
-              next()
-            })
-          }
-        ],
-        function(error){
-          if(err) req.flash('error',error)
-          if(err) req.flash('error',err)
-          else req.flash('success','Peer started')
-          res.redirect(peer.id ? '/peer/edit?id=' + peer.id : '/peer')
-        }
-      )
+      if(err) req.flash('error',err)
+      else req.flash('success','Peer started')
+      res.redirect(req.query.id ? '/peer/edit?id=' + req.query.id : '/peer')
     }
   )
 }
@@ -868,61 +984,16 @@ exports.start = function(req,res){
  * @param {object} res
  */
 exports.stop = function(req,res){
-  var peer
   async.series(
     [
-      //retrieve the peer
       function(next){
-        Peer.findById(req.query.id,function(err,result){
-          if(err) return next(err.message)
-          if(!result) return next('Could not find peer')
-          peer = result
-          next()
-        })
-      },
-      //check if the peer is at the right status
-      function(next){
-        if(!peer.status.match(/ok|stopped|error/i))
-          return next('Peer already stopped, cannot stop')
-        next()
-      },
-      //attempt to login to the peer with ssh
-      function(next){
-        var client = sshConnect(peer)
-        client.on('ready',function(){
-          var cmd = 'pm2 --no-color -s delete oose'
-          sshBufferCommand(client,cmd,next)
-        })
-        client.on('error',function(err){
-          next('Failed to connect to peer: ' + err)
-        })
-        client.doConnect()
+        peerAction(req.query.id,actionPeerStop,next)
       }
     ],
     function(err){
-      //log this attempt
-      async.series(
-        [
-          function(next){
-            if(err){
-              peer.log.push({message: err, level: 'warning'})
-            } else {
-              peer.log.push({message: 'Successfully stopped peer', level: 'info'})
-            }
-            peer.status = 'stopped'
-            peer.save(function(err){
-              if(err) return next(err.message)
-              next()
-            })
-          }
-        ],
-        function(error){
-          if(err) req.flash('error',error)
-          if(err) req.flash('error',err)
-          else req.flash('success','Peer stopped')
-          res.redirect(peer.id ? '/peer/edit?id=' + peer.id : '/peer')
-        }
-      )
+      if(err) req.flash('error',err)
+      else req.flash('success','Peer stopped')
+      res.redirect(req.query.id ? '/peer/edit?id=' + req.query.id : '/peer')
     }
   )
 }
@@ -934,61 +1005,16 @@ exports.stop = function(req,res){
  * @param {object} res
  */
 exports.restart = function(req,res){
-  var peer
   async.series(
     [
-      //retrieve the peer
       function(next){
-        Peer.findById(req.query.id,function(err,result){
-          if(err) return next(err.message)
-          if(!result) return next('Could not find peer')
-          peer = result
-          next()
-        })
-      },
-      //check if the peer is at the right status
-      function(next){
-        if(!peer.status.match(/ok/i))
-          return next('Peer must be running, cannot restart')
-        next()
-      },
-      //attempt to login to the peer with ssh
-      function(next){
-        var client = sshConnect(peer)
-        client.on('ready',function(){
-          var cmd = 'pm2 -s --no-color restart oose'
-          sshBufferCommand(client,cmd,next)
-        })
-        client.on('error',function(err){
-          next('Failed to connect to peer: ' + err)
-        })
-        client.doConnect()
+        peerAction(req.query.id,actionPeerRestart,next)
       }
     ],
     function(err){
-      //log this attempt
-      async.series(
-        [
-          function(next){
-            if(err){
-              peer.log.push({message: err, level: 'warning'})
-            } else {
-              peer.log.push({message: 'Successfully restarted peer', level: 'info'})
-              peer.status = 'ok'
-            }
-            peer.save(function(err){
-              if(err) return next(err.message)
-              next()
-            })
-          }
-        ],
-        function(error){
-          if(err) req.flash('error',error)
-          if(err) req.flash('error',err)
-          else req.flash('success','Peer restarted')
-          res.redirect(peer.id ? '/peer/edit?id=' + peer.id : '/peer')
-        }
-      )
+      if(err) req.flash('error',err)
+      else req.flash('success','Peer restarted')
+      res.redirect(req.query.id ? '/peer/edit?id=' + req.query.id : '/peer')
     }
   )
 }
