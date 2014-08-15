@@ -1,0 +1,28 @@
+extends ../layout
+block append js
+  script(src='/js/table.js')
+block content
+  .container
+    +tableHeader('Peers','/peer/create','Create Peer')
+    +alerts()
+    form(method='post', role='form')
+      table.table.table-striped
+        tr
+          th
+            input#toggle(type='checkbox')
+          th Hostname
+          th IP
+          th Version
+          th Last Modified
+          th Status
+        each row,i in list
+          tr
+            td
+              input(type='checkbox', name='remove[]', value=row.id)
+            td
+              a(href='/peer/edit?id=#{row.id}')= row.hostname
+            td= row.ip
+            td= row.version
+            td= new Date(row.metrics.dateModified).toDateString()
+            td= row.status
+      +tableFooter(page,count)

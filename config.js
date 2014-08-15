@@ -62,6 +62,23 @@ config.load({
     user: 'oose',
     password: null
   },
+  executioner: {
+    enabled: false,
+    port: 3007,
+    host: null,
+    url: 'http://localhost:3007',
+    user: 'oose',
+    password: null,
+    cookie: {
+      secret: null,
+      maxAge: 2592000000 //30 days
+    },
+    ssh: {
+      privateKey: null,
+      publicKey: null
+    },
+    defaultConfig: __dirname + '/executioner/src/config.js'
+  },
   gump: {
     enabled: false,
     port: 3004,

@@ -1,0 +1,107 @@
+extends ../layout
+block content
+  .container
+    h1 Manage Peer
+    +alerts()
+    form.form-horizontal(action='/peer/save', method='post', role='form')
+      if peer.id
+        input(type='hidden', name='id', value=peer.id)
+      .form-group
+        label.control-label.col-sm-2 Hostname
+        .col-sm-10
+          input.form-control(type='text', name='hostname', placeholder='FQDN of peer', value=peer.hostname)
+      .form-group
+        label.control-label.col-sm-2 Hostname
+        .col-sm-10
+          input.form-control(type='text', name='ip', placeholder='IP of peer, leave blank for resolution on save', value=peer.ip)
+      .form-group
+        label.control-label.col-sm-2 SSH Port
+        .col-sm-10
+          input.form-control(type='text', name='sshPort', placeholder='SSH port', value=peer.sshPort)
+      .form-group
+        label.control-label.col-sm-2 Configuration
+        .col-sm-10
+          textarea.form-control(name='config', style='height: 100px;')= peer.config
+      .form-group
+        label.control-label.col-sm-2 Status
+        .col-sm-10
+          .form-control-static= peer.status
+      .form-group
+        label.control-label.col-sm-2 OS
+        .col-sm-10
+          .form-control-static #{peer.os.name} #{peer.os.version} #{peer.os.arch} #{peer.os.kernel}
+      .form-group
+        label.control-label.col-sm-2 Uptime
+        .col-sm-10
+          .form-control-static= peer.os.uptime
+      .form-group
+        label.control-label.col-sm-2 Load
+        .col-sm-10
+          .form-control-static= peer.os.load.join(', ')
+      .form-group
+        label.control-label.col-sm-2 OOSE Version
+        .col-sm-10
+          .form-control-static= peer.version
+      .form-group
+        .col-sm-offset-2.col-sm-10
+          button.btn.btn-success(type='submit') Save
+    h2 Authentication
+    p
+      | In order for OOSE Executioner to be able to manage a peer it must have root ssh access.
+      | Please add the following public SSH key to your <strong>/root/.ssh/authorized_keys</strong> file
+    if ssh.publicKey
+      div
+        small (triple click inside the box to select the key)
+      div.ssh-key= ssh.publicKey
+    else
+      div.text-danger No public key defined, please update the executioner config and restart executioner
+    h2 Manage Installation
+    div
+      a.btn.btn-primary(href='/peer/test?id=#{peer.id}')
+        span.glyphicon.glyphicon-resize-small
+        |  Test
+      | &nbsp;
+      a.btn.btn-info(href='/peer/refresh?id=#{peer.id}')
+        span.glyphicon.glyphicon-refresh
+        |  Refresh
+      | &nbsp;
+      a.btn.btn-warning(href='/peer/prepare?id=#{peer.id}', target='_blank')
+        span.glyphicon.glyphicon-refresh
+        |  Prepare
+      | &nbsp;
+      a.btn.btn-success(href='/peer/install?id=#{peer.id}', target='_blank')
+        span.glyphicon.glyphicon-download
+        |  Install
+      | &nbsp;
+      a.btn.btn-primary(href='/peer/upgrade?id=#{peer.id}', target='_blank')
+        span.glyphicon.glyphicon-upload
+        |  Upgrade
+      | &nbsp;
+      a.btn.btn-warning(href='/peer/updateConfig?id=#{peer.id}')
+        span.glyphicon.glyphicon-cog
+        |  Update Config
+    h2 Operations
+    a.btn.btn-success(href='/peer/start?id=#{peer.id}')
+      span.glyphicon.glyphicon-play
+      |  Start
+    | &nbsp;
+    a.btn.btn-danger(href='/peer/stop?id=#{peer.id}')
+      span.glyphicon.glyphicon-stop
+      |  Stop
+    | &nbsp;
+    a.btn.btn-primary(href='/peer/restart?id=#{peer.id}')
+      span.glyphicon.glyphicon-refresh
+      |  Restart
+    h2 Log
+    table.table.table-bordered
+      thead
+        tr
+          th.col-sm-2 Date
+          th Message
+      tbody
+        - var log = peer.log
+        - log.sort(function(a,b){ return new Date(b.date).getTime() - new Date(a.date).getTime() })
+        each row in log
+          tr(class=logCssClass(row))
+            td= moment(row.date).format('M-D-YY HH:mm:ss')
+            td= row.message

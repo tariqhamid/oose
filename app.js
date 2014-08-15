@@ -5,6 +5,7 @@ var cluster = require('cluster')
   , fs = require('fs')
   , mkdirp = require('mkdirp')
   , async = require('async')
+  , mongoose = require('mongoose')
   , logger = require('./helpers/logger').create('main')
 
 process.on('error',function(err){
@@ -23,6 +24,7 @@ if(cluster.isMaster){
     , ping = require('./mesh/ping')
     , announce = require('./mesh/announce')
     , shredder = require('./shredder')
+    , executioner = require('./executioner')
     , program = require('commander')
   //parse cli
   program
@@ -112,6 +114,23 @@ if(cluster.isMaster){
           shredder.start(function(err){
             if(!err){
               logger.info('Shredder started')
+              next()
+            } else next(err)
+          })
+        } else next()
+      },
+      function(next){
+        if(config.get('mongoose.enabled')){
+          mongoose.connect(config.get('mongoose.dsn'),config.get('mongoose.options'),next)
+        } else next()
+      },
+      //start executioner
+      function(next){
+        if(config.get('mongoose.enabled') && config.get('executioner.enabled')){
+          logger.info('Starting executioner scripting system')
+          executioner.start(function(err){
+            if(!err){
+              logger.info('Executioner started')
               next()
             } else next(err)
           })
@@ -261,7 +280,6 @@ if(cluster.isWorker){
   var storeImport = require('./import')
     , storeExport = require('./export')
     , prism = require('./prism')
-    , mongoose = require('mongoose')
     , gump = require('./gump')
     , hideout = require('./hideout')
     , lg = require('./lg')
