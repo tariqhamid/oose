@@ -97,8 +97,11 @@ Mesh.prototype.stop = function(done){
  * Send ready state change
  * @param {number} state
  * @param {function} done
+ * @return {*}
  */
 Mesh.prototype.readyState = function(state,done){
+  if('function' !== typeof done) done = function(){}
+  if(!config.get('mesh.enabled')) return done()
   var self = this
   if('function' !== typeof done) done = function(){}
   redis.hset('peer:db:' + config.get('hostname'),'readyState',state,function(err){

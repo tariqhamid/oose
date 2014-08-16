@@ -56,7 +56,7 @@ if(cluster.isMaster){
             logger.error(err)
           })
           mesh.start(next)
-        }
+        } else next()
       },
       //go to ready state 1
       function(next){
