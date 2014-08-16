@@ -35,12 +35,7 @@ exports.run = function(job,parameter,options,done){
   var metrics = job.metrics.get()
   options = options.data
   if(!options.url) return done('No callback URL set')
-  job.logger.info(
-    'Sending job update to ' +
-    options.url +
-    ' with metrics ' +
-    JSON.stringify(metrics)
-  )
+  job.logger.info('Sending job update to ' + options.url + ' with metrics ' + JSON.stringify(metrics))
   options.method = 'POST'
   options.json = metrics
   //message client

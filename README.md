@@ -197,12 +197,23 @@ Shredder exposes itself through an HTTP JSONP API.
 **Options**
 ```js
 {
+  //optional scheduling (defaults to asap)
+  schedule: {
+    //now is the default and is specially handled and injected directly into the job queue
+    start: 'now'
+    // +<integer> will schedule the job in <integer> seconds from now and is handled specially
+    //start: '+1', //1 second from now
+    //anything else will fall through and be passed to moment() see http://momentjs.com/docs/#/parsing/
+    //start: new Date().getTime(), //unix timestamp in milliseconds
+  },
   //options that are used to receive job updates
   callback: [
     //register a callback handler
     {
       //make an http JSON post request to a callback
-      driver: 'http'
+      driver: 'http',
+      //throttle messages
+      throttle: '250', //ms between messages (default is all messages)
       //define types of messages to receive
       level: ['error','completion'],
       //url that OOSE will JSONP to send job updates to

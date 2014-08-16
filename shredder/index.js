@@ -2,6 +2,7 @@
 var fs = require('fs')
 var os = require('os')
 var path = require('path')
+var moment = require('moment')
 var config = require('../config')
 var async = require('async')
 var Logger = require('../helpers/logger')
@@ -12,6 +13,8 @@ var Job = require('./helpers/job')
 var commUtil = require('../helpers/communicator').util
 var logger = Logger.create('shredder')
 var running = false
+var deferred = []
+var deferredInterval = null
 
 
 /**
@@ -160,6 +163,22 @@ var q = async.queue(
 
 
 /**
+ * Iterate deferred jobs and punt them to the queue
+ */
+var scheduleDeferred = function(){
+  deferred.forEach(function(job,i){
+    if(job.start <= new Date()){
+      //drop from deferred
+      deferred.splice(i,1)
+      //send to q for processing
+      logger.info('Job queued locally as ' + job.handle)
+      q.push(job)
+    }
+  })
+}
+
+
+/**
  * Set up Mesh event listener
  * @param {function} done Callback
  */
@@ -171,15 +190,32 @@ var meshStart = function(done){
       handle: shortId.generate().toUpperCase(),
       description: message.description
     }
-    //jab job into local q
-    logger.info('Job queued locally as ' + job.handle)
-    q.push(job)
+    //check to see if the job has been scheduled and defer it if so
+    var description = JSON.parse(message.description)
+    if(description.schedule && description.schedule.start && 'now' !== description.schedule.start){
+      if(description.schedule.match(/^+/)){
+        description.schedule.start = description.schedule.start.replace(/^\+(\d+)/,'$1')
+        job.start = new Date().getTime() + description.schedule.start
+      } else {
+        job.start = moment(description.schedule.start)
+      }
+    }
+    //if we have a start it means we are deferred
+    if(!job.start){
+      //jab job into local q
+      logger.info('Job queued locally as ' + job.handle)
+      q.push(job)
+    } else {
+      logger.info('Job deferred locally as ' + job.handle)
+    }
     //respond to the request with the assigned handle and queue position
     socket.end(commUtil.withLength(commUtil.build(
       job.handle,
       {status: 'ok', handle: job.handle, position: q.length()}
     )))
   })
+  //start trying to train the deferred jobs
+  deferredInterval = setInterval(scheduleDeferred,15000)
   logger.info('Listening for shredder jobs')
   done()
 }
@@ -190,6 +226,7 @@ var meshStart = function(done){
  * @param {function} done
  */
 var meshStop = function(done){
+  if(deferredInterval) clearTimeout(deferredInterval)
   mesh.tcp.removeAllListeners('shred:job:push')
   done()
 }

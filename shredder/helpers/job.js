@@ -100,6 +100,7 @@ var Job = function(handle,description){
   this.metrics.load(JSON.parse(JSON.stringify(this.defaultMetrics)))
   this.metrics.set('handle',handle)
   this.result = {}
+  this.callbackThrottle = {}
 }
 
 
@@ -142,7 +143,20 @@ Job.prototype.update = function(changes,done){
   async.each(
     callback,
     function(item,next){
-      that.runDriver('callback',new Parameter(),item,next)
+      var i = callback.indexOf(item)
+      //throttle messages provided its not a status change message
+      if(
+        that.metrics.get('status').match(/error|complete/) ||
+        (
+          item.throttle &&
+          +new Date() >= (that.callbackThrottle[i] + item.throttle)
+        )
+      ){
+        that.callbackThrottle[i] = new Date()
+        that.runDriver('callback',new Parameter(),item,next)
+      } else {
+        next()
+      }
     },
     done
   )

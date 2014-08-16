@@ -117,6 +117,7 @@ exports.upload = function(req,res){
           callback: [
             {
               driver: 'http',
+              throttle: '250',
               url: gumpBaseUrl() + '/api/shredderUpdate'
             }
           ],
