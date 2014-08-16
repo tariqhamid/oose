@@ -8,7 +8,7 @@ var fs = require('fs')
 var shortid = require('shortid')
 var config = require('../../config')
 var list = require('../helpers/list')
-var uptimeExp = /^\d+:\d+:\d+\s+up\s+([^,]+,\s+\d+:\d+),\s+\d+\s+use(r|rs),\s+load average:\s+([^\n]+)/i
+var uptimeExp = /^\d+:\d+:\d+\s+up\s+([^,]+,[^,]+),\s+\d+\s+use(r|rs),\s+load average:\s+([^\n]+)/i
 var versionExp = /\s+version:\s+'([^']+)',\n/ig
 var actionPeerRestart = {
   name: 'restart',
