@@ -28,7 +28,7 @@ echo
 # start running commands
 runCommand "apt-get -q -y update"
 runCommand "apt-get -q -y upgrade"
-runCommand "apt-get -q -y install gcc g++ make git redis-server dstat vim screen snmpd mongodb nodejs nodejs-legacy wget curl"
+runCommand "apt-get -q -y install gcc g++ make git redis-server dstat vim screen snmpd mongodb nodejs nodejs-legacy wget curl ntp"
 
 if [ $(userExists node) -eq 0 ]; then
   runCommand "useradd node"

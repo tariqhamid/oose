@@ -286,7 +286,7 @@ var peerAction = function(id,action,next){
               if(action.finalStatusError) peer.status = action.finalStatusError
             }
             else{
-              peer.log.push({message: 'Successfully ' + action.name + 'ed peer',level: 'info'})
+              peer.log.push({message: 'Peer ' + action.name + ' successful',level: 'info'})
               if(action.finalStatusSuccess) peer.status = action.finalStatusSuccess
             }
             peer.save(function(err){
