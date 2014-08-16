@@ -447,7 +447,7 @@ exports.save = function(req,res){
       function(next){
         if(req.body.ip) return next()
         dns.lookup(req.body.hostname,function(err,result){
-          if(err) return next(err)
+          if(err) return next(err.message)
           if(!result) return next('Could not look up IP from hostname')
           req.body.ip = result
           next()
