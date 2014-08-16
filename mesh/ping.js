@@ -20,7 +20,7 @@ var pingListen = function(){
     if(res.token === thisToken){
       pingHosts[rinfo.address] = new Date().getTime() - res.starttime
     } else {
-      logger.warn('[MESH PING] Out of order ping response detected and ignored')
+      logger.warning('[MESH PING] Out of order ping response detected and ignored')
     }
   })
 }
