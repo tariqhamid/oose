@@ -8,8 +8,8 @@ var fs = require('fs')
 var shortid = require('shortid')
 var config = require('../../config')
 var list = require('../helpers/list')
-var uptimeExp = /^\d{2}:\d{2}:\d{2}\s+up\s+([^,]+,\s+\d{2}:\d{2}),\s+\d+\s+use(r|rs),\s+load average:\s+([^\n]+)/i
-var versionExp = /\s{2}version:\s+'([^']+)',\n/ig
+var uptimeExp = /^\d+:\d+:\d+\s+up\s+([^,]+,\s+\d+:\d+),\s+\d+\s+use(r|rs),\s+load average:\s+([^\n]+)/i
+var versionExp = /\s+version:\s+'([^']+)',\n/ig
 var actionPeerRestart = {
   name: 'restart',
   status: 'ok',
