@@ -201,12 +201,23 @@ if(cluster.isMaster){
         function(next){
           //wait for the workers to all die
           var checkWorkerCount = function(){
-            if(cluster.workers.length){
-              logger.info('Waiting on ' + cluster.workers.length + ' to exit')
+            if(!cluster.workers) return next()
+            if(Object.keys(cluster.workers).length){
+              logger.info('Waiting on ' + Object.keys(cluster.workers).length + ' workers to exit')
               setTimeout(checkWorkerCount,1000)
-            } else next()
+            } else {
+              logger.info('Workers have stopped')
+              next()
+            }
           }
           checkWorkerCount()
+        },
+        //stop executioner
+        function(next){
+          if(config.get('executioner.enabled')){
+            logger.info('Stopping executioner')
+            executioner.stop(next)
+          } else next()
         },
         //stop shredder
         function(next){
@@ -220,7 +231,7 @@ if(cluster.isMaster){
           if(config.get('mesh.enabled') && config.get('mesh.announce.enabled')){
             logger.info('Stopping announce')
             announce.stop(next)
-          }
+          } else next()
         },
         //stop ping
         function(next){
