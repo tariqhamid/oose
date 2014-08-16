@@ -148,8 +148,12 @@ if(cluster.isMaster){
           if(err) logger.error(err)
         })
       }
+      if(!config.get('workers.enabled')){
+        logger.info('Not starting workers, they are disabled')
+        return
+      }
       //start workers
-      var workerCount = config.get('workers') || os.cpus().length
+      var workerCount = config.get('workers.count') || os.cpus().length || 4
       logger.info('Starting ' + workerCount + ' workers')
       for(var i=1; i <= workerCount; i++) cluster.fork()
       //worker online notification
@@ -190,27 +194,31 @@ if(cluster.isMaster){
         },
         //message workers to shutdown
         function(next){
-          logger.info('Stopping all workers')
-          for(var id in cluster.workers){
-            if(cluster.workers.hasOwnProperty(id))
-              cluster.workers[id].send('shutdown')
-          }
-          next()
+          if(config.get('workers.enabled')){
+            logger.info('Stopping all workers')
+            for(var id in cluster.workers){
+              if(cluster.workers.hasOwnProperty(id))
+                cluster.workers[id].send('shutdown')
+            }
+            next()
+          } else next()
         },
         //stop workers
         function(next){
-          //wait for the workers to all die
-          var checkWorkerCount = function(){
-            if(!cluster.workers) return next()
-            if(Object.keys(cluster.workers).length){
-              logger.info('Waiting on ' + Object.keys(cluster.workers).length + ' workers to exit')
-              setTimeout(checkWorkerCount,1000)
-            } else {
-              logger.info('Workers have stopped')
-              next()
+          if(config.get('workers.enabled')){
+            //wait for the workers to all die
+            var checkWorkerCount = function(){
+              if(!cluster.workers) return next()
+              if(Object.keys(cluster.workers).length){
+                logger.info('Waiting on ' + Object.keys(cluster.workers).length + ' workers to exit')
+                setTimeout(checkWorkerCount,1000)
+              } else {
+                logger.info('Workers have stopped')
+                next()
+              }
             }
-          }
-          checkWorkerCount()
+            checkWorkerCount()
+          } else next()
         },
         //stop executioner
         function(next){

@@ -14,6 +14,10 @@ config.load({
     min: 2,
     max: 2
   },
+  workers: {
+    enabled: true,
+    count: os.cpus().length || 4
+  },
   //services
   mesh: {
     enabled: true,
