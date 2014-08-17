@@ -2,10 +2,13 @@
 var mongoose = require('mongoose')
 var ip = require('ip')
 var fs = require('fs')
-var moment = require('moment')
 var config = require('../config')
 var schema
+
+//moment and the duration plugin
 require('moment-duration-format')
+var moment = require('moment')
+
 
 //load plugins
 mongoose.plugin(require('mongoose-list'),{
@@ -98,9 +101,7 @@ schema = new mongoose.Schema({
  * @this {Peer}
  */
 schema.methods.uptime = function(){
-  var uptime = parseFloat(this.os.uptime,10).toFixed(0)
-  uptime = moment.duration(uptime,'seconds').format('d [days], h [hrs], m [min]')
-  return uptime
+  return moment.duration(this.os.uptime * 1000).format('d [days], h [hrs], m [min]')
 }
 
 // handling of created/modified
