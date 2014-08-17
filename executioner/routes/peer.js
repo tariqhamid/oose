@@ -8,7 +8,6 @@ var fs = require('fs')
 var shortid = require('shortid')
 var config = require('../../config')
 var list = require('../helpers/list')
-var uptimeExp = /^\d{2}:\d{2}:\d{2}\s+up\s+([^,]+,[^,+]),[^,]+,\s+load average:\s+([^\n]+)/i
 var versionExp = /\s{2}version:\s+'([^']+)',\n/ig
 var actionPeerRestart = {
   name: 'restart',
@@ -657,17 +656,20 @@ exports.refresh = function(req,res){
               },
               //get the uptime
               function(next){
-                var cmd = 'uptime'
+                var cmd = 'cat /proc/uptime'
                 sshBufferCommand(client,cmd,function(err,result){
-                  result = result.trim()
-                  var match = uptimeExp.exec(result)
-                  if(!match || 4 !== match.length) return next('Couldnt parse uptime')
-                  peer.os.uptime = match[1]
-                  var load = match[3].split(',')
-                  load.forEach(function(v,i){
-                    load[i] = v.trim()
-                  })
-                  peer.os.load = load
+                  if(err) return next(err)
+                  peer.os.uptime = result.trim().split(' ')[0]
+                  next()
+                })
+              },
+              //get the load average
+              function(next){
+                var cmd = 'cat /proc/loadavg'
+                sshBufferCommand(client,cmd,function(err,result){
+                  if(err) return next(err)
+                  result = result.trim().split(' ').splice(3,2)
+                  peer.os.load = result
                   next()
                 })
               }
