@@ -1,5 +1,4 @@
 'use strict';
-require('moment-duration-format')
 var express = require('express')
 var fs = require('fs')
 var flash = require('connect-flash')
