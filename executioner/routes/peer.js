@@ -8,7 +8,6 @@ var fs = require('fs')
 var shortid = require('shortid')
 var config = require('../../config')
 var list = require('../helpers/list')
-var versionExp = /\s+version:\s+'([^']+)',\n/ig
 var actionPeerRestart = {
   name: 'restart',
   status: 'ok',
@@ -581,7 +580,7 @@ exports.test = function(req,res){
 
 
 /**
- * Test communication with a peer
+ * Freshen metrics
  * @param {object} req
  * @param {object} res
  */
@@ -643,14 +642,9 @@ exports.refresh = function(req,res){
               },
               //get the oose version (if we can)
               function(next){
-                var cmd = 'cat /opt/oose/config.js'
+                var cmd = 'grep -oP "version: \'([^\']+)" /opt/oose/config.js | sed -r "s/version: \'([^\']+)/\\1/g"'
                 sshBufferCommand(client,cmd,function(err,result){
-                  var match = versionExp.exec(result)
-                  if(!match || 2 !== match.length){
-                    peer.version = 'unknown'
-                    return next()
-                  }
-                  peer.version = match[1].trim()
+                  peer.version = result.trim() || 'unknown'
                   next()
                 })
               },
