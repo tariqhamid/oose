@@ -668,7 +668,7 @@ exports.refresh = function(req,res){
                 var cmd = 'cat /proc/loadavg'
                 sshBufferCommand(client,cmd,function(err,result){
                   if(err) return next(err)
-                  result = result.trim().split(' ').splice(3,2)
+                  result = result.trim().split(' ').splice(0,3)
                   peer.os.load = result
                   next()
                 })

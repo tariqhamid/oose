@@ -2,6 +2,7 @@
 var mongoose = require('mongoose')
 var ip = require('ip')
 var fs = require('fs')
+var moment = require('moment')
 var config = require('../config')
 var schema
 
@@ -88,6 +89,16 @@ schema = new mongoose.Schema({
     load: Array
   }
 })
+
+
+/**
+ * Do some shit here that makes the uptime fancy
+ * @return {*}
+ * @this {Peer}
+ */
+schema.methods.uptime = function(){
+  return moment.duration(this.os.uptime,'seconds').format()
+}
 
 // handling of created/modified
 schema.pre('save',function(next){
