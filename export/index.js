@@ -62,7 +62,7 @@ app.get('/:sha1/:filename',function(req,res){
         res.set('Accept-Ranges','bytes')
         res.set('Content-Type',info.mimeType)
         //set some aggressive cache headers (this content cant change, hence sha1)
-        res.set('Cache-Control','public max-age=31536000')
+        res.set('Cache-Control','public, max-age=31536000')
         res.set('Pragma','public')
         //byte range support
         range = {start: 0, end: (stat.size - 1 || 0)}
