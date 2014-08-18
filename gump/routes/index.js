@@ -342,26 +342,32 @@ exports.folderCreate = function(req,res){
 exports.file = function(req,res){
   var god = req.query.god ? true : false
   File.findOne({_id: req.query.id},function(err,result){
+    var prismHost = config.get('gump.prism.hostUrl')
     if(result.status === 'error'){
       return res.render('fileError',{
         file: result,
+        prismHost: prismHost,
         god: god
       })
     }
     if(result.status === 'processing'){
       return res.render('fileProcessing',{
         file: result,
+        prismHost: prismHost,
         god: god
       })
     }
     if(result.status === 'ok' && result.embedHandle){
       return res.render('fileEmbed',{
         file: result,
+        prismHost: prismHost,
+        baseUrl: config.get('gump.baseUrl'),
         god: god
       })
     }
     res.render('fileDetails',{
       file: result,
+      prismHost: prismHost,
       god: god
     })
   })

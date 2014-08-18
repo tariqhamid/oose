@@ -55,6 +55,7 @@ config.load({
     port: 3003,
     portPublic: null,
     host: null,
+
     cache: {
       expire: 300
     }
@@ -99,6 +100,7 @@ config.load({
     port: 3004,
     portPublic: null,
     host: null,
+    baseUrl: 'http://localhost:3004',
     tmpDir: __dirname + '/gump/public/tmp',
     embed: {
       seed: '3123572',
@@ -112,6 +114,7 @@ config.load({
     prism: {
       host: '127.0.0.1',
       port: 3003,
+      hostUrl: 'localhost:3003',
       callbackToken: 'oose'
     }
   },

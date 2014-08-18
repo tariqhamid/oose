@@ -4,3 +4,17 @@ block content
     h1= file.name
     +pathTree(god,file.relativeParent(god),file.name)
     iframe(src='/embed/#{file.embedHandle}', style='width: 1000px; height: 562px;')
+    br
+    table.table.table-striped
+      tr
+        td CDN URL
+        td #{baseUrl}/embed/#{file.embedHandle}
+      tr
+        td Type
+        td= file.mimeType
+      tr
+        td Size
+        td= prettyBytes(file.size)
+      tr
+        td Uploaded
+        td= new Date(file.metrics.dateCreated).toDateString()

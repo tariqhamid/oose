@@ -11,6 +11,9 @@ block content
     br
     table.table.table-striped
       tr
+        td CDN URL
+        td http://#{prismHost}/#{file.sha1}/#{file.name}
+      tr
         td Type
         td= file.mimeType
       tr
