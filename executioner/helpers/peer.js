@@ -611,7 +611,13 @@ exports.action = function(id,action,next){
               //kill pm2 on stop
               function(next){
                 if('stop' !== action.name) return next()
-                client.commandBuffered('pm2 -s --no-color kill',next)
+                async.series(
+                  [
+                    function(next){client.commandBuffered('pm2 -s --no-color flush',next)},
+                    function(next){client.commandBuffered('pm2 -s --no-color kill',next)}
+                  ],
+                  next
+                )
               },
               //save for pm2 reboot on start
               function(next){
