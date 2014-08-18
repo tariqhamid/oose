@@ -64,9 +64,7 @@ SSH.prototype.commandBuffered = function(cmd,next){
         stream.on('data',function(data){
           buffer += data
         })
-        stream.on('close',function(){
-          next()
-        })
+        stream.on('finish',function(){next()})
         stream.on('exit',function(code){
           if(code > 0) next('Failed to execute: ' + cmd)
         })
@@ -98,9 +96,7 @@ SSH.prototype.commandStream = function(cmd,writable,next){
         stream.on('data',function(data){
           writable.write(data)
         })
-        stream.on('close',function(){
-          next()
-        })
+        stream.on('finish',function(){next()})
         stream.on('exit',function(code){
           if(code > 0) next('Failed to execute: ' + cmd)
         })
