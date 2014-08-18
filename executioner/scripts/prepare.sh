@@ -226,18 +226,20 @@ fi
 chown -R node:node /var/log/node  > /dev/null 2>&1
 
 # setup nginx
-banner "Configuring Nginx"
-echo "$nginxConfig" > /etc/nginx/nginx.conf
-echo "$nginxConfigExports" > /etc/nginx/sites-available/exports.${hostnameDomain}
-echo "$nginxConfigPrism" > /etc/nginx/sites-available/prism.${hostnameDomain}
-rm -rf /etc/nginx/sites-enabled/*
-cd /etc/nginx/sites-enabled
-ln -s ../sites-available/exports.${hostnameDomain}
-ln -s ../sites-available/prism.${hostnameDomain}
-nginx -t
-if [ $? -gt 0 ]; then
-  echo "Nginx configuration test failed"
-  exit 1
+if [ ! -f "/etc/nginx/sites-available/exports.${hostnameDomain}" ]; then
+  banner "Configuring Nginx"
+  echo "$nginxConfig" > /etc/nginx/nginx.conf
+  echo "$nginxConfigExports" > /etc/nginx/sites-available/exports.${hostnameDomain}
+  echo "$nginxConfigPrism" > /etc/nginx/sites-available/prism.${hostnameDomain}
+  rm -rf /etc/nginx/sites-enabled/*
+  cd /etc/nginx/sites-enabled
+  ln -s ../sites-available/exports.${hostnameDomain}
+  ln -s ../sites-available/prism.${hostnameDomain}
+  nginx -t
+  if [ $? -gt 0 ]; then
+    echo "Nginx configuration test failed"
+    exit 1
+  fi
 fi
 runCommand "/etc/init.d/nginx restart"
 
