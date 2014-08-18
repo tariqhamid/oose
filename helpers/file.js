@@ -8,6 +8,7 @@ var redis = require('./redis')
 var temp = require('temp')
 var mmm = require('mmmagic')
 var async = require('async')
+var Sniffer = require('../helpers/Sniffer')
 var commUtil = require('../helpers/communicator').util
 
 
@@ -170,7 +171,6 @@ exports.write = function(source,sha1,done){
  * @param {function} done
  */
 exports.fromReadable = function(readable,done){
-  var shasum = crypto.createHash('sha1')
   var sha1 = ''
   var exists = {redis: false, fs: false}
   var destination = ''
@@ -183,17 +183,20 @@ exports.fromReadable = function(readable,done){
     [
       //setup pipes and handlers for errors and update sha1 sum
       function(next){
-        readable.on('data',function(chunk){
-          shasum.update(chunk)
+        var shasum = crypto.createHash('sha1')
+        var sniff = new Sniffer()
+        sniff.on('data',function(data){
+          shasum.update(data)
         })
-        readable.on('error',next)
-        writable.on('error',next)
-        readable.on('end',next)
-        readable.pipe(writable)
+        readable.on('error',function(err){next(err)})
+        writable.on('finish',function(){
+          sha1 = shasum.digest('hex')
+          next()
+        })
+        readable.pipe(sniff).pipe(writable)
       },
       //figure out our sha1 hash and setup paths
       function(next){
-        sha1 = shasum.digest('hex')
         destination = exports.pathFromSha1(sha1)
         destinationFolder = path.dirname(destination)
         next()
