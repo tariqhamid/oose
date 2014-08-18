@@ -118,7 +118,10 @@ var runJob = function(job,done){
       },
       //step 5: save the build to cache
       function(next){
-        job.cacheStore(next)
+        job.cacheStore(function(err){
+          if(err) job.logger.info('Cache store failed: ' + err)
+          next()
+        })
       }
     ],
     function(err){
