@@ -188,7 +188,7 @@ exports.fromReadable = function(readable,done){
         })
         readable.on('error',next)
         writable.on('error',next)
-        writable.on('finish',next)
+        readable.on('end',next)
         readable.pipe(writable)
       },
       //figure out our sha1 hash and setup paths
