@@ -36,12 +36,12 @@ exports.sendFromReadable = function(peer,stream,next){
   sniff.on('data',function(data){
     shasum.update(data)
   })
-  sniff.on('finish',function(){
-    next(null,shasum.digest('hex'))
-  })
   var client = net.connect(peer.portImport,peer.ip)
   client.on('error',function(err){
     next(err)
+  })
+  client.on('close',function(){
+    next(null,shasum.digest('hex'))
   })
   client.on('connect',function(){
     stream.pipe(sniff).pipe(client)
