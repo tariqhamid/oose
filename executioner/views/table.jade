@@ -10,7 +10,9 @@ mixin tableHeader(title,createUrl,createLabel)
           input.form-control(type='text', name='search', placeholder='Filter Results', value=search)
         if createUrl
           span &nbsp;
-          a.btn.btn-success(href=createUrl)=createLabel
+          a.btn.btn-success(href=createUrl)
+            span.glyphicon.glyphicon-plus
+            |  #{createLabel}
     h1=title
 mixin tableFooter(page,count)
   div

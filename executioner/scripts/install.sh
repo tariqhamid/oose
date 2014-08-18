@@ -27,9 +27,13 @@ runCommand "cd /opt/oose"
 runCommand "git checkout stable"
 runCommand "npm config set color false"
 runCommand "npm -q --no-spin install"
-runCommand "mkdir /opt/oose/log"
-runCommand "chown -R node:node /opt/oose/log"
-runCommand "mkdir /data"
+if [ ! -d /opt/oose/log ]; then
+  runCommand "mkdir /opt/oose/log"
+  runCommand "chown -R node:node /opt/oose/log"
+fi
+if [ ! -d /data ]; then
+  runCommand "mkdir /data"
+fi
 runCommand "chown -R node:node /data"
 
 banner "Installation Complete"

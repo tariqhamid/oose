@@ -68,6 +68,7 @@ app.use(express.static(__dirname + '/public'))
 //peer
 app.post('/peer',routes.peer.list)
 app.post('/peer/save',routes.peer.save)
+app.post('/peer/runCommand',routes.peer.runCommand)
 app.get('/peer',routes.peer.list)
 app.get('/peer/create',routes.peer.create)
 app.get('/peer/edit',routes.peer.edit)

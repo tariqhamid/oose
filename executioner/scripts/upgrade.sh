@@ -28,9 +28,13 @@ runCommand "npm config set color false"
 runCommand "npm -q --no-spin prune"
 runCommand "npm -q --no-spin install"
 #runCommand "npm -q --no-spin update"
-runCommand "mkdir /opt/oose/log"
+if [ ! -d /opt/oose/log ]; then
+  runCommand "mkdir /opt/oose/log"
+fi
 runCommand "chown -R node:node /opt/oose/log"
-runCommand "mkdir /data"
+if [ ! -d /data ]; then
+  runCommand "mkdir /data"
+fi
 runCommand "chown -R node:node /data"
 
 banner "Upgrade Complete"

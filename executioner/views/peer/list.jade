@@ -30,9 +30,54 @@ block content
           a.btn.btn-default(href='/shows?start=#{page.previous}&search=#{search}') Previous
           a.btn.btn-default(href='/shows?start=#{page.next}&search=#{search}') Next
         span #{page.start + 1} - #{page.end} of #{count} entries
+        h4.text-success Lifecycle
         div
-          button.btn.btn-warning(name='restart', value='true', type='submit') Restart
-          button.btn.btn-primary(name='upgrade', value='true', type='submit') Upgrade
-          button.btn.btn-success(name='start', value='true', type='submit') Start
-          button.btn.btn-danger(name='stop', value='true', type='submit') Stop
-          button.btn.btn-danger#tableDelete(name='delete', value='true', type='submit') Delete Checked
+          button.btn.btn-success(name='start', value='true', type='submit')
+            span.glyphicon.glyphicon-play
+            |  Start
+          | &nbsp;
+          button.btn.btn-danger(name='stop', value='true', type='submit')
+            span.glyphicon.glyphicon-stop
+            |  Stop
+          | &nbsp;
+          button.btn.btn-primary(name='restart', value='true', type='submit')
+            span.glyphicon.glyphicon-refresh
+            |  Restart
+        h4.text-warning Operations
+        div
+          button.btn.btn-primary(name='test', value='true', type='submit')
+            span.glyphicon.glyphicon-resize-small
+            |  Test
+          | &nbsp;
+          button.btn.btn-info(name='refresh', value='true', type='submit')
+            span.glyphicon.glyphicon-refresh
+            |  Refresh
+          | &nbsp;
+          button.btn.btn-warning(name='prepare', value='true', type='submit', target='_blank')
+            span.glyphicon.glyphicon-refresh
+            |  Prepare
+          | &nbsp;
+          button.btn.btn-success(name='install', value='true', type='submit', target='_blank')
+            span.glyphicon.glyphicon-download
+            |  Install
+          | &nbsp;
+          button.btn.btn-primary(name='upgrade', value='true', type='submit', target='_blank')
+            span.glyphicon.glyphicon-upload
+            |  Upgrade
+          | &nbsp;
+          button.btn.btn-warning(name='updateConfig', value='true', type='submit')
+            span.glyphicon.glyphicon-cog
+            |  Update Config
+        h4.text-primary Custom
+        div
+          input.form-control(style='display: inline; width: 300px;', type='text', name='command', placeholder='Command to run on selected nodes')
+          button.btn.btn-success(name='runCommand', value='true', type='submit')
+            span.glyphicon.glyphicon-flash
+            |  Run
+          input(type='checkbox', name='runCommandParallel', value='true', checked=true)
+          small  Run Command in Parallel
+        h4.text-danger Destructive
+        div
+          button.btn.btn-danger#tableDelete(name='delete', value='true', type='submit')
+            span.glyphicon.glyphicon-remove
+            |  Delete Checked

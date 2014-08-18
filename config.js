@@ -81,6 +81,11 @@ config.load({
       privateKey: null,
       publicKey: null
     },
+    ssl: {
+      key: null,
+      crt: null,
+      ca: null
+    },
     defaultConfig: __dirname + '/executioner/src/config.js'
   },
   gump: {
