@@ -8,7 +8,7 @@ var redis = require('./redis')
 var temp = require('temp')
 var mmm = require('mmmagic')
 var async = require('async')
-var mesh = require('../mesh')
+var commUtil = require('../helpers/communicator').util
 
 
 /**
@@ -23,15 +23,25 @@ var queueClone = function(sha1,done){
     [
       //do a location on the sha1
       function(next){
-        mesh.locate(sha1,function(err,result){
-          if(err) return next(err)
-          for(var k in result){
-            if(!result.hasOwnProperty(k)) continue
-            peerCount++
-            if(result[k]) cloneCount++
+        var client = commUtil.tcpSend('locate',{sha1: sha1},config.get('mesh.port'),config.get('mesh.host'))
+        client.once('readable',function(){
+          //read our response
+          var payload = commUtil.parse(client.read(client.read(2).readUInt16BE(0)))
+          //close the connection
+          client.end()
+          //check if we got an error
+          if('ok' !== payload.message.status) return next(payload.message.message)
+          //make sure the response is our sha1
+          if(sha1 !== payload.command) return next('Wrong command response for ' + sha1)
+          for(var i in payload.message.peers){
+            if(payload.message.peers.hasOwnProperty(i)){
+              peerCount++
+              if(payload.message.peers[i]) cloneCount++
+            }
           }
           next()
         })
+        client.on('error',next)
       },
       //queue a clone if we need to
       function(next){
