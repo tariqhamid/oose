@@ -205,13 +205,13 @@ var getServices = function(basket,next){
   if(config.get('lg.enabled')) basket.services += ',lg'
   //service ports
   if(config.get('store.enabled')){
-    basket.portImport = config.get('store.import.port')
-    basket.portExport = config.get('store.export.port')
+    basket.portImport = config.get('store.import.portPublic') || config.get('store.import.port')
+    basket.portExport = config.get('store.export.portPublic') || config.get('store.export.port')
   }
   if(config.get('prism.enabled')){
-    basket.portPrism = config.get('prism.port')
+    basket.portPrism = config.get('prism.portPublic') || config.get('prism.port')
   }
-  basket.portMesh = config.get('mesh.port')
+  basket.portMesh = config.get('mesh.portPublic') || config.get('mesh.port')
   next(null,basket)
 }
 
