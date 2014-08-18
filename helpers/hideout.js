@@ -14,6 +14,7 @@ var config = require('../config')
 var buildRequest = function(type,key,value){
   var req = {
     method: 'POST',
+    strictSSL: false,
     url: config.get('hideout.url') + '/' + type,
     auth: {
       user: config.get('hideout.user'),
@@ -41,8 +42,6 @@ var buildRequest = function(type,key,value){
  * @param {function} done
  */
 var executeRequest = function(req,done){
-  if(req.url.match(/^https/)) req.strictSSL = false
-  logger.info('Making request',req)
   request(req,function(err,res,body){
     logger.info('Response',body)
     if(err) return done(err)
@@ -63,7 +62,6 @@ exports.exists = function(key,done){
   var req = buildRequest('exists',key)
   executeRequest(req,function(err,result){
     if(err) return done(err)
-    console.log(result)
     done(null,(result.exists === 1))
   })
 }

@@ -22,6 +22,7 @@ config.load({
   mesh: {
     enabled: true,
     port: 3000,
+    portPublic: null,
     multicast: {
       address: '226.0.0.1',
       ttl: 1
@@ -40,16 +41,19 @@ config.load({
     enabled: false,
     import: {
       port: 3002,
+      portPublic: null,
       host: null
     },
     export: {
       port: 3001,
+      portPublic: null,
       host: null
     }
   },
   prism: {
     enabled: false,
     port: 3003,
+    portPublic: null,
     host: null,
     cache: {
       expire: 300
@@ -61,6 +65,7 @@ config.load({
   hideout: {
     enabled: false,
     port: 3006,
+    portPublic: null,
     host: null,
     url: 'http://localhost:3006',
     user: 'oose',
@@ -69,6 +74,7 @@ config.load({
   executioner: {
     enabled: false,
     port: 3007,
+    portPublic: null,
     host: null,
     url: 'http://localhost:3007',
     user: 'oose',
@@ -91,6 +97,7 @@ config.load({
   gump: {
     enabled: false,
     port: 3004,
+    portPublic: null,
     host: null,
     tmpDir: __dirname + '/gump/public/tmp',
     embed: {
@@ -111,6 +118,7 @@ config.load({
   lg: {
     enabled: false,
     port: 3005,
+    portPublic: null,
     host: null,
     user: 'oose',
     password: 'oose',

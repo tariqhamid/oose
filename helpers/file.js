@@ -1,13 +1,53 @@
 'use strict';
 var config = require('../config')
-  , crypto = require('crypto')
-  , path = require('path')
-  , fs = require('fs')
-  , mkdirp = require('mkdirp')
-  , redis = require('./redis')
-  , temp = require('temp')
-  , mmm = require('mmmagic')
-  , async = require('async')
+var crypto = require('crypto')
+var path = require('path')
+var fs = require('fs')
+var mkdirp = require('mkdirp')
+var redis = require('./redis')
+var temp = require('temp')
+var mmm = require('mmmagic')
+var async = require('async')
+var mesh = require('../mesh')
+
+
+/**
+ * Queue a clone of a sha1 if needed
+ * @param {string} sha1
+ * @param {function} done
+ */
+var queueClone = function(sha1,done){
+  var cloneCount = 0
+  var peerCount = 0
+  async.series(
+    [
+      //do a location on the sha1
+      function(next){
+        mesh.locate(sha1,function(err,result){
+          if(err) return next(err)
+          for(var k in result){
+            if(!result.hasOwnProperty(k)) continue
+            peerCount++
+            if(result[k]) cloneCount++
+          }
+          next()
+        })
+      },
+      //queue a clone if we need to
+      function(next){
+        //if we have 2 or more clones dont add more
+        if(cloneCount >= 2) return next()
+        //if there are less than 2 peers we cant replicate
+        if(peerCount < 2) return next()
+        //setup clone job
+        var clone = require('../tasks/clone')
+        clone.push({sha1: sha1})
+        next()
+      }
+    ],
+    done
+  )
+}
 
 
 /**
@@ -105,12 +145,10 @@ exports.write = function(source,sha1,done){
   rs.on('end',function(){
     exports.redisInsert(sha1,function(err){
       if(err) return done(err)
-      //create the initial clone job
-      var clone = require('../tasks/clone')
-      clone.push({sha1: sha1})
-      done(null,sha1)
+      queueClone(sha1,function(err){
+        done(err,sha1)
+      })
     })
-
   })
   rs.pipe(ws)
 }
@@ -191,11 +229,9 @@ exports.fromReadable = function(readable,done){
       //insert into redis
       exports.redisInsert(sha1,function(err){
         if(err) return done(err)
-        //queue initial clone
-        var clone = require('../tasks/clone')
-        clone.push({sha1: sha1})
-        //finished!
-        done(null,sha1)
+        queueClone(sha1,function(err){
+          done(err,sha1)
+        })
       })
     }
   )

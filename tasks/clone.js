@@ -49,7 +49,7 @@ var clone = function(job,cb){
     ws.on('error',done)
     rs.on('close',function(){
       var duration = (new Date().getTime() - start) / 1000
-      var bytesPerSec = prettyBytes(bytesSent / duration) + '/sec'
+      var bytesPerSec = prettyBytes((bytesSent || 0 / duration || 1) || 0) + '/sec'
       logger.info(
         'Finished replicating ' + job.sha1 +
         ' to ' + peer.hostname + '.' + peer.domain +
