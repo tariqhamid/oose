@@ -41,6 +41,7 @@ var buildRequest = function(type,key,value){
  * @param {function} done
  */
 var executeRequest = function(req,done){
+  if(req.url.match(/^https/)) req.strictSSL = false
   logger.info('Making request',req)
   request(req,function(err,res,body){
     logger.info('Response',body)
