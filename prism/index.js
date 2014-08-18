@@ -11,6 +11,7 @@ var commUtil = require('../helpers/communicator').util
 var running = false
 
 app.use(express.urlencoded())
+app.use(express.json())
 
 
 /**

@@ -6,7 +6,7 @@ var temp = require('temp')
   , async = require('async')
   , net = require('net')
   , crypto = require('crypto')
-  , restler = require('restler')
+  , request = require('request')
   , Sniffer = require('../../helpers/Sniffer')
   , Logger = require('../../helpers/logger')
   , Q = require('q')
@@ -111,9 +111,11 @@ exports.upload = function(req,res){
   }
   //import functions
   var sendToShredder = function(file,next){
-    restler
-      .post(prismBaseUrl() + '/api/shredderJob',{
-        data: {
+    request(
+      {
+        url: prismBaseUrl() + '/api/shredderJob',
+        method: 'post',
+        json: {
           callback: [
             {
               driver: 'http',
@@ -139,14 +141,15 @@ exports.upload = function(req,res){
           ],
           save: ['mp4-standard-480p']
         }
-      })
-      .on('complete',function(result){
-        if(result instanceof Error) return next(result)
-        if('ok' !== result.status) return next(result.message)
-        if(!result.handle) return next('Shredder failed to return a job handle')
-        file.importJob = result.handle
+      },
+      function(err,res,body){
+        if(err) return next(err)
+        if('ok' !== body.status) return next(body.message)
+        if(!body.handle) return next('Shredder failed to return a job handle')
+        file.importJob = body.handle
         next()
-      })
+      }
+    )
   }
   var sendToOOSE = function(file,next){
     var peerNext = {}
@@ -155,10 +158,10 @@ exports.upload = function(req,res){
         //ask for nextPeer
         function(next){
           var url = prismBaseUrl() + '/api/peerNext'
-          restler.get(url).on('complete',function(result){
-            if(result instanceof Error) return next(result)
-            if(!result.peers || !result.peers.length) return next('Next peer could not be found')
-            peerNext = result.peers[0]
+          request(url,function(err,res,body){
+            if(err) return next(err)
+            if(!body.peers || !body.peers.length) return next('Next peer could not be found')
+            peerNext = body.peers[0]
             next()
           })
         },
