@@ -1,6 +1,6 @@
 'use strict';
 var request = require('request')
-var logger = require('./logger').create('hideout')
+//var logger = require('./logger').create('hideout')
 var config = require('../config')
 
 
@@ -43,7 +43,6 @@ var buildRequest = function(type,key,value){
  */
 var executeRequest = function(req,done){
   request(req,function(err,res,body){
-    logger.info('Response',body)
     if(err) return done(err)
     if(200 !== res.statusCode) return done('Unexpected status code from hideout ' + res.statusCode)
     var result = body
