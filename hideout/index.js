@@ -107,7 +107,6 @@ app.post('/exists',function(req,res){
       },
       //check if key exists
       function(next){
-        console.log(req.body.key)
         Hideout.count({key: req.body.key},function(err,count){
           if(err) return next(err.message)
           if(0 === count) exists = false

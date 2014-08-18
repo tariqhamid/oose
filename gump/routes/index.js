@@ -160,6 +160,7 @@ exports.upload = function(req,res){
           var url = prismBaseUrl() + '/api/peerNext'
           request(url,function(err,res,body){
             if(err) return next(err)
+            body = JSON.parse(body)
             if(!body.peers || !body.peers.length) return next('Next peer could not be found')
             peerNext = body.peers[0]
             next()

@@ -40,7 +40,7 @@ exports.sendFromReadable = function(peer,stream,next){
   client.on('error',function(err){
     next(err)
   })
-  client.on('close',function(){
+  client.on('end',function(){
     next(null,shasum.digest('hex'))
   })
   client.on('connect',function(){
