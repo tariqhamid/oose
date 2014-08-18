@@ -90,8 +90,7 @@ config.load({
     },
     ssl: {
       key: null,
-      crt: null,
-      ca: null
+      crt: null
     },
     defaultConfig: __dirname + '/executioner/src/config.js'
   },

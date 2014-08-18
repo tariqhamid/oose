@@ -361,11 +361,6 @@ exports.prepare = function(id,writable,next){
                 if(!config.get('executioner.ssl.crt')) return next()
                 client.sendFile(config.get('executioner.ssl.crt'),'/etc/nginx/ssl/ssl.crt',next)
               },
-              //send the ssl ca
-              function(next){
-                if(!config.get('executioner.ssl.ca')) return next()
-                client.sendFile(config.get('executioner.ssl.ca'),'/etc/nginx/ssl/ssl.ca',next)
-              },
               //run preparation script
               function(next){
                 client.scriptStream(__dirname + '/../scripts/prepare.sh',writable,next)
