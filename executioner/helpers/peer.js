@@ -608,31 +608,14 @@ exports.action = function(id,action,next){
               function(next){
                 client.commandBuffered(action.cmd,next)
               },
-              //if a stop was issued pm2 dump, pm2 kill, pm2 resurrect
+              //kill pm2 on stop
               function(next){
-                if('stop' !== action.name){
-                  return next()
-                }
-                async.series(
-                  [
-                    //dump
-                    function(next){
-                      client.commandBuffered('pm2 -s --no-color dump',next)
-                    },
-                    //kill
-                    function(next){
-                      client.commandBuffered('pm2 -s --no-color kill',next)
-                    },
-                    //resurrect
-                    function(next){
-                      client.commandBuffered('pm2 -s --no-color resurrect',next)
-                    }
-                  ],
-                  next
-                )
+                if('stop' !== action.name) return next()
+                client.commandBuffered('pm2 -s --no-color kill',next)
               },
-              //save for pm2 reboot
+              //save for pm2 reboot on start
               function(next){
+                if('start' !== action.name) return next()
                 client.commandBuffered('pm2 -s --no-color save',next)
               }
             ],
