@@ -52,6 +52,22 @@ exports.run = function(job,parameter,options,done){
         total: parseInt(res.headers['content-length'],10) || 0
       }
       var start = new Date()
+      var progress = {
+        lastUpdate: 0,
+        rate: 1000,
+        show: function(frames){
+          var show = false
+          var now = new Date().valueOf()
+          if(frames.total === frames.complete) show = true
+          if(!this.lastUpdate) show = true
+          if(now > this.lastUpdate + this.rate) show = true
+          if(show){
+            this.lastUpdate = new Date().valueOf()
+            return true
+          }
+          return false
+        }
+      }
       var shasum = crypto.createHash('sha1')
       var sniff = new Sniffer()
       sniff.on('data',function(data){
@@ -69,13 +85,15 @@ exports.run = function(job,parameter,options,done){
       res.on('data',function(data){
         frames.complete += data.length
         if(frames.complete > frames.total) frames.total = frames.complete
-        job.logger.info(
-          job.handle + ' resource [' + options.get('name') + '] ' +
-          prettyBytes(frames.complete || 0) + ' / ' +
-          prettyBytes(frames.total || 0) + ' ' +
-          ((frames.complete / frames.total) * 100).toFixed(2) + '% [' +
-          prettyBytes((frames.complete / ((new Date().valueOf() - start.valueOf()) / 1000))) + 'ps]'
-        )
+        if(progress.show(frames)){
+          job.logger.info(
+              job.handle + ' resource [' + options.get('name') + '] ' +
+              prettyBytes(frames.complete || 0) + ' / ' +
+              prettyBytes(frames.total || 0) + ' ' +
+              ((frames.complete / frames.total) * 100).toFixed(2) + '% [' +
+              prettyBytes((frames.complete / ((new Date().valueOf() - start.valueOf()) / 1000))) + 'ps]'
+          )
+        }
         job.update({frames: frames})
       })
       res.pipe(sniff).pipe(tmp)
