@@ -203,7 +203,7 @@ Job.prototype.runDriver = function(category,parameter,options,done){
       //run the driver
       drivers[category][options.get('driver')].run(that,parameter,options,function(err){
         if(err && !options.get('optional')) return next(err)
-        that.logger.warning(err)
+        if(err && options.get('optional')) that.logger.warning(err)
         next()
       })
     },
