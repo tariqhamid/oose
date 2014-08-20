@@ -125,6 +125,8 @@ var runJob = function(job,done){
       }
     ],
     function(err){
+      //cleanup the resources here since we dont it need any more
+      job.resource.cleanup()
       if(err){
         job.update({
           status: 'error',
@@ -196,7 +198,7 @@ var meshStart = function(done){
     //check to see if the job has been scheduled and defer it if so
     var description = JSON.parse(message.description)
     if(description.schedule && description.schedule.start && 'now' !== description.schedule.start){
-      if(description.schedule.match(/^+/)){
+      if(description.schedule.match(/^\+/)){
         description.schedule.start = description.schedule.start.replace(/^\+(\d+)/,'$1')
         job.start = new Date().getTime() + description.schedule.start
       } else {

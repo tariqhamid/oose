@@ -10,6 +10,15 @@ var config = require('../../config')
 var peer = require('../../helpers/peer')
 var tmpDir = path.resolve(config.get('root') + '/shredder/tmp')
 var resourceExp = /\{([^}]+)\}/ig
+var cleanup = []
+
+//remove any leftover resources on exit
+process.on('exit',function(){
+  cleanup.forEach(function(resource){
+    if(fs.existsSync(resource.get('path')))
+      fs.unlinkSync(resource.get('path'))
+  })
+})
 
 
 /**
@@ -60,7 +69,6 @@ var Resource = function(options){
   that.options.load(options)
   //define our resource handler
   that.resources = {}
-  process.on('exit',that.cleanup.bind(that))
 }
 Resource.prototype = Object.create(EventEmitter.prototype)
 
@@ -127,6 +135,8 @@ Resource.prototype.create = function(name,done){
 Resource.prototype.add = function(name,info){
   var details = new ObjectManage(info)
   this.emit('add',name,details)
+  //add to cleanup array
+  cleanup.push(details)
   this.resources[name] = details
 }
 
@@ -171,6 +181,9 @@ Resource.prototype.remove = function(name){
   this.emit('remove',name,resource)
   if(fs.existsSync(resource.get('path')))
     fs.unlinkSync(resource.get('path'))
+  //remove from cleanup
+  delete cleanup[cleanup.indexOf(resource)]
+  //remove locally
   delete this.resources[name]
 }
 
@@ -220,11 +233,10 @@ Resource.prototype.render = function(string,done){
  * Cleanup resources and remove them from the file system
  */
 Resource.prototype.cleanup = function(){
+  var that = this
   for(var i in this.resources){
     if(!this.resources.hasOwnProperty(i)) continue
-    var info = this.resources[i]
-    if(!fs.existsSync(info.get('path'))) continue
-    fs.unlinkSync(info.get('path'))
+    that.remove(i)
   }
 }
 
