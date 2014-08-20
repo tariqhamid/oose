@@ -236,10 +236,7 @@ var networkStats = function(basket,next){
 }
 
 var availableCapacity = function(basket,next){
-  basket.availableCapacity = (
-    (basket.cpuUsed) +
-    (2 * (100 * (basket.diskFree / basket.diskTotal)))
-  ) / 3
+  basket.availableCapacity = 100 * (basket.diskFree / basket.diskTotal)
   //issue #32 avail comes back infinity (this is a safeguard)
   if('Infinity' === basket.availableCapacity) basket.availableCapacity = 100
   next(null,basket)
