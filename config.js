@@ -62,7 +62,7 @@ config.load({
   },
   shredder: {
     enabled: false,
-    concurrency: 1
+    concurrency: os.cpus().length || 1
   },
   hideout: {
     enabled: false,
