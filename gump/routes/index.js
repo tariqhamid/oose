@@ -132,14 +132,10 @@ exports.upload = function(req,res){
           ],
           encoding: [
             {
-              template: 'mp4-standard-480p',
-              parameters: {
-                title: 'Foo',
-                test: 'blah'
-              }
+              template: 'mp4-standard-480p'
             }
           ],
-          save: ['mp4-standard-480p']
+          save: ['mp4-standard-480p-preview','mp4-standard-480p']
         }
       },
       function(err,res,body){
@@ -422,10 +418,10 @@ exports.shredderUpdate = function(req,res){
               doc.title = file.name
               doc.keywords = file.name.split(' ').join(',')
               doc.template = 'standard'
-              if(file.shredder.resources.thumbnail){
+              if(file.shredder.resources['mp4-standard-480p-preview']){
                 doc.media.image.push({
-                  offset: 30,
-                  sha1: file.shredder.resources.thumbnail
+                  offset: null,
+                  sha1: file.shredder.resources['mp4-standard-480p-preview']
                 })
               }
               if(file.shredder.resources['mp4-standard-480p']){

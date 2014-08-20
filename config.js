@@ -61,7 +61,8 @@ config.load({
     }
   },
   shredder: {
-    enabled: false
+    enabled: false,
+    concurrency: 1
   },
   hideout: {
     enabled: false,

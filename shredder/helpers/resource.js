@@ -8,7 +8,7 @@ var fs = require('fs')
 var path = require('path')
 var config = require('../../config')
 var peer = require('../../helpers/peer')
-var tmpDir = path.resolve(config.get('shredder.root') + '/tmp')
+var tmpDir = path.resolve(config.get('root') + '/shredder/tmp')
 var resourceExp = /\{([^}]+)\}/ig
 
 

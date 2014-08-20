@@ -101,6 +101,15 @@ app.get('/:sha1/:filename',function(req,res){
         ffmpeg.writeToStream(sniff,{end: true})
         return
       }
+      //validate range for sanity
+      if(range.end < range.start) range.end = range.start
+      //if the file is 0 length just end now
+      if(0 === range.start && 0 === range.end){
+        res.status(200)
+        res.set('Content-Length',0)
+        res.end()
+        return
+      }
       //set content length here
       res.set('Content-Length',(range.end - range.start) + 1)
       //setup read stream from the file

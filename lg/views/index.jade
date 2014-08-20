@@ -25,7 +25,7 @@ block content
 
         if peers.length
           each peer in peers
-            - peer.availableCapacity = parseInt(peer.availableCapacity,10)
+            - peer.availableCapacity = parseFloat(peer.availableCapacity,10)
             - peer.cpuUsed = parseInt(peer.cpuUsed,10)
             - peer.cpuCount = parseInt(peer.cpuCount,10)
             - peer.diskFree = parseInt(peer.diskFree,10)

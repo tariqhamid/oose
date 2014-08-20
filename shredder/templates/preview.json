@@ -1,0 +1,34 @@
+{
+  "jobs": [
+    {
+      "position": "10",
+      "driver": "ffmpeg",
+      "args": [
+        {
+          "key": "-v",
+          "value": "error"
+        },
+        {
+          "key": "-i",
+          "value": "{mp4-standard-480p}"
+        },
+        {
+          "key": "-ss",
+          "value": "00:00:30"
+        },
+        {
+          "key": "-f",
+          "value": "image2"
+        },
+        {
+          "key": "-vframes",
+          "value": "1"
+        },
+        {
+          "key": "-y",
+          "value": "{mp4-standard-480p-preview}"
+        }
+      ]
+    }
+  ]
+}

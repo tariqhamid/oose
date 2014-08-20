@@ -10,16 +10,17 @@ var crypto = require('crypto')
  * @param {function} next
  */
 exports.next = function(next){
-  var peerNext
+  var peer, winner
   redis.hgetall('peer:next',function(err,results){
     if(err) return next(err)
     if(!results) return next('could not find next peer')
     for(var i in results){
       if(!results.hasOwnProperty(i)) continue
-      peerNext = JSON.parse(results[i])
-      break
+      peer = JSON.parse(results[i])
+      if(!winner || peer.availableCapacity > winner.availableCapacity)
+        winner = peer
     }
-    next(null,peerNext)
+    next(null,winner)
   })
 }
 

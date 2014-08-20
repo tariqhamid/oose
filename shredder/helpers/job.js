@@ -8,7 +8,7 @@ var Parameter = require('./parameter')
 var Logger = require('../../helpers/logger')
 var drivers = require('../drivers')
 var crypto = require('crypto')
-var config = require('../../config')
+//var config = require('../../config')
 var hideout = require('../../helpers/hideout')
 
 
@@ -33,7 +33,8 @@ var loadTemplate = function(job,input){
     return obj
   }
   //since we have an existing template lets grab it
-  obj.load(JSON.parse(fs.readFileSync(file)))
+  var content = fs.readFileSync(file)
+  obj.load(JSON.parse(content))
   //load our input over it again for overrides
   obj.load(input)
   return obj
@@ -80,6 +81,29 @@ var generateSignature = function(job){
   shasum.update(JSON.stringify(fingerprint))
   //the resulting digest will be our signature
   return shasum.digest('hex')
+}
+
+
+/**
+ * Throttle helper for sending updates
+ * @param {number} rate
+ * @param {Date} pointer
+ * @param {string} status
+ * @return {boolean}
+ */
+var throttleUpdate = function(rate,pointer,status){
+  if(!pointer) pointer = 0
+  var now = new Date().valueOf()
+  //make sure pointer is a number
+  if(pointer instanceof Date) pointer = pointer.valueOf()
+  //make sure rate is a number
+  rate = parseInt(rate,10)
+  //figure out the next available send date
+  var nextSend = pointer + rate
+  //throttle messages provided its not a status change message
+  if(status.match(/error|complete/)) return true
+  if(!rate) return true
+  return (now >= nextSend)
 }
 
 
@@ -144,14 +168,7 @@ Job.prototype.update = function(changes,done){
     callback,
     function(item,next){
       var i = callback.indexOf(item)
-      //throttle messages provided its not a status change message
-      if(
-        that.metrics.get('status').match(/error|complete/) ||
-        (
-          item.throttle &&
-          +new Date() >= (that.callbackThrottle[i] + item.throttle)
-        )
-      ){
+      if(throttleUpdate(item.throttle,that.callbackThrottle[i],that.metrics.get('status'))){
         that.callbackThrottle[i] = new Date()
         that.runDriver('callback',new Parameter(),item,next)
       } else {

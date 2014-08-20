@@ -13,10 +13,6 @@
           "value": "{video}"
         },
         {
-          "key": "-metadata",
-          "value": "title=#{title}"
-        },
-        {
           "key": "-s",
           "value": "hd720"
         },
@@ -25,20 +21,12 @@
           "value": "libx264"
         },
         {
-          "key": "-tune",
-          "value": "animation"
-        },
-        {
-          "key": "-movflags",
-          "value": "+faststart"
-        },
-        {
           "key": "-pix_fmt",
           "value": "yuv420p"
         },
         {
           "key": "-crf",
-          "value": "23"
+          "value": "24"
         },
         {
           "key": "-acodec",
@@ -77,6 +65,36 @@
         {
           "key": "-out",
           "value": "{mp4-standard-480p}"
+        }
+      ]
+    },
+    {
+      "position": "30",
+      "driver": "ffmpeg",
+      "args": [
+        {
+          "key": "-v",
+          "value": "error"
+        },
+        {
+          "key": "-i",
+          "value": "{mp4-standard-480p}"
+        },
+        {
+          "key": "-ss",
+          "value": "00:00:30"
+        },
+        {
+          "key": "-f",
+          "value": "image2"
+        },
+        {
+          "key": "-vframes",
+          "value": "1"
+        },
+        {
+          "key": "-y",
+          "value": "{mp4-standard-480p-preview}"
         }
       ]
     }
