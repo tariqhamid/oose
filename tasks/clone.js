@@ -54,7 +54,7 @@ var clone = function(job,cb){
           var bytesPerSec = prettyBytes((bytesSent || 0 / duration || 1) || 0) + '/sec'
           logger.info(
               'Finished replicating ' + job.sha1 +
-              ' to ' + peer.hostname + '.' + peer.domain +
+              ' to ' + winner.hostname + '.' + winner.domain +
               ' in ' + duration + ' seconds ' +
               'averaging ' + bytesPerSec)
           next()
