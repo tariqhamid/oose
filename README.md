@@ -297,7 +297,34 @@ Shredder exposes itself through an HTTP JSONP API.
         {key: '-T', value: 'token'},
         {key: '-t', value: 'localhost'}
       ]
-    }
+    },
+    //maybe we need to send a chain of requests to setup cookies
+    {
+      name: 'protectedvideo',
+      driver: 'http',
+      //the special chain parameter takes an array of requests that are fired in order
+      //the last request is assumed to be the request that delivers the resource
+      //NOTE: when using chain, cookies are enabled and the jar is available to all the members of the chain
+      chain: [
+        //login to the system
+        {
+          method: 'post',
+          url: 'http://foo/login',
+          form: {
+            username: 'foo',
+            password: 'bar'
+          }
+        },
+        //make an intermediate request
+        {
+          url: 'http://foo/page2'
+        },
+        //make the final request (this will save the result to the 'protectedvideo' resource
+        {
+          url: 'http://foo/video'
+        }
+      ]
+    } 
   ],
   //options that are used to control the encoding
   encoding: {
