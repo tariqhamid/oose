@@ -7,9 +7,16 @@ var crypto = require('crypto')
 
 /**
  * Select next peer
+ * @param {string|array} skip List of hostnames to skip
  * @param {function} next
  */
-exports.next = function(next){
+exports.next = function(skip,next){
+  //be backwards compatible without a skip option
+  if('function' === typeof skip){
+    next = skip
+    skip = []
+  }
+  if(!(skip instanceof Array)) skip = [skip]
   var peer, winner
   redis.hgetall('peer:next',function(err,results){
     if(err) return next(err)
@@ -17,6 +24,8 @@ exports.next = function(next){
     for(var i in results){
       if(!results.hasOwnProperty(i)) continue
       peer = JSON.parse(results[i])
+      //skip any hostnames we dont want
+      if(skip.indexOf(peer.hostname) >= 0) continue
       if(!winner || peer.availableCapacity > winner.availableCapacity)
         winner = peer
     }
