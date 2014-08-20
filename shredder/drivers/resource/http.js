@@ -34,13 +34,11 @@ exports.description = 'Offers ability to use http as a resource retrieval method
  * @param {function} done
  */
 exports.run = function(job,parameter,options,done){
-  job.logger.info('Request options',options.get())
   job.logger.info('Retrieving resource from ' + options.get('url'))
   job.resource.create(options.get('name'),function(err,info){
     if(err) return done(err)
-    if(!options.exists('url')) return done('No URL for retrieval of ' + (options.get('name') || 'no name'))
+    if(!options.get('url') && !options.get('uri')) return done('No URL for retrieval of ' + (options.get('name') || 'no name'))
     job.logger.info('Request options',options.get())
-    if(!options.exists('uri') && !options.exists('url')) return done('No URL provided')
     var req = request.get(options.get())
     req.on('error',function(err){
       done(err)
