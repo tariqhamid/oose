@@ -162,6 +162,7 @@ Job.prototype.update = function(changes,force,done){
     done = force
     force = false
   }
+  if('undefined' === typeof force) force = false
   var that = this
   //apply changes
   that.metrics.load(changes)
