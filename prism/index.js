@@ -144,7 +144,7 @@ app.get('/:sha1/:filename',function(req,res){
       function(next){
         for(var hostname in peers){
           if(peers.hasOwnProperty(hostname)){
-            if(!winner || peers[hostname].availableCapacity < winner.availableCapacity){
+            if(!winner || peers[hostname].availableCapacity > winner.availableCapacity){
               winner = peers[hostname]
             }
           }
