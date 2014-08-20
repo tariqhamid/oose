@@ -1,5 +1,6 @@
 'use strict';
 var request = require('request')
+var prettyBytes = require('pretty-bytes')
 var Sniffer = require('../../../helpers/Sniffer')
 var crypto = require('crypto')
 var fs = require('fs')
@@ -48,8 +49,9 @@ exports.run = function(job,parameter,options,done){
       var frames = {
         description: 'HTTP Resource Driver, downloading ' + options.get('url'),
         complete: 0,
-        total: res.headers['content-length'] || 1
+        total: parseInt(res.headers['content-length'],10) || 0
       }
+      var start = new Date()
       var shasum = crypto.createHash('sha1')
       var sniff = new Sniffer()
       sniff.on('data',function(data){
@@ -66,7 +68,14 @@ exports.run = function(job,parameter,options,done){
       })
       res.on('data',function(data){
         frames.complete += data.length
-        if(frames.complete > frames.total) frames.total = frames.compelte
+        if(frames.complete > frames.total) frames.total = frames.complete
+        job.logger.info(
+          job.handle + ' resource [' + options.get('name') + '] ' +
+          prettyBytes(frames.complete || 0) + ' / ' +
+          prettyBytes(frames.total || 0) + ' ' +
+          ((frames.complete / frames.total) * 100).toFixed(2) + '% [' +
+          prettyBytes((frames.complete / ((new Date().valueOf() - start.valueOf()) / 1000))) + 'ps]'
+        )
         job.update({frames: frames})
       })
       res.pipe(sniff).pipe(tmp)

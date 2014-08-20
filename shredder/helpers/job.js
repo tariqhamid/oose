@@ -116,6 +116,7 @@ var throttleUpdate = function(rate,pointer,status){
  */
 var Job = function(handle,description){
   this.logger = Logger.create('shredder:job:' + handle)
+  this.handle = handle
   this.resource = new Resource()
   this.description = new ObjectManage()
   this.description.load(JSON.parse(description))
