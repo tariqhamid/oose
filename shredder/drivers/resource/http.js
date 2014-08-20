@@ -37,7 +37,8 @@ exports.run = function(job,parameter,options,done){
   job.logger.info('Retrieving resource from ' + options.get('url'))
   job.resource.create(options.get('name'),function(err,info){
     if(err) return done(err)
-    if(!options.get('url') && !options.get('uri')) return done('No URL for retrieval of ' + (options.get('name') || 'no name'))
+    if(!options.get('url') && !options.get('uri'))
+      return done('No URL for retrieval of ' + (options.get('name') || 'no name'))
     job.logger.info('Request options',options.get())
     var req = request.get(options.get())
     req.on('error',function(err){
