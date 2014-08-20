@@ -59,6 +59,9 @@ exports.run = function(job,parameter,options,done){
         job.logger.info('Successfully retrieved resource from ' + options.get('url') + ' and saved to ' + info.path)
         done()
       })
+      res.on('error',function(err){
+        done(err)
+      })
       res.on('data',function(data){
         frames.complete += data.length
         if(frames.complete > frames.total) frames.total = frames.compelte
