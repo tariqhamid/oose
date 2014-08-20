@@ -201,7 +201,11 @@ Job.prototype.runDriver = function(category,parameter,options,done){
       //check to see if the driver exists
       if(!drivers[category][options.get('driver')]) return next('Driver ' + options.get('driver') + ' doesnt exist')
       //run the driver
-      drivers[category][options.get('driver')].run(that,parameter,options,next)
+      drivers[category][options.get('driver')].run(that,parameter,options,function(err){
+        if(err && !options.get('optional')) return next(err)
+        that.logger.warning(err)
+        next()
+      })
     },
     done
   )

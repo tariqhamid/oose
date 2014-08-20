@@ -87,11 +87,11 @@ exports.run = function(job,parameter,options,done){
         if(frames.complete > frames.total) frames.total = frames.complete
         if(progress.show(frames)){
           job.logger.info(
-              job.handle + ' resource [' + options.get('name') + '] ' +
-              prettyBytes(frames.complete || 0) + ' / ' +
-              prettyBytes(frames.total || 0) + ' ' +
-              ((frames.complete / frames.total) * 100).toFixed(2) + '% [' +
-              prettyBytes((frames.complete / ((new Date().valueOf() - start.valueOf()) / 1000))) + 'ps]'
+            'Downloading resource [' + options.get('name') + '] ' +
+            prettyBytes(frames.complete || 0) + ' / ' +
+            prettyBytes(frames.total || 0) + ' ' +
+            ((frames.complete / frames.total) * 100).toFixed(2) + '% [' +
+            prettyBytes((frames.complete / ((new Date().valueOf() - start.valueOf()) / 1000))) + 'ps]'
           )
         }
         job.update({frames: frames})
