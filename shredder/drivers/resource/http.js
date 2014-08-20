@@ -94,7 +94,7 @@ exports.run = function(job,parameter,options,done){
             prettyBytes((frames.complete / ((new Date().valueOf() - start.valueOf()) / 1000))) + 'ps]'
           )
         }
-        job.update({frames: frames})
+        job.update({frames: frames},(frames.total === frames.complete))
       })
       res.pipe(sniff).pipe(tmp)
     })

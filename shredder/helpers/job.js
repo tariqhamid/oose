@@ -153,10 +153,15 @@ Job.prototype.defaultMetrics = {
 /**
  * Send job update to the registered callback
  * @param {object} changes
+ * @param {boolean} force
  * @param {function} done
  * @return {*}
  */
-Job.prototype.update = function(changes,done){
+Job.prototype.update = function(changes,force,done){
+  if('function' === typeof force){
+    done = force
+    force = false
+  }
   var that = this
   //apply changes
   that.metrics.load(changes)
@@ -169,7 +174,7 @@ Job.prototype.update = function(changes,done){
     callback,
     function(item,next){
       var i = callback.indexOf(item)
-      if(throttleUpdate(item.throttle,that.callbackThrottle[i],that.metrics.get('status'))){
+      if(force || throttleUpdate(item.throttle,that.callbackThrottle[i],that.metrics.get('status'))){
         that.callbackThrottle[i] = new Date()
         that.runDriver('callback',new Parameter(),item,next)
       } else {
