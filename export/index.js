@@ -91,10 +91,9 @@ app.get('/:sha1/:filename',function(req,res){
       sniff.on('data',function(data){
         redis.hincrby('inventory:' + sha1,'sent',data.length)
       })
-      //setup sniffer to write to res
-      sniff.pipe(res)
       //start param support
-      if(req.query.start && 'video/mp4' === info.mimeType){
+      //if(req.query.start && 'video/mp4' === info.mimeType){
+      if(false){
         var ffmpeg = new FFmpeg({source: path})
         ffmpeg.setStartTime(req.query.start)
         //tell ffmpeg to write to our sniffer
@@ -105,6 +104,7 @@ app.get('/:sha1/:filename',function(req,res){
       if(range.end < range.start) range.end = range.start
       //if the file is 0 length just end now
       if(0 === range.start && 0 === range.end){
+      //if(false){
         res.status(200)
         res.set('Content-Length',0)
         res.end()
@@ -114,7 +114,7 @@ app.get('/:sha1/:filename',function(req,res){
       res.set('Content-Length',(range.end - range.start) + 1)
       //setup read stream from the file
       var rs = fs.createReadStream(path,range)
-      rs.pipe(sniff)
+      rs.pipe(sniff).pipe(res)
     }
   )
 })
