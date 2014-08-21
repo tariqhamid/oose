@@ -129,6 +129,7 @@ exports.upload = function(req,res){
             {
               name: 'video',
               driver: 'http',
+              sha1: file.sha1,
               url: gumpBaseUrl() + '/tmp/' + Path.basename(file.tmp)
             }
           ],
@@ -215,20 +216,47 @@ exports.upload = function(req,res){
           function(next){
             var currentPath = path.slice(0)
             currentPath.push(file.filename)
-            doc = new File()
-            doc.name = file.filename
-            doc.tmp = file.tmp
-            doc.sha1 = file.sha1
-            doc.size = file.size
-            doc.path = currentPath
-            doc.mimetype = file.mimetype
-            if(file.importJob){
-              doc.shredder.handle = file.importJob
-              doc.status = 'processing'
-            } else {
-              doc.status = 'ok'
-            }
-            next()
+            //lets figure out if the path is already taken
+            var nameIterator = 0
+            var pathCount = 0
+            async.doUntil(
+              function(next){
+                File.count({path: File.encode(currentPath)},function(err,count){
+                  if(err) return next(err)
+                  pathCount = count
+                  next()
+                })
+              },
+              function(){
+                if(0 === pathCount) return true
+                nameIterator++
+                currentPath.pop()
+                var ext = Path.extname(file.filename)
+                var basename = Path.basename(file.filename,ext)
+                if(basename.match(/\(\d+\)$/)) basename = basename.replace(/\(\d+\)$/,'(' + nameIterator + ')')
+                else basename += ' (' + nameIterator + ')'
+                file.filename = basename + ext
+                currentPath.push(file.filename)
+                return false
+              },
+              function(err){
+                if(err) return next(err)
+                doc = new File()
+                doc.name = file.filename
+                doc.tmp = file.tmp
+                doc.sha1 = file.sha1
+                doc.size = file.size
+                doc.path = currentPath
+                doc.mimetype = file.mimetype
+                if(file.importJob){
+                  doc.shredder.handle = file.importJob
+                  doc.status = 'processing'
+                } else {
+                  doc.status = 'ok'
+                }
+                next()
+              }
+            )
           },
           //save doc
           function(next){
