@@ -15,7 +15,9 @@ var fs = require('fs')
  * @return {string}
  */
 var progressMessage = function(opts,progress,frames){
-  var bps = prettyBytes((frames.complete || 1 / ((new Date().valueOf() - progress.start.valueOf() || 1) / 1000)))
+  var bps = prettyBytes((
+    (frames.complete || 1) / ((new Date().valueOf() - (progress.start.valueOf() || 1)) / 1000)
+  ))
   return 'Downloading resource [' + opts.name + '] ' +
     prettyBytes(frames.complete || 0) + ' / ' +
     prettyBytes(frames.total || 0) + ' ' +
