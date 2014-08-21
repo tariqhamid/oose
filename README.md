@@ -326,7 +326,26 @@ Shredder exposes itself through an HTTP JSONP API.
           url: 'http://foo/video'
         }
       ]
-    } 
+    },
+    //it may also be useful to use the chain to extract data from intermediate pages
+    {
+      driver: 'http',
+      name: 'protected-video-with-regexp',
+      chain: [
+        //first make the request to extract content
+        {
+          url: 'http://foo/embed',
+          parse: {
+            //notice here that 'file' is the name of the parameter the result will be assigned too
+            file: '(\w+)' //any regular expression is valid but must only return one selection
+          }
+        },
+        //second we use the content we extracted
+        {
+          url: '#{file}'
+        }
+      ]
+    }
   ],
   //options that are used to control the encoding
   encoding: {

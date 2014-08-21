@@ -2,6 +2,7 @@
 var request = require('request')
 var async = require('async')
 var prettyBytes = require('pretty-bytes')
+var url = require('url')
 var Sniffer = require('../../../helpers/Sniffer')
 var crypto = require('crypto')
 var fs = require('fs')
@@ -69,6 +70,11 @@ var executeRequest = function(job,req,done){
   }
   //set the method to get if not set
   if(!opts.method) opts.method = 'get'
+  //try to render the url with any parameters
+  opts.url = req.parameter.render(opts.url)
+  //parse the url, need to make sure its valid, so we can fail gracefully if not
+  var parsedUrl = url.parse(opts.url)
+  if(!parsedUrl.protocol || !parsedUrl.host || !parsedUrl.path) return done('Invalid URL passed: ' + opts.url)
   //start the request
   job.logger.info('Retrieving resource ',opts)
   //add the cookie jar
@@ -112,8 +118,30 @@ var executeRequest = function(job,req,done){
       })
       res.pipe(sniff).pipe(tmp)
     } else {
-      //if no resource is passed ignore the output
-      res.on('end',function(){done()})
+      //if there is a parse argument lets buffer the data and parse it
+      if(opts.parse){
+        var buffer = ''
+        //we must switch to string mode to be able to parse output
+        res.setEncoding('utf-8')
+        res.on('data',function(data){
+          buffer += data
+        })
+        //parse the data using the provided regex and store the params
+        res.on('end',function(){
+          var exp, match
+          for(var i in opts.parse){
+            if(!opts.parse.hasOwnProperty(i)) continue
+            exp = new RegExp(opts.parse[i],'i')
+            match = exp.exec(buffer)
+            if(match && match[1]) req.parameter.set(i,match[1])
+          }
+          done()
+        })
+      }
+      //if no resource is passed and no parse args defined, ignore the output
+      else {
+        res.on('end',function(){done()})
+      }
     }
   })
 }
@@ -167,6 +195,7 @@ exports.run = function(job,parameter,options,done){
         var req = {
           resource: null,
           jar: jar,
+          parameter: parameter,
           opts: opts
         }
         executeRequest(job,req,function(err){
@@ -183,6 +212,7 @@ exports.run = function(job,parameter,options,done){
         var req = {
           resource: resource,
           jar: jar,
+          parameter: parameter,
           opts: final
         }
         executeRequest(job,req,done)
