@@ -7,6 +7,7 @@ var temp = require('temp')
   , net = require('net')
   , crypto = require('crypto')
   , request = require('request')
+  , Path = require('path')
   , Sniffer = require('../../helpers/Sniffer')
   , Logger = require('../../helpers/logger')
   , Q = require('q')
@@ -127,7 +128,7 @@ exports.upload = function(req,res){
             {
               name: 'video',
               driver: 'http',
-              url: gumpBaseUrl() + '/tmp/' + require('path').basename(file.tmp)
+              url: gumpBaseUrl() + '/tmp/' + Path.basename(file.tmp)
             }
           ],
           encoding: [

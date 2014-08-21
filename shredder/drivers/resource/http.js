@@ -8,71 +8,112 @@ var fs = require('fs')
 
 
 /**
- * Execute a request
+ * Show the progress message
  * @param {object} opts
- * @param {function} next
+ * @param {object} progress
+ * @param {object} frames
+ * @return {string}
  */
-var executeRequest = function(opts,next){
-  if(!options.get('url') && !options.get('uri'))
-    return done('No URL for retrieval of ' + (options.get('name') || 'no name'))
-  if(!options.get('method')) options.set('method','get')
-  job.logger.info('Retrieving resource ',options.get())
-  var req = request(options.get())
-  req.on('error',function(err){
-    done(err)
-  })
-  req.on('response',function(res){
+var progressMessage = function(opts,progress,frames){
+  var bps = prettyBytes((frames.complete || 1 / ((new Date().valueOf() - progress.start.valueOf() || 1) / 1000)))
+  return 'Downloading resource [' + opts.name + '] ' +
+    prettyBytes(frames.complete || 0) + ' / ' +
+    prettyBytes(frames.total || 0) + ' ' +
+    ((frames.complete / frames.total) * 100).toFixed(2) + '% [' +
+    bps + 'ps]'
+}
+
+
+/**
+ * Decide throttling of the progress messages
+ * @param {object} progress
+ * @param {object} frames
+ * @return {boolean}
+ */
+var progressThrottle = function(progress,frames){
+  var show = false
+  var now = new Date().valueOf()
+  var lastUpdate = progress.lastUpdate
+  if(lastUpdate instanceof Date) lastUpdate = progress.lastUpdate.valueOf()
+  if(frames.total === frames.complete) show = true
+  if(!lastUpdate) show = true
+  if(now > lastUpdate + progress.rate) show = true
+  if(show){
+    progress.lastUpdate = new Date()
+    return true
+  }
+  return false
+}
+
+
+/**
+ * Execute a request
+ * @param {Job} job
+ * @param {req} req
+ * @param {function} done
+ * @return {*}
+ */
+var executeRequest = function(job,req,done){
+  var opts = req.opts || {}
+  var resource = req.resource || null
+  var jar = req.jar || request.jar()
+  //make sure a url was provided
+  if(!opts.url && !opts.uri)
+    return done('No URL for retrieval of ' + (opts.name || 'no name'))
+  //if a uri was sent, copy it to url and remove it
+  if(opts.uri && !opts.url){
+    opts.url = opts.uri
+    delete opts.uri
+  }
+  //set the method to get if not set
+  if(!opts.method) opts.method = 'get'
+  //start the request
+  job.logger.info('Retrieving resource ',opts)
+  //add the cookie jar
+  opts.jar = jar
+  //make the request
+  var client = request(opts)
+  client.on('error',function(err){done(err)})
+  client.on('response',function(res){
+    //setup metrics
     var frames = {
-      description: 'HTTP Resource Driver, downloading ' + options.get('url'),
+      description: 'HTTP Resource Driver, downloading ' + opts.url,
       complete: 0,
       total: parseInt(res.headers['content-length'],10) || 0
     }
-    var start = new Date()
     var progress = {
+      start: new Date(),
       lastUpdate: 0,
-      rate: 1000,
-      show: function(frames){
-        var show = false
-        var now = new Date().valueOf()
-        if(frames.total === frames.complete) show = true
-        if(!this.lastUpdate) show = true
-        if(now > this.lastUpdate + this.rate) show = true
-        if(show){
-          this.lastUpdate = new Date().valueOf()
-          return true
-        }
-        return false
-      }
+      rate: 1000
     }
-    var shasum = crypto.createHash('sha1')
-    var sniff = new Sniffer()
-    sniff.on('data',function(data){
-      shasum.update(data)
-    })
-    var tmp = fs.createWriteStream(info.path)
-    tmp.on('finish',function(){
-      job.resource.load(options.get('name'),{sha1: shasum.digest('hex')})
-      job.logger.info('Successfully retrieved resource from ' + options.get('url') + ' and saved to ' + info.path)
-      done()
-    })
-    res.on('error',function(err){
-      done(err)
-    })
+    //setup error and progress handling
+    res.on('error',function(err){done(err)})
     res.on('data',function(data){
       frames.complete += data.length
       if(frames.complete > frames.total) frames.total = frames.complete
-      if(progress.show(frames)){
-        job.logger.info(
-            'Downloading resource [' + options.get('name') + '] ' +
-            prettyBytes(frames.complete || 0) + ' / ' +
-            prettyBytes(frames.total || 0) + ' ' +
-            ((frames.complete / frames.total) * 100).toFixed(2) + '% [' +
-            prettyBytes((frames.complete / ((new Date().valueOf() - start.valueOf()) / 1000))) + 'ps]'
-        )
-      }
+      //show progress message if we can
+      if(progressThrottle(progress,frames))
+        job.logger.info(progressMessage(opts,progress,frames))
+      //send a job update about our progress (force it on the last frame)
       job.update({frames: frames},(frames.total === frames.complete))
     })
-    res.pipe(sniff).pipe(tmp)
+    //decide what to do with the output
+    if(resource){
+      var shasum = crypto.createHash('sha1')
+      var sniff = new Sniffer()
+      sniff.on('data',function(data){shasum.update(data)})
+      var tmp = fs.createWriteStream(resource.path)
+      tmp.on('finish',function(){
+        job.resource.load(opts.name,{sha1: shasum.digest('hex')})
+        job.logger.info('Successfully retrieved resource from ' + opts.url + ' and saved to ' + resource.path)
+        done()
+      })
+      res.pipe(sniff).pipe(tmp)
+    } else {
+      //if no resource is passed ignore the output
+      res.on('end',function(){done()})
+    }
+  })
 }
 
 
@@ -105,19 +146,45 @@ exports.description = 'Offers ability to use http as a resource retrieval method
  * @param {function} done
  */
 exports.run = function(job,parameter,options,done){
-  job.resource.create(options.get('name'),function(err,info){
+  job.resource.create(options.get('name'),function(err,resource){
     if(err) return done(err)
     var chain = []
     //if we dont have a chain lets make one out of the single request
-    if(!options.get('chain')) chain.push[options.get()]
+    if(!options.get('chain')) chain.push(options.get())
     else chain = options.get('chain')
+    //pop the last request off the chain and save it for the end
+    var final = chain.pop()
+    var jar = request.jar()
     //loop through the chain
     async.eachSeries(
       chain,
+      //execute each member of the chain and gracefully handle errors
       function(opts,next){
-
+        //setup the request and dont provide a resource, since these are intermediate requests
+        opts.name = options.get('name')
+        var req = {
+          resource: null,
+          jar: jar,
+          opts: opts
+        }
+        executeRequest(job,req,function(err){
+          if(err && !opts.optional) return next(err)
+          if(err && opts.optional) job.logger.warning('Failed resource request: ' + err)
+          next()
+        })
       },
-      done
+      //execute the final request if there were no errors
+      function(err){
+        if(err) return done(err)
+        //setup for the final request (provide the resource)
+        final.name = options.get('name')
+        var req = {
+          resource: resource,
+          jar: jar,
+          opts: final
+        }
+        executeRequest(job,req,done)
+      }
     )
   })
 }

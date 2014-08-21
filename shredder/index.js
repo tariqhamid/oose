@@ -43,7 +43,7 @@ var jobCacheCheck = function(job,next,done){
         total: 1
       },
       resources: result
-    })
+    },true)
     done()
   })
 }
@@ -71,7 +71,7 @@ var runJob = function(job,done){
             complete: 0,
             total: 3
           }
-        })
+        },true)
         job.obtainResources(next)
       },
       //now that we have resources check the cache again
@@ -91,7 +91,7 @@ var runJob = function(job,done){
             complete: 0,
             total: 1
           }
-        })
+        },true)
         job.encode(next)
       },
       //step 4: save any resources after processing has finished
@@ -107,12 +107,12 @@ var runJob = function(job,done){
             complete: 0,
             total: 1
           }
-        })
+        },true)
         job.save(function(err,result){
           if(err) return next(err)
           job.update({
             resources: result
-          })
+          },true)
           next()
         })
       },
@@ -131,7 +131,7 @@ var runJob = function(job,done){
         job.update({
           status: 'error',
           message: err
-        })
+        },true)
         return done()
       }
       job.update({
@@ -141,7 +141,7 @@ var runJob = function(job,done){
           complete: 3,
           total: 3
         }
-      })
+      },true)
       done()
     }
   )

@@ -54,7 +54,8 @@
     "restler": "^3.2.2",
     "shortid": "^2.0.0",
     "ssh2": "^0.3.4",
-    "temp": "^0.7.0"
+    "temp": "^0.7.0",
+    "tough-cookie": "^0.12.1"
   },
   "scripts": {
     "start": "node app"

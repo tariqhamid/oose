@@ -88,10 +88,9 @@ var generateSignature = function(job){
  * Throttle helper for sending updates
  * @param {number} rate
  * @param {Date} pointer
- * @param {string} status
  * @return {boolean}
  */
-var throttleUpdate = function(rate,pointer,status){
+var throttleUpdate = function(rate,pointer){
   if(!pointer) pointer = 0
   var now = new Date().valueOf()
   //make sure pointer is a number
@@ -101,7 +100,6 @@ var throttleUpdate = function(rate,pointer,status){
   //figure out the next available send date
   var nextSend = pointer + rate
   //throttle messages provided its not a status change message
-  if(status.match(/error|complete/)) return true
   if(!rate) return true
   return (now >= nextSend)
 }
