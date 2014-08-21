@@ -108,6 +108,7 @@ exports.upload = function(req,res){
     return 'http://' + (config.get('gump.prism.host') || '127.0.0.1') + ':' + config.get('gump.prism.port') || 3003
   }
   var gumpBaseUrl = function(){
+    if(config.get('gump.baseUrl')) return config.get('gump.baseUrl')
     return 'http://' + (config.get('gump.host') || '127.0.0.1') + ':' + (config.get('gump.port') || 3004)
   }
   //import functions
