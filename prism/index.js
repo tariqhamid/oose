@@ -6,6 +6,7 @@ var express = require('express')
   , redis = require('../helpers/redis')
   , async = require('async')
   , peer = require('../helpers/peer')
+  , random = require('random-js')
 var commUtil = require('../helpers/communicator').util
 
 var running = false
@@ -68,6 +69,7 @@ var buildCache = function(sha1,done){
  * @return {string}
  */
 var buildDestination = function(req,winner){
+  if(!winner) winner = {hostname: 's1.oose.io', portExport: '80'}
   var destination = req.protocol + '://' + winner.hostname
   if(config.get('domain')){
     destination += '.' + config.get('domain')
@@ -144,11 +146,14 @@ app.get('/:sha1/:filename',function(req,res){
       function(next){
         for(var hostname in peers){
           if(peers.hasOwnProperty(hostname)){
-            if(!winner || peers[hostname].availableCapacity > winner.availableCapacity){
+            //if(!winner || peers[hostname].availableCapacity > winner.availableCapacity){
+            if(random.integer(0,1)){
               winner = peers[hostname]
+              break
             }
           }
         }
+        if(!winner) winner = peers[hostname]
         next()
       }
     ],
