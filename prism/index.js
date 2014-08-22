@@ -1,11 +1,12 @@
 'use strict';
 var express = require('express')
-  , app = express()
-  , server = require('http').createServer(app)
-  , config = require('../config')
-  , redis = require('../helpers/redis')
-  , async = require('async')
-  , peer = require('../helpers/peer')
+var app = express()
+var server = require('http').createServer(app)
+var config = require('../config')
+var redis = require('../helpers/redis')
+var async = require('async')
+var peer = require('../helpers/peer')
+var logger = require('../helpers/logger').create('prism')
 var commUtil = require('../helpers/communicator').util
 
 var running = false
@@ -153,7 +154,10 @@ app.get('/:sha1/:filename',function(req,res){
       //pick a winner
       function(next){
         peers.forEach(function(peer){
-          if(!winner || peer.hits < winner.hits) winner = peer
+          if(!winner || peer.hits < winner.hits){
+            logger.info('Selecting ' + peer.hostname + ' as winner for ' + sha1 + ' with ' + peer.hits + ' hits')
+            winner = peer
+          }
         })
         if(!winner) return next('Could not select peer')
         next()

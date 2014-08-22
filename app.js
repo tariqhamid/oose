@@ -43,11 +43,39 @@ if(cluster.isMaster){
   //make sure the root folder exists
   if(!fs.existsSync(config.get('root')))
     mkdirp.sync(config.get('root'))
-  //flush redis before startup
-  redis.flushdb()
   //start booting
   async.series(
     [
+      //cleanup redis
+      function(next){
+        var removed = 0
+        var removeKeys = function(pattern,next){
+          redis.keys(pattern,function(err,keys){
+            async.each(
+              keys,
+              function(key,next){
+                redis.del(key,function(err,count){removed += count; next(err)})
+              },
+              next
+            )
+          })
+        }
+        async.series([
+          function(next){removeKeys('peer:db:*',next)},
+          function(next){removeKeys('peer:ip',next)},
+          function(next){removeKeys('peer:rank',next)},
+          function(next){removeKeys('peer:next',next)},
+          function(next){removeKeys('peer:prism',next)},
+          function(next){removeKeys('peer:store',next)},
+          function(next){removeKeys('prism:*',next)},
+          function(next){removeKeys('inventory',next)},
+          function(next){removeKeys('inventory:*',next)}
+        ],function(err){
+          if(err) return next(err)
+          logger.info('Cleared ' + removed + ' keys from redis')
+          next()
+        })
+      },
       //start mesh
       function(next){
         if(config.get('mesh.enabled')){
