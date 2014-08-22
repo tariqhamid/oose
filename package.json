@@ -41,6 +41,7 @@
     "ip": "0.3.x",
     "jade": "1.5.x",
     "markdown": "0.5.x",
+    "method-override": "2.1.x",
     "mkdirp": "0.5.x",
     "mmmagic": "0.3.x",
     "moment": "2.8.x",

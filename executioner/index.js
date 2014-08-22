@@ -3,6 +3,7 @@ var bodyParser = require('body-parser')
 var cookieParser = require('cookie-parser')
 var flash = require('connect-flash')
 var fs = require('graceful-fs')
+var methodOverride = require('method-override')
 var session = require('express-session')
 
 var express = require('express')
@@ -54,6 +55,7 @@ app.set('views',__dirname + '/' + 'views')
 app.set('view engine','jade')
 app.use(bodyParser.urlencoded({extended:false}))
 app.use(bodyParser.json())
+app.use(methodOverride())
 app.use(cookieParser(config.get('executioner.cookie.secret')))
 app.use(session({
   cookie: {
