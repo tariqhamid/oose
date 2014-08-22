@@ -153,12 +153,12 @@ app.get('/:sha1/:filename',function(req,res){
       },
       //pick a winner
       function(next){
+        var candidates = ''
         peers.forEach(function(peer){
-          if(!winner || peer.hits < winner.hits){
-            logger.info('Selecting ' + peer.hostname + ' as winner for ' + sha1 + ' with ' + peer.hits + ' hits')
-            winner = peer
-          }
+          candidates += '[' + peer.hostname + ':' + peer.hits + '] '
+          if(!winner || peer.hits < winner.hits) winner = peer
         })
+        logger.info('Candidates ' + candidates + 'Selecting ' + winner.hostname + ' as winner for ' + sha1)
         if(!winner) return next('Could not select peer')
         next()
       },
