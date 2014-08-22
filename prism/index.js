@@ -158,7 +158,7 @@ app.get('/:sha1/:filename',function(req,res){
           candidates += '[' + peer.hostname + ':' + peer.hits + '] '
           if(!winner || parseInt(peer.hits,10) < parseInt(winner.hits,10)) winner = peer
         })
-        logger.info('Candidates ' + candidates + 'Selecting ' + winner.hostname + ' as winner for ' + sha1)
+        //logger.info('Candidates ' + candidates + 'Selecting ' + winner.hostname + ' as winner for ' + sha1)
         if(!winner) return next('Could not select peer')
         next()
       },
