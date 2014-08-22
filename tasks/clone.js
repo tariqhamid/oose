@@ -51,7 +51,9 @@ var clone = function(job,cb){
         ws.on('error',next)
         rs.on('close',function(){
           var duration = (new Date().valueOf() - start) / 1000
-          var bytesPerSec = prettyBytes((bytesSent || 0 / duration || 1) || 0) + '/sec'
+          if(!bytesSent) bytesSent = 0
+          if(!duration) duration = 1
+          var bytesPerSec = prettyBytes(bytesSent / duration) + '/sec'
           logger.info(
               'Finished replicating ' + job.sha1 +
               ' to ' + winner.hostname + '.' + winner.domain +
