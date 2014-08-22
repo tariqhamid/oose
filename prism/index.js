@@ -104,6 +104,11 @@ app.get('/:sha1/:filename',function(req,res){
   var winner = false
   async.series(
     [
+      //validate
+      function(next){
+        if(!sha1.match(/^[0-9a-f]{40}$/)) next('invalid hash')
+        next()
+      },
       ///grab from cache
       function(next){
         redis.smembers('prism:' + sha1,function(err,result){
