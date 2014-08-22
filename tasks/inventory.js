@@ -13,7 +13,6 @@ var readdirp = require('readdirp')
  * @return {boolean}
  */
 var progressThrottle = function(progress,force){
-  force = force || false
   var show = false
   var now = new Date().valueOf()
   var lastUpdate = progress.lastUpdate
@@ -36,7 +35,7 @@ var progressThrottle = function(progress,force){
  */
 var progressMessage = function(progress,force){
   var duration = (new Date().valueOf() - progress.start) / 1000
-  var fps = (progress.fileCount / duration).toFixed(2)
+  var fps = (progress.fileCount / (duration || 0.1)).toFixed(2)
   if(progressThrottle(progress,force)){
     logger.info(
         'Initial inventory read ' + progress.fileCount +
@@ -54,10 +53,10 @@ var progressMessage = function(progress,force){
 exports.start = function(done){
   if('function' !== typeof done) done = function(){}
   var progress = {
-    start: new Date().valueOf(),
+    start: 0,
     fileCount: 0,
     lastUpdate: 0,
-    rate: 1000
+    rate: 250
   }
   var root = config.get('root')
   logger.info('Starting to build inventory')
@@ -74,8 +73,9 @@ exports.start = function(done){
     done(null,progress.fileCount)
   })
   rdStream.on('data',function(entry){
+    if(!progress.start) progress.start = new Date().valueOf()
     progress.fileCount++
-    progressMessage(progress)
+    progressMessage(progress,false)
     var sha1 = file.sha1FromPath(entry.path)
     file.redisInsert(sha1,function(err){
       if(err) logger.warn('Failed to read ' + sha1 + ' file ' + entry.path + ' ' + err)
