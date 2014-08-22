@@ -31,7 +31,7 @@ app.use(session({
   cookie: {
     maxAge: config.get('lg.cookie.maxAge')
   },
-  store: new RedisStore(),
+  store: new RedisStore(config.get('redis')),
   secret: config.get('lg.cookie.secret'),
   resave: true,
   saveUninitialized: true

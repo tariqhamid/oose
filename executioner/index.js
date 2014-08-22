@@ -59,7 +59,7 @@ app.use(session({
   cookie: {
     maxAge: config.get('executioner.cookie.maxAge')
   },
-  store: new RedisStore(),
+  store: new RedisStore(config.get('redis')),
   secret: config.get('executioner.cookie.secret'),
   resave: true,
   saveUninitialized: true

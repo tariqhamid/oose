@@ -32,7 +32,7 @@ app.use(session({
   cookie: {
     maxAge: config.get('gump.cookie.maxAge')
   },
-  store: new RedisStore(),
+  store: new RedisStore(config.get('redis')),
   secret: config.get('gump.cookie.secret'),
   resave: true,
   saveUninitialized: true
