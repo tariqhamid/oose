@@ -1,7 +1,7 @@
 'use strict';
 var program = require('commander')
   , readdirp = require('readdirp')
-  , fs = require('fs')
+  , fs = require('graceful-fs')
   , file = require(__dirname + '/../helpers/file')
   , path = require('path')
   , config = require(__dirname + '/../config')

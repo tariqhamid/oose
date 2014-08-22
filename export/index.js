@@ -48,9 +48,9 @@ app.get('/:sha1/:filename',function(req,res){
       },
       //update hits
       function(next){
+        next()
         redis.hincrby('inventory:' + sha1,'hits',1,function(err){
-          if(err) return next(err)
-          next()
+          if(err) logger.warning('Failed to increment hits(' + sha1 + '): ' + err)
         })
       },
       //set headers
@@ -88,12 +88,15 @@ app.get('/:sha1/:filename',function(req,res){
       }
       //setup output sniffer to track bytes sent regardless of output medium
       var sniff = new Sniffer()
+      var bytesSent = 0
       sniff.on('data',function(data){
-        redis.hincrby('inventory:' + sha1,'sent',data.length)
+        bytesSent += data.length
+      })
+      sniff.on('finish',function(){
+        redis.hincrby('inventory:' + sha1,'sent',bytesSent)
       })
       //start param support
-      //if(req.query.start && 'video/mp4' === info.mimeType){
-      if(false){
+      if(req.query.start && 'video/mp4' === info.mimeType){
         var ffmpeg = new FFmpeg({source: path})
         ffmpeg.setStartTime(req.query.start)
         //tell ffmpeg to write to our sniffer
@@ -104,7 +107,6 @@ app.get('/:sha1/:filename',function(req,res){
       if(range.end < range.start) range.end = range.start
       //if the file is 0 length just end now
       if(0 === range.start && 0 === range.end){
-      //if(false){
         res.status(200)
         res.set('Content-Length',0)
         res.end()

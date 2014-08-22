@@ -1,7 +1,7 @@
 'use strict';
 var async = require('async')
 var net = require('net')
-var fs = require('fs')
+var fs = require('graceful-fs')
 var SSH = require('./ssh')
 var config = require('../../config')
 var Peer = require('../../models/peer').model

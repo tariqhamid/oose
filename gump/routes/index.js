@@ -1,7 +1,7 @@
 'use strict';
 var temp = require('temp')
   , config = require('../../config')
-  , fs = require('fs')
+  , fs = require('graceful-fs')
   , mkdirp = require('mkdirp')
   , async = require('async')
   , net = require('net')

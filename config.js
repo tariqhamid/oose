@@ -1,6 +1,6 @@
 'use strict';
 var ObjectManage = require('object-manage')
-  , fs = require('fs')
+  , fs = require('graceful-fs')
   , os = require('os')
 
 var config = new ObjectManage()

@@ -1,6 +1,6 @@
 'use strict';
 var net = require('net')
-  , fs = require('fs')
+  , fs = require('graceful-fs')
 
 var client = net.connect(3002)
 client.on('connect',function(){

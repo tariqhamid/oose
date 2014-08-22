@@ -1,6 +1,6 @@
 'use strict';
 var express = require('express')
-var fs = require('fs')
+var fs = require('graceful-fs')
 var flash = require('connect-flash')
 var app = express()
 var server = require('http').createServer(app)

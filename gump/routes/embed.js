@@ -1,5 +1,5 @@
 'use strict';
-var fs = require('fs')
+var fs = require('graceful-fs')
 var path = require('path')
 var async = require('async')
 var logger = require('../../helpers/logger').create('gump:embed')

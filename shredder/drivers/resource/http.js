@@ -5,7 +5,7 @@ var prettyBytes = require('pretty-bytes')
 var url = require('url')
 var Sniffer = require('../../../helpers/Sniffer')
 var crypto = require('crypto')
-var fs = require('fs')
+var fs = require('graceful-fs')
 
 
 /**

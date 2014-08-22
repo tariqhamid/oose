@@ -1,7 +1,7 @@
 'use strict';
 var mongoose = require('mongoose')
 var ip = require('ip')
-var fs = require('fs')
+var fs = require('graceful-fs')
 var config = require('../config')
 var schema
 

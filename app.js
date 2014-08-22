@@ -2,7 +2,7 @@
 var cluster = require('cluster')
   , os = require('os')
   , config = require('./config')
-  , fs = require('fs')
+  , fs = require('graceful-fs')
   , mkdirp = require('mkdirp')
   , async = require('async')
   , mongoose = require('mongoose')
