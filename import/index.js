@@ -1,9 +1,11 @@
 'use strict';
 var net = require('net')
-  , file = require('../helpers/file')
-  , config = require('../config')
-  , logger = require('../helpers/logger').create('import')
-  , running = false
+
+var config = require('../config')
+var file = require('../helpers/file')
+var logger = require('../helpers/logger').create('import')
+
+var running = false
 
 //setup tcp server if enabled
 var server
@@ -12,10 +14,11 @@ var listen = function(port,host,done){
   server.on('connection',function(socket){
     var remoteAddress = socket.remoteAddress
     var remotePort = socket.remotePort
-    logger.info('Received import connection from ' + remoteAddress + ':' + remotePort)
+    var remoteSpec = [remoteAddress,remotePort].join(':')
+    logger.info('Received import connection from ' + remoteSpec)
     socket.on('close',function(failed){
-      if(failed) logger.warning('There was an error importing from ' + remoteAddress + ':' + remotePort)
-      else logger.info('Closed import connection from ' + remoteAddress + ':' + remotePort)
+      if(failed) logger.warning('There was an error importing from ' + remoteSpec)
+      else logger.info('Closed import connection from ' + remoteSpec)
     })
     file.fromReadable(socket,function(err,sha1){
       //socket.end(sha1)
@@ -47,6 +50,9 @@ exports.start = function(done){
  */
 exports.stop = function(done){
   if('function' !== typeof done) done = function(){}
-  if(server && running) server.close()
+  if(server && running){
+    running = false
+    server.close()
+  }
   done()
 }

@@ -1,16 +1,19 @@
 'use strict';
+var async = require('async')
 var express = require('express')
-  , app = express()
-  , server = require('http').createServer(app)
-  , redis = require('../helpers/redis')
-  , fs = require('graceful-fs')
-  , config = require('../config')
-  , file = require('../helpers/file')
-  , Sniffer = require('../helpers/Sniffer')
-  , logger = require('../helpers/logger').create('export')
-  , FFmpeg = require('fluent-ffmpeg')
-  , async = require('async')
-  , running = false
+var FFmpeg = require('fluent-ffmpeg')
+var fs = require('graceful-fs')
+
+var app = express()
+var server = require('http').createServer(app)
+
+var config = require('../config')
+var file = require('../helpers/file')
+var logger = require('../helpers/logger').create('export')
+var redis = require('../helpers/redis')
+var Sniffer = require('../helpers/Sniffer')
+
+var running = false
 
 app.get('/:sha1/:filename',function(req,res){
   var sha1, filename, path, info, stat, range
@@ -141,6 +144,9 @@ exports.start = function(done){
  */
 exports.stop = function(done){
   if('function' !== typeof done) done = function(){}
-  if(server && running) server.close()
+  if(server && running){
+    running = false
+    server.close()
+  }
   done()
 }

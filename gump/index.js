@@ -1,12 +1,18 @@
 'use strict';
+var bodyParser = require('body-parser')
+var busboy = require('connect-busboy')
+var cookieParser = require('cookie-parser')
+var flash = require('connect-flash')
+var session = require('express-session')
+
 var express = require('express')
-  , app = express()
-  , config = require('../config')
-  , server = require('http').createServer(app)
-  , routes = require('./routes')
-  , busboy = require('connect-busboy')
-  , flash = require('connect-flash')
-  , RedisStore = require('connect-redis')(express)
+var app = express()
+var server = require('http').createServer(app)
+var RedisStore = require('connect-redis')(express)
+
+var config = require('../config')
+var routes = require('./routes')
+var logger = require('../helpers/logger').create('prism')
 
 var running = false
 
@@ -18,16 +24,18 @@ app.set('views',__dirname + '/views')
 app.set('view engine','jade')
 
 app.use(express.static(__dirname + '/public'))
-app.use(express.urlencoded())
-app.use(express.json())
+app.use(bodyParser.urlencoded({extended:false}))
+app.use(bodyParser.json())
 app.use(busboy())
-app.use(express.cookieParser(config.get('gump.cookie.secret')))
-app.use(express.session({
+app.use(cookieParser(config.get('gump.cookie.secret')))
+app.use(session({
   cookie: {
     maxAge: config.get('gump.cookie.maxAge')
   },
   store: new RedisStore(),
-  secret: config.get('gump.cookie.secret')
+  secret: config.get('gump.cookie.secret'),
+  resave: true,
+  saveUninitialized: true
 }))
 app.use(flash())
 app.use(function(req,res,next){
@@ -39,8 +47,9 @@ app.use(function(req,res,next){
 app.use(function(req,res,next){
   //allow public routes
   if(req.url.match(/\/(api|download|embed)\//)) return next()
-  //dont redirect loop the login page however makr sure we are there when not logged in
-  if(!req.session.user && req.url.indexOf('/login') < 0){
+  //dont redirect loop the login page
+  // however make sure we are there when not logged in
+  if((!req.session.user) && (-1 === req.url.indexOf('/login'))){
     req.session.loginFrom = !req.url.match(/favicon|css|png/) ? req.url : '/'
     return res.redirect('/login')
   }
@@ -107,6 +116,9 @@ exports.start = function(done){
  */
 exports.stop = function(done){
   if('function' !== typeof done) done = function(){}
-  if(server && running) server.close()
+  if(server && running){
+    running = false
+    server.close()
+  }
   done()
 }

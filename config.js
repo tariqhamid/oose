@@ -2,11 +2,12 @@
 var ObjectManage = require('object-manage')
   , fs = require('graceful-fs')
   , os = require('os')
+require('pkginfo')(module,'version')
 
 var config = new ObjectManage()
 config.load({
   //options
-  version: '0.3.0',
+  version: module.exports.version,
   hostname: os.hostname(),
   domain: '',
   root: __dirname + '/data',
@@ -130,6 +131,11 @@ config.load({
       secret: 'oose',
       maxAge: 2592000
     }
+  },
+  redis: {
+    host: '127.0.0.1',
+    port: 6379,
+    options: {}
   },
   mongoose: {
     enabled: false,

@@ -1,11 +1,17 @@
 'use strict';
+var bodyParser = require('body-parser')
+var cookieParser = require('cookie-parser')
+var flash = require('connect-flash')
+var session = require('express-session')
+
 var express = require('express')
-  , app = express()
-  , config = require('../config')
-  , server = require('http').createServer(app)
-  , routes = require('./routes')
-  , flash = require('connect-flash')
-  , RedisStore = require('connect-redis')(express)
+var app = express()
+var server = require('http').createServer(app)
+var RedisStore = require('connect-redis')(express)
+
+var config = require('../config')
+var routes = require('./routes')
+var logger = require('../helpers/logger').create('lg')
 
 var running = false
 
@@ -18,15 +24,17 @@ app.set('views',__dirname + '/views')
 app.set('view engine','jade')
 
 app.use(express.static(__dirname + '/public'))
-app.use(express.urlencoded())
+app.use(bodyParser.urlencoded({extended:false}))
 app.use(express.basicAuth(config.get('lg.user'),config.get('lg.password')))
-app.use(express.cookieParser(config.get('lg.cookie.secret')))
-app.use(express.session({
+app.use(cookieParser(config.get('lg.cookie.secret')))
+app.use(session({
   cookie: {
     maxAge: config.get('lg.cookie.maxAge')
   },
   store: new RedisStore(),
-  secret: config.get('lg.cookie.secret')
+  secret: config.get('lg.cookie.secret'),
+  resave: true,
+  saveUninitialized: true
 }))
 app.use(flash())
 app.use(function(req,res,next){
@@ -57,6 +65,9 @@ exports.start = function(done){
  */
 exports.stop = function(done){
   if('function' !== typeof done) done = function(){}
-  if(server && running) server.close()
+  if(server && running){
+    running = false
+    server.close()
+  }
   done()
 }

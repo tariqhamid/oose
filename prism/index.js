@@ -1,18 +1,21 @@
 'use strict';
+var async = require('async')
+var bodyParser = require('body-parser')
+
 var express = require('express')
 var app = express()
 var server = require('http').createServer(app)
+
 var config = require('../config')
-var redis = require('../helpers/redis')
-var async = require('async')
-var peer = require('../helpers/peer')
-var logger = require('../helpers/logger').create('prism')
 var commUtil = require('../helpers/communicator').util
+var peer = require('../helpers/peer')
+var redis = require('../helpers/redis')
+var logger = require('../helpers/logger').create('prism')
 
 var running = false
 
-app.use(express.urlencoded())
-app.use(express.json())
+app.use(bodyParser.urlencoded({extended:false}))
+app.use(bodyParser.json())
 
 
 /**
@@ -260,6 +263,9 @@ exports.start = function(done){
  */
 exports.stop = function(done){
   if('function' !== typeof done) done = function(){}
-  if(server && running) server.close()
+  if(server && running){
+    running = false
+    server.close()
+  }
   done()
 }

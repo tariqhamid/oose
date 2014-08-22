@@ -1,9 +1,12 @@
 'use strict';
-var express = require('express')
 var async = require('async')
+var bodyParser = require('body-parser')
+
+var express = require('express')
 var app = express()
-var config = require('../config')
 var server = require('http').createServer(app)
+
+var config = require('../config')
 var Hideout = require('../models/hideout').model
 var logger = require('../helpers/logger').create('hideout')
 
@@ -12,8 +15,7 @@ var running = false
 //this is needed so we can gracefully decline to start
 if(config.get('hideout.user') && config.get('hideout.password'))
   app.use(express.basicAuth(config.get('hideout.user'),config.get('hideout.password')))
-app.use(express.json())
-
+app.use(bodyParser.json())
 
 app.post('/set',function(req,res){
   async.series(
@@ -110,7 +112,7 @@ app.post('/exists',function(req,res){
         Hideout.count({key: req.body.key},function(err,count){
           if(err) return next(err.message)
           if(0 === count) exists = false
-          if(count > 0) exists = true
+          if(0 < count) exists = true
           next()
         })
       }
@@ -128,7 +130,7 @@ app.post('/exists',function(req,res){
         code: 0,
         status: 'ok',
         message: 'Request successful',
-        exists: exists ? 1: 0
+        exists: exists ? 1 : 0
       })
     }
   )
@@ -163,6 +165,9 @@ exports.start = function(done){
  */
 exports.stop = function(done){
   if('function' !== typeof done) done = function(){}
-  if(server && running) server.close()
+  if(server && running){
+    running = false
+    server.close()
+  }
   done()
 }

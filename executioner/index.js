@@ -1,13 +1,19 @@
 'use strict';
-var express = require('express')
-var fs = require('graceful-fs')
+var bodyParser = require('body-parser')
+var cookieParser = require('cookie-parser')
 var flash = require('connect-flash')
+var fs = require('graceful-fs')
+var session = require('express-session')
+
+var express = require('express')
 var app = express()
 var server = require('http').createServer(app)
+var RedisStore = require('connect-redis')(express)
+
 var config = require('../config')
 var routes = require('./routes')
-var RedisStore = require('connect-redis')(express)
 var logger = require('../helpers/logger').create('executioner')
+
 var running = false
 
 
@@ -43,19 +49,20 @@ app.locals.ssh = {
 //this is needed so we can gracefully decline to start
 if(config.get('executioner.user') && config.get('executioner.password'))
   app.use(express.basicAuth(config.get('executioner.user'),config.get('executioner.password')))
-app.use(express.json())
 
 app.set('views',__dirname + '/' + 'views')
 app.set('view engine','jade')
-app.use(express.urlencoded())
-app.use(express.json())
-app.use(express.cookieParser(config.get('executioner.cookie.secret')))
-app.use(express.session({
+app.use(bodyParser.urlencoded({extended:false}))
+app.use(bodyParser.json())
+app.use(cookieParser(config.get('executioner.cookie.secret')))
+app.use(session({
   cookie: {
     maxAge: config.get('executioner.cookie.maxAge')
   },
   store: new RedisStore(),
-  secret: config.get('executioner.cookie.secret')
+  secret: config.get('executioner.cookie.secret'),
+  resave: true,
+  saveUninitialized: true
 }))
 app.use(flash())
 app.use(function(req,res,next){
@@ -110,6 +117,9 @@ exports.start = function(done){
  */
 exports.stop = function(done){
   if('function' !== typeof done) done = function(){}
-  if(server && running) server.close()
+  if(server && running){
+    running = false
+    server.close()
+  }
   done()
 }
