@@ -387,7 +387,7 @@ exports.file = function(req,res){
       return res.render('fileEmbed',{
         file: result,
         prismHost: prismHost,
-        baseUrl: config.get('gump.baseUrl'),
+        baseUrl: config.get('gump.embedBaseUrl'),
         god: god
       })
     }

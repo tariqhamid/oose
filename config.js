@@ -101,6 +101,7 @@ config.load({
     portPublic: null,
     host: null,
     baseUrl: 'http://localhost:3004',
+    embedBaseUrl: 'http://localhost:3004',
     tmpDir: __dirname + '/gump/public/tmp',
     embed: {
       seed: '3123572',
