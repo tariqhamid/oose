@@ -53,7 +53,7 @@ var progressMessage = function(progress,force){
 exports.start = function(done){
   if('function' !== typeof done) done = function(){}
   var progress = {
-    start: 0,
+    start: new Date().valueOf(),
     fileCount: 0,
     lastUpdate: 0,
     rate: 250
@@ -73,7 +73,6 @@ exports.start = function(done){
     done(null,progress.fileCount)
   })
   rdStream.on('data',function(entry){
-    if(!progress.start) progress.start = new Date().valueOf()
     progress.fileCount++
     progressMessage(progress,false)
     var sha1 = file.sha1FromPath(entry.path)
