@@ -23,7 +23,7 @@ var clone = function(job,cb){
   //track some stats
   var winner
   var bytesSent = 0
-  var start = new Date().getTime()
+  var start = new Date().valueOf()
   //start process
   async.series(
     [
@@ -50,7 +50,7 @@ var clone = function(job,cb){
         rs.on('error',next)
         ws.on('error',next)
         rs.on('close',function(){
-          var duration = (new Date().getTime() - start) / 1000
+          var duration = (new Date().valueOf() - start) / 1000
           var bytesPerSec = prettyBytes((bytesSent || 0 / duration || 1) || 0) + '/sec'
           logger.info(
               'Finished replicating ' + job.sha1 +
