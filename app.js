@@ -76,6 +76,13 @@ if(cluster.isMaster){
           next()
         })
       },
+      //inventory files first if store is enabled
+      function(next){
+        if(!config.get('store.enabled')) return next()
+        require('./tasks/inventory').start(function(err){
+          next(err)
+        })
+      },
       //start mesh
       function(next){
         if(config.get('mesh.enabled')){
@@ -169,12 +176,6 @@ if(cluster.isMaster){
       if(err){
         logger.error('Startup failed: ' + err)
         process.exit()
-      }
-      //fire off initial scan
-      if(config.get('store.enabled')){
-        require('./tasks/inventory').start(function(err){
-          if(err) logger.error(err)
-        })
       }
       if(!config.get('workers.enabled')){
         logger.info('Not starting workers, they are disabled')
