@@ -57,7 +57,7 @@
     "q": "1.0.x",
     "random-js": "1.0.x",
     "readdirp": "1.1.x",
-    "redis": "0.12.x",
+    "redis": "0.10.3",
     "request": "2.40.x",
     "restler": "3.2.x",
     "shortid": "2.0.x",
