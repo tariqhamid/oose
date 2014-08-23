@@ -1,6 +1,7 @@
 'use strict';
 var bodyParser = require('body-parser')
 var busboy = require('connect-busboy')
+var methodOverride = require('method-override')
 var cookieParser = require('cookie-parser')
 var flash = require('connect-flash')
 var session = require('express-session')
@@ -24,9 +25,10 @@ app.set('views',__dirname + '/views')
 app.set('view engine','jade')
 
 app.use(express.static(__dirname + '/public'))
-app.use(bodyParser.urlencoded({extended:false}))
-app.use(bodyParser.json())
 app.use(busboy())
+app.use(bodyParser.urlencoded({extended:true}))
+app.use(bodyParser.json())
+app.use(methodOverride())
 app.use(cookieParser(config.get('gump.cookie.secret')))
 app.use(session({
   cookie: {

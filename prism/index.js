@@ -164,7 +164,7 @@ app.get('/:sha1/:filename',function(req,res){
         var candidates = ''
         peers.forEach(function(peer){
           candidates += '[' + peer.hostname + ':' + peer.hits + '] '
-          if(!winner || parseInt(peer.hits,10) < parseInt(winner.hits,10)) winner = peer
+          if(!winner || +peer.hits < +winner.hits) winner = peer
         })
         //logger.info('Candidates ' + candidates + 'Selecting ' + winner.hostname + ' as winner for ' + sha1)
         if(!winner) return next('Could not select peer')
@@ -197,7 +197,7 @@ app.post('/api/shredderJob',function(req,res){
     [
       //figure out next peer
       function(next){
-        peer.next(function(err,result){
+        peer.nextByHits(function(err,result){
           if(err) return next(err)
           peerNext = result
           next()

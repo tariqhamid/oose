@@ -64,7 +64,10 @@ SSH.prototype.commandBuffered = function(cmd,next){
         stream.on('data',function(data){
           buffer += data
         })
-        stream.on('finish',function(){next()})
+        stream.on('finish',function(){
+          client.end()
+          next()
+        })
         stream.on('exit',function(code){
           if(code > 0) next('Failed to execute: ' + cmd)
         })
@@ -96,7 +99,10 @@ SSH.prototype.commandStream = function(cmd,writable,next){
         stream.on('data',function(data){
           writable.write(data)
         })
-        stream.on('finish',function(){next()})
+        stream.on('finish',function(){
+          client.end()
+          next()
+        })
         stream.on('exit',function(code){
           if(code > 0) next('Failed to execute: ' + cmd)
         })
@@ -124,7 +130,10 @@ SSH.prototype.commandShell = function(command,writable,next){
           if(err) return next(err)
           stream.setEncoding('utf-8')
           stream.on('error',function(err){next(err)})
-          stream.on('close',function(){next()})
+          stream.on('close',function(){
+            client.end()
+            next()
+          })
           stream.on('data',function(data){writable.write(data)})
           stream.write('export TERM=dumb\n')
           stream.write('export DEBIAN_FRONTEND=noninteractive\n')
@@ -165,7 +174,8 @@ SSH.prototype.scriptStream = function(script,writable,next){
         client.shell(function(err,stream){
           if(err) return next(err)
           stream.setEncoding('utf-8')
-          stream.on('close', function() {
+          stream.on('close', function(){
+            client.end()
             next()
           })
           stream.on('data',function(data){
@@ -214,6 +224,7 @@ SSH.prototype.sendFile = function(src,dst,next){
         client.sftp(function(err,sftp){
           if(err) return next(err)
           sftp.fastPut(src,dst,function(err){
+            client.end()
             if(err) return next(err)
             next()
           })

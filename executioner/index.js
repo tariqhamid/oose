@@ -53,7 +53,7 @@ if(config.get('executioner.user') && config.get('executioner.password'))
 
 app.set('views',__dirname + '/' + 'views')
 app.set('view engine','jade')
-app.use(bodyParser.urlencoded({extended:false}))
+app.use(bodyParser.urlencoded({extended:true}))
 app.use(bodyParser.json())
 app.use(methodOverride())
 app.use(cookieParser(config.get('executioner.cookie.secret')))
