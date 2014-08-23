@@ -92,7 +92,7 @@ var executeRequest = function(job,req,done){
     var progress = {
       start: new Date(),
       lastUpdate: 0,
-      rate: 1000
+      rate: 10000
     }
     //setup error and progress handling
     res.on('error',function(err){done(err)})
@@ -112,7 +112,9 @@ var executeRequest = function(job,req,done){
       sniff.on('data',function(data){shasum.update(data)})
       var tmp = fs.createWriteStream(resource.path)
       tmp.on('finish',function(){
-        job.resource.load(opts.name,{sha1: shasum.digest('hex')})
+        var sha1 = shasum.digest('hex')
+        var rv = job.resource.load(opts.name,{sha1: sha1})
+        if(!rv) job.logger.warning('Failed to update resource ' + opts.name + ' with sha1 of ' + sha1)
         job.logger.info('Successfully retrieved resource from ' + opts.url + ' and saved to ' + resource.path)
         done()
       })

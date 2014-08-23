@@ -166,9 +166,14 @@ Resource.prototype.get = function(name){
  * Load settings into a resource
  * @param {string} name
  * @param {object} info
+ * @return {boolean}
  */
 Resource.prototype.load = function(name,info){
-  this.resources[name].load(info)
+  if(this.resources[name] && this.resources[name] instanceof ObjectManage){
+    this.resources[name].load(info)
+    return true
+  }
+  return false
 }
 
 
