@@ -1,0 +1,2 @@
+#!/bin/sh
+exec setuidgid node multilog t /var/log/node/oose
