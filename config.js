@@ -26,6 +26,7 @@ config.load({
     portPublic: null,
     multicast: {
       address: '226.0.0.1',
+      interfaceAddress: null,
       ttl: 1
     },
     ping: { enabled: true, interval: 1000 },

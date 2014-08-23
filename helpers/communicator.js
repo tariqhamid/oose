@@ -1,9 +1,9 @@
 'use strict';
 var net = require('net')
-  , dgram = require('dgram')
-  , stream = require('stream')
-  , logger = require('../helpers/logger').create('communicator')
-  , EventEmitter = require('events').EventEmitter
+var dgram = require('dgram')
+var stream = require('stream')
+var logger = require('../helpers/logger').create('communicator')
+var EventEmitter = require('events').EventEmitter
 
 
 /**

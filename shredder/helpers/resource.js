@@ -107,11 +107,17 @@ Resource.prototype.create = function(name,done){
       },
       //create the temp path in the folder
       function(next){
-        temp.open(name || 'shredderResource',function(err,info){
-          if(err) return next(err)
-          tmp = info
-          next()
-        })
+        temp.open(
+          {
+            aprefix: name || 'shredderResource',
+            dir: tmpDir
+          },
+          function(err,info){
+            if(err) return next(err)
+            tmp = info
+            next()
+          }
+        )
       }
     ],
     function(err){
