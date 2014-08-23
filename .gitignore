@@ -1,9 +1,10 @@
 node_modules
 .idea
 .nodemonignore
+dt/supervise
+dt/log/supervise
 *.log
 log/*
-/foo
 embed/views/*
 embed/public/*
 gump/public/bower_components
@@ -11,8 +12,8 @@ lg/public/bower_components
 npm-debug.log
 tmp
 config.local.js
-/_data
-/_shredbox
-/data
-/ssh
-/ssl
+_data
+_shredbox
+data
+ssh
+ssl
