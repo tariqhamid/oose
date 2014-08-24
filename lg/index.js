@@ -3,11 +3,12 @@ var bodyParser = require('body-parser')
 var cookieParser = require('cookie-parser')
 var flash = require('connect-flash')
 var session = require('express-session')
+var basicAuth = require('basic-auth')
 
 var express = require('express')
 var app = express()
 var server = require('http').createServer(app)
-var RedisStore = require('connect-redis')(express)
+var RedisStore = require('connect-redis')(session)
 
 var config = require('../config')
 var routes = require('./routes')
@@ -23,9 +24,30 @@ app.locals.moment = require('moment')
 app.set('views',__dirname + '/views')
 app.set('view engine','jade')
 
+app.use(function(req,res,next){
+  var username = config.get('lg.user')
+  var password = config.get('lg.password')
+  if(!username || !password){
+    res.status(500)
+    res.send('Missing username and/or password')
+  }
+  function unauthorized(res){
+    res.set('WWW-Authenticate','Basic realm=Authorization Required')
+    return res.send(401)
+  }
+  var user = basicAuth(req)
+  if(!user || !user.name || !user.pass){
+    return unauthorized(res)
+  }
+  if(user.name === username && user.pass === password){
+    return next()
+  } else {
+    return unauthorized(res)
+  }
+})
+
 app.use(express.static(__dirname + '/public'))
 app.use(bodyParser.urlencoded({extended:false}))
-app.use(express.basicAuth(config.get('lg.user'),config.get('lg.password')))
 app.use(cookieParser(config.get('lg.cookie.secret')))
 app.use(session({
   cookie: {

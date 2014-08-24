@@ -1,6 +1,7 @@
 'use strict';
 var async = require('async')
 var bodyParser = require('body-parser')
+var basicAuth = require('basic-auth')
 
 var express = require('express')
 var app = express()
@@ -12,9 +13,28 @@ var logger = require('../helpers/logger').create('hideout')
 
 var running = false
 
-//this is needed so we can gracefully decline to start
-if(config.get('hideout.user') && config.get('hideout.password'))
-  app.use(express.basicAuth(config.get('hideout.user'),config.get('hideout.password')))
+app.use(function(req,res,next){
+  var username = config.get('hideout.user')
+  var password = config.get('hideout.password')
+  if(!username || !password){
+    res.status(500)
+    res.send('Missing username and/or password')
+  }
+  function unauthorized(res){
+    res.set('WWW-Authenticate','Basic realm=Authorization Required')
+    return res.send(401)
+  }
+  var user = basicAuth(req)
+  if(!user || !user.name || !user.pass){
+    return unauthorized(res)
+  }
+  if(user.name === username && user.pass === password){
+    return next()
+  } else {
+    return unauthorized(res)
+  }
+})
+
 app.use(bodyParser.json())
 
 app.post('/set',function(req,res){

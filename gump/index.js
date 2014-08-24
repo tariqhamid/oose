@@ -9,7 +9,7 @@ var session = require('express-session')
 var express = require('express')
 var app = express()
 var server = require('http').createServer(app)
-var RedisStore = require('connect-redis')(express)
+var RedisStore = require('connect-redis')(session)
 
 var config = require('../config')
 var routes = require('./routes')

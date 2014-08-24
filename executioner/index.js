@@ -5,11 +5,12 @@ var flash = require('connect-flash')
 var fs = require('graceful-fs')
 var methodOverride = require('method-override')
 var session = require('express-session')
+var basicAuth = require('basic-auth')
 
 var express = require('express')
 var app = express()
 var server = require('http').createServer(app)
-var RedisStore = require('connect-redis')(express)
+var RedisStore = require('connect-redis')(session)
 
 var config = require('../config')
 var routes = require('./routes')
@@ -47,9 +48,27 @@ app.locals.ssh = {
       null
 }
 
-//this is needed so we can gracefully decline to start
-if(config.get('executioner.user') && config.get('executioner.password'))
-  app.use(express.basicAuth(config.get('executioner.user'),config.get('executioner.password')))
+app.use(function(req,res,next){
+  var username = config.get('executioner.user')
+  var password = config.get('executioner.password')
+  if(!username || !password){
+    res.status(500)
+    res.send('Missing username and/or password')
+  }
+  function unauthorized(res){
+    res.set('WWW-Authenticate','Basic realm=Authorization Required')
+    return res.send(401)
+  }
+  var user = basicAuth(req)
+  if(!user || !user.name || !user.pass){
+    return unauthorized(res)
+  }
+  if(user.name === username && user.pass === password){
+    return next()
+  } else {
+    return unauthorized(res)
+  }
+})
 
 app.set('views',__dirname + '/' + 'views')
 app.set('view engine','jade')
