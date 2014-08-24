@@ -1,15 +1,19 @@
 'use strict';
-var fs = require('graceful-fs')
-var path = require('path')
 var async = require('async')
-var ObjectManage = require('object-manage')
-var Resource = require('./resource')
-var Parameter = require('./parameter')
-var Logger = require('../../helpers/logger')
-var drivers = require('../drivers')
 var crypto = require('crypto')
-//var config = require('../../config')
+var fs = require('graceful-fs')
+var ObjectManage = require('object-manage')
+var path = require('path')
+
 var hideout = require('../../helpers/hideout')
+var Logger = require('../../helpers/logger')
+
+var drivers = require('../drivers')
+var Parameter = require('./parameter')
+var Resource = require('./resource')
+
+//var config = require('../../config')
+
 
 
 /**
@@ -91,17 +95,14 @@ var generateSignature = function(job){
  * @return {boolean}
  */
 var throttleUpdate = function(rate,pointer){
+  var now = +(new Date())
   if(!pointer) pointer = 0
-  var now = new Date().valueOf()
   //make sure pointer is a number
-  if(pointer instanceof Date) pointer = pointer.valueOf()
-  //make sure rate is a number
-  rate = parseInt(rate,10)
+  if(pointer instanceof Date) pointer = +pointer
   //figure out the next available send date
-  var nextSend = pointer + rate
+  var nextSend = pointer + (+rate)
   //throttle messages provided its not a status change message
-  if(!rate) return true
-  return (now >= nextSend)
+  return (!rate) ? true : (now >= nextSend)
 }
 
 
@@ -260,9 +261,7 @@ Job.prototype.encode = function(next){
       if(item.$exists('parameters')) param.$load(item.$get('parameters'))
       var jobs = item.$get('jobs') || []
       //sort jobs by their position
-      jobs.sort(function(a,b){
-        return (parseInt(a.position,10) - parseInt(b.position,10))
-      })
+      jobs.sort(function(a,b){ return ((+a.position) - (+b.position)) })
       async.eachSeries(
         jobs,
         function(item,next){

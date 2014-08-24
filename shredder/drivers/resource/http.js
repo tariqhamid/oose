@@ -1,11 +1,12 @@
 'use strict';
-var request = require('request')
 var async = require('async')
-var prettyBytes = require('pretty-bytes')
-var url = require('url')
-var Sniffer = require('../../../helpers/Sniffer')
 var crypto = require('crypto')
 var fs = require('graceful-fs')
+var prettyBytes = require('pretty-bytes')
+var request = require('request')
+var url = require('url')
+
+var Sniffer = require('../../../helpers/Sniffer')
 
 
 /**
@@ -16,9 +17,10 @@ var fs = require('graceful-fs')
  * @return {string}
  */
 var progressMessage = function(opts,progress,frames){
-  var bps = prettyBytes((
-    (frames.complete || 1) / ((new Date().valueOf() - (progress.start.valueOf() || 1)) / 1000)
-  ))
+  var bps = prettyBytes(
+    (frames.complete || 1) /
+    (((+new Date()) - (+progress.start) || 1) / 1000)
+  )
   return 'Downloading resource [' + opts.name + '] ' +
     prettyBytes(frames.complete || 0) + ' / ' +
     prettyBytes(frames.total || 0) + ' ' +
@@ -35,9 +37,9 @@ var progressMessage = function(opts,progress,frames){
  */
 var progressThrottle = function(progress,frames){
   var show = false
-  var now = new Date().valueOf()
+  var now = +(new Date())
   var lastUpdate = progress.lastUpdate
-  if(lastUpdate instanceof Date) lastUpdate = progress.lastUpdate.valueOf()
+  if(lastUpdate instanceof Date) lastUpdate = +progress.lastUpdate
   if(frames.total === frames.complete) show = true
   if(!lastUpdate) show = true
   if(now > lastUpdate + progress.rate) show = true
@@ -87,7 +89,7 @@ var executeRequest = function(job,req,done){
     var frames = {
       description: 'HTTP Resource Driver, downloading ' + opts.url,
       complete: 0,
-      total: parseInt(res.headers['content-length'],10) || 0
+      total: +(res.headers['content-length'] || 0)
     }
     var progress = {
       start: new Date(),

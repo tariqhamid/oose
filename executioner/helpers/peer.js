@@ -171,11 +171,13 @@ exports.test = function(id,next){
           })
           //find out some information about the peer
           client.commandBuffered('cat /etc/debian_version',function(err,result){
+            // jshint bitwise:false
             if(err) return next(err)
             var version = result.trim()
-            if(!version) return next('Could not get the version of debian')
+            if(!version) return next('Could not get the version of Debian')
             var match = version.match(/^(\d+)\.(\d+)/)
-            if(!match[1] || parseInt(match[1],10) < 7) return next('This version of debian is too old: ' + version)
+            if((!match[1]) || ((match[1] >> 0) < 7))
+              return next('This version of Debian is too old: ' + version)
             next()
           })
         })

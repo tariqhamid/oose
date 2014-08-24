@@ -96,7 +96,7 @@ var announceListen = function(){
           if(packet.services.indexOf('store') > 0){
             //issue #32 avail comes back infinity (this is a safeguard)
             if('Infinity' === peer.availableCapacity) peer.availableCapacity = 100
-            redis.zadd('peer:rank',parseInt(peer.availableCapacity,10),packet.hostname,function(err){
+            redis.zadd('peer:rank',+peer.availableCapacity,packet.hostname,function(err){
               if(err) err = 'Could not store peer rank: ' + err
               next(err)
             })

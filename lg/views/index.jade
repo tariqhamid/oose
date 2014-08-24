@@ -26,16 +26,16 @@ block content
         if peers.length
           each peer in peers
             - peer.availableCapacity = parseFloat(peer.availableCapacity,10)
-            - peer.cpuUsed = parseInt(peer.cpuUsed,10)
-            - peer.cpuCount = parseInt(peer.cpuCount,10)
-            - peer.diskFree = parseInt(peer.diskFree,10)
-            - peer.diskTotal = parseInt(peer.diskTotal,10)
+            - peer.cpuUsed = +peer.cpuUsed
+            - peer.cpuCount = peer.cpuCount>>0
+            - peer.diskFree = +peer.diskFree
+            - peer.diskTotal = +peer.diskTotal
             - peer.diskPercent = (100 - (peer.diskFree / peer.diskTotal) * 100).toFixed(2)
-            - peer.memoryFree = parseInt(peer.memoryFree,10)
-            - peer.memoryTotal = parseInt(peer.memoryTotal,10)
-            - peer.netSpeed = parseInt(peer.netSpeed,10)
-            - peer.netInBps = parseInt(peer.netInBps,10)
-            - peer.netOutBps = parseInt(peer.netOutBps,10)
+            - peer.memoryFree = +peer.memoryFree
+            - peer.memoryTotal = +peer.memoryTotal
+            - peer.netSpeed = +peer.netSpeed
+            - peer.netInBps = +peer.netInBps
+            - peer.netOutBps = +peer.netOutBps
             - peer.memoryPercent = (100 - (peer.memoryFree / peer.memoryTotal) * 100).toFixed(2)
             - peer.netInPercent = ((peer.netInBps / peer.netSpeed) * 100).toFixed(2)
             - peer.netOutPercent = ((peer.netOutBps / peer.netSpeed) * 100).toFixed(2)

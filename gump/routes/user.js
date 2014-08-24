@@ -18,8 +18,9 @@ exports.list = function(req,res){
       }
     })
   } else {
-    var limit = parseInt(req.query.limit,10) || 10
-    var start = parseInt(req.query.start,10) || 0
+    // jshint bitwise:false
+    var limit = (req.query.limit >> 0) || 10
+    var start = (req.query.start >> 0) || 0
     var search = req.query.search || ''
     if(start < 0) start = 0
     Model.list({start: start, limit: limit, find: search},function(err,count,results){

@@ -1,11 +1,13 @@
 'use strict';
-var file = require('../helpers/file')
-var peer = require('../helpers/peer')
-var net = require('net')
-var fs = require('graceful-fs')
 var async = require('async')
-var logger = require('../helpers/logger').create('task:fileClone')
+var fs = require('graceful-fs')
+var net = require('net')
 var prettyBytes = require('pretty-bytes')
+
+var file = require('../helpers/file')
+var logger = require('../helpers/logger').create('task:fileClone')
+var peer = require('../helpers/peer')
+
 var config = require('../config')
 
 
@@ -23,7 +25,7 @@ var clone = function(job,cb){
   //track some stats
   var winner
   var bytesSent = 0
-  var start = new Date().valueOf()
+  var start = +(new Date())
   //start process
   async.series(
     [
@@ -50,7 +52,7 @@ var clone = function(job,cb){
         rs.on('error',next)
         ws.on('error',next)
         rs.on('close',function(){
-          var duration = (new Date().valueOf() - start) / 1000
+          var duration = ((+new Date()) - start) / 1000
           if(!bytesSent) bytesSent = 0
           if(!duration) duration = 1
           var bytesPerSec = prettyBytes(bytesSent / duration) + '/sec'

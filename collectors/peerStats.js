@@ -103,8 +103,8 @@ var getDiskFree = function(basket,next){
   //Windows needs to call with only the drive letter
   if('win32' === os.platform()) root = root.substr(0,1)
   ds.check(root,function(err,total,free){
-    basket.diskFree = parseInt(free,10) || 0
-    basket.diskTotal = parseInt(total,10) || 0
+    basket.diskFree = (+free) || 0
+    basket.diskTotal = (+total) || 0
     next(null,basket)
   })
 }
