@@ -10,6 +10,15 @@ var Sniffer = require('../../../helpers/Sniffer')
 
 
 /**
+ * Get the current date in ms
+ * @return {number}
+ */
+var getNow = function(){
+  return +new Date()
+}
+
+
+/**
  * Show the progress message
  * @param {object} opts
  * @param {object} progress
@@ -19,7 +28,7 @@ var Sniffer = require('../../../helpers/Sniffer')
 var progressMessage = function(opts,progress,frames){
   var bps = prettyBytes(
     (frames.complete || 1) /
-    (((+new Date()) - (+progress.start) || 1) / 1000)
+    ((getNow() - (+progress.start) || 1) / 1000)
   )
   return 'Downloading resource [' + opts.name + '] ' +
     prettyBytes(frames.complete || 0) + ' / ' +
@@ -37,14 +46,11 @@ var progressMessage = function(opts,progress,frames){
  */
 var progressThrottle = function(progress,frames){
   var show = false
-  var now = +(new Date())
-  var lastUpdate = progress.lastUpdate
-  if(lastUpdate instanceof Date) lastUpdate = +progress.lastUpdate
   if(frames.total === frames.complete) show = true
-  if(!lastUpdate) show = true
-  if(now > lastUpdate + progress.rate) show = true
+  if(!progress.lastUpdate) show = true
+  if(getNow() > progress.lastUpdate + progress.rate) show = true
   if(show){
-    progress.lastUpdate = new Date()
+    progress.lastUpdate = getNow()
     return true
   }
   return false
@@ -92,7 +98,7 @@ var executeRequest = function(job,req,done){
       total: +(res.headers['content-length'] || 0)
     }
     var progress = {
-      start: new Date(),
+      start: getNow(),
       lastUpdate: 0,
       rate: 10000
     }

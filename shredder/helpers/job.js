@@ -15,6 +15,14 @@ var Resource = require('./resource')
 //var config = require('../../config')
 
 
+/**
+ * Get the current date in ms
+ * @return {number}
+ */
+var getNow = function(){
+  return +new Date()
+}
+
 
 /**
  * Load a template if there is one
@@ -91,18 +99,11 @@ var generateSignature = function(job){
 /**
  * Throttle helper for sending updates
  * @param {number} rate
- * @param {Date} pointer
+ * @param {number} pointer
  * @return {boolean}
  */
 var throttleUpdate = function(rate,pointer){
-  var now = +(new Date())
-  if(!pointer) pointer = 0
-  //make sure pointer is a number
-  if(pointer instanceof Date) pointer = +pointer
-  //figure out the next available send date
-  var nextSend = pointer + (+rate)
-  //throttle messages provided its not a status change message
-  return (!rate) ? true : (now >= nextSend)
+  return !rate ? true : (getNow() >= ((pointer || 0) + rate))
 }
 
 
@@ -174,8 +175,8 @@ Job.prototype.update = function(changes,force,done){
     callback,
     function(item,next){
       var i = callback.indexOf(item)
-      if(force || throttleUpdate(item.throttle,that.callbackThrottle[i],that.metrics.$get('status'))){
-        that.callbackThrottle[i] = new Date()
+      if(force || throttleUpdate(+item.throttle,that.callbackThrottle[i])){
+        that.callbackThrottle[i] = getNow()
         that.runDriver('callback',new Parameter(),item,next)
       } else {
         next()
