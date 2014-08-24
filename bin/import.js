@@ -1,12 +1,14 @@
 'use strict';
+var async = require('async')
 var program = require('commander')
-  , readdirp = require('readdirp')
-  , fs = require('graceful-fs')
-  , file = require(__dirname + '/../helpers/file')
-  , path = require('path')
-  , config = require(__dirname + '/../config')
-  , async = require('async')
-  , os = require('os')
+var fs = require('graceful-fs')
+var os = require('os')
+var path = require('path')
+var readdirp = require('readdirp')
+
+var file = require(__dirname + '/../helpers/file')
+
+var config = require(__dirname + '/../config')
 
 program
   .version(config.version)

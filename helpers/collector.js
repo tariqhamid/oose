@@ -1,6 +1,6 @@
 'use strict';
 var async = require('async')
-  , EventEmitter = require('events').EventEmitter
+var EventEmitter = require('events').EventEmitter
 
 
 

@@ -1,7 +1,7 @@
 'use strict';
 var fs = require('graceful-fs')
-  , mkdirp = require('mkdirp')
-  , util = require('util')
+var mkdirp = require('mkdirp')
+var util = require('util')
 
 //make sure the log folder exists
 if(!fs.existsSync('./log')) mkdirp.sync('./log')

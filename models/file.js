@@ -1,7 +1,6 @@
 'use strict';
+var async = require('async')
 var mongoose = require('mongoose')
-  , async = require('async')
-  , schema
 
 mongoose.plugin(require('mongoose-list'))
 
@@ -21,7 +20,7 @@ var decode = function(path){
   })
 }
 
-schema = new mongoose.Schema({
+var schema = new mongoose.Schema({
   folder: {
     type: Boolean,
     require: true,
@@ -111,7 +110,7 @@ schema.pre('remove',function(next){
 // handling of created/modified
 schema.pre('save',function(next){
   var now = new Date()
-    ,_ref = this.get('metrics.dateCreated')
+  var _ref = this.get('metrics.dateCreated')
   if((void 0) === _ref || null === _ref)
     this.metrics.dateCreated = now
   this.metrics.dateModified = now

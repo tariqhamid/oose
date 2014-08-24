@@ -1,9 +1,11 @@
 'use strict';
+var async = require('async')
+
 var Collector = require('../helpers/collector')
-  , async = require('async')
-  , logger = require('../helpers/logger').create('collector:peerNext')
-  , redis = require('../helpers/redis')
-  , config = require('../config')
+var logger = require('../helpers/logger').create('collector:peerNext')
+var redis = require('../helpers/redis')
+
+var config = require('../config')
 
 var publicParams = [
   'hostname',

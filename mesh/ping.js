@@ -1,9 +1,11 @@
 'use strict';
+var shortId = require('shortid')
+var util = require('util')
+
+var logger = require('../helpers/logger').create('mesh:ping')
+
+var config = require('../config')
 var mesh = require('../mesh')
-  , config = require('../config')
-  , logger = require('../helpers/logger').create('mesh:ping')
-  , util = require('util')
-  , shortId = require('shortid')
 
 var pingHosts = {}
 var pingTimeout

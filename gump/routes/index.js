@@ -1,20 +1,22 @@
 'use strict';
+var async = require('async')
+var crypto = require('crypto')
+var fs = require('graceful-fs')
+var mkdirp = require('mkdirp')
+var net = require('net')
+var Path = require('path')
+var Q = require('q')
+var request = require('request')
 var temp = require('temp')
-  , config = require('../../config')
-  , fs = require('graceful-fs')
-  , mkdirp = require('mkdirp')
-  , async = require('async')
-  , net = require('net')
-  , crypto = require('crypto')
-  , request = require('request')
-  , Path = require('path')
-  , Sniffer = require('../../helpers/Sniffer')
-  , Logger = require('../../helpers/logger')
-  , Q = require('q')
+
+var Sniffer = require('../../helpers/Sniffer')
+var Logger = require('../../helpers/logger')
+var logger = Logger.create('gump')
 
 var File = require('../../models/file').model
 var Embed = require('../../models/embed').model
-var logger = Logger.create('gump')
+
+var config = require('../../config')
 
 
 /**

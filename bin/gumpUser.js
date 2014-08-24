@@ -1,10 +1,12 @@
 'use strict';
+var Table = require('cli-table')
 var program = require('commander')
-  , Table = require('cli-table')
-  , mongoose = require('mongoose')
-  , config = require('../config')
-  , logger = require('../helpers/logger').create('gump:user')
-  , User = require('../models/user').model
+var mongoose = require('mongoose')
+
+var logger = require('../helpers/logger').create('gump:user')
+var User = require('../models/user').model
+
+var config = require('../config')
 
 mongoose.connect(config.mongoose.dsn,config.mongoose.options,function(err){
   if(err) throw err

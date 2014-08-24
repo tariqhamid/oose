@@ -1,21 +1,18 @@
 'use strict';
+var async = require('async')
+var bcrypt = require('bcrypt')
 var mongoose = require('mongoose')
-  , bcrypt = require('bcrypt')
-  , async = require('async')
-  , schema, model
-
-var validate = require('mongoose-validator').validate
-
-
 //load plugins
-mongoose.plugin(require('mongoose-merge-plugin'))
 mongoose.plugin(require('mongoose-list'),{
   'sort': 'name.first name.last',
   'sort_fields': ['email','name.first','name.last']
 })
+mongoose.plugin(require('mongoose-merge-plugin'))
+var validate = require('mongoose-validator').validate
 
-//define schema
-schema = new mongoose.Schema({
+//define schema and model
+var model
+var schema = new mongoose.Schema({
   email: {
     label: 'Email',
     type: String,
@@ -89,8 +86,8 @@ schema = new mongoose.Schema({
  */
 schema.statics.login = function(email,password,done){
   var now = new Date()
-    , errorMessage = 'Invalid email address or password'
-    , user = {}
+  var errorMessage = 'Invalid email address or password'
+  var user = {}
   async.series(
     [
       //find the user
@@ -142,7 +139,7 @@ schema.statics.login = function(email,password,done){
 // handling of created/modified
 schema.pre('save',function(next){
   var now = new Date()
-    ,_ref = this.get('metrics.dateCreated')
+  var _ref = this.get('metrics.dateCreated')
   if((void 0) === _ref || null === _ref)
     this.metrics.dateCreated = now
   this.metrics.dateModified = now

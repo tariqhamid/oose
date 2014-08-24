@@ -1,14 +1,16 @@
 'use strict';
 /*jshint bitwise: false*/
+var async = require('async')
+var ds = require('diskspace')
+var os = require('os')
+var path = require('path')
+
 var Collector = require('../helpers/collector')
-  , redis = require('../helpers/redis')
-  , logger = require('../helpers/logger').create('collector:peerStats')
-  , config = require('../config')
-  , os = require('os')
-  , ds = require('diskspace')
-  , path = require('path')
-  , snmp = require('../helpers/snmp')
-  , async = require('async')
+var logger = require('../helpers/logger').create('collector:peerStats')
+var redis = require('../helpers/redis')
+var snmp = require('../helpers/snmp')
+
+var config = require('../config')
 
 var snmpSession = snmp.createSession()
 

@@ -1,9 +1,11 @@
 'use strict';
+var path = require('path')
 var readdirp = require('readdirp')
-  , config = require('../config')
-  , logger = require('../helpers/logger').create('task:inventory')
-  , file = require('../helpers/file')
-  , path = require('path')
+
+var file = require('../helpers/file')
+var logger = require('../helpers/logger').create('task:inventory')
+
+var config = require('../config')
 
 
 /**
