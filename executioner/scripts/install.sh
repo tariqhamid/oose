@@ -1,10 +1,11 @@
 #!/bin/bash
 
 function banner {
+  line="${1//./-}"
   echo
-  echo "----------------------"
+  echo $line
   echo "$1"
-  echo "----------------------"
+  echo $line
 }
 
 function runCommand {
@@ -15,25 +16,18 @@ function runCommand {
 banner "Installing OOSE"
 echo
 
-if [ -d "/opt/oose" ]; then
-  echo "OOSE already installed"
-  exit 0
-fi
+[ -d "/opt/oose" ] && echo "OOSE already installed" && exit 0
 
 # start running commands
-runCommand "cd /opt"
-runCommand "git clone -q git@github.com:eSited/oose.git"
-runCommand "cd /opt/oose"
-runCommand "git checkout stable"
-runCommand "npm config set color false"
+runCommand "cd /opt && git clone -q git@github.com:eSited/oose.git"
+runCommand "cd /opt/oose && git checkout stable"
+npm config set color false
 runCommand "npm -q --no-spin install"
-if [ ! -d /opt/oose/log ]; then
-  runCommand "mkdir /opt/oose/log"
-  runCommand "chown -R node:node /opt/oose/log"
-fi
-if [ ! -d /data ]; then
-  runCommand "mkdir /data"
-fi
+runCommand "chown -R node:node /opt/oose/dt"
+runCommand "ln -sf /etc/service/oose /opt/oose/dt"
+[ ! -d /opt/oose/log ] && runCommand "mkdir /opt/oose/log"
+runCommand "chown -R node:node /opt/oose/log"
+[ ! -d /data ] && runCommand "mkdir /data"
 runCommand "chown -R node:node /data"
 
 banner "Installation Complete"

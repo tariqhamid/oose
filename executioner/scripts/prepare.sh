@@ -1,5 +1,4 @@
 #!/bin/bash
-
 debMultiMediaAptList="/etc/apt/sources.list.d/deb-multimedia.list"
 hostname=$(hostname)
 hostnameDomain=$(hostname -d)
@@ -167,10 +166,11 @@ NGX_CONFIG
 )
 
 function banner {
+  line="${1//./-}"
   echo
-  echo "----------------------"
+  echo $line
   echo "$1"
-  echo "----------------------"
+  echo $line
 }
 
 function runCommand {
@@ -196,7 +196,7 @@ runCommand "apt-get -q -y install gcc g++ make git redis-server dstat vim screen
 
 if [ $(userExists node) -eq 0 ]; then
   banner "Creating user node"
-  runCommand "useradd node"
+  runCommand "adduser --disabled-password --shell=/bin/bash node"
 fi
 
 banner "Ensuring user file open limits"
@@ -209,32 +209,32 @@ session required pam_limits.so\n" /etc/pam.d/common-session
 fi
 
 # setup security limits if not already
-if [[ $(grep "node\s+soft" /etc/security/limits.conf) == "" ]]; then
+limitfile="/etc/security/limits.d/node.conf"
+if [[ $(grep -e "node\s+soft" $limitfile) == "" ]]; then
   limitSet=2
-  sed -i "/# End of file/a \
+  echo "root            soft    nofile          262144\n\
+root            hard    nofile          524288\n\
 node            soft    nofile          262144\n\
-node            hard    nofile          524288\n" /etc/security/limits.conf
+node            hard    nofile          524288\n\
+" > $limitfile
 fi
 
 # run some sanity commands
-if [ ! -d /var/log/node ]; then
-  mkdir /var/log/node > /dev/null 2>&1
-fi
-if [ ! -f /var/log/node/oose-err ]; then
-  touch /var/log/node/oose-err /var/log/node/oose-out > /dev/null 2>&1
-fi
+mkdir -p /var/log/node/oose > /dev/null 2>&1
 chown -R node:node /var/log/node  > /dev/null 2>&1
 
 # setup nginx
-if [ ! -f "/etc/nginx/sites-available/exports.${hostnameDomain}" ]; then
+if [ ! -f "/etc/nginx/sites-available/export.${hostnameDomain}" ]; then
   banner "Configuring Nginx"
+  export="sites-available/export.${hostnameDomain}"
+  prism="sites-available/prism.${hostnameDomain}"
   echo "$nginxConfig" > /etc/nginx/nginx.conf
-  echo "$nginxConfigExports" > /etc/nginx/sites-available/exports.${hostnameDomain}
-  echo "$nginxConfigPrism" > /etc/nginx/sites-available/prism.${hostnameDomain}
+  echo "$nginxConfigExports" > /etc/nginx/${export}
+  echo "$nginxConfigPrism" > /etc/nginx/${prism}
   rm -rf /etc/nginx/sites-enabled/*
   cd /etc/nginx/sites-enabled
-  ln -s ../sites-available/exports.${hostnameDomain}
-  ln -s ../sites-available/prism.${hostnameDomain}
+  ln -s ../${export}
+  ln -s ../${prism}
   nginx -t
   if [ $? -gt 0 ]; then
     echo "Nginx configuration test failed"
@@ -254,10 +254,16 @@ if [[ "$(which npm)" == "" ]]; then
     echo "Failed to install NPM"
     exit $rcode
   fi
-  banner "Installing PM2"
-  runCommand "npm config set color false"
-  runCommand "npm -q --no-spin -g install pm2"
-  runCommand "pm2 startup ubuntu"
+
+  banner "Fuck PM2!!!!!!"
+  runCommand "pm2 -s --no-color flush"
+  runCommand "pm2 -s --no-color kill"
+  npm config set color false
+  runCommand "npm -q --no-spin -g uninstall pm2"
+
+  banner "Installing daemontools"
+  runCommand "apt-get -q -y install daemontools-run"
+  runCommand "init q"
 fi
 
 # install ffmpeg?
@@ -276,6 +282,10 @@ fi
 # upgrade the snmp conf
 if [[ "$(grep .1.3.6.1.2.1.31 /etc/snmp/snmpd.conf)" == "" ]]; then
   banner "Configuring SNMP"
+  #kill stupid logging and enable service
+  sed -i -e"s/^\(SNMPDOPTS='\)-Lsd /\1/" \
+   -e"s/^\(TRAPDOPTS='\)-Lsd/\1-Lf\ \/dev\/null/" \
+   -e"s/^\(SNMPDRUN=\).*$/\1yes/" /etc/default/snmpd
   sed -i "/view   systemonly  included   .1.3.6.1.2.1.25.1/d" /etc/snmp/snmpd.conf
   # bad tabbing is intentional for the config file to look right
   sed -i "/view   systemonly  included   .1.3.6.1.2.1.1/a \

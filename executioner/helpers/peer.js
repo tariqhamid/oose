@@ -11,27 +11,30 @@ var Peer = require('../../models/peer').model
  * Peer action settings
  * @type {{restart: {name: string, status: string, finalStatusSuccess: string, finalStatusError: string, cmd: string}, stop: {name: string, status: string, finalStatusSuccess: string, finalStatusError: string, cmd: string}, start: {name: string, status: string, finalStatusSuccess: string, finalStatusError: string, cmd: string}}}
  */
+var servicedir = '/etc/service/oose'
+var dn = 'svc -d ' + servicedir
+var up = 'svc -u ' + servicedir
 var actions = {
   restart: {
     name: 'restart',
     status: 'ok',
     finalStatusSuccess: 'ok',
     finalStatusError: 'stopped',
-    cmd: 'pm2 -s --no-color restart oose'
+    cmd: dn + ' ; ' + up
   },
   stop: {
     name: 'stop',
     status: 'stopped|ok|error',
     finalStatusSuccess: 'stopped',
     finalStatusError: 'stopped',
-    cmd: 'pm2 --no-color -s delete oose'
+    cmd: dn
   },
   start: {
     name: 'start',
     status: 'stopped|error',
     finalStatusSuccess: 'ok',
     finalStatusError: 'stopped',
-    cmd: 'pm2 -s --no-color start /opt/oose/processes.json'
+    cmd: up
   }
 }
 
@@ -104,9 +107,10 @@ var peerLog = function(peer,level,msg,status,done){
  * @param {string} msg
  */
 exports.banner = function(writable,msg){
-  writable.write('\n---------------------\n')
+  var line = '-'.repeat(msg.length)
+  writable.write('\n' + line + '\n')
   writable.write(msg + '\n')
-  writable.write('---------------------\n')
+  writable.write(line + '\n')
 }
 
 
@@ -120,7 +124,7 @@ exports.outputStart = function(res,title){
   res.write('<html><head>')
   if(title) res.write('<title>' + title + '</title>')
   res.write('<style type="text/css">')
-  res.write('body {background: #000; color: #fff; font-family: monospace; font-size: 16px;}')
+  res.write('body {background:#000; color:#fff; font-family:monospace; font-size:16px;}')
   res.write('</style>')
   res.write('<script type="text/javascript">')
   res.write('var scrollBottom = function(){window.scrollTo(0,document.body.scrollHeight)};')
@@ -193,7 +197,10 @@ exports.test = function(id,next){
               var status = null
               if(peer.status.match(/error|unknown/i))
                 status = 'tested'
-              peerLog(peer,'success','Successfully communicated with peer and tested os validity',status,next)
+              peerLog(peer,'success',
+                'Successfully communicated with peer and tested OS validity',
+                status,next
+              )
             }
           }
         ],
@@ -223,12 +230,6 @@ exports.refresh = function(id,next){
           next()
         })
       },
-      //check if the peer is at the right status
-      function(next){
-        if(peer.status.match(/unknown|error/i))
-          return next('Peer not ready to be refreshed, try testing first')
-        next()
-      },
       //attempt to login to the peer with ssh
       function(next){
         peerSshConnect(peer,function(err,client){
@@ -244,7 +245,7 @@ exports.refresh = function(id,next){
                 client.commandBuffered('cat /etc/debian_version',function(err,result){
                   if(err) return next(err)
                   result = result.trim()
-                  if(!result) return next('Could not get the version of debian')
+                  if(!result) return next('Could not get the version of Debian')
                   peer.os.name = 'Debian'
                   peer.os.version = result
                   next()
@@ -302,13 +303,12 @@ exports.refresh = function(id,next){
       async.series(
         [
           function(next){
-            if(err) peerLog(peer,'warning',err,'error',next)
-            else {
-              var status = null
-              if(peer.status.match(/tested|error/i))
-                status = 'staging'
-              peerLog(peer,'info','Successfully refreshed stats',status,next)
-            }
+            peerLog(peer,
+              err ? 'warning' : 'info',
+              err ? err       : 'Successfully refreshed stats',
+              err ? 'error'   : ('tested' === peer.status)?'refreshed':null,
+              next
+            )
           }
         ],
         function(error){
@@ -340,8 +340,8 @@ exports.prepare = function(id,writable,next){
       },
       //check if the peer is at the right status
       function(next){
-        if(peer.status.match(/unknown/i))
-          return next('Peer not ready to be prepared, it is either already prepared or needs refreshed first')
+        if(peer.status.match(/unknown|started/i))
+          return next('Peer not ready to be prepared')
         next()
       },
       //attempt to login to the peer with ssh
@@ -383,7 +383,10 @@ exports.prepare = function(id,writable,next){
               var status = null
               if(peer.status.match(/staging|error/i))
                 status = 'ready'
-              peerLog(peer,'success','Successfully prepared peer for installation',status,next)
+              peerLog(peer,'success',
+                'Successfully prepared peer for installation',
+                status,next
+              )
             }
           }
         ],
@@ -604,22 +607,6 @@ exports.action = function(id,action,next){
               //stop/start/restart
               function(next){
                 client.commandBuffered(action.cmd,next)
-              },
-              //kill pm2 on stop
-              function(next){
-                if('stop' !== action.name) return next()
-                async.series(
-                  [
-                    function(next){client.commandBuffered('pm2 -s --no-color flush',next)},
-                    function(next){client.commandBuffered('pm2 -s --no-color kill',next)}
-                  ],
-                  next
-                )
-              },
-              //save for pm2 reboot on start
-              function(next){
-                if('start' !== action.name) return next()
-                client.commandBuffered('pm2 -s --no-color save',next)
               }
             ],
             next
