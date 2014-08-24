@@ -6,11 +6,12 @@ var express = require('express')
 var app = express()
 var server = require('http').createServer(app)
 
-var config = require('../config')
 var commUtil = require('../helpers/communicator').util
+var logger = require('../helpers/logger').create('prism')
 var peer = require('../helpers/peer')
 var redis = require('../helpers/redis')
-var logger = require('../helpers/logger').create('prism')
+
+var config = require('../config')
 
 var running = false
 

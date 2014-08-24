@@ -1,31 +1,31 @@
 'use strict';
+var async = require('async')
 var cluster = require('cluster')
-  , os = require('os')
-  , config = require('./config')
-  , fs = require('graceful-fs')
-  , mkdirp = require('mkdirp')
-  , async = require('async')
-  , mongoose = require('mongoose')
-  , logger = require('./helpers/logger').create('main')
+var fs = require('graceful-fs')
+var mongoose = require('mongoose')
+var os = require('os')
 
-process.on('error',function(err){
-  logger.critical(err)
-})
+var config = require('./config')
+
+var Logger = require('./helpers/logger')
+var logger = Logger.create('main')
+var redis = require('./helpers/redis')
+
+process.on('error',function(err){ logger.critical(err) })
 
 //master startup
 if(cluster.isMaster){
   //fix windows handling of ctrl+c
   require('node-sigint')
   //import packages
-  var redis = require('./helpers/redis')
-    , peerNext = require('./collectors/peerNext')
-    , peerStats = require('./collectors/peerStats')
-    , mesh = require('./mesh')
-    , ping = require('./mesh/ping')
-    , announce = require('./mesh/announce')
-    , shredder = require('./shredder')
-    , executioner = require('./executioner')
-    , program = require('commander')
+  var program = require('commander')
+  var peerNext = require('./collectors/peerNext')
+  var peerStats = require('./collectors/peerStats')
+  var executioner = require('./executioner')
+  var mesh = require('./mesh')
+  var ping = require('./mesh/ping')
+  var announce = require('./mesh/announce')
+  var shredder = require('./shredder')
   //parse cli
   program
     .version(config.$get('version'))
@@ -39,13 +39,18 @@ if(cluster.isMaster){
     )
     .parse(process.argv)
   //set log verbosity
-  require('./helpers/logger').consoleFilter.setConfig({level: (program.verbose || 0) + 4})
-  //make sure the root folder exists
-  if(!fs.existsSync(config.$get('root')))
-    mkdirp.sync(config.$get('root'))
+  Logger.consoleFilter.setConfig({level: (program.verbose || 0) + 4})
   //start booting
   async.series(
     [
+      //make sure the root folder exists
+      function(next){
+        var root = config.$get('root')
+        fs.exists(root,function(exists){
+          if(exists) return next()
+          require('mkdirp')(root,next)
+        })
+      },
       //cleanup redis
       function(next){
         var removed = 0
@@ -325,12 +330,12 @@ if(cluster.isMaster){
 
 //worker startup
 if(cluster.isWorker){
+  var storeExport = require('./export')
+  var gump = require('./gump')
+  var hideout = require('./hideout')
   var storeImport = require('./import')
-    , storeExport = require('./export')
-    , prism = require('./prism')
-    , gump = require('./gump')
-    , hideout = require('./hideout')
-    , lg = require('./lg')
+  var lg = require('./lg')
+  var prism = require('./prism')
   async.parallel(
     [
       function(next){

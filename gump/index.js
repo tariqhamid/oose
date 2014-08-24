@@ -1,19 +1,21 @@
 'use strict';
 var bodyParser = require('body-parser')
 var busboy = require('connect-busboy')
-var methodOverride = require('method-override')
 var cookieParser = require('cookie-parser')
 var flash = require('connect-flash')
 var session = require('express-session')
+var methodOverride = require('method-override')
 
 var express = require('express')
 var app = express()
 var server = require('http').createServer(app)
 var RedisStore = require('connect-redis')(session)
 
+var logger = require('../helpers/logger').create('prism')
+var redis = require('../helpers/redis')
+
 var config = require('../config')
 var routes = require('./routes')
-var logger = require('../helpers/logger').create('prism')
 
 var running = false
 
@@ -34,7 +36,7 @@ app.use(session({
   cookie: {
     maxAge: config.gump.cookie.maxAge
   },
-  store: new RedisStore(config.redis),
+  store: new RedisStore({client:redis}),
   secret: config.gump.cookie.secret,
   resave: true,
   saveUninitialized: true

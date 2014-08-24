@@ -1,9 +1,12 @@
 'use strict';
+var async = require('async')
+
+var logger = require('../helpers/logger').create('mesh:announce')
+var redis = require('../helpers/redis')
+
+var config = require('../config')
 var mesh = require('../mesh')
-  , logger = require('../helpers/logger').create('mesh:announce')
-  , redis = require('../helpers/redis')
-  , config = require('../config')
-  , async = require('async')
+
 
 //announcements
 var announceLog = function(selfPeer,oldPeer,peer,packet){
@@ -22,8 +25,8 @@ var announceLog = function(selfPeer,oldPeer,peer,packet){
 var announceListen = function(){
   mesh.udp.on('announce',function(packet,rinfo){
     var selfPeer = {}
-      , oldPeer = {}
-      , peer = {}
+    var oldPeer = {}
+    var peer = {}
     async.series(
       [
         //grab ourselves
@@ -135,8 +138,8 @@ var announceListen = function(){
 var announceTimeout
 var announceSend = function(){
   var peer = {}
-    , message = {}
-    , peerCount = 0
+  var message = {}
+  var peerCount = 0
   async.series(
     [
       //find ourselves

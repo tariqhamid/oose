@@ -1,9 +1,9 @@
 'use strict';
-var redis = require('./redis')
-var net = require('net')
-var Sniffer = require('./Sniffer')
 var crypto = require('crypto')
+var net = require('net')
 
+var redis = require('../helpers/redis')
+var Sniffer = require('../helpers/Sniffer')
 
 /**
  * Select next peer

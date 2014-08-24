@@ -58,6 +58,7 @@ app.get('/:sha1/:filename',function(req,res){
       },
       //set headers
       function(next){
+        /* jshint bitwise:false */
         //add attachment for a download
         if('string' === typeof req.query.download){
           res.set('Content-Disposition','attachment; filename=' + req.params.filename)
@@ -72,8 +73,8 @@ app.get('/:sha1/:filename',function(req,res){
         var rangeRaw = req.get('range')
         if(rangeRaw){
           var match = rangeRaw.match(/(\d+)-(\d*)/)
-          if(match[1]) range.start = parseInt(match[1],10)
-          if(match[2]) range.end = parseInt(match[2],10)
+          if(match[1]) range.start = match[1] >> 0
+          if(match[2]) range.end = match[2] >> 0
           res.status(206)
           res.set('Content-Range','bytes ' + range.start + '-' + range.end + '/' + stat.size)
         }

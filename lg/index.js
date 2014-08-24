@@ -13,6 +13,7 @@ var RedisStore = require('connect-redis')(session)
 var config = require('../config')
 var routes = require('./routes')
 var logger = require('../helpers/logger').create('lg')
+var redis = require('../helpers/redis')
 
 var running = false
 
@@ -53,7 +54,7 @@ app.use(session({
   cookie: {
     maxAge: config.lg.cookie.maxAge
   },
-  store: new RedisStore(config.redis),
+  store: new RedisStore({client:redis}),
   secret: config.lg.cookie.secret,
   resave: true,
   saveUninitialized: true

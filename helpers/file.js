@@ -1,15 +1,17 @@
 'use strict';
-var config = require('../config')
+var async = require('async')
 var crypto = require('crypto')
-var path = require('path')
 var fs = require('graceful-fs')
 var mkdirp = require('mkdirp')
-var redis = require('./redis')
-var temp = require('temp')
 var mmm = require('mmmagic')
-var async = require('async')
-var Sniffer = require('../helpers/Sniffer')
+var path = require('path')
+var temp = require('temp')
+
 var commUtil = require('../helpers/communicator').util
+var redis = require('../helpers/redis')
+var Sniffer = require('../helpers/Sniffer')
+
+var config = require('../config')
 
 
 /**
