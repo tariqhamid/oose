@@ -9,7 +9,7 @@ var program = require('commander')
   , os = require('os')
 
 program
-  .version(config.get('version'))
+  .version(config.version)
   .usage('[options] <stdin>')
   .option('-d --directory <s>','Root folder to import, can be omitted to disable folder scanning')
   .option('-c --concurrency <n>','Change the number of concurrent imports, defaults to number of cpus')

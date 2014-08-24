@@ -29,7 +29,7 @@ app.locals.pretty = true
 /**
  * App version
  */
-app.locals.version = config.get('version')
+app.locals.version = config.version
 
 
 /**
@@ -43,14 +43,14 @@ app.locals.moment = require('moment')
  */
 app.locals.ssh = {
   publicKey:
-    fs.existsSync(config.get('executioner.ssh.publicKey')) ?
-      fs.readFileSync(config.get('executioner.ssh.publicKey')) :
+    fs.existsSync(config.executioner.ssh.publicKey) ?
+      fs.readFileSync(config.executioner.ssh.publicKey) :
       null
 }
 
 app.use(function(req,res,next){
-  var username = config.get('executioner.user')
-  var password = config.get('executioner.password')
+  var username = config.executioner.user
+  var password = config.executioner.password
   if(!username || !password){
     res.status(500)
     res.send('Missing username and/or password')
@@ -75,13 +75,13 @@ app.set('view engine','jade')
 app.use(bodyParser.urlencoded({extended:true}))
 app.use(bodyParser.json())
 app.use(methodOverride())
-app.use(cookieParser(config.get('executioner.cookie.secret')))
+app.use(cookieParser(config.executioner.cookie.secret))
 app.use(session({
   cookie: {
-    maxAge: config.get('executioner.cookie.maxAge')
+    maxAge: config.executioner.cookie.maxAge
   },
-  store: new RedisStore(config.get('redis')),
-  secret: config.get('executioner.cookie.secret'),
+  store: new RedisStore(config.redis),
+  secret: config.executioner.cookie.secret,
   resave: true,
   saveUninitialized: true
 }))
@@ -120,11 +120,11 @@ app.get('/',routes.index)
  * @return {*}
  */
 exports.start = function(done){
-  if(!config.get('executioner.user') || !config.get('executioner.password')){
+  if(!config.executioner.user || !config.executioner.password){
     logger.warning('Refusing to start executioner, missing username and/or password')
     return done()
   }
-  server.listen(config.get('executioner.port'),config.get('executioner.host'),function(err){
+  server.listen(config.executioner.port,config.executioner.host,function(err){
     if(err) return done(err)
     running = true
     done()

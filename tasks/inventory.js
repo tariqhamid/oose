@@ -58,7 +58,7 @@ exports.start = function(done){
     lastUpdate: 0,
     rate: 250
   }
-  var root = config.get('root')
+  var root = config.root
   logger.info('Starting to build inventory')
   var rdStream = readdirp({root: path.resolve(root) || path.resolve('./data'), directoryFilter: ['!tmp']})
   rdStream.on('warn',function(warn){

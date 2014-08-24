@@ -28,16 +28,16 @@ Mesh.prototype.start = function(done){
   var self = this
   //start udp
   self.udp = communicator.UDP({
-    port: config.get('mesh.port'),
-    address: config.get('mesh.address'),
+    port: config.mesh.port,
+    address: config.mesh.address,
     multicast: {
-      address: config.get('mesh.multicast.address'),
-      ttl: config.get('mesh.multicast.ttl'),
-      interfaceAddress: config.get('mesh.multicast.interfaceAddress')
+      address: config.mesh.multicast.address,
+      ttl: config.mesh.multicast.ttl,
+      interfaceAddress: config.mesh.multicast.interfaceAddress
     }
   })
   //start tcp
-  self.tcp = communicator.TCP({port: config.get('mesh.port')})
+  self.tcp = communicator.TCP({port: config.mesh.port})
   //connection error handling
   self.udp.on('error',function(err){self.emit('error',err)})
   self.tcp.on('error',function(err){self.emit('error',err)})
@@ -101,10 +101,10 @@ Mesh.prototype.stop = function(done){
  */
 Mesh.prototype.readyState = function(state,done){
   if('function' !== typeof done) done = function(){}
-  if(!config.get('mesh.enabled')) return done()
+  if(!config.mesh.enabled) return done()
   var self = this
   if('function' !== typeof done) done = function(){}
-  redis.hset('peer:db:' + config.get('hostname'),'readyState',state,function(err){
+  redis.hset('peer:db:' + config.hostname,'readyState',state,function(err){
     if(err) done(err)
     self.udp.send('readyState',{readyState: state})
     done()

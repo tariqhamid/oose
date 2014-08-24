@@ -135,7 +135,7 @@ var executeRequest = function(job,req,done){
             if(!opts.parse.hasOwnProperty(i)) continue
             exp = new RegExp(opts.parse[i],'i')
             match = exp.exec(buffer)
-            if(match && match[1]) req.parameter.set(i,match[1])
+            if(match && match[1]) req.parameter.$set(i,match[1])
           }
           done()
         })
@@ -178,12 +178,12 @@ exports.description = 'Offers ability to use http as a resource retrieval method
  * @param {function} done
  */
 exports.run = function(job,parameter,options,done){
-  job.resource.create(options.get('name'),function(err,resource){
+  job.resource.create(options.name,function(err,resource){
     if(err) return done(err)
     var chain = []
     //if we dont have a chain lets make one out of the single request
-    if(!options.get('chain')) chain.push(options.get())
-    else chain = options.get('chain')
+    if(!options.$exists('chain')) chain.push(options.$strip())
+    else chain = options.chain
     //pop the last request off the chain and save it for the end
     var final = chain.pop()
     var jar = request.jar()
@@ -193,7 +193,7 @@ exports.run = function(job,parameter,options,done){
       //execute each member of the chain and gracefully handle errors
       function(opts,next){
         //setup the request and dont provide a resource, since these are intermediate requests
-        opts.name = options.get('name')
+        opts.name = options.name
         var req = {
           resource: null,
           jar: jar,
@@ -210,7 +210,7 @@ exports.run = function(job,parameter,options,done){
       function(err){
         if(err) return done(err)
         //setup for the final request (provide the resource)
-        final.name = options.get('name')
+        final.name = options.name
         var req = {
           resource: resource,
           jar: jar,

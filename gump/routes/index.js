@@ -101,15 +101,15 @@ exports.upload = function(req,res){
   if(!req.query.god || !req.session.user.admin)
     path.unshift(req.session.user._id)
   //setup temp folder
-  if(!fs.existsSync(config.get('gump.tmpDir')))
-    mkdirp.sync(config.get('gump.tmpDir'))
+  if(!fs.existsSync(config.gump.tmpDir))
+    mkdirp.sync(config.gump.tmpDir)
   //url creators
   var prismBaseUrl = function(){
-    return 'http://' + (config.get('gump.prism.host') || '127.0.0.1') + ':' + config.get('gump.prism.port') || 3003
+    return 'http://' + (config.gump.prism.host || '127.0.0.1') + ':' + config.gump.prism.port || 3003
   }
   var gumpBaseUrl = function(){
-    if(config.get('gump.baseUrl')) return config.get('gump.baseUrl')
-    return 'http://' + (config.get('gump.host') || '127.0.0.1') + ':' + (config.get('gump.port') || 3004)
+    if(config.gump.baseUrl) return config.gump.baseUrl
+    return 'http://' + (config.gump.host || '127.0.0.1') + ':' + (config.gump.port || 3004)
   }
   //import functions
   var sendToShredder = function(file,next){
@@ -283,7 +283,7 @@ exports.upload = function(req,res){
     var promise = Q.defer()
     var file = {
       promise: promise,
-      tmp: temp.path({dir: config.get('gump.tmpDir')}),
+      tmp: temp.path({dir: config.gump.tmpDir}),
       fieldname: fieldname,
       readable: readable,
       filename: filename,
@@ -368,7 +368,7 @@ exports.folderCreate = function(req,res){
 exports.file = function(req,res){
   var god = req.query.god ? true : false
   File.findOne({_id: req.query.id},function(err,result){
-    var prismHost = config.get('gump.prism.hostUrl')
+    var prismHost = config.gump.prism.hostUrl
     if(result.status === 'error'){
       return res.render('fileError',{
         file: result,
@@ -387,7 +387,7 @@ exports.file = function(req,res){
       return res.render('fileEmbed',{
         file: result,
         prismHost: prismHost,
-        baseUrl: config.get('gump.embedBaseUrl'),
+        baseUrl: config.gump.embedBaseUrl,
         god: god
       })
     }
@@ -525,7 +525,7 @@ exports.download = function(req,res){
       //build the oose url
       function(next){
         url =
-          'http://' + config.get('gump.prism.host') + ':' + config.get('gump.prism.port') +
+          'http://' + config.gump.prism.host + ':' + config.gump.prism.port +
           '/' + file.sha1 + '/' + file.name + '?download=true'
         next()
       }

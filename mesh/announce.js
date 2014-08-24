@@ -12,7 +12,7 @@ var announceLog = function(selfPeer,oldPeer,peer,packet){
       ' (' + peer.ip + ':' + peer.portMesh + ')' +
       ' @ ' + new Date(peer.sent).toLocaleTimeString() +
       ' (latency ' + peer.latency + ')' +
-      (config.get('mesh.debug') && packet.hostname === selfPeer.hostname ? ' [SELFIE]' : '')
+      (config.mesh.debug && packet.hostname === selfPeer.hostname ? ' [SELFIE]' : '')
   )
   //logger.debug('Announce:' + os.EOL + util.inspect(peer))
   //logger.debug('Self Peer:' + os.EOL + util.inspect(selfPeer))
@@ -28,7 +28,7 @@ var announceListen = function(){
       [
         //grab ourselves
         function(next){
-          redis.hgetall('peer:db:' + config.get('hostname'),function(err,result){
+          redis.hgetall('peer:db:' + config.hostname,function(err,result){
             if(err) return next(err)
             selfPeer = result
             next()
@@ -52,7 +52,7 @@ var announceListen = function(){
         //populate peer information to store
         function(next){
           //populate details
-          peer.latency = packet.sent - (oldPeer.sent || 0) - config.get('mesh.announce.interval')
+          peer.latency = packet.sent - (oldPeer.sent || 0) - config.mesh.announce.interval
           if(peer.latency < 0) peer.latency = 0
           peer.sent = packet.sent
           peer.hostname = packet.hostname
@@ -141,7 +141,7 @@ var announceSend = function(){
     [
       //find ourselves
       function(next){
-        redis.hgetall('peer:db:' + config.get('hostname'),function(err,result){
+        redis.hgetall('peer:db:' + config.hostname,function(err,result){
           if(err) return next(err)
           if(!result) return next('Announce delayed, peer not ready')
           peer = result
@@ -159,7 +159,7 @@ var announceSend = function(){
       //compose message
       function(next){
         message.sent = new Date().getTime()
-        message.hostname = config.get('hostname')
+        message.hostname = config.hostname
         message.readyState = peer.readyState || 0
         message.peerCount = peerCount
         message.diskFree = peer.diskFree
@@ -170,10 +170,10 @@ var announceSend = function(){
         message.memoryTotal = peer.memoryTotal
         message.availableCapacity = peer.availableCapacity
         message.services = peer.services
-        message.portImport = config.get('import.portPublic') || peer.portImport || 0
-        message.portExport = config.get('store.export.portPublic') || peer.portExport || 0
-        message.portPrism = config.get('prism.portPublic') || peer.portPrism || 0
-        message.portMesh = config.get('mesh.portPublic') || peer.portMesh || 0
+        message.portImport = config.store.import.portPublic || peer.portImport || 0
+        message.portExport = config.store.export.portPublic || peer.portExport || 0
+        message.portPrism = config.prism.portPublic || peer.portPrism || 0
+        message.portMesh = config.mesh.portPublic || peer.portMesh || 0
         message.netSpeed = peer.netSpeed || 0
         message.netInBps = peer.netInBps || 0
         message.netOutBps = peer.netOutBps || 0
@@ -187,7 +187,7 @@ var announceSend = function(){
     //setup the next timeout
     ],function(err){
       if(err) logger.error(err)
-      announceTimeout = setTimeout(announceSend,config.get('mesh.announce.interval'))
+      announceTimeout = setTimeout(announceSend,config.mesh.announce.interval)
     }
   )
 }

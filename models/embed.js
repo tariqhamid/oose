@@ -40,8 +40,8 @@ schema = new mongoose.Schema({
 schema.methods.preview = function(){
   var image
   if(this.media.image[0]) image = this.media.image[0]
-  if(!image) return config.get('gump.embed.defaultPreviewImageUrl')
-  return config.get('gump.embed.prismUrl') + image.sha1 + '/' + (image.filename || 'image.png')
+  if(!image) return config.gump.embed.defaultPreviewImageUrl
+  return config.gump.embed.prismUrl + image.sha1 + '/' + (image.filename || 'image.png')
 }
 
 
@@ -59,7 +59,7 @@ schema.methods.video = function(quality){
   })
   if(!video) video = this.media.video[0]
   if(!video) return false
-  return config.get('gump.embed.prismUrl') + video.sha1 + '/' + (video.filename || 'video.mp4')
+  return config.gump.embed.prismUrl + video.sha1 + '/' + (video.filename || 'video.mp4')
 }
 
 
@@ -68,7 +68,7 @@ schema.methods.video = function(quality){
  * @return {string}
  */
 schema.statics.generateHandle = function(){
-  shortid.seed(config.get('embed.seed'))
+  shortid.seed(config.gump.embed.seed)
   return shortid.generate()
 }
 

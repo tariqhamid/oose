@@ -2,10 +2,10 @@
 var redis = require('redis')
   , config = require('../config')
 
-var client = redis.createClient(config.get('redis.port'),config.get('redis.host'),config.get('redis.options'))
+var client = redis.createClient(config.redis.port,config.redis.host,config.redis.options)
 client.on('ready',function(){
-  if(config.get('redis.auth')){
-    client.auth(config.get('redis.auth'))
+  if(config.redis.auth){
+    client.auth(config.redis.auth)
   }
 })
 

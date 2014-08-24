@@ -32,7 +32,7 @@ var pingSend = function(){
     starttime:new Date().getTime()
   })
   logger.debug('hosts:' + util.inspect(pingHosts))
-  pingTimeout = setTimeout(function(){pingSend(mesh)},config.get('mesh.ping.interval'))
+  pingTimeout = setTimeout(function(){pingSend(mesh)},config.mesh.ping.interval)
 }
 
 

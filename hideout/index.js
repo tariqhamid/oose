@@ -14,8 +14,8 @@ var logger = require('../helpers/logger').create('hideout')
 var running = false
 
 app.use(function(req,res,next){
-  var username = config.get('hideout.user')
-  var password = config.get('hideout.password')
+  var username = config.hideout.user
+  var password = config.hideout.password
   if(!username || !password){
     res.status(500)
     res.send('Missing username and/or password')
@@ -167,11 +167,11 @@ app.get('/',function(req,res){
  * @return {*}
  */
 exports.start = function(done){
-  if(!config.get('hideout.user') || !config.get('hideout.password')){
+  if(!config.hideout.user || !config.hideout.password){
     logger.warning('Refusing to start hideout, missing username and/or password')
     return done()
   }
-  server.listen(config.get('hideout.port'),config.get('hideout.host'),function(err){
+  server.listen(config.hideout.port,config.hideout.host,function(err){
     if(err) return done(err)
     running = true
     done()

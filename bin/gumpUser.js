@@ -6,7 +6,7 @@ var program = require('commander')
   , logger = require('../helpers/logger').create('gump:user')
   , User = require('../models/user').model
 
-mongoose.connect(config.get('mongoose.dsn'),config.get('mongoose.options'),function(err){
+mongoose.connect(config.mongoose.dsn,config.mongoose.options,function(err){
   if(err) throw err
   //create
   program
@@ -90,7 +90,7 @@ mongoose.connect(config.get('mongoose.dsn'),config.get('mongoose.options'),funct
         process.exit()
       })
     })
-  program.version(config.get('version'))
+  program.version(config.version)
   var cli = program.parse(process.argv)
   if(!cli.args.length) program.help()
 })

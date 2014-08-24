@@ -30,17 +30,17 @@ var msg = {
 
 var supervisorTimeout
 var supervisorStartup = function(){
-  redis.hgetall('peer:db:' + config.get('hostname'),function(err,peer){
+  redis.hgetall('peer:db:' + config.hostname,function(err,peer){
     if(err) logger.error(err)
     else if(!peer){
       msg.starting()
-      supervisorTimeout = setTimeout(supervisorStartup,config.get('supervisor.retryInterval'))
+      supervisorTimeout = setTimeout(supervisorStartup,config.supervisor.retryInterval)
     } else {
       var message = {}
       message.sent = new Date().getTime()
-      message.hostname = config.get('hostname')
+      message.hostname = config.hostname
 //      cmdBus.emit('patrolReq',message)
-//      supervisorTimeout = setTimeout(supervisorPatrol,config.get('supervisor.patrolInterval'))
+//      supervisorTimeout = setTimeout(supervisorPatrol,config.supervisor.patrolInterval)
     }
   })
 }
@@ -58,7 +58,7 @@ exports.start = function(done){
     } else {
       logger.info(result)
     }
-    supervisorTimeout = setTimeout(exports.start(),config.get('supervisor.retryInterval'))
+    supervisorTimeout = setTimeout(exports.start(),config.supervisor.retryInterval)
     done()
   })
  */

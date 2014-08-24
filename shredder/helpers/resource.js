@@ -8,15 +8,15 @@ var fs = require('graceful-fs')
 var path = require('path')
 var config = require('../../config')
 var peer = require('../../helpers/peer')
-var tmpDir = path.resolve(config.get('root') + '/shredder/tmp')
+var tmpDir = path.resolve(config.root + '/shredder/tmp')
 var resourceExp = /\{([^}]+)\}/ig
 var cleanup = []
 
 //remove any leftover resources on exit
 process.on('exit',function(){
   cleanup.forEach(function(resource){
-    if(fs.existsSync(resource.get('path')))
-      fs.unlinkSync(resource.get('path'))
+    if(fs.existsSync(resource.$get('path')))
+      fs.unlinkSync(resource.$get('path'))
   })
 })
 
@@ -40,7 +40,7 @@ var saveResource = function(name,info,next){
       },
       //setup connection to input
       function(next){
-        peer.sendFromReadable(peerNext,fs.createReadStream(info.get('path')),function(err,result){
+        peer.sendFromReadable(peerNext,fs.createReadStream(info.$get('path')),function(err,result){
           sha1 = result
           next()
         })
@@ -65,8 +65,8 @@ var Resource = function(options){
   EventEmitter.call(that)
   //load options
   that.options = new ObjectManage()
-  that.options.load(that.defaultOptions)
-  that.options.load(options)
+  that.options.$load(that.defaultOptions)
+  that.options.$load(options)
   //define our resource handler
   that.resources = {}
 }
@@ -176,7 +176,7 @@ Resource.prototype.get = function(name){
  */
 Resource.prototype.load = function(name,info){
   if(this.resources[name] && this.resources[name] instanceof ObjectManage){
-    this.resources[name].load(info)
+    this.resources[name].$load(info)
     return true
   }
   return false
@@ -190,8 +190,8 @@ Resource.prototype.load = function(name,info){
 Resource.prototype.remove = function(name){
   var resource = this.resources[name]
   this.emit('remove',name,resource)
-  if(fs.existsSync(resource.get('path')))
-    fs.unlinkSync(resource.get('path'))
+  if(fs.existsSync(resource.$get('path')))
+    fs.unlinkSync(resource.$get('path'))
   //remove from cleanup
   delete cleanup[cleanup.indexOf(resource)]
   //remove locally
@@ -231,7 +231,7 @@ Resource.prototype.render = function(string,done){
       //replace any resource references with their paths
       for(var i in that.resources){
         if(!that.resources.hasOwnProperty(i)) continue
-        string = string.replace(new RegExp('{' + i + '}','i'),that.resources[i].get('path'))
+        string = string.replace(new RegExp('{' + i + '}','i'),that.resources[i].$get('path'))
       }
       that.emit('render',originalString,string)
       done(null,string)

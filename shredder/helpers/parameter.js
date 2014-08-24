@@ -30,8 +30,8 @@ Parameter.prototype.render = function(string){
   if(!(matches instanceof Array) || !matches.length) return string
   //replace any template variables
   matches.forEach(function(v){
-    if(!that.exists(v)) return
-    string = string.replace(new RegExp('#{' + v + '}','ig'),that.get(v))
+    if(!that.$exists(v)) return
+    string = string.replace(new RegExp('#{' + v + '}','ig'),that.$get(v))
   })
   return string
 }

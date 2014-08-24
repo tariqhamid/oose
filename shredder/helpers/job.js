@@ -23,7 +23,7 @@ var loadTemplate = function(job,input){
   //setup a new object manage
   var obj = new ObjectManage()
   //load our input
-  obj.load(input)
+  obj.$load(input)
   //if there is not a template we are done
   if(!input.template) return obj
   //figure out template location
@@ -34,9 +34,9 @@ var loadTemplate = function(job,input){
   }
   //since we have an existing template lets grab it
   var content = fs.readFileSync(file)
-  obj.load(JSON.parse(content))
+  obj.$load(JSON.parse(content))
   //load our input over it again for overrides
-  obj.load(input)
+  obj.$load(input)
   return obj
 }
 
@@ -53,7 +53,7 @@ var generateSignature = function(job){
   //thus the signature formula is encode + save + source sha1's
   //make sure we have available information
   var valid = true
-  job.description.get('resource').forEach(function(item,i){
+  job.description.$get('resource').forEach(function(item,i){
     var resource = job.resource.get(item.name)
     if(resource && resource.sha1){
       job.description.data.resource[i].sha1 = resource.sha1
@@ -68,13 +68,13 @@ var generateSignature = function(job){
   var fingerprint = {}
   //add sha1's of the resources
   fingerprint.resource = []
-  job.description.get('resource').forEach(function(item){
+  job.description.$get('resource').forEach(function(item){
     fingerprint.resource.push(item.sha1)
   })
   //add the entire encoding stanza (any difference here will yield a different result
-  fingerprint.encoding = job.description.get('encoding')
+  fingerprint.encoding = job.description.$get('encoding')
   //add the entire save section as this will also yield different output
-  fingerprint.save = job.description.get('save')
+  fingerprint.save = job.description.$get('save')
   //create our sha1 hasher
   var shasum = crypto.createHash('sha1')
   //convert our fingerprint to JSON and then dump it into the hasher
@@ -117,11 +117,11 @@ var Job = function(handle,description){
   this.handle = handle
   this.resource = new Resource()
   this.description = new ObjectManage()
-  this.description.load(JSON.parse(description))
+  this.description.$load(JSON.parse(description))
   this.signature = null
   this.metrics = new ObjectManage()
-  this.metrics.load(JSON.parse(JSON.stringify(this.defaultMetrics)))
-  this.metrics.set('handle',handle)
+  this.metrics.$load(JSON.parse(JSON.stringify(this.defaultMetrics)))
+  this.metrics.handle = handle
   this.result = {}
   this.callbackThrottle = {}
 }
@@ -163,8 +163,8 @@ Job.prototype.update = function(changes,force,done){
   if('undefined' === typeof force) force = false
   var that = this
   //apply changes
-  that.metrics.load(changes)
-  var callback = that.description.get('callback')
+  that.metrics.$load(changes)
+  var callback = that.description.$get('callback')
   //if there are no callbacks defined just return
   if('undefined' === callback) return done()
   //make sure we have an array of callbacks to execute
@@ -173,7 +173,7 @@ Job.prototype.update = function(changes,force,done){
     callback,
     function(item,next){
       var i = callback.indexOf(item)
-      if(force || throttleUpdate(item.throttle,that.callbackThrottle[i],that.metrics.get('status'))){
+      if(force || throttleUpdate(item.throttle,that.callbackThrottle[i],that.metrics.$get('status'))){
         that.callbackThrottle[i] = new Date()
         that.runDriver('callback',new Parameter(),item,next)
       } else {
@@ -201,13 +201,14 @@ Job.prototype.runDriver = function(category,parameter,options,done){
     function(options,next){
       options = loadTemplate(that,options)
       //set the default driver if we dont already have it
-      if('resource' === category && !options.exists('driver')) options.set('driver','http')
+      if('resource' === category && !options.$exists('driver')) options.$set('driver','http')
       //check to see if the driver exists
-      if(!drivers[category][options.get('driver')]) return next('Driver ' + options.get('driver') + ' doesnt exist')
+      if(!options.$exists('driver') || !drivers[category][options.driver])
+        return next('Driver ' + (options.driver || 'none') + ' doesnt exist')
       //run the driver
-      drivers[category][options.get('driver')].run(that,parameter,options,function(err){
-        if(err && !options.get('optional')) return next(err)
-        if(err && options.get('optional')) that.logger.warning(err)
+      drivers[category][options.driver].run(that,parameter,options,function(err){
+        if(err && !options.optional) return next(err)
+        if(err && options.optional) that.logger.warning(err)
         next()
       })
     },
@@ -224,11 +225,11 @@ Job.prototype.runDriver = function(category,parameter,options,done){
 Job.prototype.obtainResources = function(next){
   var that = this
   //make sure we have a resource section if not we cant do anything
-  if(!that.description.exists('resource') || !that.description.get('resource').length)
+  if(!that.description.$exists('resource') || !that.description.resource.length)
     return next('No resources defined')
   that.logger.info('Starting to collect defined resources')
   async.each(
-    that.description.get('resource'),
+    that.description.resource,
     function(item,next){
       that.runDriver('resource',new Parameter(),item,next)
     },
@@ -249,15 +250,15 @@ Job.prototype.obtainResources = function(next){
 Job.prototype.encode = function(next){
   var that = this
   //if there are no encoding operation just continue
-  if(!that.description.exists('encoding') || !that.description.get('encoding').length) return next()
+  if(!that.description.$exists('encoding') || !that.description.encoding.length) return next()
   that.logger.info('Starting to execute encoding jobs')
   async.eachSeries(
-    that.description.get('encoding'),
+    that.description.encoding,
     function(item,next){
       item = loadTemplate(that,item)
       var param = new Parameter()
-      if(item.exists('parameters')) param.load(item.get('parameters'))
-      var jobs = item.get('jobs') || []
+      if(item.$exists('parameters')) param.$load(item.$get('parameters'))
+      var jobs = item.$get('jobs') || []
       //sort jobs by their position
       jobs.sort(function(a,b){
         return (parseInt(a.position,10) - parseInt(b.position,10))
@@ -287,12 +288,12 @@ Job.prototype.encode = function(next){
 Job.prototype.save = function(next){
   var that = this
   //if there is no save section defined, warn and move on
-  if(!that.description.exists('save') || !that.description.get('save').length){
+  if(!that.description.$exists('save') || !that.description.save.length){
     that.logger.warning('No resources will be saved')
     return next()
   }
   //save the resources
-  that.resource.save(that.description.get('save'),function(err,result){
+  that.resource.save(that.description.save,function(err,result){
     if(err) return next(err)
     that.result = result
     next(null,result)

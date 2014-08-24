@@ -458,6 +458,12 @@ Shredder exposes itself through an HTTP JSONP API.
 
 ## Changelog
 
+### 0.4.0
+* Upgraded to Express 4 system wide
+* Upgraded to object-manage 0.8 system wide
+* Dropped restler in favor of request
+* Work in progress...
+
 ### 0.3.0
 * Fix next peer selection to be a list
 * Added start param support to export (MP4 pseudo streaming)

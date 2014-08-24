@@ -44,5 +44,5 @@ exports.run = function(job,parameter,options,done){
   cmd.on('end',function(){
     done()
   })
-  cmd.execute(parameter,options.get('args'))
+  cmd.execute(parameter,options.args || [])
 }

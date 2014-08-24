@@ -76,7 +76,7 @@ var peerNetConnect = function(peer,done){
  */
 var peerSshConnect = function(peer,done){
   var ssh = new SSH()
-  ssh.connect(peer,fs.readFileSync(config.get('executioner.ssh.privateKey')),done)
+  ssh.connect(peer,fs.readFileSync(config.executioner.ssh.privateKey),done)
 }
 
 
@@ -353,13 +353,13 @@ exports.prepare = function(id,writable,next){
             [
               //send the ssl key
               function(next){
-                if(!config.get('executioner.ssl.key')) return next()
-                client.sendFile(config.get('executioner.ssl.key'),'/etc/nginx/ssl/ssl.key',next)
+                if(!config.executioner.ssl.key) return next()
+                client.sendFile(config.executioner.ssl.key,'/etc/nginx/ssl/ssl.key',next)
               },
               //send the ssl cert
               function(next){
-                if(!config.get('executioner.ssl.crt')) return next()
-                client.sendFile(config.get('executioner.ssl.crt'),'/etc/nginx/ssl/ssl.crt',next)
+                if(!config.executioner.ssl.crt) return next()
+                client.sendFile(config.executioner.ssl.crt,'/etc/nginx/ssl/ssl.crt',next)
               },
               //run preparation script
               function(next){

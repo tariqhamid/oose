@@ -37,7 +37,7 @@ var listen = function(port,host,done){
  */
 exports.start = function(done){
   if('function' !== typeof done) done = function(){}
-  listen(config.get('store.import.port'),config.get('store.import.host'),function(err){
+  listen(config.store.import.port,config.store.import.host,function(err){
     running = true
     done(err)
   })

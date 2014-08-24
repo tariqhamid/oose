@@ -163,7 +163,7 @@ var q = async.queue(
       done()
     })
   },
-  config.get('shredder.concurrency') || os.cpus().length || 1
+  config.shredder.concurrency || os.cpus().length || 1
 )
 
 
@@ -249,13 +249,13 @@ exports.start = function(done){
       //setup root folder for processing jobs
       function(next){
         //check if root exists
-        if(!config.get('shredder.root'))
-          config.set('shredder.root',path.resolve(config.get('root')))
+        if(!config.shredder.root)
+          config.$set('shredder.root',path.resolve(config.root))
         //make sure the root folder exists
-        if(!fs.existsSync(config.get('shredder.root')))
-          mkdirp.sync(config.get('shredder.root'))
-        if(!fs.existsSync(config.get('shredder.root')))
-          return next('Root folder [' + path.resolve(config.get('shredder.root')) + '] does not exist')
+        if(!fs.existsSync(config.shredder.root))
+          mkdirp.sync(config.shredder.root)
+        if(!fs.existsSync(config.shredder.root))
+          return next('Root folder [' + path.resolve(config.shredder.root) + '] does not exist')
         next()
       },
       //start listening on mesh

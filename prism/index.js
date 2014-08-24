@@ -29,7 +29,7 @@ var buildCache = function(sha1,done){
     [
       //acquire list of peers from locate up on the master
       function(next){
-        var client = commUtil.tcpSend('locate',{sha1: sha1},config.get('mesh.port'),config.get('mesh.host'))
+        var client = commUtil.tcpSend('locate',{sha1: sha1},config.mesh.port,config.mesh.host)
         client.once('readable',function(){
           //read our response
           var payload = commUtil.parse(client.read(client.read(2).readUInt16BE(0)))
@@ -54,7 +54,7 @@ var buildCache = function(sha1,done){
       if(!exists.length) return done('file not found')
       redis.sadd('prism:' + sha1,exists,function(err){
         if(err) return done(err)
-        redis.expire('prism:' + sha1,config.get('prism.cache.expire'),function(err){
+        redis.expire('prism:' + sha1,config.prism.cache.expire,function(err){
           done(err)
         })
       })
@@ -72,8 +72,8 @@ var buildCache = function(sha1,done){
 var buildDestination = function(req,winner){
   if(!winner) return false
   var destination = req.protocol + '://' + winner.hostname
-  if(config.get('domain')){
-    destination += '.' + config.get('domain')
+  if(config.domain){
+    destination += '.' + config.domain
   }
   if(
     (80 !== winner.portExport && 'http' === req.protocol) ||
@@ -250,7 +250,7 @@ app.post('/api/shredderJob',function(req,res){
 exports.start = function(done){
   if('function' !== typeof done) done = function(){}
   server.timeout = 0
-  server.listen(config.get('prism.port'),config.get('prism.host'),function(err){
+  server.listen(config.prism.port,config.prism.host,function(err){
     running = true
     done(err)
   })

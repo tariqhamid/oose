@@ -97,7 +97,7 @@ var getNetwork = function(basket,next){
  * @param {function} next Callback
  */
 var getDiskFree = function(basket,next){
-  var root = path.resolve(config.get('root'))
+  var root = path.resolve(config.root)
   //Windows needs to call with only the drive letter
   if('win32' === os.platform()) root = root.substr(0,1)
   ds.check(root,function(err,total,free){
@@ -196,22 +196,22 @@ var getMemory = function(basket,next){
 var getServices = function(basket,next){
   //services
   basket.services = ''
-  if(config.get('mesh.enabled')) basket.services += ',mesh'
-  if(config.get('supervisor.enabled')) basket.services += ',supervisor'
-  if(config.get('store.enabled')) basket.services += ',store'
-  if(config.get('prism.enabled')) basket.services += ',prism'
-  if(config.get('shredder.enabled')) basket.services += ',shredder'
-  if(config.get('gump.enabled')) basket.services += ',gump'
-  if(config.get('lg.enabled')) basket.services += ',lg'
+  if(config.mesh.enabled) basket.services += ',mesh'
+  if(config.supervisor.enabled) basket.services += ',supervisor'
+  if(config.store.enabled) basket.services += ',store'
+  if(config.prism.enabled) basket.services += ',prism'
+  if(config.shredder.enabled) basket.services += ',shredder'
+  if(config.gump.enabled) basket.services += ',gump'
+  if(config.lg.enabled) basket.services += ',lg'
   //service ports
-  if(config.get('store.enabled')){
-    basket.portImport = config.get('store.import.portPublic') || config.get('store.import.port')
-    basket.portExport = config.get('store.export.portPublic') || config.get('store.export.port')
+  if(config.store.enabled){
+    basket.portImport = config.store.import.portPublic || config.store.import.port
+    basket.portExport = config.store.export.portPublic || config.store.export.port
   }
-  if(config.get('prism.enabled')){
-    basket.portPrism = config.get('prism.portPublic') || config.get('prism.port')
+  if(config.prism.enabled){
+    basket.portPrism = config.prism.portPublic || config.prism.port
   }
-  basket.portMesh = config.get('mesh.portPublic') || config.get('mesh.port')
+  basket.portMesh = config.mesh.portPublic || config.mesh.port
   next(null,basket)
 }
 
@@ -243,7 +243,7 @@ var availableCapacity = function(basket,next){
 }
 
 var save = function(basket,next){
-  redis.hmset('peer:db:' + config.get('hostname'),basket,function(err){
+  redis.hmset('peer:db:' + config.hostname,basket,function(err){
     if(err) next(err)
     else next(null,basket)
   })

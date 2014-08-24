@@ -18,7 +18,7 @@ var logger = require('../helpers/logger').create('prism')
 var running = false
 
 app.locals.pretty = true
-app.locals.version = config.get('version')
+app.locals.version = config.version
 app.locals.prettyBytes = require('pretty-bytes')
 
 app.set('views',__dirname + '/views')
@@ -29,13 +29,13 @@ app.use(busboy())
 app.use(bodyParser.urlencoded({extended:true}))
 app.use(bodyParser.json())
 app.use(methodOverride())
-app.use(cookieParser(config.get('gump.cookie.secret')))
+app.use(cookieParser(config.gump.cookie.secret))
 app.use(session({
   cookie: {
-    maxAge: config.get('gump.cookie.maxAge')
+    maxAge: config.gump.cookie.maxAge
   },
-  store: new RedisStore(config.get('redis')),
-  secret: config.get('gump.cookie.secret'),
+  store: new RedisStore(config.redis),
+  secret: config.gump.cookie.secret,
   resave: true,
   saveUninitialized: true
 }))
@@ -104,7 +104,7 @@ app.get('/',routes.index)
  * @param {function} done
  */
 exports.start = function(done){
-  server.listen(config.get('gump.port'),config.get('gump.host'),function(err){
+  server.listen(config.gump.port,config.gump.host,function(err){
     if(err) return done(err)
     running = true
     done()

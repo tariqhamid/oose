@@ -5,7 +5,7 @@ var ObjectManage = require('object-manage')
 require('pkginfo')(module,'version')
 
 var config = new ObjectManage()
-config.load({
+config.$load({
   //options
   version: module.exports.version,
   hostname: os.hostname(),
@@ -146,7 +146,7 @@ config.load({
 })
 
 if(fs.existsSync('./config.local.js')){
-  config.load(require(__dirname + '/config.local.js'))
+  config.$load(require(__dirname + '/config.local.js'))
 }
 
 

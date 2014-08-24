@@ -131,7 +131,7 @@ app.get('/:sha1/:filename',function(req,res){
  */
 exports.start = function(done){
   if('function' !== typeof done) done = function(){}
-  server.listen(config.get('store.export.port'),config.get('store.export.host'),function(err){
+  server.listen(config.store.export.port,config.store.export.host,function(err){
     running = true
     done(err)
   })

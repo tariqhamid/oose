@@ -28,7 +28,7 @@ if(cluster.isMaster){
     , program = require('commander')
   //parse cli
   program
-    .version(config.get('version'))
+    .version(config.$get('version'))
     .option(
       '-v, --verbose',
       'Increase logging',
@@ -41,8 +41,8 @@ if(cluster.isMaster){
   //set log verbosity
   require('./helpers/logger').consoleFilter.setConfig({level: (program.verbose || 0) + 4})
   //make sure the root folder exists
-  if(!fs.existsSync(config.get('root')))
-    mkdirp.sync(config.get('root'))
+  if(!fs.existsSync(config.$get('root')))
+    mkdirp.sync(config.$get('root'))
   //start booting
   async.series(
     [
@@ -78,14 +78,14 @@ if(cluster.isMaster){
       },
       //inventory files first if store is enabled
       function(next){
-        if(!config.get('store.enabled')) return next()
+        if(!config.$get('store.enabled')) return next()
         require('./tasks/inventory').start(function(err){
           next(err)
         })
       },
       //start mesh
       function(next){
-        if(config.get('mesh.enabled')){
+        if(config.$get('mesh.enabled')){
           logger.info('Starting mesh')
           mesh.on('error',function(err){
             logger.error(err)
@@ -100,15 +100,15 @@ if(cluster.isMaster){
       },
       //start collectors
       function(next){
-        if(config.get('mesh.enabled') && config.get('mesh.stat.enabled')){
+        if(config.mesh.enabled && config.mesh.stat.enabled){
           logger.info('Starting stats collection')
-          peerStats.start(config.get('mesh.stat.interval'),0)
+          peerStats.start(config.mesh.stat.interval,0)
           peerStats.once('loopEnd',function(){next()})
         } else next()
       },
       //start ping
       function(next){
-        if(config.get('mesh.enabled') && config.get('mesh.ping.enabled')){
+        if(config.mesh.enabled && config.mesh.ping.enabled){
           logger.info('Starting ping')
           ping.start(next)
         } else next()
@@ -120,21 +120,21 @@ if(cluster.isMaster){
       },
       //start announce
       function(next){
-        if(config.get('mesh.enabled') && config.get('mesh.announce.enabled')){
+        if(config.mesh.enabled && config.mesh.announce.enabled){
           logger.info('Starting announce')
           announce.start(next)
         } else next()
       },
       //start next peer selection
       function(next){
-        if(config.get('mesh.enabled') && config.get('mesh.peerNext.enabled')){
+        if(config.mesh.enabled && config.mesh.peerNext.enabled){
           logger.info('Starting next peer selection')
-          peerNext.start(config.get('mesh.peerNext.interval'),config.get('mesh.announce.interval') * 2,next)
+          peerNext.start(config.mesh.peerNext.interval,config.mesh.announce.interval * 2,next)
         } else next()
       },
       //start the supervisor
       function(next){
-        if(config.get('supervisor.enabled')){
+        if(config.supervisor.enabled){
           logger.info('Starting supervisor')
           require('./supervisor').start(function(){
             logger.info('Supervisor started')
@@ -144,7 +144,7 @@ if(cluster.isMaster){
       },
       //start Shredder
       function(next){
-        if(config.get('shredder.enabled')){
+        if(config.shredder.enabled){
           logger.info('Starting shredder')
           shredder.start(function(err){
             if(!err){
@@ -155,13 +155,13 @@ if(cluster.isMaster){
         } else next()
       },
       function(next){
-        if(config.get('mongoose.enabled')){
-          mongoose.connect(config.get('mongoose.dsn'),config.get('mongoose.options'),next)
+        if(config.mongoose.enabled){
+          mongoose.connect(config.mongoose.dsn,config.mongoose.options,next)
         } else next()
       },
       //start executioner
       function(next){
-        if(config.get('mongoose.enabled') && config.get('executioner.enabled')){
+        if(config.mongoose.enabled && config.executioner.enabled){
           logger.info('Starting executioner scripting system')
           executioner.start(function(err){
             if(!err){
@@ -177,12 +177,12 @@ if(cluster.isMaster){
         logger.error('Startup failed: ' + err)
         process.exit()
       }
-      if(!config.get('workers.enabled')){
+      if(!config.workers.enabled){
         logger.info('Not starting workers, they are disabled')
         return
       }
       //start workers
-      var workerCount = config.get('workers.count') || os.cpus().length || 4
+      var workerCount = config.workers.count || os.cpus().length || 4
       logger.info('Starting ' + workerCount + ' workers')
       for(var i=1; i <= workerCount; i++) cluster.fork()
       //worker online notification
@@ -223,7 +223,7 @@ if(cluster.isMaster){
         },
         //message workers to shutdown
         function(next){
-          if(config.get('workers.enabled')){
+          if(config.workers.enabled){
             logger.info('Stopping all workers')
             for(var id in cluster.workers){
               if(cluster.workers.hasOwnProperty(id))
@@ -234,7 +234,7 @@ if(cluster.isMaster){
         },
         //stop workers
         function(next){
-          if(config.get('workers.enabled')){
+          if(config.workers.enabled){
             //wait for the workers to all die
             var checkWorkerCount = function(){
               if(!cluster.workers) return next()
@@ -251,42 +251,42 @@ if(cluster.isMaster){
         },
         //stop executioner
         function(next){
-          if(config.get('executioner.enabled')){
+          if(config.executioner.enabled){
             logger.info('Stopping executioner')
             executioner.stop(next)
           } else next()
         },
         //stop shredder
         function(next){
-          if(config.get('shredder.enabled')){
+          if(config.shredder.enabled){
             logger.info('Stopping shredder')
             shredder.stop(next)
           } else next()
         },
         //stop announce
         function(next){
-          if(config.get('mesh.enabled') && config.get('mesh.announce.enabled')){
+          if(config.mesh.enabled && config.mesh.announce.enabled){
             logger.info('Stopping announce')
             announce.stop(next)
           } else next()
         },
         //stop ping
         function(next){
-          if(config.get('mesh.enabled') && config.get('mesh.ping.enabled')){
+          if(config.mesh.enabled && config.mesh.ping.enabled){
             logger.info('Stopping ping')
             ping.stop(next)
           } else next()
         },
         //stop next peer selection
         function(next){
-          if(config.get('mesh.enabled') && config.get('mesh.nextPeer.enabled')){
+          if(config.mesh.enabled && config.mesh.peerNext.enabled){
             logger.info('Stopping next peer selection')
             peerNext.stop(next)
           } else next()
         },
         //stats
         function(next){
-          if(config.get('mesh.enabled') && config.get('mesh.stat.enabled')){
+          if(config.mesh.enabled && config.mesh.stat.enabled){
             logger.info('Stopping self stat collection')
             peerStats.stop(next)
           } else next()
@@ -298,7 +298,7 @@ if(cluster.isMaster){
         },
         //stop mesh
         function(next){
-          if(config.get('mesh.enabled')){
+          if(config.mesh.enabled){
             logger.info('Stopping mesh')
             mesh.stop(next)
           } else next()
@@ -334,37 +334,37 @@ if(cluster.isWorker){
   async.parallel(
     [
       function(next){
-        if(config.get('store.enabled'))
+        if(config.store.enabled)
           storeImport.start(next)
         else next()
       },
       function(next){
-        if(config.get('store.enabled'))
+        if(config.store.enabled)
           storeExport.start(next)
         else next()
       },
       function(next){
-        if(config.get('prism.enabled'))
+        if(config.prism.enabled)
           prism.start(next)
         else next()
       },
       function(next){
-        if(config.get('mongoose.enabled')){
-          mongoose.connect(config.get('mongoose.dsn'),config.get('mongoose.options'),next)
+        if(config.mongoose.enabled){
+          mongoose.connect(config.mongoose.dsn,config.mongoose.options,next)
         } else next()
       },
       function(next){
-        if(config.get('mongoose.enabled') && config.get('gump.enabled')){
+        if(config.mongoose.enabled && config.gump.enabled){
           gump.start(next)
         } else next()
       },
       function(next){
-        if(config.get('mongoose.enabled') && config.get('hideout.enabled')){
+        if(config.mongoose.enabled && config.hideout.enabled){
           hideout.start(next)
         } else next()
       },
       function(next){
-        if(config.get('lg.enabled')){
+        if(config.lg.enabled){
           lg.start(next)
         } else next()
       }
@@ -378,32 +378,32 @@ if(cluster.isWorker){
     async.parallel(
       [
         function(next){
-          if(config.get('store.enabled'))
+          if(config.store.enabled)
             storeImport.stop(next)
           else next()
         },
         function(next){
-          if(config.get('store.enabled'))
+          if(config.store.enabled)
             storeExport.stop(next)
           else next()
         },
         function(next){
-          if(config.get('prism.enabled'))
+          if(config.prism.enabled)
             prism.stop(next)
           else next()
         },
         function(next){
-          if(config.get('gump.enabled'))
+          if(config.gump.enabled)
             gump.stop(next)
           else next()
         },
         function(next){
-          if(config.get('hideout.enabled'))
+          if(config.hideout.enabled)
             hideout.stop(next)
           else next()
         },
         function(next){
-          if(config.get('lg.enabled'))
+          if(config.lg.enabled)
             lg.stop(next)
           else next()
         }

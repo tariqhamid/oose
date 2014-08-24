@@ -15,10 +15,10 @@ var buildRequest = function(type,key,value){
   var req = {
     method: 'POST',
     strictSSL: false,
-    url: config.get('hideout.url') + '/' + type,
+    url: config.hideout.url + '/' + type,
     auth: {
-      user: config.get('hideout.user'),
-      password: config.get('hideout.password')
+      user: config.hideout.user,
+      password: config.hideout.password
     }
   }
   if('get' === type || 'exists' === type){

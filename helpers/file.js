@@ -24,7 +24,7 @@ var queueClone = function(sha1,done){
     [
       //do a location on the sha1
       function(next){
-        var client = commUtil.tcpSend('locate',{sha1: sha1},config.get('mesh.port'),config.get('mesh.host'))
+        var client = commUtil.tcpSend('locate',{sha1: sha1},config.mesh.port,config.mesh.host)
         client.once('readable',function(){
           //read our response
           var payload = commUtil.parse(client.read(client.read(2).readUInt16BE(0)))
@@ -85,7 +85,7 @@ exports.sum = function(path,done){
  * @return {string}
  */
 exports.pathFromSha1 = function(sha1){
-  var file = path.resolve(config.get('root')) + '/'
+  var file = path.resolve(config.root) + '/'
   var parts = sha1.split('')
   for(var i = 1; i <= parts.length; i++){
     file = file + parts[i - 1]
@@ -125,8 +125,8 @@ exports.redisInsert = function(sha1,done){
         {
           stat: JSON.stringify(stat),
           mimeType: mimeType,
-          copiesMin: config.get('copies.min'),
-          copiesMax: config.get('copies.max')
+          copiesMin: config.clones.min,
+          copiesMax: config.clones.max
         },
         function(err){
           if(err) return done(err)
@@ -175,7 +175,7 @@ exports.fromReadable = function(readable,done){
   var exists = {redis: false, fs: false}
   var destination = ''
   var destinationFolder = ''
-  var tmpDir = path.resolve(config.get('root') + '/tmp')
+  var tmpDir = path.resolve(config.root + '/tmp')
   if(!fs.existsSync()) mkdirp.sync(tmpDir)
   var tmp = temp.path({dir: tmpDir})
   var writable = fs.createWriteStream(tmp)

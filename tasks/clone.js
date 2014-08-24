@@ -29,7 +29,7 @@ var clone = function(job,cb){
     [
       //get peer
       function(next){
-        peer.next(config.get('hostname'),function(err,result){
+        peer.next(config.hostname,function(err,result){
           if(err) return next(err)
           if(!result) return next('No suitable peer found')
           winner = result
@@ -74,6 +74,6 @@ var q = async.queue(clone,require('os').cpus().length)
 
 /**
  * Export clone queue
- * @type {AsyncQueue<T>}
+ * @type {AsyncQueue<async.queue>}
  */
 module.exports = q

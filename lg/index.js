@@ -17,7 +17,7 @@ var logger = require('../helpers/logger').create('lg')
 var running = false
 
 app.locals.pretty = true
-app.locals.version = config.get('version')
+app.locals.version = config.version
 app.locals.prettyBytes = require('pretty-bytes')
 app.locals.moment = require('moment')
 
@@ -25,8 +25,8 @@ app.set('views',__dirname + '/views')
 app.set('view engine','jade')
 
 app.use(function(req,res,next){
-  var username = config.get('lg.user')
-  var password = config.get('lg.password')
+  var username = config.lg.user
+  var password = config.lg.password
   if(!username || !password){
     res.status(500)
     res.send('Missing username and/or password')
@@ -48,13 +48,13 @@ app.use(function(req,res,next){
 
 app.use(express.static(__dirname + '/public'))
 app.use(bodyParser.urlencoded({extended:false}))
-app.use(cookieParser(config.get('lg.cookie.secret')))
+app.use(cookieParser(config.lg.cookie.secret))
 app.use(session({
   cookie: {
-    maxAge: config.get('lg.cookie.maxAge')
+    maxAge: config.lg.cookie.maxAge
   },
-  store: new RedisStore(config.get('redis')),
-  secret: config.get('lg.cookie.secret'),
+  store: new RedisStore(config.redis),
+  secret: config.lg.cookie.secret,
   resave: true,
   saveUninitialized: true
 }))
@@ -73,7 +73,7 @@ app.get('/',routes.index)
  * @param {function} done
  */
 exports.start = function(done){
-  server.listen(config.get('lg.port'),config.get('lg.host'),function(err){
+  server.listen(config.lg.port,config.lg.host,function(err){
     if(err) return done(err)
     running = true
     done()

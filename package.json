@@ -2,7 +2,7 @@
   "author": "ESITED LLC <developers@esited.com>",
   "name": "oose",
   "description": "Object Oriented Storage Engine",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "homepage": "http://oose.io/",
   "repository": {
     "type": "git",
@@ -52,7 +52,7 @@
     "mongoose-validator": "<1.0.0",
     "net-snmp": "1.1.x",
     "node-sigint": "0.0.x",
-    "object-manage": "0.7.x",
+    "object-manage": "^0.8.0",
     "pkginfo": "0.3.x",
     "pretty-bytes": "1.0.x",
     "q": "1.0.x",

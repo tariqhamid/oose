@@ -34,7 +34,7 @@ schema = new mongoose.Schema({
   },
   config: {
     type: String,
-    default: fs.readFileSync(config.get('executioner.defaultConfig'))
+    default: fs.readFileSync(config.executioner.defaultConfig)
   },
   version: {
     type: String,
