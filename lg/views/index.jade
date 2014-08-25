@@ -27,6 +27,7 @@ block content
           each peer in peers
             - peer.availableCapacity = parseFloat(peer.availableCapacity,10)
             - peer.cpuUsed = +peer.cpuUsed
+            - peer.cpuUsed = peer.cpuUsed.toFixed(2)
             - peer.cpuCount = peer.cpuCount>>0
             - peer.diskFree = +peer.diskFree
             - peer.diskTotal = +peer.diskTotal
