@@ -68,7 +68,8 @@ config.$load({
   },
   shredder: {
     enabled: false,
-    concurrency: os.cpus().length || 1
+    concurrency: os.cpus().length || 1,
+    snapshot: __dirname + '/shredder/snapshot.json'
   },
   hideout: {
     enabled: false,
