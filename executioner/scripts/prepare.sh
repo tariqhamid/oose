@@ -276,7 +276,8 @@ function userExists {
 function catDebFile {
   pkgname="$1"
   file="$2"
-  debfile="/var/cache/apt/archives/$(dpkg -l ${pkgname} | grep "^ii " | sed -e"s/^ii.*\(${pkgname}\) *\([0-9][^ ]*\) *\([^ ]*\) .*$/\1_\2_\3.deb/")"
+  debfile="/var/cache/apt/archives/$(dpkg -l ${pkgname} | grep "^ii " | \
+    sed -e"s/^ii.*\(${pkgname}\) *\([0-9][^ ]*\) *\([^ ]*\) .*$/\1_\2_\3.deb/")"
   [ -f "${debfile}" ] && dpkg --fsys-tarfile $debfile | tar xfO - ".${file}"
 }
 
