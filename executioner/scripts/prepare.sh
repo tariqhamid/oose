@@ -9,36 +9,19 @@ nginxNodeCommon=$(cat <<'NGX_CONFIG'
 keepalive_timeout 70;
 client_max_body_size 0;
 
-server_names_hash_bucket_size 64;
-server_name_in_redirect off;
-
 access_log off;
 
 ssl_certificate ssl/ssl.crt;
 ssl_certificate_key ssl/ssl.key;
 
-# setup cache
-proxy_cache_path           /dev/shm/cache levels=1:2 keys_zone=web-cache:512m max_size=7000m inactive=1000m;
-proxy_temp_path            /dev/shm/cache/tmp;
-proxy_cache_valid          404 1m;
-proxy_redirect             off;
-proxy_set_header           Host $host;
-proxy_set_header           X-Real-IP $remote_addr;
-proxy_set_header           X-Forwarded-For $proxy_add_x_forwarded_for;
-proxy_pass_header          User-Agent;
-proxy_max_temp_file_size   0;
-proxy_buffer_size          4k;
-proxy_buffers              16 32k;
-proxy_busy_buffers_size    128k;
-proxy_temp_file_write_size 128k;
-proxy_connect_timeout      300;
-proxy_send_timeout         300;
-proxy_read_timeout         300;
-
 #note we've tricked next_upstream into retrying the same backend a bunch of times
 proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
 #important for backend persistence and websockets
 proxy_http_version 1.1;
+proxy_set_header  Host $host;
+proxy_set_header  X-Real-IP $remote_addr;
+proxy_set_header  X-Forwarded-For $proxy_add_x_forwarded_for;
+proxy_pass_header User-Agent;
 
 #The following may be overridden in a location block below
 # ignore client disposition and keep/reuse sockets as much as possible
@@ -66,7 +49,24 @@ map $http_upgrade $connection_upgrade {
 NGX_CONFIG
 )
 
-nginxSSLCache=$(cat <<'NGX_CONFIG'
+nginxCache=$(cat <<'NGX_CONFIG'
+server_names_hash_bucket_size 64;
+server_name_in_redirect off;
+
+# setup cache
+proxy_cache_path           /dev/shm/cache levels=1:2 keys_zone=web-cache:512m max_size=7000m inactive=1000m;
+proxy_temp_path            /dev/shm/cache/tmp;
+proxy_cache_valid          404 1m;
+proxy_redirect             off;
+proxy_max_temp_file_size   0;
+proxy_buffer_size          4k;
+proxy_buffers              16 32k;
+proxy_busy_buffers_size    128k;
+proxy_temp_file_write_size 128k;
+proxy_connect_timeout      300;
+proxy_send_timeout         300;
+proxy_read_timeout         300;
+
 #cache https handshakes etc, for faster negotiations
 ssl_session_cache shared:SSL:10m;
 ssl_session_timeout 10m;
@@ -241,7 +241,7 @@ upstream node-executioner {
 server {
   listen 80;
   listen 443 ssl;
-  server_name ${hostnameDomain} executioner.${hostnameDomain};
+  server_name executioner.${hostnameDomain};
 
   include /etc/nginx/node-common.conf;
 
@@ -253,7 +253,7 @@ NGX_CONFIG
 )
 
 function banner {
-  line="${1//./-}"
+  line=$(echo $1 | tr [:print:] [-*])
   echo
   echo $line
   echo "$1"
@@ -271,6 +271,13 @@ function userExists {
   else
     echo 0
   fi
+}
+
+function catDebFile {
+  pkgname="$1"
+  file="$2"
+  debfile="/var/cache/apt/archives/$(dpkg -l ${pkgname} | grep "^ii " | sed -e"s/^ii.*\(${pkgname}\) *\([0-9][^ ]*\) *\([^ ]*\) .*$/\1_\2_\3.deb/")"
+  [ -f "${debfile}" ] && dpkg --fsys-tarfile $debfile | tar xvfO - ".${file}"
 }
 
 banner "Preparing Peer for OOSE installation"
@@ -311,17 +318,18 @@ mkdir -p /var/log/node/oose > /dev/null 2>&1
 chown -R node:node /var/log/node  > /dev/null 2>&1
 
 # setup nginx
-if [ ! -f "/etc/nginx/sites-available/export.${hostnameDomain}" ]; then
+if [ ! -f "/etc/nginx/node-common.conf" ]; then
   banner "Configuring Nginx"
-  sed -i \
+  catDebFile nginx-common /etc/nginx/nginx.conf | sed \
     -e"s/\(user\) .*$/\1 node;/" \
     -e"s/\(worker_processes\) .*$/\1 17;/" \
     -e"s/\(worker_connections\) .*$/\1 32768;/" \
     -e"s/# \(multi_accept\)/\1/" \
-    -e"s/\(multi_accept\) .*$/\1 off;/" /etc/nginx/nginx.conf
+    -e"s/\(multi_accept\) .*$/\1 off;/" > /etc/nginx/nginx.conf
   echo "$nginxNodeCommon" > /etc/nginx/node-common.conf
   echo "$nginxPersistence" > /etc/nginx/conf.d/persistence.conf
-  echo "$nginxSSLCache" > /etc/nginx/conf.d/sslcache.conf
+  rm -f /etc/nginx/conf.d/sslcache.conf #deprecated
+  echo "$nginxCache" > /etc/nginx/conf.d/cache.conf
   export="sites-available/export.${hostnameDomain}"
   gump="sites-available/gump.${hostnameDomain}"
   hideout="sites-available/hideout.${hostnameDomain}"

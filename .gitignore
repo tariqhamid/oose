@@ -1,14 +1,14 @@
 node_modules
 .idea
 .nodemonignore
-dt/supervise
+supervise
 *.log
 log/*
 embed/views/*
 embed/public/*
 npm-debug.log
 tmp
-/config.local.js
+*.local.*
 /data
 /ssh
 /ssl
