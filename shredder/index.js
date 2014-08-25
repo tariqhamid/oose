@@ -150,35 +150,56 @@ var shutdown = function(done){
     logger.info('Nothing processing, exiting')
     return done()
   }
-  //since there is something happening start shutting everything down and saving
-  logger.info('Pausing queue to prevent further jobs from being started')
-  q.pause()
-  //setup and write our snapshot of remaining items in the q
-  var snapshot = {tasks: q.tasks, deferred: deferred}
-  if(snapshot.tasks.length > 0 || snapshot.deferred.length > 0){
-    logger.info('Writing the current queue of jobs to: ' + config.shredder.snapshot)
-    if(fs.existsSync(config.shredder.snapshot)) fs.unlinkSync(config.shredder.snapshot)
-    fs.writeFileSync(config.shredder.snapshot,JSON.stringify(snapshot))
-    logger.info('Snapshot written successfully')
-  }
-  //now wait so we can exit
-  logger.info('Waiting for current jobs to finish processing')
-  var interval
-  var i = 0
-  var waitForWorkers = function(){
-    var running = q.running()
-    //still waiting
-    if(running > 0){
-      i++
-      if(i % 10 === 0)
-        logger.info('Still waiting for ' + running + ' workers to exit...')
-      return
-    }
-    //finish exiting
-    clearInterval(interval)
-    done()
-  }
-  interval = setInterval(waitForWorkers,1000)
+  async.series(
+    [
+      //since there is something happening start shutting everything down and saving
+      function(next){
+        logger.info('Pausing queue to prevent further jobs from being started')
+        q.pause()
+        next()
+      },
+      //shutdown all the remaining workers
+      function(next){
+        //now wait so we can exit
+        logger.info('Waiting for current jobs to finish processing')
+        var interval
+        var i = 0
+        var waitForWorkers = function(){
+          var running = q.running()
+          //still waiting
+          if(running > 0){
+            i++
+            if(i % 10 === 0)
+              logger.info('Still waiting for ' + running + ' worker(s) to exit...')
+            return
+          }
+          //finish exiting
+          clearInterval(interval)
+          next()
+        }
+        interval = setInterval(waitForWorkers,1000)
+      },
+      //now that the workers are dead stop listening for new jobs
+      //  (any that we received in the meantime will be stored)
+      function(next){
+        logger.info('Ceasing to listen for new jobs')
+        meshStop(next)
+      },
+      //setup and write our snapshot of remaining items in the q
+      function(next){
+        var snapshot = {tasks: q.tasks, deferred: deferred}
+        //dont write a snapshot if there is nothing queued
+        if(snapshot.tasks.length === 0 && snapshot.deferred.length === 0)
+          return next()
+        logger.info('Writing the current queue of jobs to: ' + config.shredder.snapshot)
+        if(fs.existsSync(config.shredder.snapshot)) fs.unlinkSync(config.shredder.snapshot)
+        fs.writeFileSync(config.shredder.snapshot,JSON.stringify(snapshot))
+        logger.info('Snapshot written successfully')
+        next()
+      }
+    ],
+    done
+  )
 }
 
 
@@ -250,11 +271,6 @@ exports.stop = function(done){
     logger.info('Starting to shutdown shredder')
     async.series(
       [
-        //stop listening for new jobs
-        function(next){
-          logger.info('Ceasing to listen for new jobs')
-          meshStop(next)
-        },
         //stop scheduling any deferred jobs
         function(next){
           logger.info('Stopping scheduling of any deferred jobs')

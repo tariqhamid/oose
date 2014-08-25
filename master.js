@@ -206,6 +206,13 @@ exports.start = function(){
     logger.info('Beginning shutdown')
     async.series(
       [
+        //stop shredder
+        function(next){
+          if(config.shredder.enabled){
+            logger.info('Stopping shredder')
+            shredder.stop(next)
+          } else next()
+        },
         //go to ready state 5
         function(next){
           logger.info('Going to readyState 5')
@@ -237,13 +244,6 @@ exports.start = function(){
               }
             }
             checkWorkerCount()
-          } else next()
-        },
-        //stop shredder
-        function(next){
-          if(config.shredder.enabled){
-            logger.info('Stopping shredder')
-            shredder.stop(next)
           } else next()
         },
         //stop announce
