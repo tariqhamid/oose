@@ -46,7 +46,7 @@ var spawnWorker = function(opts,done){
 /**
  * The job queue
  */
-var q = async.queue(
+var q = async.priorityQueue(
   function(opts,done){
     if('undefined' === typeof opts.handle || null === opts.handle || !opts.handle)
       done('ERROR: Job.handle not set')
@@ -66,7 +66,7 @@ var scheduleDeferred = function(){
       deferred.splice(i,1)
       //send to q for processing
       logger.info('Job queued locally as ' + job.handle)
-      q.push(job)
+      q.push(job,job.priority || 10)
     }
   })
 }
@@ -82,10 +82,14 @@ var meshStart = function(done){
     //build job description
     var job = {
       handle: shortId.generate(),
+      priority: 10,
       description: message.description
     }
-    //check to see if the job has been scheduled and defer it if so
+    //parse the description
     var description = JSON.parse(message.description)
+    //check to see if there is a priority override
+    if(description.priority) job.priority = description.priority
+    //check to see if the job has been scheduled and defer it if so
     if(description.schedule && description.schedule.start && 'now' !== description.schedule.start){
       if(description.schedule.match(/^\+/)){
         description.schedule.start = description.schedule.start.replace(/^\+(\d+)/,'$1')
@@ -97,10 +101,10 @@ var meshStart = function(done){
     //if we have a start it means we are deferred
     if(!job.start){
       //jab job into local q
-      logger.info('Job queued locally as ' + job.handle)
-      q.push(job)
+      logger.info('Job queued locally as ' + job.handle + ' with a priority of ' + job.priority)
+      q.push(job,job.priority || 10)
     } else {
-      logger.info('Job deferred locally as ' + job.handle)
+      logger.info('Job deferred locally as ' + job.handle + ' with a priority of ' + job.priority)
     }
     //respond to the request with the assigned handle and queue position
     socket.end(commUtil.withLength(commUtil.build(
