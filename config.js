@@ -26,6 +26,7 @@ config.$load({
   mesh: {
     enabled: true,
     port: 3000,
+    debug: 0,
     portPublic: null,
     multicast: {
       address: '226.0.0.1',
