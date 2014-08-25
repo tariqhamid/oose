@@ -49,7 +49,7 @@ block content
                 if file.folder
                   a(href='/?path=#{file.encode(file.relative(god))}#{god ? "&god=on": ""}')= file.name
                 else
-                  a(href='/file?id=#{file.id}#{god ? "&god=on": ""}')= file.name
+                  a(href='/file?handle=#{file.handle}#{god ? "&god=on": ""}')= file.name
               td= file.mimeType
               td= new Date(file.metrics.dateCreated).toDateString()
               td= file.status

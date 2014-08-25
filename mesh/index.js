@@ -1,11 +1,11 @@
 'use strict';
 var async = require('async')
 var EventEmitter = require('events').EventEmitter
-var shortId = require('shortid')
 
 var communicator = require('../helpers/communicator')
 var logger = require('../helpers/logger').create('mesh')
 var redis = require('../helpers/redis')
+var shortId = require('../helpers/shortid')
 
 var config = require('../config')
 

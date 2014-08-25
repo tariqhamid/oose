@@ -19,6 +19,9 @@ config.$load({
     enabled: true,
     count: os.cpus().length || 4
   },
+  shortid: {
+    seed: '3123572'
+  },
   //services
   mesh: {
     enabled: true,
@@ -106,7 +109,6 @@ config.$load({
     embedBaseUrl: 'http://localhost:3004',
     tmpDir: __dirname + '/gump/public/tmp',
     embed: {
-      seed: '3123572',
       prismUrl: 'http://localhost:3003/',
       defaultPreviewImageUrl: '/images/defaultPreview.png'
     },

@@ -11,6 +11,7 @@ var temp = require('temp')
 
 var Sniffer = require('../../helpers/Sniffer')
 var Logger = require('../../helpers/logger')
+var shortid = require('../../helpers/shortid')
 var logger = Logger.create('gump')
 
 var File = require('../../models/file').model
@@ -244,6 +245,7 @@ exports.upload = function(req,res){
               function(err){
                 if(err) return next(err)
                 doc = new File()
+                doc.handle = file.importJob || shortid.generate()
                 doc.name = file.filename
                 doc.tmp = file.tmp
                 doc.sha1 = file.sha1
@@ -369,7 +371,7 @@ exports.folderCreate = function(req,res){
  */
 exports.file = function(req,res){
   var god = req.query.god ? true : false
-  File.findOne({_id: req.query.id},function(err,result){
+  File.findOne({handle: req.query.handle},function(err,result){
     var prismHost = config.gump.prism.hostUrl
     if(result.status === 'error'){
       return res.render('fileError',{
@@ -443,10 +445,9 @@ exports.shredderUpdate = function(req,res){
             },
             //create the embed object
             function(next){
-              var embedHandle = Embed.generateHandle()
-              file.embedHandle = embedHandle
+              file.embedHandle = file.handle
               var doc = new Embed()
-              doc.handle = embedHandle
+              doc.handle = file.handle
               doc.title = file.name
               doc.keywords = file.name.split(' ').join(',')
               doc.template = 'standard'
@@ -517,7 +518,7 @@ exports.download = function(req,res){
     [
       //find the file
       function(next){
-        File.findOne({_id: req.query.id},function(err,result){
+        File.findOne({handle: req.query.handle},function(err,result){
           if(err) return next()
           if(!result) return next('Could not find file')
           file = result

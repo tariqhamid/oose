@@ -1,20 +1,23 @@
 'use strict';
+var async = require('async')
 var fs = require('graceful-fs')
+var mkdirp = require('mkdirp')
+var moment = require('moment')
 var os = require('os')
 var path = require('path')
-var moment = require('moment')
-var config = require('../config')
-var async = require('async')
-var Logger = require('../helpers/logger')
-var mkdirp = require('mkdirp')
-var shortId = require('shortid')
-var mesh = require('../mesh')
-var Job = require('./helpers/job')
+
 var commUtil = require('../helpers/communicator').util
+var Job = require('./helpers/job')
+var Logger = require('../helpers/logger')
+var shortId = require('../helpers/shortid')
 var logger = Logger.create('shredder')
-var running = false
+
+var config = require('../config')
+var mesh = require('../mesh')
+
 var deferred = []
 var deferredInterval = null
+var running = false
 
 
 /**
@@ -192,7 +195,7 @@ var meshStart = function(done){
   mesh.tcp.on('shred:job:push',function(message,socket){
     //build job description
     var job = {
-      handle: shortId.generate().toUpperCase(),
+      handle: shortId.generate(),
       description: message.description
     }
     //check to see if the job has been scheduled and defer it if so
