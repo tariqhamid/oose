@@ -4,162 +4,249 @@ hostname=$(hostname)
 hostnameDomain=$(hostname -d)
 hostnameFQDN=$(hostname -f)
 
-nginxConfig=$(cat <<NGX_CONFIG
-user node;
-worker_processes 17;
-pid /run/nginx.pid;
+nginxNodeCommon=$(cat <<'NGX_CONFIG'
+#let connections stay open if they want
+keepalive_timeout 70;
+client_max_body_size 0;
 
-events {
-  worker_connections 32768;
-  multi_accept off;
-}
+server_names_hash_bucket_size 64;
+server_name_in_redirect off;
 
-http {
-  sendfile on;
-  tcp_nopush on;
-  tcp_nodelay on;
-  keepalive_timeout 5;
-  types_hash_max_size 2048;
-  client_max_body_size 0;
-  # server_tokens off;
+access_log off;
 
-  server_names_hash_bucket_size 64;
-  server_name_in_redirect off;
+ssl_certificate ssl/ssl.crt;
+ssl_certificate_key ssl/ssl.key;
 
-  include /etc/nginx/mime.types;
-  default_type application/octet-stream;
+# setup cache
+proxy_cache_path           /dev/shm/cache levels=1:2 keys_zone=web-cache:512m max_size=7000m inactive=1000m;
+proxy_temp_path            /dev/shm/cache/tmp;
+proxy_cache_valid          404 1m;
+proxy_redirect             off;
+proxy_set_header           Host $host;
+proxy_set_header           X-Real-IP $remote_addr;
+proxy_set_header           X-Forwarded-For $proxy_add_x_forwarded_for;
+proxy_pass_header          User-Agent;
+proxy_max_temp_file_size   0;
+proxy_buffer_size          4k;
+proxy_buffers              16 32k;
+proxy_busy_buffers_size    128k;
+proxy_temp_file_write_size 128k;
+proxy_connect_timeout      300;
+proxy_send_timeout         300;
+proxy_read_timeout         300;
 
-  ##
-  # Logging Settings
-  ##
+#note we've tricked next_upstream into retrying the same backend a bunch of times
+proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
+#important for backend persistence and websockets
+proxy_http_version 1.1;
+
+#The following may be overridden in a location block below
+# ignore client disposition and keep/reuse sockets as much as possible
+proxy_set_header Connection '';
+# ignore websockets
+proxy_set_header Upgrade '';
+
+#remap any backend refs to something that might work
+proxy_redirect http://localhost:3001/ $scheme://$host:$server_port/;
+proxy_redirect http://127.0.0.1:3001/ $scheme://$host:$server_port/;
+
+location /nginx_status {
+  stub_status on;
   access_log off;
-  error_log /var/log/nginx/error.log;
-
-  ##
-  # Gzip Settings
-  ##
-
-  gzip on;
-  gzip_disable "msie6";
-
-  # setup cache
-  proxy_cache_path                /dev/shm/cache levels=1:2 keys_zone=web-cache:512m max_size=7000m inactive=1000m;
-  proxy_temp_path                 /dev/shm/cache/tmp;
-  proxy_cache_valid               404 1m;
-  proxy_redirect                  off;
-  proxy_set_header                X-Forwarded-For  \$proxy_add_x_forwarded_for;
-  proxy_pass_header               User-Agent;
-  proxy_max_temp_file_size        0;
-  proxy_buffer_size               4k;
-  proxy_buffers                   16 32k;
-  proxy_busy_buffers_size         128k;
-  proxy_temp_file_write_size      128k;
-  proxy_connect_timeout           300;
-  proxy_send_timeout              300;
-  proxy_read_timeout              300;
-
-  ##
-  # Virtual Host Configs
-  ##
-  include /etc/nginx/conf.d/*.conf;
-  include /etc/nginx/sites-enabled/*;
 }
 NGX_CONFIG
 )
 
-nginxConfigExports=$(cat <<NGX_CONFIG
-# ${hostname} http
-server {
-  listen 80;
-  server_name ${hostnameFQDN};
+nginxPersistence=$(cat <<'NGX_CONFIG'
+#mapping for header control and selective upgrade
+map $http_upgrade $connection_upgrade {
+  default upgrade;
+  ''      '';
+}
+NGX_CONFIG
+)
 
-  proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
-  proxy_redirect off;
-  proxy_buffering off;
-  proxy_set_header Host  \$host;
-  proxy_set_header X-Real-IP \$remote_addr;
-  proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+nginxSSLCache=$(cat <<'NGX_CONFIG'
+#cache https handshakes etc, for faster negotiations
+ssl_session_cache shared:SSL:10m;
+ssl_session_timeout 10m;
+NGX_CONFIG
+)
 
-  location /nginx_status {
-    stub_status on;
-    access_log   off;
-  }
-
-  location / {
-    proxy_pass http://127.0.0.1:3001;
-  }
+nginxSitesExport=$(cat <<NGX_CONFIG
+# ${hostnameFQDN}
+#define the backend
+upstream node-${hostname} {
+  #same target both lines, this is to sort of fool the next_upstream into retrying a few times
+  server 127.0.0.1:3001 max_fails=5 fail_timeout=5s;
+  server 127.0.0.1:3001 backup max_fails=5 fail_timeout=30s;
+  #keep these many sockets alive to the backend at any time
+  keepalive 32;
 }
 
-# ${hostname} https
 server {
+  listen 80;
   listen 443 ssl;
   server_name ${hostnameFQDN};
-  ssl_certificate ssl/ssl.crt;
-  ssl_certificate_key ssl/ssl.key;
+  server_name_in_redirect on;
 
-  proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
-  proxy_redirect off;
-  proxy_buffering off;
-  proxy_set_header Host  \$host;
-  proxy_set_header X-Real-IP \$remote_addr;
-  proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+  include /etc/nginx/node-common.conf;
 
-  location /nginx_status {
-    stub_status on;
-    access_log   off;
-  }
+  #buffering off for bulk data service
+  #proxy_buffering off;
 
   location / {
-    proxy_pass http://127.0.0.1:3001;
+    proxy_pass http://node-${hostname};
   }
 }
 NGX_CONFIG
 )
 
-nginxConfigPrism=$(cat <<NGX_CONFIG
-# prism http
-server {
-  listen 80;
-  server_name prism.${hostnameDomain} ${hostnameDomain};
-
-  proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
-  proxy_redirect off;
-  proxy_buffering off;
-  proxy_set_header Host  \$host;
-  proxy_set_header X-Real-IP \$remote_addr;
-  proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-
-  location /nginx_status {
-    stub_status on;
-    access_log   off;
-  }
-
-  location / {
-    proxy_pass http://127.0.0.1:3003;
-  }
+nginxSitesGump=$(cat <<NGX_CONFIG
+# gump.${hostnameDomain}
+#define the backend
+upstream node-gump {
+  #same target both lines, this is to sort of fool the next_upstream into retrying a few times
+  server 127.0.0.1:3004 max_fails=5 fail_timeout=5s;
+  server 127.0.0.1:3004 backup max_fails=5 fail_timeout=30s;
+  #keep these many sockets alive to the backend at any time
+  keepalive 32;
 }
 
-# prism https
 server {
+  listen 80;
   listen 443 ssl;
-  server_name prism.${hostnameDomain} ${hostnameDomain};
-  ssl_certificate ssl/ssl.crt;
-  ssl_certificate_key ssl/ssl.key;
+  server_name gump.${hostnameDomain};
+  server_name_in_redirect on;
 
-  proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
-  proxy_redirect off;
-  proxy_buffering off;
-  proxy_set_header Host  \$host;
-  proxy_set_header X-Real-IP \$remote_addr;
-  proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+  include /etc/nginx/node-common.conf;
 
-  location /nginx_status {
-    stub_status on;
-    access_log   off;
+  location /embed {
+    add_header X-Web-Cache true;
+    proxy_cache_valid 200 5m;
+    proxy_cache web-cache;
+    proxy_pass http://node-gump;
   }
 
   location / {
-    proxy_pass http://127.0.0.1:3003;
+    #bounce non SSL
+    if (\$https != on) {
+      return 301 https://gump..${hostnameDomain};
+    }
+    # allow websockets
+    proxy_set_header Upgrade \$http_upgrade;
+    proxy_set_header Connection \$connection_upgrade;
+    proxy_pass http://node-gump;
+  }
+}
+NGX_CONFIG
+)
+
+nginxSitesHideout=$(cat <<NGX_CONFIG
+# hideout.${hostnameDomain}
+#define the backend
+upstream node-hideout {
+  #same target both lines, this is to sort of fool the next_upstream into retrying a few times
+  server 127.0.0.1:3006 max_fails=5 fail_timeout=5s;
+  server 127.0.0.1:3006 backup max_fails=5 fail_timeout=30s;
+  #keep these many sockets alive to the backend at any time
+  keepalive 32;
+}
+
+server {
+  listen 80;
+  listen 443 ssl;
+  server_name hideout.${hostnameDomain};
+  server_name_in_redirect on;
+
+  include /etc/nginx/node-common.conf;
+
+  location / {
+    proxy_pass http://node-hideout;
+  }
+}
+NGX_CONFIG
+)
+
+nginxSitesLg=$(cat <<NGX_CONFIG
+# lg.${hostnameDomain}
+#define the backend
+upstream node-lg {
+  #same target both lines, this is to sort of fool the next_upstream into retrying a few times
+  server 127.0.0.1:3005 max_fails=5 fail_timeout=5s;
+  server 127.0.0.1:3005 backup max_fails=5 fail_timeout=30s;
+  #keep these many sockets alive to the backend at any time
+  keepalive 32;
+}
+
+server {
+  listen 80;
+  listen 443 ssl;
+  server_name lg.${hostnameDomain};
+  server_name_in_redirect on;
+
+  include /etc/nginx/node-common.conf;
+
+  #bounce non SSL
+  if (\$https != on) {
+    return 301 https://lg.${hostnameDomain};
+  }
+
+  location / {
+    # allow websockets
+    proxy_set_header Upgrade \$http_upgrade;
+    proxy_set_header Connection \$connection_upgrade;
+    proxy_pass http://node-lg;
+  }
+}
+NGX_CONFIG
+)
+
+nginxSitesPrism=$(cat <<NGX_CONFIG
+# prism.${hostnameDomain}
+#define the backend
+upstream node-prism {
+  #same target both lines, this is to sort of fool the next_upstream into retrying a few times
+  server 127.0.0.1:3003 max_fails=5 fail_timeout=5s;
+  server 127.0.0.1:3003 backup max_fails=5 fail_timeout=30s;
+  #keep these many sockets alive to the backend at any time
+  keepalive 32;
+}
+
+server {
+  listen 80;
+  listen 443 ssl;
+  server_name ${hostnameDomain} prism.${hostnameDomain};
+
+  include /etc/nginx/node-common.conf;
+
+  location / {
+    proxy_pass http://node-prism;
+  }
+}
+NGX_CONFIG
+)
+
+nginxSitesExecutioner=$(cat <<NGX_CONFIG
+# executioner.${hostnameDomain}
+#define the backend
+upstream node-executioner {
+  #same target both lines, this is to sort of fool the next_upstream into retrying a few times
+  server 127.0.0.1:3007 max_fails=5 fail_timeout=5s;
+  server 127.0.0.1:3007 backup max_fails=5 fail_timeout=30s;
+  #keep these many sockets alive to the backend at any time
+  keepalive 32;
+}
+
+server {
+  listen 80;
+  listen 443 ssl;
+  server_name ${hostnameDomain} executioner.${hostnameDomain};
+
+  include /etc/nginx/node-common.conf;
+
+  location / {
+    proxy_pass http://node-executioner;
   }
 }
 NGX_CONFIG
@@ -226,15 +313,36 @@ chown -R node:node /var/log/node  > /dev/null 2>&1
 # setup nginx
 if [ ! -f "/etc/nginx/sites-available/export.${hostnameDomain}" ]; then
   banner "Configuring Nginx"
+  sed -i \
+    -e"s/\(user\) .*$/\1 node;/" \
+    -e"s/\(worker_processes\) .*$/\1 17;/" \
+    -e"s/\(worker_connections\) .*$/\1 32768;/" \
+    -e"s/# \(multi_accept\)/\1/" \
+    -e"s/\(multi_accept\) .*$/\1 off;/" /etc/nginx/nginx.conf
+  echo "$nginxNodeCommon" > /etc/nginx/node-common.conf
+  echo "$nginxPersistence" > /etc/nginx/conf.d/persistence.conf
+  echo "$nginxSSLCache" > /etc/nginx/conf.d/sslcache.conf
   export="sites-available/export.${hostnameDomain}"
+  gump="sites-available/gump.${hostnameDomain}"
+  hideout="sites-available/hideout.${hostnameDomain}"
+  lg="sites-available/lg.${hostnameDomain}"
   prism="sites-available/prism.${hostnameDomain}"
-  echo "$nginxConfig" > /etc/nginx/nginx.conf
-  echo "$nginxConfigExports" > /etc/nginx/${export}
-  echo "$nginxConfigPrism" > /etc/nginx/${prism}
+  executioner="sites-available/executioner.${hostnameDomain}"
+  echo "$nginxSitesExport" > /etc/nginx/${export}
+  echo "$nginxSitesGump" > /etc/nginx/${gump}
+  echo "$nginxSitesHideout" > /etc/nginx/${hideout}
+  echo "$nginxSitesLg" > /etc/nginx/${lg}
+  echo "$nginxSitesPrism" > /etc/nginx/${prism}
+  echo "$nginxSitesExecutioner" > /etc/nginx/${executioner}
+  #make this part smarter / grok config[.local].js for actual enableds
   rm -rf /etc/nginx/sites-enabled/*
   cd /etc/nginx/sites-enabled
   ln -s ../${export}
+  ln -s ../${gump}
+  ln -s ../${hideout}
+  ln -s ../${lg}
   ln -s ../${prism}
+  ln -s ../${executioner}
   nginx -t
   if [ $? -gt 0 ]; then
     echo "Nginx configuration test failed"
