@@ -2,7 +2,6 @@
 var async = require('async')
 var cluster = require('cluster')
 var fs = require('graceful-fs')
-var mongoose = require('mongoose')
 var os = require('os')
 
 var config = require('./config')
@@ -10,8 +9,6 @@ var config = require('./config')
 var Logger = require('./helpers/logger')
 var logger = Logger.create('main')
 var redis = require('./helpers/redis')
-
-process.on('error',function(err){ logger.critical(err) })
 
 //master startup
 if(cluster.isMaster){
@@ -21,7 +18,6 @@ if(cluster.isMaster){
   var program = require('commander')
   var peerNext = require('./collectors/peerNext')
   var peerStats = require('./collectors/peerStats')
-  var executioner = require('./executioner')
   var mesh = require('./mesh')
   var ping = require('./mesh/ping')
   var announce = require('./mesh/announce')
@@ -158,23 +154,6 @@ if(cluster.isMaster){
             } else next(err)
           })
         } else next()
-      },
-      function(next){
-        if(config.mongoose.enabled){
-          mongoose.connect(config.mongoose.dsn,config.mongoose.options,next)
-        } else next()
-      },
-      //start executioner
-      function(next){
-        if(config.mongoose.enabled && config.executioner.enabled){
-          logger.info('Starting executioner scripting system')
-          executioner.start(function(err){
-            if(!err){
-              logger.info('Executioner started')
-              next()
-            } else next(err)
-          })
-        } else next()
       }
     ],
     function(err){
@@ -254,13 +233,6 @@ if(cluster.isMaster){
             checkWorkerCount()
           } else next()
         },
-        //stop executioner
-        function(next){
-          if(config.executioner.enabled){
-            logger.info('Stopping executioner')
-            executioner.stop(next)
-          } else next()
-        },
         //stop shredder
         function(next){
           if(config.shredder.enabled){
@@ -330,7 +302,9 @@ if(cluster.isMaster){
 
 //worker startup
 if(cluster.isWorker){
+  var mongoose = require('mongoose')
   var storeExport = require('./export')
+  var executioner = require('./executioner')
   var gump = require('./gump')
   var hideout = require('./hideout')
   var storeImport = require('./import')
@@ -372,6 +346,11 @@ if(cluster.isWorker){
         if(config.lg.enabled){
           lg.start(next)
         } else next()
+      },
+      function(next){
+        if(config.mongoose.enabled && config.executioner.enabled){
+          executioner.start(next)
+        } else next()
       }
     ],
     function(err){
@@ -411,6 +390,11 @@ if(cluster.isWorker){
           if(config.lg.enabled)
             lg.stop(next)
           else next()
+        },
+        function(next){
+          if(config.executioner.enabled){
+            executioner.stop(next)
+          } else next()
         }
       ],
       function(err){
