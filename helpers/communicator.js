@@ -1,9 +1,41 @@
 'use strict';
-var net = require('net')
+var crc32 = require('buffer-crc32')
 var dgram = require('dgram')
-var stream = require('stream')
-var logger = require('../helpers/logger').create('communicator')
 var EventEmitter = require('events').EventEmitter
+var net = require('net')
+var stream = require('stream')
+
+var logger = require('../helpers/logger').create('communicator')
+
+var config = require('../config')
+
+
+/**
+ * Track packets and deny duplicates
+ * @constructor
+ */
+var PacketTracker = function(){
+  this.packets = []
+}
+
+
+/**
+ * Track a packet signature
+ * @param {Buffer} buff
+ * @param {Number} ttl
+ * @return {boolean} returns true if the packet already exists
+ */
+PacketTracker.prototype.track = function(buff,ttl){
+  var that = this
+  var sig = crc32.signed(buff)
+  //check if the packet exists, if not add it
+  if(-1 !== that.packets.indexOf(sig)) return true
+  that.packets.push(sig)
+  setTimeout(function(){
+    that.packets.splice(that.packets.indexOf(sig),1)
+  },ttl || 1000)
+  return false
+}
 
 
 /**
@@ -87,6 +119,7 @@ var UDP = function(options){
   if('object' !== typeof options) options = {}
   if(!options.port) throw new Error('Port required to setup UDP')
   self.options = options
+  self.tracker = new PacketTracker()
   self.socket = dgram.createSocket(net.isIPv6(options.address) ? 'udp6' : 'udp4')
   self.socket.bind(options.port,options.address,function(){
     if(options.multicast && options.multicast.address){
@@ -96,6 +129,13 @@ var UDP = function(options){
     self.emit('ready',self.socket)
   })
   self.socket.on('message',function(packet,rinfo){
+    var dup = self.tracker.track(packet)
+    //if the packet is duplicate just ignore it
+    if(dup){
+      if(config.mesh.debug > 0)
+        logger.warning('Duplicate packet ignored',rinfo)
+      return
+    }
     var payload
     if(packet === null){
       logger.warn('Null packet received from ' + rinfo.address + ':' + rinfo.port)

@@ -1,7 +1,6 @@
 'use strict';
 var mongoose = require('mongoose')
 var config = require('../config')
-var shortid = require('shortid')
 var schema
 
 schema = new mongoose.Schema({
@@ -60,16 +59,6 @@ schema.methods.video = function(quality){
   if(!video) video = this.media.video[0]
   if(!video) return false
   return config.gump.embed.prismUrl + video.sha1 + '/' + (video.filename || 'video.mp4')
-}
-
-
-/**
- * Generate Embed Handle
- * @return {string}
- */
-schema.statics.generateHandle = function(){
-  shortid.seed(config.gump.embed.seed)
-  return shortid.generate()
 }
 
 

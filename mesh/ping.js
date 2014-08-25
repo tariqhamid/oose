@@ -1,8 +1,8 @@
 'use strict';
-var shortId = require('shortid')
 var util = require('util')
 
 var logger = require('../helpers/logger').create('mesh:ping')
+var shortId = require('../helpers/shortid')
 
 var config = require('../config')
 var mesh = require('../mesh')

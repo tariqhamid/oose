@@ -39,7 +39,6 @@ exports.run = function(job,parameter,options,done){
   options.json = metrics
   //message client
   request(options,function(err){
-    if(err) return done(err)
-    done()
+    done(err)
   })
 }

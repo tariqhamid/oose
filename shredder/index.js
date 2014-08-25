@@ -1,167 +1,56 @@
 'use strict';
+var async = require('async')
+var childProcess = require('child_process')
 var fs = require('graceful-fs')
+var mkdirp = require('mkdirp')
+var moment = require('moment')
 var os = require('os')
 var path = require('path')
-var moment = require('moment')
-var config = require('../config')
-var async = require('async')
-var Logger = require('../helpers/logger')
-var mkdirp = require('mkdirp')
-var shortId = require('shortid')
-var mesh = require('../mesh')
-var Job = require('./helpers/job')
+var util = require('util')
+
 var commUtil = require('../helpers/communicator').util
+var Logger = require('../helpers/logger')
+var shortId = require('../helpers/shortid')
 var logger = Logger.create('shredder')
-var running = false
+
+var config = require('../config')
+var mesh = require('../mesh')
+
 var deferred = []
 var deferredInterval = null
+var running = false
 
 
 /**
- * Check a job for a cached result
- * @param {Job} job
- * @param {function} next
+ * Spawn a worker to process the job
+ * @param {object} opts
  * @param {function} done
  */
-var jobCacheCheck = function(job,next,done){
-  job.cacheCheck(function(err,result){
-    if(err){
-      job.logger.info('Cache hit failed: ' + err)
-      return next()
-    }
-    if(!result) return next()
-    job.logger.info('Cache hit successful!',result)
-    job.update({
-      status: 'complete',
-      message: 'Complete, cache hit found',
-      steps: {
-        complete: 1,
-        total: 1
-      },
-      frames: {
-        complete: 1,
-        total: 1
-      },
-      resources: result
-    },true)
+var spawnWorker = function(opts,done){
+  logger.info('Starting to spawn worker for job ' + opts.handle)
+  var worker = childProcess.fork(__dirname + '/worker.js')
+  worker.on('error',function(err){
+    done(util.inspect(err))
+  })
+  worker.on('exit',function(code){
+    if(0 !== code)
+      return done('Worker failed, exited with code: ' + code)
+    logger.info('Worker for job ' + opts.handle + ' has finished and exited without error')
     done()
   })
-}
-
-
-/**
- * Run a job
- * @param {object} job Job structure
- * @param {function} done Callback
- */
-var runJob = function(job,done){
-  job.logger.info('Starting to process job')
-  async.series(
-    [
-      //check to see if this job was already processed in the past
-      function(next){
-        jobCacheCheck(job,next,done)
-      },
-      //step 2: obtain resources
-      function(next){
-        job.update({
-          status: 'resource',
-          message: 'Obtaining resources',
-          steps: {
-            complete: 0,
-            total: 3
-          }
-        },true)
-        job.obtainResources(next)
-      },
-      //now that we have resources check the cache again
-      function(next){
-        jobCacheCheck(job,next,done)
-      },
-      //step 3: execute encoding operations
-      function(next){
-        job.update({
-          status: 'encode',
-          message: 'Executing encoding jobs',
-          steps: {
-            complete: 1,
-            total: 3
-          },
-          frames: {
-            complete: 0,
-            total: 1
-          }
-        },true)
-        job.encode(next)
-      },
-      //step 4: save any resources after processing has finished
-      function(next){
-        job.update({
-          status: 'saving',
-          message: 'Saving resources',
-          steps: {
-            complete: 2,
-            total: 3
-          },
-          frames: {
-            complete: 0,
-            total: 1
-          }
-        },true)
-        job.save(function(err,result){
-          if(err) return next(err)
-          job.update({
-            resources: result
-          },true)
-          next()
-        })
-      },
-      //step 5: save the build to cache
-      function(next){
-        job.cacheStore(function(err){
-          if(err) job.logger.info('Cache store failed: ' + err)
-          next()
-        })
-      }
-    ],
-    function(err){
-      //cleanup the resources here since we dont it need any more
-      job.resource.cleanup()
-      if(err){
-        job.update({
-          status: 'error',
-          message: err
-        },true)
-        return done()
-      }
-      job.update({
-        status: 'complete',
-        message: 'Processing complete',
-        steps: {
-          complete: 3,
-          total: 3
-        }
-      },true)
-      done()
-    }
-  )
+  //start the worker by sending it options
+  worker.send({options: opts})
 }
 
 
 /**
  * The job queue
  */
-var q = async.queue(
+var q = async.priorityQueue(
   function(opts,done){
     if('undefined' === typeof opts.handle || null === opts.handle || !opts.handle)
       done('ERROR: Job.handle not set')
-    //setup our job maintainer
-    var job = new Job(opts.handle,opts.description)
-    runJob(job,function(err){
-      if(err) job.logger.error('Job processing failed: ' + err)
-      else job.logger.info('Job processing successful')
-      done()
-    })
+    spawnWorker(opts,done)
   },
   config.shredder.concurrency || os.cpus().length || 1
 )
@@ -177,51 +66,64 @@ var scheduleDeferred = function(){
       deferred.splice(i,1)
       //send to q for processing
       logger.info('Job queued locally as ' + job.handle)
-      q.push(job)
+      q.push(job,job.priority || 10)
     }
   })
 }
 
 
 /**
- * Set up Mesh event listener
+ * Process an incoming job
+ * @param {object} message
+ * @param {Socket} socket
+ */
+var newJob = function(message,socket){
+  //build job description
+  var job = {
+    handle: shortId.generate(),
+    priority: 10,
+    description: message.description
+  }
+  //parse the description
+  var description = JSON.parse(message.description)
+  //check to see if there is a priority override
+  if(description.priority) job.priority = description.priority
+  //check to see if the job has been scheduled and defer it if so
+  if(description.schedule && description.schedule.start && 'now' !== description.schedule.start){
+    if(description.schedule.match(/^\+/)){
+      description.schedule.start = description.schedule.start.replace(/^\+(\d+)/,'$1')
+      job.start = new Date().getTime() + description.schedule.start
+    } else {
+      job.start = moment(description.schedule.start)
+    }
+  }
+  //if we have a start it means we are deferred
+  if(!job.start){
+    //jab job into local q
+    logger.info('Job queued locally as ' + job.handle + ' with a priority of ' + job.priority)
+    q.push(job,job.priority || 10)
+  } else {
+    logger.info('Job deferred locally as ' + job.handle + ' with a priority of ' + job.priority)
+  }
+  //respond to the request with the assigned handle and queue position
+  socket.end(commUtil.withLength(commUtil.build(
+    job.handle,
+    {status: 'ok', handle: job.handle, position: q.length()}
+  )))
+}
+
+
+/**
+ * Set up and listen
  * @param {function} done Callback
  */
 var meshStart = function(done){
   // shred:job:push - queue entry acceptor
   mesh.tcp.on('shred:job:push',function(message,socket){
-    //build job description
-    var job = {
-      handle: shortId.generate().toUpperCase(),
-      description: message.description
-    }
-    //check to see if the job has been scheduled and defer it if so
-    var description = JSON.parse(message.description)
-    if(description.schedule && description.schedule.start && 'now' !== description.schedule.start){
-      if(description.schedule.match(/^\+/)){
-        description.schedule.start = description.schedule.start.replace(/^\+(\d+)/,'$1')
-        job.start = new Date().getTime() + description.schedule.start
-      } else {
-        job.start = moment(description.schedule.start)
-      }
-    }
-    //if we have a start it means we are deferred
-    if(!job.start){
-      //jab job into local q
-      logger.info('Job queued locally as ' + job.handle)
-      q.push(job)
-    } else {
-      logger.info('Job deferred locally as ' + job.handle)
-    }
-    //respond to the request with the assigned handle and queue position
-    socket.end(commUtil.withLength(commUtil.build(
-      job.handle,
-      {status: 'ok', handle: job.handle, position: q.length()}
-    )))
+    newJob(message,socket)
   })
-  //start trying to train the deferred jobs
-  deferredInterval = setInterval(scheduleDeferred,15000)
-  logger.info('Listening for shredder jobs')
+  logger.info('Listening for new shredder jobs')
+  //check and see if there is a snapshot if so load it
   done()
 }
 
@@ -229,11 +131,75 @@ var meshStart = function(done){
 /**
  * Stop mesh listening
  * @param {function} done
+ * @return {*}
  */
 var meshStop = function(done){
-  if(deferredInterval) clearTimeout(deferredInterval)
   mesh.tcp.removeAllListeners('shred:job:push')
   done()
+}
+
+
+/**
+ * Shutdown shredder
+ * @param {function} done
+ * @return {*}
+ */
+var shutdown = function(done){
+  //if nothing is happening just exit
+  if(0 === deferred.length && q.idle()){
+    logger.info('Nothing processing, exiting')
+    return done()
+  }
+  async.series(
+    [
+      //since there is something happening start shutting everything down and saving
+      function(next){
+        logger.info('Pausing queue to prevent further jobs from being started')
+        q.pause()
+        next()
+      },
+      //shutdown all the remaining workers
+      function(next){
+        //now wait so we can exit
+        logger.info('Waiting for current jobs to finish processing')
+        var interval
+        var i = 0
+        var waitForWorkers = function(){
+          var running = q.running()
+          //still waiting
+          if(running > 0){
+            i++
+            if(i % 10 === 0)
+              logger.info('Still waiting for ' + running + ' worker(s) to exit...')
+            return
+          }
+          //finish exiting
+          clearInterval(interval)
+          next()
+        }
+        interval = setInterval(waitForWorkers,1000)
+      },
+      //now that the workers are dead stop listening for new jobs
+      //  (any that we received in the meantime will be stored)
+      function(next){
+        logger.info('Ceasing to listen for new jobs')
+        meshStop(next)
+      },
+      //setup and write our snapshot of remaining items in the q
+      function(next){
+        var snapshot = {tasks: q.tasks, deferred: deferred}
+        //dont write a snapshot if there is nothing queued
+        if(snapshot.tasks.length === 0 && snapshot.deferred.length === 0)
+          return next()
+        logger.info('Writing the current queue of jobs to: ' + config.shredder.snapshot)
+        if(fs.existsSync(config.shredder.snapshot)) fs.unlinkSync(config.shredder.snapshot)
+        fs.writeFileSync(config.shredder.snapshot,JSON.stringify(snapshot))
+        logger.info('Snapshot written successfully')
+        next()
+      }
+    ],
+    done
+  )
 }
 
 
@@ -258,7 +224,30 @@ exports.start = function(done){
           return next('Root folder [' + path.resolve(config.shredder.root) + '] does not exist')
         next()
       },
-      //start listening on mesh
+      //check to see if there is a snapshot to restore
+      function(next){
+        if(!fs.existsSync(config.shredder.snapshot)) return next()
+        logger.info('Found shredder snapshot... restoring')
+        var snapshot = JSON.parse(fs.readFileSync(config.shredder.snapshot))
+        //repopulate deferred
+        snapshot.deferred.forEach(function(task){
+          deferred.push(task)
+        })
+        //push tasks into q
+        snapshot.tasks.forEach(function(task){
+          q.push(task.data,task.data.priority || 10)
+        })
+        fs.unlinkSync(config.shredder.snapshot)
+        logger.info('Finished restoring jobs')
+        next()
+      },
+      //setup for deferred scheduling
+      function(next){
+        //start trying to schedule the deferred jobs
+        deferredInterval = setInterval(scheduleDeferred,15000)
+        next()
+      },
+      //start listening for new jobs from mesh
       function(next){
         meshStart(next)
       }
@@ -279,10 +268,25 @@ exports.start = function(done){
 exports.stop = function(done){
   if('function' !== typeof done) done = function(){}
   if(running){
-    meshStop(function(err){
-      if(err) return done(err)
-      running = false
-      done()
-    })
+    logger.info('Starting to shutdown shredder')
+    async.series(
+      [
+        //stop scheduling any deferred jobs
+        function(next){
+          logger.info('Stopping scheduling of any deferred jobs')
+          if(deferredInterval) clearTimeout(deferredInterval)
+          next()
+        },
+        //check for running jobs and store a snapshot if we have to
+        function(next){
+          logger.info('Shutting down and saving state if necessary')
+          shutdown(next)
+        }
+      ],
+      function(err){
+        logger.info('Shredder shutdown complete')
+        done(err)
+      }
+    )
   }
 }

@@ -19,10 +19,14 @@ config.$load({
     enabled: true,
     count: os.cpus().length || 4
   },
+  shortid: {
+    seed: '3123572'
+  },
   //services
   mesh: {
     enabled: true,
     port: 3000,
+    debug: 0,
     portPublic: null,
     multicast: {
       address: '226.0.0.1',
@@ -64,7 +68,8 @@ config.$load({
   },
   shredder: {
     enabled: false,
-    concurrency: os.cpus().length || 1
+    concurrency: os.cpus().length || 1,
+    snapshot: __dirname + '/shredder/snapshot.json'
   },
   hideout: {
     enabled: false,
@@ -106,7 +111,6 @@ config.$load({
     embedBaseUrl: 'http://localhost:3004',
     tmpDir: __dirname + '/gump/public/tmp',
     embed: {
-      seed: '3123572',
       prismUrl: 'http://localhost:3003/',
       defaultPreviewImageUrl: '/images/defaultPreview.png'
     },

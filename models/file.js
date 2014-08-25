@@ -2,6 +2,8 @@
 var async = require('async')
 var mongoose = require('mongoose')
 
+var shortid = require('../helpers/shortid')
+
 mongoose.plugin(require('mongoose-list'))
 
 var encode = function(path){
@@ -21,6 +23,11 @@ var decode = function(path){
 }
 
 var schema = new mongoose.Schema({
+  handle: {
+    type: String,
+    unique: true,
+    required: true
+  },
   folder: {
     type: Boolean,
     require: true,
@@ -87,6 +94,8 @@ var schema = new mongoose.Schema({
 schema.pre('remove',function(next){
   var Model = require('./file').model
   var path = this.path
+  //make sure there is a handle if not make one
+  if(!this.handle) this.handle = shortid.generate()
   //remove direct descendants and let the waterfall happen
   if(!path instanceof Array) path = path.split('/')
   var exp = new RegExp('^,' + path.join(','))
@@ -121,6 +130,7 @@ schema.pre('save',function(next){
 /**
  * Relative path (prefix removed)
  * @param {boolean} god
+ * @this {File}
  * @return {Array}
  */
 schema.methods.relative = function(god){
@@ -133,6 +143,7 @@ schema.methods.relative = function(god){
 /**
  * Relative parent path
  * @param {boolean} god
+ * @this {File}
  * @return {array}
  */
 schema.methods.relativeParent = function(god){
@@ -144,6 +155,7 @@ schema.methods.relativeParent = function(god){
 
 /**
  * Parent path
+ * @this {File}
  * @return {array}
  */
 schema.methods.parent = function(){
@@ -171,6 +183,7 @@ schema.methods.decode = decode
  * Check if a path exists
  * @param {string|array} path
  * @param {function} next
+ * @this {File}
  */
 schema.statics.exists = function(path,next){
   path = decode(path)
@@ -185,6 +198,7 @@ schema.statics.exists = function(path,next){
  * Find items in a path (directly owned)
  * @param {string} path
  * @return {object} Mongoose query
+ * @this {File}
  */
 schema.statics.findChildren = function(path){
   path = decode(path)
@@ -203,6 +217,7 @@ schema.statics.findChildren = function(path){
  * Find descendants of a path
  * @param {string} path
  * @return {object} Mongoose query
+ * @this {File}
  */
 schema.statics.findDescendents = function(path){
   if(!path instanceof Array) path = path.split('/')
@@ -233,6 +248,7 @@ schema.statics.decode = decode
  * Create folders recursively
  * @param {string} path
  * @param {function}next
+ * @this {File}
  */
 schema.statics.mkdirp = function(path,next){
   var Model = this

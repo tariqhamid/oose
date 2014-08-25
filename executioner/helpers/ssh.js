@@ -2,7 +2,7 @@
 var SSH2 = require('ssh2')
 var path = require('path')
 var async = require('async')
-var shortid = require('shortid')
+var shortid = require('../../helpers/shortid')
 var EventEmitter = require('events').EventEmitter
 
 
