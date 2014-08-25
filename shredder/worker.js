@@ -135,8 +135,13 @@ var runJob = function(job,done){
   )
 }
 
+//receive one and only one message from master and that should be the job description
 process.once('message',function(m){
-  if(!m.options) return
+  if(!m.options){
+    logger.error('Received invalid message from master, exiting',m)
+    process.exit(1)
+    return
+  }
   var opts = m.options
   logger.info('Received description from master for job ' + opts.handle)
   //setup our job maintainer
