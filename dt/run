@@ -1,3 +1,4 @@
 #!/bin/sh
+cd /opt/oose
 exec 2>&1
-exec envuidgid node envdir ./env /usr/bin/node /opt/oose/app.js -vv
+exec envuidgid node envdir /etc/service/oose/env node app -vv

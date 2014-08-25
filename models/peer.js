@@ -50,7 +50,18 @@ schema = new mongoose.Schema({
   },
   status: {
     type: String,
-    index:true,
+    required: true,
+    index: true,
+    enum: [
+      'unknown',
+      'tested',
+      'refreshed',
+      'ready',
+      'started',
+      'stopped',
+      'ok',
+      'error'
+    ],
     default: 'unknown'
   },
   log: [

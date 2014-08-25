@@ -1,10 +1,13 @@
 'use strict';
-var Peer = require('../../models/peer').model
-var peerHelper = require('../helpers/peer')
-var dns = require('dns')
 var async = require('async')
+var dns = require('dns')
+
+var peerHelper = require('../helpers/peer')
 var list = require('../helpers/list')
+var Peer = require('../../models/peer').model
+
 var operationCompleteMessage = 'Operation complete, close this window and refresh the previous page'
+var validStatuses = Peer.schema.path('status').enum().enumValues
 
 
 /**
@@ -215,7 +218,8 @@ exports.edit = function(req,res){
     } else{
       if(!result) result = {}
       res.render('peer/edit',{
-        peer: result
+        peer: result,
+        statuses: validStatuses
       })
     }
   })
@@ -256,6 +260,12 @@ exports.save = function(req,res){
         doc.ip = req.body.ip
         doc.sshPort = req.body.sshPort || 22
         doc.config = req.body.config || undefined
+        if(-1 === validStatuses.indexOf(doc.status))
+          doc.status = 'unknown'
+        if(-1 === validStatuses.indexOf(req.body.status))
+          req.body.status = doc.status
+        if(doc.status !== req.body.status)
+          doc.status = req.body.status
         next()
       },
       //log

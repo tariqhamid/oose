@@ -1,9 +1,10 @@
 'use strict';
-var SSH2 = require('ssh2')
-var path = require('path')
 var async = require('async')
-var shortid = require('../../helpers/shortid')
 var EventEmitter = require('events').EventEmitter
+var path = require('path')
+var SSH2 = require('ssh2')
+
+var shortid = require('../../helpers/shortid')
 
 
 
@@ -60,16 +61,15 @@ SSH.prototype.commandBuffered = function(cmd,next){
     function(cmd,next){
       client.exec(cmd,function(err,stream){
         if(err) return next(err)
+        var exitCode = 0
+        var collect = function(){ buffer = buffer + stream.read() }
         stream.setEncoding('utf-8')
-        stream.on('data',function(data){
-          buffer += data
-        })
-        stream.on('finish',function(){
-          client.end()
+        stream.on('readable',collect)
+        stream.stderr.on('readable',collect)
+        stream.on('exit',function(code){ exitCode = code })
+        stream.on('end',function(){
+          if(0 !== exitCode) return next('Failed to execute (' + exitCode + '): ' + cmd)
           next()
-        })
-        stream.on('exit',function(code){
-          if(code > 0) next('Failed to execute: ' + cmd)
         })
       })
     },
@@ -99,12 +99,9 @@ SSH.prototype.commandStream = function(cmd,writable,next){
         stream.on('data',function(data){
           writable.write(data)
         })
-        stream.on('finish',function(){
-          client.end()
-          next()
-        })
         stream.on('exit',function(code){
-          if(code > 0) next('Failed to execute: ' + cmd)
+          if(0 !== code) return next('Failed to execute (' + code + '): ' + cmd)
+          next()
         })
       })
     },
@@ -137,7 +134,7 @@ SSH.prototype.commandShell = function(command,writable,next){
           stream.on('data',function(data){writable.write(data)})
           stream.write('export TERM=dumb\n')
           stream.write('export DEBIAN_FRONTEND=noninteractive\n')
-          stream.end(command + ' && exit $?\n')
+          stream.end(command + ' ; exit $?\n')
         })
       }
     ],
@@ -183,7 +180,7 @@ SSH.prototype.scriptStream = function(script,writable,next){
           })
           stream.write('export TERM=dumb\n')
           stream.write('export DEBIAN_FRONTEND=noninteractive\n')
-          stream.write(cmd + ' && exit $?\n')
+          stream.write(cmd + ' ; exit $?\n')
           stream.end()
         })
       },

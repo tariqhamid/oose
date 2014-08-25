@@ -1,11 +1,14 @@
 'use strict';
 var async = require('async')
-var net = require('net')
 var fs = require('graceful-fs')
-var SSH = require('./ssh')
-var config = require('../../config')
+var net = require('net')
+
+var SSH = require('../helpers/ssh')
 var Peer = require('../../models/peer').model
 
+var config = require('../../config')
+
+var validStatuses = Peer.schema.path('status').enum().enumValues
 
 /**
  * Peer action settings
@@ -38,6 +41,9 @@ var actions = {
   }
 }
 
+var commandFail = function(next){
+  return function(err){ next('Command failed: ' + err) }
+}
 
 /**
  * Find a peer in mongo by id
@@ -93,7 +99,7 @@ var peerSshConnect = function(peer,done){
  */
 var peerLog = function(peer,level,msg,status,done){
   peer.log.push({message: msg, level: level})
-  if(status) peer.status = status
+  if(status && -1 < validStatuses.indexOf(status)) peer.status = status
   peer.save(function(err){
     if(err) return done(err.message)
     done()
@@ -170,9 +176,7 @@ exports.test = function(id,next){
       function(next){
         peerSshConnect(peer,function(err,client){
           if(err) return next(err)
-          client.on('error',function(err){
-            next('Failed to connect to peer: ' + err)
-          })
+          client.on('error',commandFail(next))
           //find out some information about the peer
           client.commandBuffered('cat /etc/debian_version',function(err,result){
             // jshint bitwise:false
@@ -194,7 +198,7 @@ exports.test = function(id,next){
           function(next){
             if(err) peerLog(peer,'error',err,'error',next)
             else {
-              var status = null
+              var status = peer.status
               if(peer.status.match(/error|unknown/i))
                 status = 'tested'
               peerLog(peer,'success',
@@ -234,9 +238,7 @@ exports.refresh = function(id,next){
       function(next){
         peerSshConnect(peer,function(err,client){
           if(err) return next(err)
-          client.on('error',function(err){
-            next('Failed to connect to peer: ' + err)
-          })
+          client.on('error',commandFail(next))
           //collect some information about the peer
           async.parallel(
             [
@@ -254,7 +256,7 @@ exports.refresh = function(id,next){
               //get the kernel version
               function(next){
                 client.commandBuffered('uname -r',function(err,result){
-                  result = result.trim()
+                  result = result.trim() || peer.os.kernel
                   peer.os.kernel = result
                   next()
                 })
@@ -262,7 +264,7 @@ exports.refresh = function(id,next){
               //get the arch
               function(next){
                 client.commandBuffered('uname -m',function(err,result){
-                  result = result.trim()
+                  result = result.trim() || peer.os.arch
                   peer.os.arch = result
                   next()
                 })
@@ -279,7 +281,7 @@ exports.refresh = function(id,next){
               function(next){
                 client.commandBuffered('cat /proc/uptime',function(err,result){
                   if(err) return next(err)
-                  peer.os.uptime = result.trim().split(' ')[0]
+                  peer.os.uptime = result.trim().split(' ')[0] || undefined
                   next()
                 })
               },
@@ -287,7 +289,7 @@ exports.refresh = function(id,next){
               function(next){
                 client.commandBuffered('cat /proc/loadavg',function(err,result){
                   if(err) return next(err)
-                  result = result.trim().split(' ').splice(0,3)
+                  result = result.trim().split(' ').splice(0,3) || undefined
                   peer.os.load = result
                   next()
                 })
@@ -305,8 +307,10 @@ exports.refresh = function(id,next){
           function(next){
             peerLog(peer,
               err ? 'warning' : 'info',
-              err ? err       : 'Successfully refreshed stats',
-              err ? 'error'   : ('tested' === peer.status)?'refreshed':null,
+              err ? err       : 'Successfully refreshed peer',
+              err ? 'error'   :
+                (peer.status.match(/error|unknown|tested/i)) ? 'refreshed'
+                : peer.status,
               next
             )
           }
@@ -340,7 +344,7 @@ exports.prepare = function(id,writable,next){
       },
       //check if the peer is at the right status
       function(next){
-        if(peer.status.match(/unknown|started/i))
+        if(peer.status.match(/unknown|error|started/i))
           return next('Peer not ready to be prepared')
         next()
       },
@@ -348,9 +352,7 @@ exports.prepare = function(id,writable,next){
       function(next){
         peerSshConnect(peer,function(err,client){
           if(err) return next(err)
-          client.on('error',function(err){
-            next('Failed to connect to peer: ' + err)
-          })
+          client.on('error',commandFail(next))
           async.series(
             [
               //send the ssl key
@@ -427,9 +429,7 @@ exports.install = function(id,writable,next){
       function(next){
         peerSshConnect(peer,function(err,client){
           if(err) return next(err)
-          client.on('error',function(err){
-            next('Failed to connect to peer: ' + err)
-          })
+          client.on('error',commandFail(next))
           client.scriptStream(__dirname + '/../scripts/install.sh',writable,next)
         })
       }
@@ -485,9 +485,7 @@ exports.upgrade = function(id,writable,next){
       function(next){
         peerSshConnect(peer,function(err,client){
           if(err) return next(err)
-          client.on('error',function(err){
-            next('Failed to connect to peer: ' + err)
-          })
+          client.on('error',commandFail(next))
           client.scriptStream(__dirname + '/../scripts/upgrade.sh',writable,next)
         })
       }
@@ -537,9 +535,7 @@ exports.updateConfig = function(id,next){
       function(next){
         peerSshConnect(peer,function(err,client){
           if(err) return next(err)
-          client.on('error',function(err){
-            next('Failed to connect to peer: ' + err)
-          })
+          client.on('error',commandFail(next))
           client.client.sftp(function(err,sftp){
             if(err) return next(err)
             var stream = sftp.createWriteStream('/opt/oose/config.local.js')
@@ -599,9 +595,7 @@ exports.action = function(id,action,next){
       function(next){
         peerSshConnect(peer,function(err,client){
           if(err) return next(err)
-          client.on('error',function(err){
-            next('Failed to connect to peer: ' + err)
-          })
+          client.on('error',commandFail(next))
           async.series(
             [
               //stop/start/restart
@@ -655,9 +649,7 @@ exports.custom = function(id,command,writable,next){
       function(next){
         peerSshConnect(peer,function(err,client){
           if(err) return next(err)
-          client.on('error',function(err){
-            next('Failed to connect to peer: ' + err)
-          })
+          client.on('error',commandFail(next))
           client.commandShell(command,writable,next)
         })
       }
