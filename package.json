@@ -64,6 +64,7 @@
     "shortid": "2.0.x",
     "socket.io": "1.0.x",
     "ssh2": "0.3.x",
+    "string": "^1.9.1",
     "temp": "0.8.x",
     "tough-cookie": "0.12.x"
   },

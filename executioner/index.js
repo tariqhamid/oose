@@ -29,14 +29,23 @@ app.locals.pretty = true
 
 /**
  * App version
+ * @type {string}
  */
 app.locals.version = config.version
 
 
 /**
  * Load moment into jade
+ * @type {moment}
  */
 app.locals.moment = require('moment')
+
+
+/**
+ * String helpers
+ * @type {string}
+ */
+app.locals.S = require('string')
 
 
 /**
