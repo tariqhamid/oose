@@ -25,7 +25,9 @@ block content
       .form-group
         label.control-label.col-sm-2 Status
         .col-sm-10
-          .form-control-static= peer.status
+          select(name='status')
+            each status in ['unknown','tested','staging','ready','ok','stopped','error']
+              option(value=status, selected=(status == peer.status))= S(status).capitalize().s
       .form-group
         label.control-label.col-sm-2 OS
         .col-sm-10
