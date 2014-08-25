@@ -138,10 +138,10 @@ exports.upload = function(req,res){
           ],
           encoding: [
             {
-              template: 'mp4-standard-480p'
+              template: 'preview'
             }
           ],
-          save: ['mp4-standard-480p-preview','mp4-standard-480p']
+          save: ['preview','video']
         }
       },
       function(err,res,body){
@@ -451,16 +451,16 @@ exports.shredderUpdate = function(req,res){
               doc.title = file.name
               doc.keywords = file.name.split(' ').join(',')
               doc.template = 'standard'
-              if(file.shredder.resources['mp4-standard-480p-preview']){
+              if(file.shredder.resources.preview){
                 doc.media.image.push({
                   offset: null,
-                  sha1: file.shredder.resources['mp4-standard-480p-preview']
+                  sha1: file.shredder.resources.preview
                 })
               }
-              if(file.shredder.resources['mp4-standard-480p']){
+              if(file.shredder.resources.video){
                 doc.media.video.push({
                   quality: 'standard',
-                  sha1: file.shredder.resources['mp4-standard-480p']
+                  sha1: file.shredder.resources.video
                 })
               }
               doc.save(function(err){
