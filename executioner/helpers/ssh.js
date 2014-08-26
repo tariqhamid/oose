@@ -195,7 +195,7 @@ SSH.prototype.scriptStream = function(script,writable,next){
           stream.write('export TERM=dumb\n')
           stream.write('export DEBIAN_FRONTEND=noninteractive\n')
           stream.write(cmd + ' ; exit $?\n')
-          stream.end()
+          //stream.end()
         })
       },
       //remove the tmpfile

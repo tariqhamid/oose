@@ -6,7 +6,7 @@ var cp = require('child_process')
 
 
 /**
- * Sherder Command helper
+ * Shredder Command helper
  * @param {object} job
  * @param {string} command
  * @constructor

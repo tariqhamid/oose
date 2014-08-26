@@ -126,17 +126,18 @@ exports.banner = function(writable,msg){
  * @param {string} title
  */
 exports.outputStart = function(res,title){
+  res.set('X-Accel-Buffering','no')
   res.set('Content-Type','text/html')
-  res.write('<html><head>')
-  if(title) res.write('<title>' + title + '</title>')
-  res.write('<style type="text/css">')
-  res.write('body {background:#000; color:#fff; font-family:monospace; font-size:16px;}')
-  res.write('</style>')
-  res.write('<script type="text/javascript">')
-  res.write('var scrollBottom = function(){window.scrollTo(0,document.body.scrollHeight)};')
-  res.write('var scrollInt = setInterval(scrollBottom,100);')
-  res.write('</script>')
-  res.write('</head><body><pre>')
+  res.write(
+    '<html><head><title>' + ((title) ? title : '') + '</title>' +
+    '<style type="text/css">' +
+    'body {background:#000; color:#fff; font-family:monospace; font-size:16px;}' +
+    '</style>' +
+    '<script type="text/javascript">\n' +
+    'var scrollBottom = function(){window.scrollTo(0,document.body.scrollHeight)};\n' +
+    'var scrollInt = setInterval(scrollBottom,100);\n' +
+    '</script></head><body>\n')
+  res.write('<pre>') //this one begins streaming mode
 }
 
 
@@ -145,9 +146,10 @@ exports.outputStart = function(res,title){
  * @param {object} res
  */
 exports.outputEnd = function(res){
-  res.write('</pre>')
-  res.write('<script type="text/javascript">scrollBottom(); clearInterval(scrollInt);</script>')
-  res.end('</body></html>')
+  res.write('</pre>' +
+    '<script type="text/javascript">\nscrollBottom();\nclearInterval(scrollInt);\n</script>' +
+    '</body></html>')
+  res.end()
 }
 
 
@@ -271,7 +273,7 @@ exports.refresh = function(id,next){
               },
               //get the oose version (if we can)
               function(next){
-                var cmd = 'grep -oP "version: \'([^\']+)" /opt/oose/config.js | sed -r "s/version: \'([^\']+)/\\1/g"'
+                var cmd = 'node -p "JSON.parse(require(\'fs\').readFileSync(\'/opt/oose/package.json\')).version"'
                 client.commandBuffered(cmd,function(err,result){
                   peer.version = result.trim() || 'unknown'
                   next()
