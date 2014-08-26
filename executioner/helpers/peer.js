@@ -17,23 +17,23 @@ var validStatuses = Peer.schema.path('status').enum().enumValues
  * @type {{restart: {name: string, status: string, finalStatusSuccess: string, finalStatusError: string, cmd: string}, stop: {name: string, status: string, finalStatusSuccess: string, finalStatusError: string, cmd: string}, start: {name: string, status: string, finalStatusSuccess: string, finalStatusError: string, cmd: string}}}
  */
 var servicedir = '/etc/service/oose'
-var dn = 'svc -d ' + servicedir
-var up = 'svc -u ' + servicedir
+var dtStop = ['svc -d ' + servicedir]
+var dtStart = ['chmod +x /opt/oose/dt/run /opt/oose/dt/log/run','svc -u ' + servicedir]
 var actions = {
   restart: {
     name: 'restart',
     status: 'ok',
-    cmd: dn + ' ; ' + up
+    cmd: [].concat(dtStop,dtStart)
   },
   stop: {
     name: 'stop',
     status: 'stopped',
-    cmd: dn
+    cmd: dtStop
   },
   start: {
     name: 'start',
     status: 'ok',
-    cmd: up
+    cmd: dtStart
   }
 }
 

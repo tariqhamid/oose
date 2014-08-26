@@ -9,6 +9,13 @@ logger.info('Spawned and waiting for job description')
 
 
 /**
+ * Set the process title
+ * @type {string}
+ */
+process.title = 'OOSE: shredder'
+
+
+/**
  * Check a job for a cached result
  * @param {Job} job
  * @param {function} next
@@ -144,6 +151,8 @@ process.once('message',function(m){
   }
   var opts = m.options
   logger.info('Received description from master for job ' + opts.handle)
+  //adjust the process title
+  process.title = 'OOSE: shredder ' + opts.handle
   //setup our job maintainer
   logger.info('Starting to process job ' + opts.handle)
   var job = new Job(opts.handle,opts.description)

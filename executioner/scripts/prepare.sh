@@ -18,9 +18,9 @@ ssl_certificate_key ssl/ssl.key;
 proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
 #important for backend persistence and websockets
 proxy_http_version 1.1;
-proxy_set_header  Host $host;
-proxy_set_header  X-Real-IP $remote_addr;
-proxy_set_header  X-Forwarded-For $proxy_add_x_forwarded_for;
+proxy_set_header  Host \$host;
+proxy_set_header  X-Real-IP \$remote_addr;
+proxy_set_header  X-Forwarded-For \$proxy_add_x_forwarded_for;
 proxy_pass_header User-Agent;
 
 #The following may be overridden in a location block below
@@ -30,8 +30,8 @@ proxy_set_header Connection '';
 proxy_set_header Upgrade '';
 
 #remap any backend refs to something that might work
-proxy_redirect http://localhost:3001/ $scheme://$host:$server_port/;
-proxy_redirect http://127.0.0.1:3001/ $scheme://$host:$server_port/;
+proxy_redirect http://localhost:3001/ \$scheme://\$host:\$server_port/;
+proxy_redirect http://127.0.0.1:3001/ \$scheme://\$host:\$server_port/;
 
 location /nginx_status {
   stub_status on;
@@ -42,7 +42,7 @@ NGX_CONFIG
 
 nginxPersistence=$(cat <<'NGX_CONFIG'
 #mapping for header control and selective upgrade
-map $http_upgrade $connection_upgrade {
+map \$http_upgrade \$connection_upgrade {
   default upgrade;
   ''      '';
 }
@@ -93,7 +93,7 @@ server {
   include /etc/nginx/node-common.conf;
 
   #buffering off for bulk data service
-  #proxy_buffering off;
+  proxy_buffering off;
 
   location / {
     proxy_pass http://node-${hostname};
@@ -131,7 +131,7 @@ server {
   location / {
     #bounce non SSL
     if (\$https != on) {
-      return 301 https://gump..${hostnameDomain};
+      return 301 https://gump.${hostnameDomain};
     }
     # allow websockets
     proxy_set_header Upgrade \$http_upgrade;
@@ -371,13 +371,17 @@ if [[ "$(which npm)" == "" ]]; then
     echo "Failed to install NPM"
     exit $rcode
   fi
+fi
 
+if [[ "$(which pm2)" != "" ]]; then
   banner "Fuck PM2!!!!!!"
   runCommand "pm2 -s --no-color flush"
   runCommand "pm2 -s --no-color kill"
   npm config set color false
   runCommand "npm -q --no-spin -g uninstall pm2"
+fi
 
+if [[ "$(dpkg -l | grep daemontools)" == "" ]]; then
   banner "Installing daemontools"
   runCommand "apt-get -q -y install daemontools-run"
   runCommand "init q"

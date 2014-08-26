@@ -89,7 +89,7 @@ config.$load({
     user: 'oose',
     password: null,
     cookie: {
-      secret: null,
+      secret: 'oose',
       maxAge: 2592000000 //30 days
     },
     ssh: {
