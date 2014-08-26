@@ -190,7 +190,8 @@ SSH.prototype.scriptStream = function(script,writable,next){
             next()
           })
           stream.on('readable',function(){
-            writable.write(stream.read())
+            var data = stream.read()
+            writable.write(data)
           })
           stream.write('export TERM=dumb\n')
           stream.write('export DEBIAN_FRONTEND=noninteractive\n')
@@ -235,7 +236,6 @@ SSH.prototype.sendFile = function(src,dst,next){
         client.sftp(function(err,sftp){
           if(err) return next(err)
           sftp.fastPut(src,dst,function(err){
-            client.end()
             if(err) return next(err)
             next()
           })

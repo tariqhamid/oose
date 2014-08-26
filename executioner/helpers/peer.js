@@ -2,6 +2,7 @@
 var async = require('async')
 var fs = require('graceful-fs')
 var net = require('net')
+var string = require('string')
 
 var SSH = require('../helpers/ssh')
 var Peer = require('../../models/peer').model
@@ -9,6 +10,7 @@ var Peer = require('../../models/peer').model
 var config = require('../../config')
 
 var validStatuses = Peer.schema.path('status').enum().enumValues
+
 
 /**
  * Peer action settings
@@ -41,9 +43,16 @@ var actions = {
   }
 }
 
+
+/**
+ * Async Failure handler
+ * @param {function} next
+ * @return {Function}
+ */
 var commandFail = function(next){
   return function(err){ next('Command failed: ' + err) }
 }
+
 
 /**
  * Find a peer in mongo by id
@@ -113,7 +122,7 @@ var peerLog = function(peer,level,msg,status,done){
  * @param {string} msg
  */
 exports.banner = function(writable,msg){
-  var line = '-'.repeat(msg.length)
+  var line = string('-').repeat(msg.length).s
   writable.write('\n' + line + '\n')
   writable.write(msg + '\n')
   writable.write(line + '\n')
