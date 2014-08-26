@@ -55,27 +55,37 @@ SSH.prototype.connect = function(peer,privateKey,done){
 SSH.prototype.commandBuffered = function(cmd,next){
   var client = this.client
   if(!(cmd instanceof Array)) cmd = [cmd]
-  var buffer = ''
+  var commandOut = ''
+  var commandErr = ''
   async.eachSeries(
     cmd,
     function(cmd,next){
       client.exec(cmd,function(err,stream){
         if(err) return next(err)
         var exitCode = 0
-        var collect = function(){ buffer = buffer + stream.read() }
+        var stdout = ''
+        var stderr = ''
         stream.setEncoding('utf-8')
-        stream.on('readable',collect)
-        stream.stderr.on('readable',collect)
+        stream.on('readable',function(){
+          stdout = stdout + stream.read()
+        })
+        stream.stderr.on('readable',function(){
+          stderr = stderr + stream.stderr.read()
+        })
         stream.on('exit',function(code){ exitCode = code })
         stream.on('end',function(){
-          if(0 !== exitCode) return next('Failed to execute (' + exitCode + '): ' + cmd)
-          next()
+          var err = null
+          if(0 !== exitCode)
+            err = 'Failed to execute (' + exitCode + '): ' + cmd
+          //save the buffer
+          commandOut = commandOut + stdout
+          commandErr = commandErr + stderr
+          next(err)
         })
       })
     },
     function(err){
-      if(err) return next(err)
-      next(null,buffer)
+      next(err,commandOut,commandErr)
     }
   )
 }
@@ -95,12 +105,16 @@ SSH.prototype.commandStream = function(cmd,writable,next){
     function(cmd,next){
       client.exec(cmd,function(err,stream){
         if(err) return next(err)
+        var exitCode
         stream.setEncoding('utf-8')
-        stream.on('data',function(data){
-          writable.write(data)
+        stream.on('readable',function(){
+          writable.write(stream.read())
         })
         stream.on('exit',function(code){
-          if(0 !== code) return next('Failed to execute (' + code + '): ' + cmd)
+          exitCode = code
+        })
+        stream.on('end',function(){
+          if(0 !== exitCode) return next('Failed to execute (' + exitCode + '): ' + cmd)
           next()
         })
       })
@@ -127,11 +141,12 @@ SSH.prototype.commandShell = function(command,writable,next){
           if(err) return next(err)
           stream.setEncoding('utf-8')
           stream.on('error',function(err){next(err)})
-          stream.on('close',function(){
-            client.end()
+          stream.on('end',function(){
             next()
           })
-          stream.on('data',function(data){writable.write(data)})
+          stream.on('readable',function(){
+            writable.write(stream.read())
+          })
           stream.write('export TERM=dumb\n')
           stream.write('export DEBIAN_FRONTEND=noninteractive\n')
           stream.end(command + ' ; exit $?\n')
@@ -171,12 +186,11 @@ SSH.prototype.scriptStream = function(script,writable,next){
         client.shell(function(err,stream){
           if(err) return next(err)
           stream.setEncoding('utf-8')
-          stream.on('close', function(){
-            client.end()
+          stream.on('end', function(){
             next()
           })
-          stream.on('data',function(data){
-            writable.write(data)
+          stream.on('readable',function(){
+            writable.write(stream.read())
           })
           stream.write('export TERM=dumb\n')
           stream.write('export DEBIAN_FRONTEND=noninteractive\n')
