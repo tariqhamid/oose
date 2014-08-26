@@ -23,22 +23,16 @@ var actions = {
   restart: {
     name: 'restart',
     status: 'ok',
-    finalStatusSuccess: 'ok',
-    finalStatusError: 'stopped',
     cmd: dn + ' ; ' + up
   },
   stop: {
     name: 'stop',
-    status: 'stopped|ok|error',
-    finalStatusSuccess: 'stopped',
-    finalStatusError: 'stopped',
+    status: 'stopped',
     cmd: dn
   },
   start: {
     name: 'start',
-    status: 'stopped|error',
-    finalStatusSuccess: 'ok',
-    finalStatusError: 'stopped',
+    status: 'ok',
     cmd: up
   }
 }
@@ -209,12 +203,12 @@ exports.test = function(id,next){
           function(next){
             if(err) peerLog(peer,'error',err,'error',next)
             else {
-              var status = peer.status
-              if(peer.status.match(/error|unknown/i))
-                status = 'tested'
-              peerLog(peer,'success',
+              peerLog(
+                peer,
+                'success',
                 'Successfully communicated with peer and tested OS validity',
-                status,next
+                peer.status.match(/error|unknown/i) ? 'staging' : peer.status,
+                next
               )
             }
           }
@@ -316,14 +310,8 @@ exports.refresh = function(id,next){
       async.series(
         [
           function(next){
-            peerLog(peer,
-              err ? 'warning' : 'info',
-              err ? err       : 'Successfully refreshed peer',
-              err ? 'error'   :
-                (peer.status.match(/error|unknown|tested/i)) ? 'refreshed'
-                : peer.status,
-              next
-            )
+            if(err) peerLog(peer,'warning',err,null,next)
+            else peerLog(peer,'info','Successfully refreshed peer',null,next)
           }
         ],
         function(error){
@@ -352,12 +340,6 @@ exports.prepare = function(id,writable,next){
           peer = result
           next()
         })
-      },
-      //check if the peer is at the right status
-      function(next){
-        if(peer.status.match(/unknown|error|started/i))
-          return next('Peer not ready to be prepared')
-        next()
       },
       //attempt to login to the peer with ssh
       function(next){
@@ -393,12 +375,12 @@ exports.prepare = function(id,writable,next){
           function(next){
             if(err) peerLog(peer,'error',err,'error',next)
             else {
-              var status = null
-              if(peer.status.match(/staging|error/i))
-                status = 'ready'
-              peerLog(peer,'success',
+              peerLog(
+                peer,
+                'success',
                 'Successfully prepared peer for installation',
-                status,next
+                null,
+                next
               )
             }
           }
@@ -430,12 +412,6 @@ exports.install = function(id,writable,next){
           next()
         })
       },
-      //check if the peer is at the right status
-      function(next){
-        if(peer.status.match(/unknown|staging|tested/i))
-          return next('Peer not ready to be installed, prepare it first')
-        next()
-      },
       //attempt to login to the peer with ssh
       function(next){
         peerSshConnect(peer,function(err,client){
@@ -452,10 +428,12 @@ exports.install = function(id,writable,next){
           function(next){
             if(err) peerLog(peer,'error',err,'error',next)
             else {
-              var status = null
-              if(peer.status.match(/ready|error/i))
-                status = 'stopped'
-              peerLog(peer,'success','Successfully installed peer',status,next)
+              peerLog(
+                peer,
+                'success',
+                'Successfully installed peer',
+                'stopped',
+                next)
             }
           }
         ],
@@ -485,12 +463,6 @@ exports.upgrade = function(id,writable,next){
           peer = result
           next()
         })
-      },
-      //check if the peer is at the right status
-      function(next){
-        if(!peer.status.match(/started|stopped|error|ok/i))
-          return next('Peer not ready to be upgraded, make sure it is installed')
-        next()
       },
       //attempt to login to the peer with ssh
       function(next){
@@ -535,12 +507,6 @@ exports.updateConfig = function(id,next){
           peer = result
           next()
         })
-      },
-      //check if the peer is at the right status
-      function(next){
-        if(!peer.status.match(/started|stopped|ok|error/i))
-          return next('Peer not ready for config update, make sure it is installed')
-        next()
       },
       //attempt to login to the peer with ssh
       function(next){
@@ -596,12 +562,6 @@ exports.action = function(id,action,next){
           next()
         })
       },
-      //check if the peer is at the right status
-      function(next){
-        if(!peer.status.match(new RegExp(action.status,'i')))
-          return next('Peer not ready or already running, cannot ' + action.name)
-        next()
-      },
       //attempt to login to the peer with ssh
       function(next){
         peerSshConnect(peer,function(err,client){
@@ -624,8 +584,8 @@ exports.action = function(id,action,next){
       async.series(
         [
           function(next){
-            if(err) peerLog(peer,'warning',err,action.finalStatusError || null,next)
-            else peerLog(peer,'info','Peer ' + action.name + ' successful',action.finalStatusSuccess || null,next)
+            if(err) peerLog(peer,'warning',err,null,next)
+            else peerLog(peer,'info','Peer ' + action.name + ' successful',action.status || null,next)
           }
         ],function(error){
           next(err || error)

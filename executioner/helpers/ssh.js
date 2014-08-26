@@ -202,7 +202,7 @@ SSH.prototype.scriptStream = function(script,writable,next){
       //remove the tmpfile
       function(next){
         var cmd = '/bin/rm -f ' + tmpfile
-        that.commandStream(cmd,writable,next)
+        that.commandBuffered(cmd,next)
       }
     ],
     function(err){

@@ -54,10 +54,7 @@ schema = new mongoose.Schema({
     index: true,
     enum: [
       'unknown',
-      'tested',
-      'refreshed',
-      'ready',
-      'started',
+      'staging',
       'stopped',
       'ok',
       'error'
