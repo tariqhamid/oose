@@ -25,14 +25,14 @@ runCommand "cd /opt/oose"
 runCommand "git checkout master"
 npm config set color false
 runCommand "npm -q --no-spin install"
+runCommand "mkdir -p /var/log/node/oose"
+runCommand "chown -R node:node /var/log/node"
 runCommand "chown -R node:node /opt/oose/dt"
 runCommand "ln -sf /opt/oose/dt /etc/service/oose"
 [ ! -d /opt/oose/log ] && runCommand "mkdir /opt/oose/log"
 runCommand "chown -R node:node /opt/oose/log"
 [ ! -d /data ] && runCommand "mkdir /data"
 runCommand "chown -R node:node /data"
-runCommand "mkdir -p /var/log/node/oose"
-runCommand "chown -R node:node /var/log/node"
 
 banner "Installation Complete"
 exit 0
