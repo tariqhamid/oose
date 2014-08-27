@@ -1,6 +1,6 @@
 'use strict';
-/*jshint bitwise: false*/
 var async = require('async')
+var debug = require('debug')('peer:stats')
 var ds = require('diskspace')
 var os = require('os')
 var path = require('path')
@@ -14,7 +14,7 @@ var config = require('../config')
 
 var snmpSession = snmp.createSession()
 
-var ifInfo = {
+var netInfo = {
   index: false,
   name: 'ERROR',
   ip: false,
@@ -27,69 +27,17 @@ var ifInfo = {
   },
   lastUpdate: 0
 }
+var cpuInfo = []
+var cpuAvgUsed = 0
+var memInfo = {
+  index: -1,
+  unit: -1,
+  total: -1,
+  free: -1
+}
 
-var getNetwork = function(basket,next){
-  async.series(
-    [
-      //detect our interface index by tracing the default route
-      // RFC1213-MIB::ipRouteIfIndex.0.0.0.0
-      function(next){
-        snmpSession.get([snmp.mib.ipRouteIfIndex('0.0.0.0')],function(err,result){
-          if(err) return next(err)
-          if(!result || !result[0]) return next('No result for ifIndex')
-          ifInfo.index = result[0].value
-          next()
-        })
-      },
-      //get interface stats
-      function(next){
-        snmpSession.get(
-          [
-            //get useful name from IF-MIB::ifAlias.<ifIndex>
-            snmp.mib.ifAlias(ifInfo.index),
-            //get speed from IF-MIB::ifSpeed.<ifIndex>
-            snmp.mib.ifSpeed(ifInfo.index),
-            //get in counter from IF-MIB::ifInOctets.<ifIndex>
-            snmp.mib.ifInOctets(ifInfo.index),
-            //get out counter from IF-MIB::ifOutOctets.<ifIndex>
-            snmp.mib.ifOutOctets(ifInfo.index)
-          ],
-          function(err,result){
-            if(err) return next(err)
-            if(!result || 4 !== result.length) return next('No result for interface statistics')
-            ifInfo.name = result[0].value.toString()
-            ifInfo.speed = result[1].value
-            ifInfo.in = result[2].value
-            ifInfo.out = result[3].value
-            next()
-          }
-        )
-      },
-      function(next){
-        var interfaces = os.networkInterfaces()
-        var filter = function(address){
-          if('IPv4' === address.family && !address.internal && !ifInfo.ip)
-            ifInfo.ip = address.address
-        }
-        for(var i in interfaces){
-          if(interfaces.hasOwnProperty(i))
-            interfaces[i].forEach(filter)
-        }
-        next()
-      }
-    ],
-    function(err){
-      if(err) return next(err)
-      //save info to basket
-      basket.netIndex = ifInfo.index
-      basket.netName = ifInfo.name
-      basket.netSpeed = ifInfo.speed
-      basket.netIp = ifInfo.ip
-      basket.netIn = ifInfo.in
-      basket.netOut = ifInfo.out
-      next(null,basket)
-    }
-  )
+var noResultMsg = function(msg){
+  return 'No result for ' + msg
 }
 
 
@@ -99,6 +47,7 @@ var getNetwork = function(basket,next){
  * @param {function} next Callback
  */
 var getDiskFree = function(basket,next){
+  debug('getDiskFree() called')
   var root = path.resolve(config.root)
   //Windows needs to call with only the drive letter
   if('win32' === os.platform()) root = root.substr(0,1)
@@ -109,93 +58,8 @@ var getDiskFree = function(basket,next){
   })
 }
 
-var getCPU = function(basket,next){
-  var cpuUsed = 0
-  var cpuCount = 0
-  async.series(
-    [
-      function(next){
-        snmpSession.getBulk([snmp.mib.hrDeviceType,snmp.mib.hrProcessorLoad],function(err,result){
-          if(err) return next(err)
-          if(!result || !result[0] || !result[0].length || !result[1] || !result[1].length)
-            return next('Could not get CPU statistics from SNMP')
-          var cpus = []
-          result[0].forEach(function(item){
-            if(item.oid &&
-              snmp.ObjectType.OID === item.type &&
-              snmp.mib.hrDeviceTypes(3) === item.value
-              ) cpus.push(item.oid.split('.').slice(-1)[0])
-          })
-          result[1].forEach(function(item){
-            if(item.oid &&
-              snmp.ObjectType.Integer32 === item.type &&
-              cpus.indexOf(item.oid.split('.').slice(-1)[0]) !== -1
-              ){
-              cpuUsed += item.value
-              cpuCount++
-            }
-          })
-          cpuUsed = cpuUsed / cpuCount
-          next()
-        })
-      }
-    ],
-    function(err){
-      if(err) return next(err)
-      basket.cpuUsed = cpuUsed
-      basket.cpuCount = cpuCount
-      next(null,basket)
-    }
-  )
-}
-
-var getMemory = function(basket,next){
-  var memoryIndex
-  async.series(
-    [
-      //get memory index from hrStorageTable
-      function(next){
-        snmpSession.getBulk([snmp.mib.hrStorageTable],function(err,result){
-          if(err) return next(err)
-          if(!result || !result[0]) return next('Could not look up memory index')
-          result[0].forEach(function(item){
-            if(
-              item.value &&
-              item.value instanceof Buffer &&
-              item.value.toString().match(/physical memory/i) &&
-              !memoryIndex
-            ){
-              memoryIndex = item.oid.split('.').pop()
-            }
-          })
-          next()
-        })
-      },
-      function(next){
-        snmpSession.get(
-          [
-            snmp.mib.memoryAllocationUnit(memoryIndex),
-            snmp.mib.memorySize(memoryIndex),
-            snmp.mib.memoryUsed(memoryIndex)
-          ],
-          function(err,result){
-            if(err) return next(err)
-            if(!result || 3 !== result.length) return next('Could not get memory info from SNMP')
-            basket.memoryTotal = result[0].value * result[1].value
-            basket.memoryFree = basket.memoryTotal - result[0].value * result[2].value
-            next()
-          }
-        )
-      }
-    ],
-    function(err){
-      if(err) return next(err)
-      next(null,basket)
-    }
-  )
-}
-
 var getServices = function(basket,next){
+  debug('getServices() called')
   //services
   basket.services = ''
   if(config.mesh.enabled) basket.services += ',mesh'
@@ -217,31 +81,201 @@ var getServices = function(basket,next){
   next(null,basket)
 }
 
-var networkStats = function(basket,next){
+var calcNetStats = function(basket,next){
+  debug('calcNetStats() called')
   var stats = {
     inBps: 0,
     outBps: 0
   }
   var now = new Date().getTime()
-  if(0 !== ifInfo.lastUpdate){
-    var window = (now - ifInfo.lastUpdate) / 1000
-    stats.inBps = (basket.netIn - ifInfo.previous.in) / window
-    stats.outBps = (basket.netOut - ifInfo.previous.out) / window
+  if(0 !== netInfo.lastUpdate){
+    var window = (now - netInfo.lastUpdate) / 1000
+    stats.inBps = (basket.netIn - netInfo.previous.in) / window
+    stats.outBps = (basket.netOut - netInfo.previous.out) / window
   }
-  ifInfo.previous.in = basket.netIn
-  ifInfo.previous.out = basket.netOut
-  ifInfo.lastUpdate = now
+  netInfo.previous.in = basket.netIn
+  netInfo.previous.out = basket.netOut
+  netInfo.lastUpdate = now
   basket.netInBps = stats.inBps
   basket.netOutBps = stats.outBps
   basket.netLastUpdate = now
   next(null,basket)
 }
 
-var availableCapacity = function(basket,next){
+var calcCapStats = function(basket,next){
+  debug('calcCapStats() called')
   basket.availableCapacity = 100 * (basket.diskFree / basket.diskTotal)
   //issue #32 avail comes back infinity (this is a safeguard)
   if('Infinity' === basket.availableCapacity) basket.availableCapacity = 100
   next(null,basket)
+}
+
+//only need to get these once, they won't change
+var snmpPrep = function(done){
+  debug('snmpPrep() called')
+  var i = 0
+  async.series(
+    [
+      function(next){
+        debug('snmpPrep() called getBulk()')
+        snmpSession.getBulk(
+          [
+            //locate all CPUs
+            snmp.mib.hrDeviceType,
+            //locate the Storage index for RAM
+            snmp.mib.hrStorageTable,
+            //detect our interface index by tracing the default route
+            // RFC1213-MIB::ipRouteIfIndex.0.0.0.0
+            snmp.mib.ipRouteIfIndex('0.0.0.0')
+          ],
+          function(err,result){
+            debug('snmpPrep() getBulk() returned')
+            if(err) return next(err)
+            if(!result.length) return next('No getBulk() result (and no error?)')
+            var item
+            if(!result[0] || !result[0].length)
+              return next(noResultMsg('CPU:hrDeviceType table'))
+            for(i=0; i < result[0].length; i++){
+              item = result[0][i]
+              if(item.oid &&
+                snmp.ObjectType.OID === item.type &&
+                snmp.mib.hrDeviceTypes(3) === item.value //deviceType: CPU
+                ){ cpuInfo.push(item.oid.split('.').slice(-1)[0]) }
+            }
+            if(!result[1] || !result[1].length)
+              return next(noResultMsg('Mem:hrStorageTable'))
+            for(i=0; i < result[1].length; i++){
+              item = result[1][i]
+              if(
+                item.value &&
+                item.value instanceof Buffer &&
+                item.value.toString().match(/physical memory/i)
+                ){
+                memInfo.index = item.oid.split('.').pop()
+              }
+            }
+            if(!result[2][0].value) return next(noResultMsg('Net:ipRouteIfIndex'))
+            netInfo.index = result[2][0].value
+            next()
+          }
+        )
+      },
+      function(next){
+        debug('get() called')
+        snmpSession.get(
+          [
+            //useful name from IF-MIB::ifAlias.<ifIndex>
+            snmp.mib.ifAlias(netInfo.index),
+            //speed from IF-MIB::ifSpeed.<ifIndex>
+            snmp.mib.ifSpeed(netInfo.index),
+            //memory scalar (unit)
+            snmp.mib.memoryAllocationUnit(memInfo.index),
+            //memory total size
+            snmp.mib.memorySize(memInfo.index)
+          ],
+          function(err,result){
+            debug('get() returned')
+            if(err) return next(err)
+            if(!result.length) return next('No get() result (and no error?)')
+            //network stats
+            if(!result[0].value) return next(noResultMsg('Net:ifAlias'))
+            netInfo.name = result[0].value.toString()
+            if(!result[1].value) return next(noResultMsg('Net:ifSpeed'))
+            netInfo.speed = result[1].value
+            //memory stats
+            if(!result[2].value) return next(noResultMsg('Mem:memoryAllocationUnit'))
+            memInfo.unit = result[2].value
+            if(!result[3].value) return next(noResultMsg('Mem:memorySize'))
+            memInfo.total = memInfo.unit * result[3].value
+            next()
+          }
+        )
+      },
+      //find our IP
+      // (is this extra? can we get this from things we got above?)
+      function(next){
+        debug('netip collector called')
+        var interfaces = os.networkInterfaces()
+        var filter = function(address){
+          if('IPv4' === address.family && !address.internal && !netInfo.ip)
+            netInfo.ip = address.address
+        }
+        for(var i in interfaces){
+          if(interfaces.hasOwnProperty(i))
+            interfaces[i].forEach(filter)
+        }
+        if(!netInfo.ip) return next('Failed to get netInfo.ip')
+        next()
+      }
+    ],
+    done
+  )
+}
+
+//all .getBulk() and .get() calls in one
+var snmpPoll = function(basket,done){
+  debug('snmpPoll() called')
+  var i = 0
+  //set the basket up with stuff that never changes
+  basket.netIndex = netInfo.index
+  basket.netName = netInfo.name
+  basket.netSpeed = netInfo.speed
+  basket.netIp = netInfo.ip
+  basket.cpuCount = cpuInfo.length
+  basket.memoryTotal = memInfo.total
+  async.series(
+    [
+      function(next){
+        debug('snmpPoll() calling getBulk()')
+        snmpSession.getBulk([snmp.mib.hrProcessorLoad],function(err,result){
+          debug('snmpPoll() getBulk() returned')
+          if(err) return next(err)
+          if(!result.length) return next('No getBulk() result (and no error?)')
+          if(!result[0] || !result[0].length)
+            return next(noResultMsg('CPU:hrProcessorLoad table'))
+          for(i = 0; i < result[0].length; i++){
+            var item = result[0][i]
+            if(
+              item.oid && snmp.ObjectType.Integer32 === item.type &&
+              -1 !== cpuInfo.indexOf(item.oid.split('.').slice(-1)[0])
+            ){ cpuAvgUsed += item.value }
+          }
+          basket.cpuUsed = cpuAvgUsed = cpuAvgUsed / cpuInfo.length
+          next()
+        })
+      },
+      function(next){
+        debug('snmpPoll() calling get()')
+        snmpSession.get(
+          [
+            //Net:in counter from IF-MIB::ifInOctets.<ifIndex>
+            snmp.mib.ifInOctets(netInfo.index),
+            //Net:out counter from IF-MIB::ifOutOctets.<ifIndex>
+            snmp.mib.ifOutOctets(netInfo.index),
+            //Mem: used
+            snmp.mib.memoryUsed(memInfo.index)
+          ],
+          function(err,result){
+            debug('snmpPoll() get() returned')
+            if(err) return next(err)
+            if(!result.length) return next('No get() result (and no error?)')
+            //network stats
+            if(!result[0].value) return next(noResultMsg('Net:ifInOctets'))
+            basket.netIn = netInfo.in = result[0].value
+            if(!result[1].value) return next(noResultMsg('Net:ifOutOctets'))
+            basket.netOut = netInfo.out = result[1].value
+            //memory stats
+            if(!result[2].value) return next(noResultMsg('Mem:memoryUsed'))
+            basket.memoryFree = memInfo.free = memInfo.total - (memInfo.unit * result[2].value)
+            next()
+          }
+        )
+      }
+    ],
+    function(err){
+      done(err,basket)
+    }
+  )
 }
 
 var save = function(basket,next){
@@ -251,18 +285,20 @@ var save = function(basket,next){
   })
 }
 
+snmpPrep(function(err){
+  if(err) return debug('SNMP Prep failed:',err)
+})
+
 var peerStats = new Collector()
-peerStats.collect(getCPU)
-peerStats.collect(getNetwork)
-peerStats.collect(getDiskFree)
-peerStats.collect(getMemory)
-peerStats.collect(getServices)
-peerStats.process(availableCapacity)
-peerStats.process(networkStats)
-peerStats.save(save)
 peerStats.on('error',function(err){
   logger.error(err)
 })
+peerStats.collect(snmpPoll)
+peerStats.collect(getServices)
+peerStats.collect(getDiskFree)
+peerStats.process(calcNetStats)
+peerStats.process(calcCapStats)
+peerStats.save(save)
 
 
 /**
