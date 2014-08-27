@@ -8,25 +8,56 @@ var config = require('../config')
 var mesh = require('../mesh')
 
 var pingHosts = {}
-var pingTimeout
+var pingInterval
 var thisToken
 
-var pingListen = function(){
-  //server
-  mesh.udp.on('ping',function(req,rinfo){
-    req.rinfo = rinfo
-    mesh.udp.send('pong',req,rinfo.port,rinfo.address)
-  })
-  //client
-  mesh.udp.on('pong',function(res,rinfo){
-    if(res.token === thisToken){
-      pingHosts[rinfo.address] = new Date().getTime() - res.starttime
-    } else {
-      logger.warning('[MESH PING] Out of order ping response detected and ignored')
-    }
-  })
+
+/**
+ * Ping server
+ * @param {object} req
+ * @param {object} rinfo
+ */
+var pingServer = function(req,rinfo){
+  req.rinfo = rinfo
+  mesh.udp.send('pong',req,rinfo.port,rinfo.address)
 }
 
+
+/**
+ * Ping client
+ * @param {object} res
+ * @param {object} rinfo
+ */
+var pingClient = function(res,rinfo){
+  if(res.token === thisToken){
+    pingHosts[rinfo.address] = new Date().getTime() - res.starttime
+  } else {
+    logger.warning('[MESH PING] Out of order ping response detected and ignored')
+  }
+}
+
+
+/**
+ * Setup listeners for ping requests
+ */
+var pingListen = function(){
+  mesh.udp.on('ping',pingServer) //server
+  mesh.udp.on('pong',pingClient) //client
+}
+
+
+/**
+ * Remove listeners for ping requests
+ */
+var pingStop = function(){
+  mesh.udp.removeListener('ping',pingServer)
+  mesh.udp.removeListener('pong',pingClient)
+}
+
+
+/**
+ * Send a ping request to multicast
+ */
 var pingSend = function(){
   thisToken = shortId.generate()
   mesh.udp.send('ping',{
@@ -34,7 +65,6 @@ var pingSend = function(){
     starttime:new Date().getTime()
   })
   logger.debug('hosts:' + util.inspect(pingHosts))
-  pingTimeout = setTimeout(function(){pingSend(mesh)},config.mesh.ping.interval)
 }
 
 
@@ -58,9 +88,10 @@ exports.max = function(){
  * @param {function} done
  */
 exports.start = function(done){
+  done = done || function(){}
   pingListen(mesh)
-  pingSend(mesh)
-  if(done && 'function' === typeof done){ done() }
+  pingInterval = setInterval(function(){pingSend(mesh)},config.mesh.ping.interval)
+  done()
 }
 
 
@@ -69,7 +100,8 @@ exports.start = function(done){
  * @param {function} done Callback
  */
 exports.stop = function(done){
-  if(pingTimeout)
-    clearTimeout(pingTimeout)
-  if(done && 'function' === typeof done){ done() }
+  done = done || function(){}
+  if(pingInterval) clearInterval(pingInterval)
+  pingStop(mesh)
+  done()
 }
