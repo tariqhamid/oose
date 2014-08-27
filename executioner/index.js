@@ -1,11 +1,11 @@
 'use strict';
+var basicAuth = require('basic-auth')
 var bodyParser = require('body-parser')
 var cookieParser = require('cookie-parser')
 var flash = require('connect-flash')
 var fs = require('graceful-fs')
 var methodOverride = require('method-override')
 var session = require('express-session')
-var basicAuth = require('basic-auth')
 
 var express = require('express')
 var app = express()

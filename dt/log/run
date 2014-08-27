@@ -1,2 +1,2 @@
 #!/bin/sh
-exec setuidgid node multilog t /var/log/node/oose
+exec setuidgid node multilog ssize 16777215 t /var/log/node/oose
