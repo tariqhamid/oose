@@ -4,14 +4,13 @@ var busboy = require('connect-busboy')
 var cookieParser = require('cookie-parser')
 var flash = require('connect-flash')
 var session = require('express-session')
-var methodOverride = require('method-override')
 
 var express = require('express')
 var app = express()
 var server = require('http').createServer(app)
 var RedisStore = require('connect-redis')(session)
 
-var logger = require('../helpers/logger').create('prism')
+//var logger = require('../helpers/logger').create('prism')
 var redis = require('../helpers/redis')
 
 var config = require('../config')
@@ -19,8 +18,25 @@ var routes = require('./routes')
 
 var running = false
 
+
+/**
+ * Pretty source code
+ * @type {boolean}
+ */
 app.locals.pretty = true
+
+
+/**
+ * App version
+ * @type {exports.version|*|string|version}
+ */
 app.locals.version = config.version
+
+
+/**
+ * Pretty byte formatter
+ * @type {prettyBytes|exports}
+ */
 app.locals.prettyBytes = require('pretty-bytes')
 
 app.set('views',__dirname + '/views')
@@ -30,7 +46,6 @@ app.use(express.static(__dirname + '/public'))
 app.use(busboy())
 app.use(bodyParser.urlencoded({extended:true}))
 app.use(bodyParser.json())
-app.use(methodOverride())
 app.use(cookieParser(config.gump.cookie.secret))
 app.use(session({
   cookie: {

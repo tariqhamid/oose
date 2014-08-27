@@ -6,7 +6,6 @@ var session = require('express-session')
 var flash = require('connect-flash')
 var RedisStore = require('connect-redis')(session)
 var fs = require('graceful-fs')
-var methodOverride = require('method-override')
 
 var express = require('express')
 var app = express()
@@ -85,7 +84,6 @@ app.set('views',__dirname + '/' + 'views')
 app.set('view engine','jade')
 app.use(bodyParser.urlencoded({extended:true}))
 app.use(bodyParser.json())
-app.use(methodOverride())
 app.use(cookieParser(config.executioner.cookie.secret))
 app.use(session({
   cookie: {

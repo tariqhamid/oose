@@ -274,7 +274,7 @@ exports.stop = function(done){
         //stop scheduling any deferred jobs
         function(next){
           logger.info('Stopping scheduling of any deferred jobs')
-          if(deferredInterval) clearTimeout(deferredInterval)
+          if(deferredInterval) clearInterval(deferredInterval)
           next()
         },
         //check for running jobs and store a snapshot if we have to

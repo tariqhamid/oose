@@ -12,14 +12,37 @@ var RedisStore = require('connect-redis')(session)
 
 var config = require('../config')
 var routes = require('./routes')
-var logger = require('../helpers/logger').create('lg')
+//var logger = require('../helpers/logger').create('lg')
 var redis = require('../helpers/redis')
 
 var running = false
 
+
+/**
+ * Pretty source code
+ * @type {boolean}
+ */
 app.locals.pretty = true
+
+
+/**
+ * App version
+ * @type {exports.version|*|string|version}
+ */
 app.locals.version = config.version
+
+
+/**
+ * Pretty byte formatter
+ * @type {prettyBytes|exports}
+ */
 app.locals.prettyBytes = require('pretty-bytes')
+
+
+/**
+ * Moment date parser
+ * @type {moment|exports}
+ */
 app.locals.moment = require('moment')
 
 app.set('views',__dirname + '/views')

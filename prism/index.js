@@ -7,7 +7,7 @@ var app = express()
 var server = require('http').createServer(app)
 
 var commUtil = require('../helpers/communicator').util
-var logger = require('../helpers/logger').create('prism')
+//var logger = require('../helpers/logger').create('prism')
 var peer = require('../helpers/peer')
 var redis = require('../helpers/redis')
 
@@ -15,7 +15,7 @@ var config = require('../config')
 
 var running = false
 
-app.use(bodyParser.urlencoded({extended:false}))
+app.use(bodyParser.urlencoded({extended:true}))
 app.use(bodyParser.json())
 
 
