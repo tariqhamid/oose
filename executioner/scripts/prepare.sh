@@ -19,8 +19,8 @@ proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http
 #important for backend persistence and websockets
 proxy_http_version 1.1;
 proxy_set_header  Host \$host;
-proxy_set_header  X-Real-IP \$remote_addr;
-proxy_set_header  X-Forwarded-For \$proxy_add_x_forwarded_for;
+proxy_set_header  X-Real-IP $remote_addr;
+proxy_set_header  X-Forwarded-For $proxy_add_x_forwarded_for;
 proxy_pass_header User-Agent;
 
 #The following may be overridden in a location block below
@@ -30,8 +30,8 @@ proxy_set_header Connection '';
 proxy_set_header Upgrade '';
 
 #remap any backend refs to something that might work
-proxy_redirect http://localhost:3001/ \$scheme://\$host:\$server_port/;
-proxy_redirect http://127.0.0.1:3001/ \$scheme://\$host:\$server_port/;
+proxy_redirect http://localhost:3001/ $scheme://$host:\$server_port/;
+proxy_redirect http://127.0.0.1:3001/ $scheme://$host:\$server_port/;
 
 location /nginx_status {
   stub_status on;
@@ -42,7 +42,7 @@ NGX_CONFIG
 
 nginxPersistence=$(cat <<'NGX_CONFIG'
 #mapping for header control and selective upgrade
-map \$http_upgrade \$connection_upgrade {
+map $http_upgrade $connection_upgrade {
   default upgrade;
   ''      '';
 }
@@ -60,7 +60,7 @@ proxy_cache_valid          404 1m;
 proxy_redirect             off;
 proxy_max_temp_file_size   0;
 proxy_buffer_size          4k;
-proxy_buffers              16 32k;
+proxy_buffers              64 4k;
 proxy_busy_buffers_size    128k;
 proxy_temp_file_write_size 128k;
 proxy_connect_timeout      300;
