@@ -1,6 +1,8 @@
 'use strict';
 var request = require('request')
-var logger = require('./logger').create('hideout')
+
+var logger = require('../helpers/logger').create('hideout')
+
 var config = require('../config')
 
 

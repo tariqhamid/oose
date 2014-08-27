@@ -1,15 +1,16 @@
 'use strict';
 var async = require('async')
-var bodyParser = require('body-parser')
 var basicAuth = require('basic-auth')
-
+var bodyParser = require('body-parser')
 var express = require('express')
+
 var app = express()
 var server = require('http').createServer(app)
 
-var config = require('../config')
-var Hideout = require('../models/hideout').model
 var logger = require('../helpers/logger').create('hideout')
+var Hideout = require('../models/hideout').model
+
+var config = require('../config')
 
 var running = false
 

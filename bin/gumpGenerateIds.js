@@ -3,7 +3,6 @@ var mongoose = require('mongoose')
 
 var logger = require('../helpers/logger').create('gump:generateIds')
 var shortid = require('../helpers/shortid')
-
 var File = require('../models/file').model
 
 var config = require('../config')

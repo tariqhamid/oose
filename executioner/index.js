@@ -1,21 +1,22 @@
 'use strict';
+var basicAuth = require('basic-auth')
 var bodyParser = require('body-parser')
 var cookieParser = require('cookie-parser')
+var express = require('express')
+var session = require('express-session')
 var flash = require('connect-flash')
+var RedisStore = require('connect-redis')(session)
 var fs = require('graceful-fs')
 var methodOverride = require('method-override')
-var session = require('express-session')
-var basicAuth = require('basic-auth')
 
-var express = require('express')
 var app = express()
 var server = require('http').createServer(app)
-var RedisStore = require('connect-redis')(session)
+
+var logger = require('../helpers/logger').create('executioner')
+var redis = require('../helpers/redis')
 
 var config = require('../config')
 var routes = require('./routes')
-var logger = require('../helpers/logger').create('executioner')
-var redis = require('../helpers/redis')
 
 var running = false
 

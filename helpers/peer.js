@@ -5,6 +5,7 @@ var net = require('net')
 var redis = require('../helpers/redis')
 var Sniffer = require('../helpers/Sniffer')
 
+
 /**
  * Select next peer
  * @param {string|array} skip List of hostnames to skip

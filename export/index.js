@@ -7,11 +7,12 @@ var fs = require('graceful-fs')
 var app = express()
 var server = require('http').createServer(app)
 
-var config = require('../config')
 var file = require('../helpers/file')
 var logger = require('../helpers/logger').create('export')
 var redis = require('../helpers/redis')
 var Sniffer = require('../helpers/Sniffer')
+
+var config = require('../config')
 
 var running = false
 

@@ -10,6 +10,7 @@ var logger = require('../helpers/logger').create('communicator')
 var config = require('../config')
 
 
+
 /**
  * Track packets and deny duplicates
  * @constructor

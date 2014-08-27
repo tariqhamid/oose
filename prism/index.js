@@ -1,8 +1,8 @@
 'use strict';
 var async = require('async')
 var bodyParser = require('body-parser')
-
 var express = require('express')
+
 var app = express()
 var server = require('http').createServer(app)
 
