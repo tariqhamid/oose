@@ -23,12 +23,14 @@ var PacketTracker = function(){
 /**
  * Track a packet signature
  * @param {Buffer} buff
+ * @param {object} rinfo
  * @param {Number} ttl
  * @return {boolean} returns true if the packet already exists
  */
-PacketTracker.prototype.track = function(buff,ttl){
+PacketTracker.prototype.track = function(buff,rinfo,ttl){
   var that = this
-  var sig = crc32.signed(buff)
+  //merge the buffer with the rinfo
+  var sig = crc32.signed(Buffer.concat([buff,new Buffer(JSON.stringify(rinfo))]))
   //check if the packet exists, if not add it
   if(-1 !== that.packets.indexOf(sig)) return true
   that.packets.push(sig)
@@ -130,7 +132,7 @@ var UDP = function(options){
     self.emit('ready',self.socket)
   })
   self.socket.on('message',function(packet,rinfo){
-    var dup = self.tracker.track(packet)
+    var dup = self.tracker.track(packet,rinfo)
     //if the packet is duplicate just ignore it
     if(dup){
       if(config.mesh.debug > 0)
