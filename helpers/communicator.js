@@ -10,6 +10,7 @@ var logger = require('../helpers/logger').create('communicator')
 var config = require('../config')
 
 
+
 /**
  * Track packets and deny duplicates
  * @constructor
@@ -33,7 +34,7 @@ PacketTracker.prototype.track = function(buff,ttl){
   that.packets.push(sig)
   setTimeout(function(){
     that.packets.splice(that.packets.indexOf(sig),1)
-  },ttl || 1000)
+  },ttl || 500)
   return false
 }
 
