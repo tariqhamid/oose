@@ -36,6 +36,9 @@ exports.run = function(job,parameter,options,done){
   if(!options.url) return done('No callback URL set')
   //job.logger.info('Sending job update to ' + options.url + ' with metrics ' + JSON.stringify(metrics))
   options.method = 'POST'
+  //ignore shitty ssl
+  options.strictSSL = false
+  //add metrics as the json body
   options.json = metrics
   //message client
   request(options,function(err){

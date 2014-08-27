@@ -78,6 +78,8 @@ var executeRequest = function(job,req,done){
   }
   //set the method to get if not set
   if(!opts.method) opts.method = 'get'
+  //ignore shitty ssl
+  opts.strictSSL = false
   //try to render the url with any parameters
   opts.url = req.parameter.render(opts.url)
   //parse the url, need to make sure its valid, so we can fail gracefully if not
