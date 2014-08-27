@@ -328,6 +328,7 @@ exports.upload = function(req,res){
 exports.folderCreate = function(req,res){
   var doc
   var path = File.decode(req.query.path)
+
   path.unshift(req.session.user._id)
   async.series(
     [
