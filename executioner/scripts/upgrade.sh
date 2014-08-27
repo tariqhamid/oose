@@ -1,7 +1,7 @@
 #!/bin/bash
 
 function banner {
-  line="${1//./-}"
+  line=$(echo $1 | tr [:print:] [-*])
   echo
   echo $line
   echo "$1"
