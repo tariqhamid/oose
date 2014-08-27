@@ -167,7 +167,9 @@ app.get('/',function(req,res){
  */
 exports.start = function(done){
   if(!config.hideout.user || !config.hideout.password){
-    logger.warning('Refusing to start hideout, missing username and/or password')
+    logger.warning(
+      'Refusing to start hideout, missing username and/or password'
+    )
     return done()
   }
   server.listen(config.hideout.port,config.hideout.host,function(err){

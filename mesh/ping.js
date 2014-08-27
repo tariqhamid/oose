@@ -32,7 +32,9 @@ var pingClient = function(res,rinfo){
   if(res.token === thisToken){
     pingHosts[rinfo.address] = new Date().getTime() - res.starttime
   } else {
-    logger.warning('[MESH PING] Out of order ping response detected and ignored')
+    logger.warning(
+     '[MESH PING] Out of order ping response detected and ignored'
+    )
   }
 }
 
@@ -90,7 +92,10 @@ exports.max = function(){
 exports.start = function(done){
   done = done || function(){}
   pingListen(mesh)
-  pingInterval = setInterval(function(){pingSend(mesh)},config.mesh.ping.interval)
+  pingInterval = setInterval(
+    function(){pingSend(mesh)},
+    config.mesh.ping.interval
+  )
   done()
 }
 

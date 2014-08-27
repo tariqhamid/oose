@@ -30,7 +30,9 @@ var PacketTracker = function(){
 PacketTracker.prototype.track = function(buff,rinfo,ttl){
   var that = this
   //merge the buffer with the rinfo
-  var sig = crc32.signed(Buffer.concat([buff,new Buffer(JSON.stringify(rinfo))]))
+  var sig = crc32.signed(
+    Buffer.concat([buff,new Buffer(JSON.stringify(rinfo))])
+  )
   //check if the packet exists, if not add it
   if(-1 !== that.packets.indexOf(sig)) return true
   that.packets.push(sig)
@@ -123,11 +125,15 @@ var UDP = function(options){
   if(!options.port) throw new Error('Port required to setup UDP')
   self.options = options
   self.tracker = new PacketTracker()
-  self.socket = dgram.createSocket(net.isIPv6(options.address) ? 'udp6' : 'udp4')
+  self.socket = dgram.createSocket(
+    net.isIPv6(options.address) ? 'udp6' : 'udp4'
+  )
   self.socket.bind(options.port,options.address,function(){
     if(options.multicast && options.multicast.address){
       self.socket.setMulticastTTL(options.multicast.ttl || 1)
-      self.socket.addMembership(options.multicast.address,options.multicast.interfaceAddress || null)
+      self.socket.addMembership(
+        options.multicast.address,options.multicast.interfaceAddress || null
+      )
     }
     self.emit('ready',self.socket)
   })
@@ -141,7 +147,9 @@ var UDP = function(options){
     }
     var payload
     if(packet === null){
-      logger.warn('Null packet received from ' + rinfo.address + ':' + rinfo.port)
+      logger.warn(
+        'Null packet received from ' + rinfo.address + ':' + rinfo.port
+      )
       payload = {}
     } else {
       payload = util.parse(packet)
@@ -166,8 +174,11 @@ UDP.prototype.send = function(command,message,port,address,done){
   if(!command) throw new Error('Tried to send a message without a command')
   //missing port? must be directed towards multicast
   if(!port || !address || 'function' === typeof port){
-    if(!self.options.multicast)
-      throw new Error('Tried to send a message without a destination with multicast disabled')
+    if(!self.options.multicast){
+      throw new Error(
+        'Tried to send a message without a destination with multicast disabled'
+      )
+    }
     done = port
     port = self.options.port
     address = self.options.multicast.address
@@ -202,7 +213,12 @@ var TCP = function(options){
   self.server.on('connection',function(socket){
     socket.once('readable',function(){
       var lengthRaw = socket.read(2)
-      if(!lengthRaw) return self.emit('error','Invalid socket data ' + socket.remoteAddress + ':' + socket.remotePort)
+      if(!lengthRaw)
+        return self.emit(
+          'error',
+          'Invalid socket data ' + socket.remoteAddress +
+          ':' + socket.remotePort
+        )
       var length = lengthRaw.readUInt16BE(0)
       var payload = util.parse(socket.read(length))
       if(!payload) return self.emit('error','Failed to parse payload')

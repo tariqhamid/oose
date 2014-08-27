@@ -48,7 +48,11 @@ Mesh.prototype.start = function(done){
       var response
       if(err) response = {status: 'error', code: 1, message: err}
       else response = {status: 'ok', code: 1, peers: result}
-      socket.end(communicator.util.withLength(communicator.util.build(message.sha1,response)))
+      socket.end(
+        communicator.util.withLength(
+          communicator.util.build(message.sha1,response)
+        )
+      )
     })
   })
   //routes

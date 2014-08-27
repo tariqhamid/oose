@@ -31,7 +31,8 @@ var getNow = function(){
  * @return {ObjectManage}
  */
 var loadTemplate = function(job,input){
-  if(input instanceof ObjectManage) input = JSON.parse(JSON.stringify(input.data))
+  if(input instanceof ObjectManage)
+    input = JSON.parse(JSON.stringify(input.data))
   //setup a new object manage
   var obj = new ObjectManage()
   //load our input
@@ -39,7 +40,9 @@ var loadTemplate = function(job,input){
   //if there is not a template we are done
   if(!input.template) return obj
   //figure out template location
-  var file = path.resolve(__dirname + '/../templates/' + input.template + '.json')
+  var file = path.resolve(
+    __dirname + '/../templates/' + input.template + '.json'
+  )
   if(!fs.existsSync(file)){
     job.logger.warning('Requested template ' + input.template + ' doesnt exist')
     return obj
@@ -203,16 +206,22 @@ Job.prototype.runDriver = function(category,parameter,options,done){
     function(options,next){
       options = loadTemplate(that,options)
       //set the default driver if we dont already have it
-      if('resource' === category && !options.$exists('driver')) options.$set('driver','http')
+      if('resource' === category && !options.$exists('driver'))
+        options.$set('driver','http')
       //check to see if the driver exists
       if(!options.$exists('driver') || !drivers[category][options.driver])
         return next('Driver ' + (options.driver || 'none') + ' doesnt exist')
       //run the driver
-      drivers[category][options.driver].run(that,parameter,options,function(err){
-        if(err && !options.optional) return next(err)
-        if(err && options.optional) that.logger.warning(err)
-        next()
-      })
+      drivers[category][options.driver].run(
+        that,
+        parameter,
+        options,
+          function(err){
+          if(err && !options.optional) return next(err)
+          if(err && options.optional) that.logger.warning(err)
+          next()
+        }
+      )
     },
     done
   )
@@ -252,7 +261,8 @@ Job.prototype.obtainResources = function(next){
 Job.prototype.encode = function(next){
   var that = this
   //if there are no encoding operation just continue
-  if(!that.description.$exists('encoding') || !that.description.encoding.length) return next()
+  if(!that.description.$exists('encoding') || !that.description.encoding.length)
+    return next()
   that.logger.info('Starting to execute encoding jobs')
   async.eachSeries(
     that.description.encoding,
@@ -338,7 +348,8 @@ Job.prototype.cacheStore = function(next){
   //if there is still no signature just return
   if(null === that.signature) return next()
   //make sure there is a result to store
-  if('object' !== typeof that.result || 0 === Object.keys(that.result).length) return next()
+  if('object' !== typeof that.result || 0 === Object.keys(that.result).length)
+    return next()
   //now that we have our signature and result send it to hideout
   hideout.set(that.signature,that.result,function(err){
     if(err) return next(err)

@@ -112,7 +112,8 @@ schema.statics.login = function(email,password,done){
       function(next){
         model.findOne({email: email},function(err,result){
           if(err) return next(err)
-          if(!result || !result.active) return next('Invalid or inactive member 2nd try')
+          if(!result || !result.active)
+            return next('Invalid or inactive member 2nd try')
           user = result
           next()
         })

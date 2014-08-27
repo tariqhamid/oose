@@ -9,10 +9,18 @@ var Model = require('../../models/user').model
  * @param {object} res
  */
 exports.list = function(req,res){
-  if('post' === req.method.toLowerCase() && req.body.remove && req.body.remove.length){
+  if(
+    'post' === req.method.toLowerCase() &&
+    req.body.remove &&
+    req.body.remove.length
+  ){
     list.remove(Model,req.body.remove,function(err,count){
-      if(err) req.flash('error','Removed ' + count + ' item(s) before removal failed ' + err)
-      else {
+      if(err){
+        req.flash(
+          'error',
+          'Removed ' + count + ' item(s) before removal failed ' + err
+        )
+      } else {
         req.flash('success','Deleted ' + count + ' item(s)')
         res.redirect('/users')
       }
@@ -23,15 +31,18 @@ exports.list = function(req,res){
     var start = (req.query.start >> 0) || 0
     var search = req.query.search || ''
     if(start < 0) start = 0
-    Model.list({start: start, limit: limit, find: search},function(err,count,results){
-      res.render('user/list',{
-        page: list.pagination(start,count,limit),
-        count: count,
-        search: search,
-        limit: limit,
-        list: results
-      })
-    })
+    Model.list(
+      {start: start, limit: limit, find: search},
+      function(err,count,results){
+        res.render('user/list',{
+          page: list.pagination(start,count,limit),
+          count: count,
+          search: search,
+          limit: limit,
+          list: results
+        })
+      }
+    )
   }
 }
 

@@ -34,12 +34,15 @@ var getNetwork = function(basket,next){
       //detect our interface index by tracing the default route
       // RFC1213-MIB::ipRouteIfIndex.0.0.0.0
       function(next){
-        snmpSession.get([snmp.mib.ipRouteIfIndex('0.0.0.0')],function(err,result){
-          if(err) return next(err)
-          if(!result || !result[0]) return next('No result for ifIndex')
-          ifInfo.index = result[0].value
-          next()
-        })
+        snmpSession.get(
+          [snmp.mib.ipRouteIfIndex('0.0.0.0')],
+            function(err,result){
+            if(err) return next(err)
+            if(!result || !result[0]) return next('No result for ifIndex')
+            ifInfo.index = result[0].value
+            next()
+          }
+        )
       },
       //get interface stats
       function(next){
@@ -56,7 +59,8 @@ var getNetwork = function(basket,next){
           ],
           function(err,result){
             if(err) return next(err)
-            if(!result || 4 !== result.length) return next('No result for interface statistics')
+            if(!result || 4 !== result.length)
+              return next('No result for interface statistics')
             ifInfo.name = result[0].value.toString()
             ifInfo.speed = result[1].value
             ifInfo.in = result[2].value
@@ -115,29 +119,32 @@ var getCPU = function(basket,next){
   async.series(
     [
       function(next){
-        snmpSession.getBulk([snmp.mib.hrDeviceType,snmp.mib.hrProcessorLoad],function(err,result){
-          if(err) return next(err)
-          if(!result || !result[0] || !result[0].length || !result[1] || !result[1].length)
-            return next('Could not get CPU statistics from SNMP')
-          var cpus = []
-          result[0].forEach(function(item){
-            if(item.oid &&
-              snmp.ObjectType.OID === item.type &&
-              snmp.mib.hrDeviceTypes(3) === item.value
-              ) cpus.push(item.oid.split('.').slice(-1)[0])
-          })
-          result[1].forEach(function(item){
-            if(item.oid &&
-              snmp.ObjectType.Integer32 === item.type &&
-              cpus.indexOf(item.oid.split('.').slice(-1)[0]) !== -1
-              ){
-              cpuUsed += item.value
-              cpuCount++
-            }
-          })
-          cpuUsed = cpuUsed / cpuCount
-          next()
-        })
+        snmpSession.getBulk(
+          [snmp.mib.hrDeviceType,snmp.mib.hrProcessorLoad],
+          function(err,result){
+            if(err) return next(err)
+            if(!result || !result[0] || !result[0].length || !result[1] || !result[1].length)
+              return next('Could not get CPU statistics from SNMP')
+            var cpus = []
+            result[0].forEach(function(item){
+              if(item.oid &&
+                snmp.ObjectType.OID === item.type &&
+                snmp.mib.hrDeviceTypes(3) === item.value
+                ) cpus.push(item.oid.split('.').slice(-1)[0])
+            })
+            result[1].forEach(function(item){
+              if(item.oid &&
+                snmp.ObjectType.Integer32 === item.type &&
+                cpus.indexOf(item.oid.split('.').slice(-1)[0]) !== -1
+                ){
+                cpuUsed += item.value
+                cpuCount++
+              }
+            })
+            cpuUsed = cpuUsed / cpuCount
+            next()
+          }
+        )
       }
     ],
     function(err){
@@ -157,7 +164,8 @@ var getMemory = function(basket,next){
       function(next){
         snmpSession.getBulk([snmp.mib.hrStorageTable],function(err,result){
           if(err) return next(err)
-          if(!result || !result[0]) return next('Could not look up memory index')
+          if(!result || !result[0])
+            return next('Could not look up memory index')
           result[0].forEach(function(item){
             if(
               item.value &&
@@ -180,9 +188,11 @@ var getMemory = function(basket,next){
           ],
           function(err,result){
             if(err) return next(err)
-            if(!result || 3 !== result.length) return next('Could not get memory info from SNMP')
+            if(!result || 3 !== result.length)
+              return next('Could not get memory info from SNMP')
             basket.memoryTotal = result[0].value * result[1].value
-            basket.memoryFree = basket.memoryTotal - result[0].value * result[2].value
+            basket.memoryFree =
+              basket.memoryTotal - result[0].value * result[2].value
             next()
           }
         )
@@ -207,8 +217,10 @@ var getServices = function(basket,next){
   if(config.lg.enabled) basket.services += ',lg'
   //service ports
   if(config.store.enabled){
-    basket.portImport = config.store.import.portPublic || config.store.import.port
-    basket.portExport = config.store.export.portPublic || config.store.export.port
+    basket.portImport =
+      config.store.import.portPublic || config.store.import.port
+    basket.portExport =
+      config.store.export.portPublic || config.store.export.port
   }
   if(config.prism.enabled){
     basket.portPrism = config.prism.portPublic || config.prism.port

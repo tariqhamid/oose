@@ -21,7 +21,8 @@ exports.apiDetails = function(req,res){
             logger.warn('Error looking up embed object: ' + err.message)
             return next({code: 500, message: err.message})
           }
-          if(!result) return next({code: 404, message: 'Embed object not found'})
+          if(!result)
+            return next({code: 404, message: 'Embed object not found'})
           embed = result
           next()
         })
@@ -65,7 +66,11 @@ exports.render = function(req,res){
       res.send('Embed object not found')
       return
     }
-    if(!fs.existsSync(path.resolve(__dirname + '/../views/embed/' + embed.template + '.jade'))){
+    if(
+      !fs.existsSync(
+        path.resolve(__dirname + '/../views/embed/' + embed.template + '.jade')
+      )
+    ){
       res.status(500)
       res.send('Embed template doesnt exist')
       return

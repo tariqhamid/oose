@@ -30,16 +30,25 @@ var buildCache = function(sha1,done){
     [
       //acquire list of peers from locate up on the master
       function(next){
-        var client = commUtil.tcpSend('locate',{sha1: sha1},config.mesh.port,config.mesh.host)
+        var client = commUtil.tcpSend(
+          'locate',
+          {sha1: sha1},
+          config.mesh.port,
+          config.mesh.host
+        )
         client.once('readable',function(){
           //read our response
-          var payload = commUtil.parse(client.read(client.read(2).readUInt16BE(0)))
+          var payload = commUtil.parse(
+            client.read(client.read(2).readUInt16BE(0))
+          )
           //close the connection
           client.end()
           //check if we got an error
-          if('ok' !== payload.message.status) return next(payload.message.message)
+          if('ok' !== payload.message.status)
+            return next(payload.message.message)
           //make sure the response is our sha1
-          if(sha1 !== payload.command) return next('Wrong command response for ' + sha1)
+          if(sha1 !== payload.command)
+            return next('Wrong command response for ' + sha1)
           for(var i in payload.message.peers){
             if(!payload.message.peers.hasOwnProperty(i)) continue
             if(payload.message.peers[i]) exists.push(i)
@@ -214,11 +223,14 @@ app.post('/api/shredderJob',function(req,res){
         )
         client.once('readable',function(){
           //read our response
-          var payload = commUtil.parse(client.read(client.read(2).readUInt16BE(0)))
+          var payload = commUtil.parse(
+            client.read(client.read(2).readUInt16BE(0))
+          )
           //close the connection
           client.end()
           //check if we got an error
-          if('ok' !== payload.message.status) return next(payload.message.message)
+          if('ok' !== payload.message.status)
+            return next(payload.message.message)
           if(!payload.message.handle) return next('No job handle created')
           jobHandle = payload.message.handle
           next()

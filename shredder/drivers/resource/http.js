@@ -82,7 +82,8 @@ var executeRequest = function(job,req,done){
   opts.url = req.parameter.render(opts.url)
   //parse the url, need to make sure its valid, so we can fail gracefully if not
   var parsedUrl = url.parse(opts.url)
-  if(!parsedUrl.protocol || !parsedUrl.host || !parsedUrl.path) return done('Invalid URL passed: ' + opts.url)
+  if(!parsedUrl.protocol || !parsedUrl.host || !parsedUrl.path)
+    return done('Invalid URL passed: ' + opts.url)
   //start the request
   job.logger.info('Retrieving resource ',opts)
   //add the cookie jar
@@ -122,8 +123,16 @@ var executeRequest = function(job,req,done){
       tmp.on('finish',function(){
         var sha1 = shasum.digest('hex')
         var rv = job.resource.load(opts.name,{sha1: sha1})
-        if(!rv) job.logger.warning('Failed to update resource ' + opts.name + ' with sha1 of ' + sha1)
-        job.logger.info('Successfully retrieved resource from ' + opts.url + ' and saved to ' + resource.path)
+        if(!rv){
+          job.logger.warning(
+            'Failed to update resource ' + opts.name +
+            ' with sha1 of ' + sha1
+          )
+        }
+        job.logger.info(
+          'Successfully retrieved resource from ' + opts.url +
+          ' and saved to ' + resource.path
+        )
         done()
       })
       res.pipe(sniff).pipe(tmp)
@@ -210,7 +219,8 @@ exports.run = function(job,parameter,options,done){
         }
         executeRequest(job,req,function(err){
           if(err && !opts.optional) return next(err)
-          if(err && opts.optional) job.logger.warning('Failed resource request: ' + err)
+          if(err && opts.optional)
+            job.logger.warning('Failed resource request: ' + err)
           next()
         })
       },

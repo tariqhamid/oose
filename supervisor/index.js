@@ -35,7 +35,10 @@ var supervisorStartup = function(){
     if(err) logger.error(err)
     else if(!peer){
       msg.starting()
-      supervisorTimeout = setTimeout(supervisorStartup,config.supervisor.retryInterval)
+      supervisorTimeout = setTimeout(
+        supervisorStartup,
+        config.supervisor.retryInterval
+      )
     } else {
       var message = {}
       message.sent = new Date().getTime()

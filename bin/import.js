@@ -13,10 +13,22 @@ var config = require(__dirname + '/../config')
 program
   .version(config.version)
   .usage('[options] <stdin>')
-  .option('-d --directory <s>','Root folder to import, can be omitted to disable folder scanning')
-  .option('-c --concurrency <n>','Change the number of concurrent imports, defaults to number of cpus')
-  .option('-d --daemon','Causes import to act as a daemon and watch for files in root')
-  .option('-m --move','Causes import to delete the source file on successful import')
+  .option(
+    '-d --directory <s>',
+    'Root folder to import, can be omitted to disable folder scanning'
+  )
+  .option(
+    '-c --concurrency <n>',
+    'Change the number of concurrent imports, defaults to number of cpus'
+  )
+  .option(
+    '-d --daemon',
+    'Causes import to act as a daemon and watch for files in root'
+  )
+  .option(
+    '-m --move',
+    'Causes import to delete the source file on successful import'
+  )
   .option('-v --verbose','Increase log output')
   .parse(process.argv)
 

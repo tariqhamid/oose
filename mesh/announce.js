@@ -10,12 +10,16 @@ var mesh = require('../mesh')
 
 //announcements
 var announceLog = function(selfPeer,oldPeer,peer,packet){
+  var selfie =
+    config.mesh.debug && packet.hostname === selfPeer.hostname ?
+    ' [SELFIE]' :
+    ''
   logger.info(
-      peer.hostname +
-      ' (' + peer.ip + ':' + peer.portMesh + ')' +
-      ' @ ' + new Date(peer.sent).toLocaleTimeString() +
-      ' (latency ' + peer.latency + ')' +
-      (config.mesh.debug && packet.hostname === selfPeer.hostname ? ' [SELFIE]' : '')
+    peer.hostname +
+    ' (' + peer.ip + ':' + peer.portMesh + ')' +
+    ' @ ' + new Date(peer.sent).toLocaleTimeString() +
+    ' (latency ' + peer.latency + ')' +
+    selfie
   )
   //logger.debug('Announce:' + os.EOL + util.inspect(peer))
   //logger.debug('Self Peer:' + os.EOL + util.inspect(selfPeer))
@@ -39,8 +43,17 @@ var announceListen = function(){
         },
         //check for duplicate hostname
         function(next){
-          if(selfPeer.ip && packet.hostname === selfPeer.hostname && rinfo.address !== selfPeer.ip)
-            return next('Ignored announce from ' + rinfo.address + ' claiming to have our hostname!!')
+          if(
+            selfPeer.ip &&
+            packet.hostname === selfPeer.hostname &&
+            rinfo.address !== selfPeer.ip
+          )
+          {
+            return next(
+              'Ignored announce from ' + rinfo.address +
+              ' claiming to have our hostname!!'
+            )
+          }
           next()
         },
         //grab previous peer information
@@ -55,7 +68,8 @@ var announceListen = function(){
         //populate peer information to store
         function(next){
           //populate details
-          peer.latency = packet.sent - (oldPeer.sent || 0) - config.mesh.announce.interval
+          peer.latency =
+            packet.sent - (oldPeer.sent || 0) - config.mesh.announce.interval
           if(peer.latency < 0) peer.latency = 0
           peer.sent = packet.sent
           peer.hostname = packet.hostname
@@ -95,11 +109,17 @@ var announceListen = function(){
         function(next){
           if(packet.services.indexOf('store') > 0){
             //issue #32 avail comes back infinity (this is a safeguard)
-            if('Infinity' === peer.availableCapacity) peer.availableCapacity = 100
-            redis.zadd('peer:rank',+peer.availableCapacity,packet.hostname,function(err){
-              if(err) err = 'Could not store peer rank: ' + err
-              next(err)
-            })
+            if('Infinity' === peer.availableCapacity)
+              peer.availableCapacity = 100
+            redis.zadd(
+              'peer:rank',
+              +peer.availableCapacity,
+              packet.hostname,
+              function(err){
+                if(err) err = 'Could not store peer rank: ' + err
+                next(err)
+              }
+            )
           } else next()
         },
         //save to prism list
@@ -173,8 +193,10 @@ var announceSend = function(){
         message.memoryTotal = peer.memoryTotal
         message.availableCapacity = peer.availableCapacity
         message.services = peer.services
-        message.portImport = config.store.import.portPublic || peer.portImport || 0
-        message.portExport = config.store.export.portPublic || peer.portExport || 0
+        message.portImport =
+          config.store.import.portPublic || peer.portImport || 0
+        message.portExport =
+          config.store.export.portPublic || peer.portExport || 0
         message.portPrism = config.prism.portPublic || peer.portPrism || 0
         message.portMesh = config.mesh.portPublic || peer.portMesh || 0
         message.netSpeed = peer.netSpeed || 0

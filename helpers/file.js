@@ -26,16 +26,25 @@ var queueClone = function(sha1,done){
     [
       //do a location on the sha1
       function(next){
-        var client = commUtil.tcpSend('locate',{sha1: sha1},config.mesh.port,config.mesh.host)
+        var client = commUtil.tcpSend(
+          'locate',
+          {sha1: sha1},
+          config.mesh.port,
+          config.mesh.host
+        )
         client.once('readable',function(){
           //read our response
-          var payload = commUtil.parse(client.read(client.read(2).readUInt16BE(0)))
+          var payload = commUtil.parse(
+            client.read(client.read(2).readUInt16BE(0))
+          )
           //close the connection
           client.end()
           //check if we got an error
-          if('ok' !== payload.message.status) return next(payload.message.message)
+          if('ok' !== payload.message.status)
+            return next(payload.message.message)
           //make sure the response is our sha1
-          if(sha1 !== payload.command) return next('Wrong command response for ' + sha1)
+          if(sha1 !== payload.command)
+            return next('Wrong command response for ' + sha1)
           for(var i in payload.message.peers){
             if(payload.message.peers.hasOwnProperty(i)){
               peerCount++
@@ -227,9 +236,18 @@ exports.fromReadable = function(readable,done){
       function(next){
         if(exists.fs) return next()
         mkdirp(destinationFolder,function(err){
-          if(err) return next('Failed to create folder ' + destinationFolder + ' ' + err,sha1)
+          if(err){
+            return next(
+              'Failed to create folder ' + destinationFolder + ' ' + err,
+              sha1
+            )
+          }
           fs.rename(tmp,destination,function(err){
-            if(err) return next('Failed to rename ' + tmp + ' to ' + destination + ' ' + err)
+            if(err){
+              return next(
+                'Failed to rename ' + tmp + ' to ' + destination + ' ' + err
+              )
+            }
             next()
           })
         })

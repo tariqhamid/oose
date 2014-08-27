@@ -18,6 +18,7 @@ var File = require('../../models/file').model
 var Embed = require('../../models/embed').model
 
 var config = require('../../config')
+var duplicateNameExp = /\(\d+\)$/
 
 
 /**
@@ -85,7 +86,9 @@ exports.fileRemove = function(req,res){
       } else {
         req.flash('success','Item(s) removed successfully')
       }
-      res.redirect('/?path=' + req.query.path + (req.query.god ? '&god=on' : ''))
+      res.redirect(
+        '/?path=' + req.query.path + (req.query.god ? '&god=on' : '')
+      )
     }
   )
 }
@@ -108,11 +111,13 @@ exports.upload = function(req,res){
     mkdirp.sync(config.gump.tmpDir)
   //url creators
   var prismBaseUrl = function(){
-    return 'http://' + (config.gump.prism.host || '127.0.0.1') + ':' + config.gump.prism.port || 3003
+    return 'http://' + (config.gump.prism.host || '127.0.0.1') +
+      ':' + config.gump.prism.port || 3003
   }
   var gumpBaseUrl = function(){
     if(config.gump.baseUrl) return config.gump.baseUrl
-    return 'http://' + (config.gump.host || '127.0.0.1') + ':' + (config.gump.port || 3004)
+    return 'http://' + (config.gump.host || '127.0.0.1') +
+      ':' + (config.gump.port || 3004)
   }
   //import functions
   var sendToShredder = function(file,next){
@@ -163,7 +168,8 @@ exports.upload = function(req,res){
           request(url,function(err,res,body){
             if(err) return next(err)
             body = JSON.parse(body)
-            if(!body.peers || !body.peers.length) return next('Next peer could not be found')
+            if(!body.peers || !body.peers.length)
+              return next('Next peer could not be found')
             peerNext = body.peers[0]
             next()
           })
@@ -236,7 +242,10 @@ exports.upload = function(req,res){
                 currentPath.pop()
                 var ext = Path.extname(file.filename)
                 var basename = Path.basename(file.filename,ext)
-                if(basename.match(/\(\d+\)$/)) basename = basename.replace(/\(\d+\)$/,'(' + nameIterator + ')')
+                if(basename.match(duplicateNameExp))
+                  basename = basename.replace(
+                    duplicateNameExp,'(' + nameIterator + ')'
+                  )
                 else basename += ' (' + nameIterator + ')'
                 file.filename = basename + ext
                 currentPath.push(file.filename)
@@ -359,7 +368,9 @@ exports.folderCreate = function(req,res){
       } else {
         req.flash('success','Folder created successfully')
       }
-      res.redirect('/?path=' + req.query.path + (req.query.god ? '&god=on' : ''))
+      res.redirect(
+        '/?path=' + req.query.path + (req.query.god ? '&god=on' : '')
+      )
     }
   )
 }
