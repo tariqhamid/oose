@@ -118,7 +118,7 @@ app.get('/:sha1/:filename',function(req,res){
       var rs = fs.createReadStream(path,range)
       res.on('close',function(){
         redis.hincrby('inventory:' + sha1,'sent',bytesSent)
-        fs.close()
+        rs.close()
       })
       rs.pipe(sniff).pipe(res)
     }
