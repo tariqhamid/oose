@@ -95,9 +95,6 @@ app.get('/:sha1/:filename',function(req,res){
       sniff.on('data',function(data){
         bytesSent += data.length
       })
-      sniff.on('finish',function(){
-        redis.hincrby('inventory:' + sha1,'sent',bytesSent)
-      })
       //start param support
       if(req.query.start && 'video/mp4' === info.mimeType){
         var ffmpeg = new FFmpeg({source: path})
@@ -119,6 +116,10 @@ app.get('/:sha1/:filename',function(req,res){
       res.set('Content-Length',(range.end - range.start) + 1)
       //setup read stream from the file
       var rs = fs.createReadStream(path,range)
+      res.on('close',function(){
+        redis.hincrby('inventory:' + sha1,'sent',bytesSent)
+        fs.close()
+      })
       rs.pipe(sniff).pipe(res)
     }
   )
