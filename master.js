@@ -4,6 +4,7 @@ require('node-sigint')
 
 var async = require('async')
 var cluster = require('cluster')
+//var debug = require('debug')('oose:master')
 var fs = require('graceful-fs')
 
 var os = require('os')
@@ -109,8 +110,11 @@ exports.start = function(){
       function(next){
         if(config.mesh.enabled && config.mesh.stat.enabled){
           logger.info('Starting stats collection')
-          peerStats.start(config.mesh.stat.interval,0)
-          peerStats.once('loopEnd',function(){next()})
+          peerStats.prep(function(err){
+            if(err) return next(err)
+            peerStats.collector.once('loopEnd',function(){next()})
+            peerStats.collector.start(config.mesh.stat.interval,0)
+          })
         } else next()
       },
       //start ping
@@ -271,7 +275,7 @@ exports.start = function(){
         function(next){
           if(config.mesh.enabled && config.mesh.stat.enabled){
             logger.info('Stopping self stat collection')
-            peerStats.stop(next)
+            peerStats.collector.stop(next)
           } else next()
         },
         //go to ready state 0

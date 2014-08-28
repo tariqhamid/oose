@@ -30,8 +30,10 @@ exports.createSession = function(host,community,options){
 /**
  * Shortcut for MIB definitions for OIDs
  * @type {{defaultRoute: string}}
+ * @return {string} on some
  */
 exports.mib = {
+  sysUpTime: '1.3.6.1.2.1.1.3.0',
   ipRouteIfIndex: function(ip){return ['1.3.6.1.2.1.4.21.1.2',ip].join('.')},
   hrDeviceType: '1.3.6.1.2.1.25.3.2.1.2',
   hrDeviceTypes: function(type){return ['1.3.6.1.2.1.25.3.1',type].join('.')},

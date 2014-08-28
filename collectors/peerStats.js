@@ -21,11 +21,14 @@ var netInfo = {
   speed: 0,
   in: 0,
   out: 0,
+  uptime: 0,
   previous: {
     in: 0,
-    out: 0
+    out: 0,
+    uptime: 0
   },
-  lastUpdate: 0
+  inBps: 0,
+  outBps: 0
 }
 var cpuInfo = []
 var cpuAvgUsed = 0
@@ -62,17 +65,20 @@ var getServices = function(basket,next){
   debug('getServices() called')
   //services
   basket.services = ''
-  if(config.mesh.enabled) basket.services += ',mesh'
-  if(config.supervisor.enabled) basket.services += ',supervisor'
-  if(config.store.enabled) basket.services += ',store'
-  if(config.prism.enabled) basket.services += ',prism'
-  if(config.shredder.enabled) basket.services += ',shredder'
-  if(config.gump.enabled) basket.services += ',gump'
-  if(config.lg.enabled) basket.services += ',lg'
+  var svcList = [
+    'mesh','supervisor','store','prism','shredder','gump','lg','executioner'
+  ]
+  var svc = ''
+  for(var i=0; i<svcList.length; i++){
+    svc = svcList[i]
+    if(config[svc].enabled) basket.services += ',' + svc
+  }
   //service ports
   if(config.store.enabled){
-    basket.portImport = config.store.import.portPublic || config.store.import.port
-    basket.portExport = config.store.export.portPublic || config.store.export.port
+    basket.portImport =
+      config.store.import.portPublic || config.store.import.port
+    basket.portExport =
+      config.store.export.portPublic || config.store.export.port
   }
   if(config.prism.enabled){
     basket.portPrism = config.prism.portPublic || config.prism.port
@@ -83,22 +89,15 @@ var getServices = function(basket,next){
 
 var calcNetStats = function(basket,next){
   debug('calcNetStats() called')
-  var stats = {
-    inBps: 0,
-    outBps: 0
+  if(0 !== ((netInfo.previous.in - basket.netIn) + (netInfo.previous.out - basket.netOut))){
+    var window = (netInfo.uptime - netInfo.previous.uptime) / 100
+    netInfo.inBps = (basket.netIn - netInfo.previous.in) / window
+    netInfo.outBps = (basket.netOut - netInfo.previous.out) / window
+    netInfo.previous.in = basket.netIn
+    netInfo.previous.out = basket.netOut
   }
-  var now = new Date().getTime()
-  if(0 !== netInfo.lastUpdate){
-    var window = (now - netInfo.lastUpdate) / 1000
-    stats.inBps = (basket.netIn - netInfo.previous.in) / window
-    stats.outBps = (basket.netOut - netInfo.previous.out) / window
-  }
-  netInfo.previous.in = basket.netIn
-  netInfo.previous.out = basket.netOut
-  netInfo.lastUpdate = now
-  basket.netInBps = stats.inBps
-  basket.netOutBps = stats.outBps
-  basket.netLastUpdate = now
+  basket.netInBps = netInfo.inBps
+  basket.netOutBps = netInfo.outBps
   next(null,basket)
 }
 
@@ -117,7 +116,7 @@ var snmpPrep = function(done){
   async.series(
     [
       function(next){
-        debug('snmpPrep() called getBulk()')
+        debug('snmpPrep() calling getBulk()')
         snmpSession.getBulk(
           [
             //locate all CPUs
@@ -161,7 +160,7 @@ var snmpPrep = function(done){
         )
       },
       function(next){
-        debug('get() called')
+        debug('snmpPrep() calling get()')
         snmpSession.get(
           [
             //useful name from IF-MIB::ifAlias.<ifIndex>
@@ -174,18 +173,23 @@ var snmpPrep = function(done){
             snmp.mib.memorySize(memInfo.index)
           ],
           function(err,result){
-            debug('get() returned')
+            debug('snmpPrep() get() returned')
             if(err) return next(err)
-            if(!result.length) return next('No get() result (and no error?)')
+            if(!result.length)
+              return next('No get() result (and no error?)')
             //network stats
-            if(!result[0].value) return next(noResultMsg('Net:ifAlias'))
+            if(!result[0].value)
+              return next(noResultMsg('Net:ifAlias'))
             netInfo.name = result[0].value.toString()
-            if(!result[1].value) return next(noResultMsg('Net:ifSpeed'))
+            if(!result[1].value)
+              return next(noResultMsg('Net:ifSpeed'))
             netInfo.speed = result[1].value
             //memory stats
-            if(!result[2].value) return next(noResultMsg('Mem:memoryAllocationUnit'))
+            if(!result[2].value)
+              return next(noResultMsg('Mem:memoryAllocationUnit'))
             memInfo.unit = result[2].value
-            if(!result[3].value) return next(noResultMsg('Mem:memorySize'))
+            if(!result[3].value)
+              return next(noResultMsg('Mem:memorySize'))
             memInfo.total = memInfo.unit * result[3].value
             next()
           }
@@ -194,7 +198,7 @@ var snmpPrep = function(done){
       //find our IP
       // (is this extra? can we get this from things we got above?)
       function(next){
-        debug('netip collector called')
+        debug('snmpPrep() netip collector called')
         var interfaces = os.networkInterfaces()
         var filter = function(address){
           if('IPv4' === address.family && !address.internal && !netInfo.ip)
@@ -204,7 +208,8 @@ var snmpPrep = function(done){
           if(interfaces.hasOwnProperty(i))
             interfaces[i].forEach(filter)
         }
-        if(!netInfo.ip) return next('Failed to get netInfo.ip')
+        if(!netInfo.ip)
+          return next('Failed to get netInfo.ip')
         next()
       }
     ],
@@ -253,20 +258,32 @@ var snmpPoll = function(basket,done){
             //Net:out counter from IF-MIB::ifOutOctets.<ifIndex>
             snmp.mib.ifOutOctets(netInfo.index),
             //Mem: used
-            snmp.mib.memoryUsed(memInfo.index)
+            snmp.mib.memoryUsed(memInfo.index),
+            //Net:in counter from IF-MIB::ifInOctets.<ifIndex>
+            snmp.mib.sysUpTime
           ],
           function(err,result){
-            debug('snmpPoll() get() returned')
+            debug('snmpPoll() getBulk() returned')
             if(err) return next(err)
-            if(!result.length) return next('No get() result (and no error?)')
+            if(!result.length)
+              return next('No getBulk() result (and no error?)')
             //network stats
-            if(!result[0].value) return next(noResultMsg('Net:ifInOctets'))
+            if('number' !== typeof result[0].value)
+              return next(noResultMsg('Net:ifInOctets'))
             basket.netIn = netInfo.in = result[0].value
-            if(!result[1].value) return next(noResultMsg('Net:ifOutOctets'))
+            if('number' !== typeof result[1].value)
+              return next(noResultMsg('Net:ifOutOctets'))
             basket.netOut = netInfo.out = result[1].value
             //memory stats
-            if(!result[2].value) return next(noResultMsg('Mem:memoryUsed'))
-            basket.memoryFree = memInfo.free = memInfo.total - (memInfo.unit * result[2].value)
+            if('number' !== typeof result[2].value)
+              return next(noResultMsg('Mem:memoryUsed'))
+            basket.memoryFree = memInfo.free =
+              memInfo.total - (memInfo.unit * result[2].value)
+            //remote time
+            if('number' !== typeof result[3].value)
+              return next(noResultMsg('Sys:uptime'))
+            netInfo.previous.uptime = netInfo.uptime
+            netInfo.uptime = result[3].value
             next()
           }
         )
@@ -285,24 +302,23 @@ var save = function(basket,next){
   })
 }
 
-snmpPrep(function(err){
-  if(err) return debug('SNMP Prep failed:',err)
-})
-
-var peerStats = new Collector()
-peerStats.on('error',function(err){
+var collector = new Collector()
+collector.on('error',function(err){
   logger.error(err)
 })
-peerStats.collect(snmpPoll)
-peerStats.collect(getServices)
-peerStats.collect(getDiskFree)
-peerStats.process(calcNetStats)
-peerStats.process(calcCapStats)
-peerStats.save(save)
+collector.collect(snmpPoll)
+collector.collect(getServices)
+collector.collect(getDiskFree)
+collector.process(calcNetStats)
+collector.process(calcCapStats)
+collector.save(save)
 
 
 /**
  * Export module
  * @type {Collector}
  */
-module.exports = peerStats
+module.exports = {
+  prep: snmpPrep,
+  collector: collector
+}
