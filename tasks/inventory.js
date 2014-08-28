@@ -1,11 +1,20 @@
 'use strict';
+var async = require('async')
+var debug = require('debug')('oose:task:inventory')
 var path = require('path')
-var readdirp = require('readdirp')
+var childProcess = require('child_process')
 
 var file = require('../helpers/file')
 var logger = require('../helpers/logger').create('task:inventory')
 
 var config = require('../config')
+var flipSlashExp = /\\/g
+var newLineExp = /\r\n/g
+var rootExp = new RegExp(
+  path.resolve(config.root).replace(flipSlashExp,'/'),
+  'i'
+)
+var tmpExp = /tmp/i
 
 
 /**
@@ -48,44 +57,82 @@ var progressMessage = function(progress,force){
 
 
 /**
+ * Process files
+ * @param {object} progress
+ * @param {string} data
+ */
+var processFiles = function(progress,data){
+  //replace any windows newlines
+  data = data.replace(newLineExp,'\n')
+  var lines = data
+    .split('\n')
+    .filter(function(item){return '' !== item})
+    .map(function(val){
+      return val.replace(flipSlashExp,'/').replace(rootExp,'')
+    })
+  async.each(
+    lines,
+    function(entry,next){
+      //disqualify tmp
+      if(entry.match(tmpExp)) return next()
+      //inc counters and display progress
+      progress.fileCount++
+      //get the sha1 from the entry
+      var sha1 = file.sha1FromPath(entry)
+      file.redisInsert(sha1,function(err){
+        if(err)
+          return next('Failed to read ' + sha1 + ' file ' + data + ' ' + err)
+        debug('inserted file',sha1)
+        next()
+      })
+    },
+    function(err){
+      if(err) logger.warning(err)
+      progressMessage(progress,false)
+    }
+  )
+}
+
+
+/**
  * Run inventory
  * @param {function} done
  */
 exports.start = function(done){
   if('function' !== typeof done) done = function(){}
+  logger.info('Starting to build inventory')
   var progress = {
     start: +(new Date()),
     fileCount: 0,
     lastUpdate: 0,
     rate: 250
   }
-  var root = config.root
-  logger.info('Starting to build inventory')
-  var rdStream = readdirp(
-    {root: path.resolve(root) || path.resolve('./data'),
-    directoryFilter: ['!tmp']}
-  )
-  rdStream.on('warn',function(warn){
-    logger.warning(warn)
-  })
-  rdStream.on('error',function(err){
+  var windows = 'win32' === process.platform
+  var cp
+  debug(windows)
+  if(windows){
+    debug('on windows')
+    cp = childProcess.spawn('cmd',['/c','dir','/a:-d','/s','/b','/o:n'],{cwd: config.root})
+  } else {
+    debug('on linux')
+    cp = childProcess.spawn('find',[config.root,'-type f'])
+  }
+  cp.on('error',function(err){
+    debug('error',err)
     done(err)
   })
-  rdStream.on('end',function(){
+  cp.stdout.setEncoding('utf-8')
+  cp.stderr.setEncoding('utf-8')
+  cp.stdout.on('data',function(data){
+    processFiles(progress,data)
+  })
+  cp.stderr.on('data',function(data){
+    debug('stderr',data)
+  })
+  cp.on('close',function(code){
+    debug('done reading files',code)
     progressMessage(progress,true)
     logger.info('Inventory complete')
     done(null,progress.fileCount)
-  })
-  rdStream.on('data',function(entry){
-    progress.fileCount++
-    progressMessage(progress,false)
-    var sha1 = file.sha1FromPath(entry.path)
-    file.redisInsert(sha1,function(err){
-      if(err){
-        logger.warn(
-          'Failed to read ' + sha1 + ' file ' + entry.path + ' ' + err
-        )
-      }
-    })
   })
 }
