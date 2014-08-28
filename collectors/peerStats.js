@@ -1,6 +1,7 @@
 'use strict';
 var async = require('async')
-var debug = require('debug')('peer:stats')
+var debug = require('debug')('oose:peerStats')
+var dump = require('debug')('oose:peerStats:dump')
 var ds = require('diskspace')
 var os = require('os')
 var path = require('path')
@@ -50,7 +51,7 @@ var noResultMsg = function(msg){
  * @param {function} next Callback
  */
 var getDiskFree = function(basket,next){
-  debug('getDiskFree() called')
+  debug('snmpPoll() getDiskFree() called')
   var root = path.resolve(config.root)
   //Windows needs to call with only the drive letter
   if('win32' === os.platform()) root = root.substr(0,1)
@@ -62,7 +63,7 @@ var getDiskFree = function(basket,next){
 }
 
 var getServices = function(basket,next){
-  debug('getServices() called')
+  debug('snmpPoll() getServices() called')
   //services
   basket.services = ''
   var svcList = [
@@ -88,11 +89,13 @@ var getServices = function(basket,next){
 }
 
 var calcNetStats = function(basket,next){
-  debug('calcNetStats() called')
+  debug('snmpPoll() calcNetStats() called')
   if(0 !== ((netInfo.previous.in - basket.netIn) + (netInfo.previous.out - basket.netOut))){
     var window = (netInfo.uptime - netInfo.previous.uptime) / 100
-    netInfo.inBps = (basket.netIn - netInfo.previous.in) / window
-    netInfo.outBps = (basket.netOut - netInfo.previous.out) / window
+    if(60 > window){
+      netInfo.inBps = (basket.netIn - netInfo.previous.in) / window
+      netInfo.outBps = (basket.netOut - netInfo.previous.out) / window
+    }
     netInfo.previous.in = basket.netIn
     netInfo.previous.out = basket.netOut
   }
@@ -102,7 +105,7 @@ var calcNetStats = function(basket,next){
 }
 
 var calcCapStats = function(basket,next){
-  debug('calcCapStats() called')
+  debug('snmpPoll() calcCapStats() called')
   basket.availableCapacity = 100 * (basket.diskFree / basket.diskTotal)
   //issue #32 avail comes back infinity (this is a safeguard)
   if('Infinity' === basket.availableCapacity) basket.availableCapacity = 100
@@ -165,8 +168,6 @@ var snmpPrep = function(done){
           [
             //useful name from IF-MIB::ifAlias.<ifIndex>
             snmp.mib.ifAlias(netInfo.index),
-            //speed from IF-MIB::ifSpeed.<ifIndex>
-            snmp.mib.ifSpeed(netInfo.index),
             //memory scalar (unit)
             snmp.mib.memoryAllocationUnit(memInfo.index),
             //memory total size
@@ -177,19 +178,16 @@ var snmpPrep = function(done){
             if(err) return next(err)
             if(!result.length)
               return next('No get() result (and no error?)')
-            //network stats
+            //network
             if(result[0].value)
               netInfo.name = result[0].value.toString()
-            if(!result[1].value)
-              return next(noResultMsg('Net:ifSpeed'))
-            netInfo.speed = result[1].value
-            //memory stats
-            if(!result[2].value)
+            //memory
+            if('number' !== typeof result[1].value)
               return next(noResultMsg('Mem:memoryAllocationUnit'))
-            memInfo.unit = result[2].value
-            if(!result[3].value)
+            memInfo.unit = result[1].value
+            if('number' !== typeof result[2].value)
               return next(noResultMsg('Mem:memorySize'))
-            memInfo.total = memInfo.unit * result[3].value
+            memInfo.total = memInfo.unit * result[2].value
             next()
           }
         )
@@ -223,7 +221,6 @@ var snmpPoll = function(basket,done){
   //set the basket up with stuff that never changes
   basket.netIndex = netInfo.index
   basket.netName = netInfo.name
-  basket.netSpeed = netInfo.speed
   basket.netIp = netInfo.ip
   basket.cpuCount = cpuInfo.length
   basket.memoryTotal = memInfo.total
@@ -252,37 +249,42 @@ var snmpPoll = function(basket,done){
         debug('snmpPoll() calling get()')
         snmpSession.get(
           [
+            //speed from IF-MIB::ifSpeed.<ifIndex>
+            snmp.mib.ifSpeed(netInfo.index),
             //Net:in counter from IF-MIB::ifInOctets.<ifIndex>
             snmp.mib.ifInOctets(netInfo.index),
             //Net:out counter from IF-MIB::ifOutOctets.<ifIndex>
             snmp.mib.ifOutOctets(netInfo.index),
             //Mem: used
             snmp.mib.memoryUsed(memInfo.index),
-            //Net:in counter from IF-MIB::ifInOctets.<ifIndex>
+            //Sys:uptime counter from SNMPv2-MIB::sysUpTime.0
             snmp.mib.sysUpTime
           ],
           function(err,result){
-            debug('snmpPoll() getBulk() returned')
+            debug('snmpPoll() get() returned')
             if(err) return next(err)
             if(!result.length)
-              return next('No getBulk() result (and no error?)')
+              return next('No get() result (and no error?)')
             //network stats
             if('number' !== typeof result[0].value)
-              return next(noResultMsg('Net:ifInOctets'))
-            basket.netIn = netInfo.in = result[0].value
+              return next(noResultMsg('Net:ifSpeed'))
+            basket.netSpeed = netInfo.speed = result[0].value
             if('number' !== typeof result[1].value)
-              return next(noResultMsg('Net:ifOutOctets'))
-            basket.netOut = netInfo.out = result[1].value
-            //memory stats
+              return next(noResultMsg('Net:ifInOctets'))
+            basket.netIn = netInfo.in = result[1].value
             if('number' !== typeof result[2].value)
+              return next(noResultMsg('Net:ifOutOctets'))
+            basket.netOut = netInfo.out = result[2].value
+            //memory stats
+            if('number' !== typeof result[3].value)
               return next(noResultMsg('Mem:memoryUsed'))
             basket.memoryFree = memInfo.free =
-              memInfo.total - (memInfo.unit * result[2].value)
+              memInfo.total - (memInfo.unit * result[3].value)
             //remote time
-            if('number' !== typeof result[3].value)
+            if('number' !== typeof result[4].value)
               return next(noResultMsg('Sys:uptime'))
             netInfo.previous.uptime = netInfo.uptime
-            netInfo.uptime = result[3].value
+            netInfo.uptime = result[4].value
             next()
           }
         )
@@ -310,6 +312,10 @@ collector.collect(getServices)
 collector.collect(getDiskFree)
 collector.process(calcNetStats)
 collector.process(calcCapStats)
+collector.process(function(basket,next){
+  dump('collected:',basket)
+  next(null,basket)
+})
 collector.save(save)
 
 
