@@ -41,8 +41,10 @@ var selectPeer = function(basket,done){
             redis.hgetall('peer:db:' + hostname,function(err,result){
               var info = {}
               if(err) return next(err)
-              if(!result) return next('Peer ' + hostname + ' doesnt exist in database')
-              if(!result.hostname || !result.ip) return next('Cant use ' + hostname + ': missing IP or hostname')
+              if(!result)
+                return next('Peer ' + hostname + ' doesnt exist in database')
+              if(!result.hostname || !result.ip)
+                return next('Cant use ' + hostname + ': missing IP or hostname')
               publicParams.forEach(function(k){
                 info[k] = result[k] || 'none'
               })

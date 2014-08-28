@@ -140,7 +140,11 @@ exports.start = function(){
       function(next){
         if(config.mesh.enabled && config.mesh.peerNext.enabled){
           logger.info('Starting next peer selection')
-          peerNext.start(config.mesh.peerNext.interval,config.mesh.announce.interval * 2,next)
+          peerNext.start(
+            config.mesh.peerNext.interval,
+            config.mesh.announce.interval * 2,
+            next
+          )
         } else next()
       },
       //start the supervisor
@@ -193,7 +197,9 @@ exports.start = function(){
       //worker recovery
       cluster.on('exit',function(worker,code,signal){
         if(0 !== code){
-          logger.info('Worker ' + worker.id + ' died (' + (signal || code) + ') restarted')
+          logger.info(
+            'Worker ' + worker.id + ' died (' + (signal || code) + ') restarted'
+          )
           //start the new worker
           cluster.fork()
         }
@@ -240,7 +246,10 @@ exports.start = function(){
             var checkWorkerCount = function(){
               if(!cluster.workers) return next()
               if(Object.keys(cluster.workers).length){
-                logger.info('Waiting on ' + Object.keys(cluster.workers).length + ' workers to exit')
+                logger.info(
+                  'Waiting on ' + Object.keys(cluster.workers).length +
+                  ' workers to exit'
+                )
                 setTimeout(checkWorkerCount,1000)
               } else {
                 logger.info('Workers have stopped')

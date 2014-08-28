@@ -25,8 +25,7 @@ var decode = function(path){
 var schema = new mongoose.Schema({
   handle: {
     type: String,
-    unique: true,
-    required: true
+    unique: true
   },
   folder: {
     type: Boolean,
@@ -94,8 +93,6 @@ var schema = new mongoose.Schema({
 schema.pre('remove',function(next){
   var Model = require('./file').model
   var path = this.path
-  //make sure there is a handle if not make one
-  if(!this.handle) this.handle = shortid.generate()
   //remove direct descendants and let the waterfall happen
   if(!path instanceof Array) path = path.split('/')
   var exp = new RegExp('^,' + path.join(','))
@@ -119,8 +116,9 @@ schema.pre('remove',function(next){
 // handling of created/modified
 schema.pre('save',function(next){
   var now = new Date()
-  var _ref = this.get('metrics.dateCreated')
-  if((void 0) === _ref || null === _ref)
+  //make sure there is a handle if not make one
+  if(!this.handle) this.handle = shortid.generate()
+  if(this.isNew)
     this.metrics.dateCreated = now
   this.metrics.dateModified = now
   next()

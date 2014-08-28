@@ -35,7 +35,9 @@ var spawnWorker = function(opts,done){
   worker.on('exit',function(code){
     if(0 !== code)
       return done('Worker failed, exited with code: ' + code)
-    logger.info('Worker for job ' + opts.handle + ' has finished and exited without error')
+    logger.info(
+      'Worker for job ' + opts.handle + ' has finished and exited without error'
+    )
     done()
   })
   //start the worker by sending it options
@@ -48,8 +50,13 @@ var spawnWorker = function(opts,done){
  */
 var q = async.priorityQueue(
   function(opts,done){
-    if('undefined' === typeof opts.handle || null === opts.handle || !opts.handle)
+    if(
+      'undefined' === typeof opts.handle ||
+      null === opts.handle ||
+      !opts.handle
+    ){
       done('ERROR: Job.handle not set')
+    }
     spawnWorker(opts,done)
   },
   config.shredder.concurrency || os.cpus().length || 1
@@ -89,7 +96,11 @@ var newJob = function(message,socket){
   //check to see if there is a priority override
   if(description.priority) job.priority = description.priority
   //check to see if the job has been scheduled and defer it if so
-  if(description.schedule && description.schedule.start && 'now' !== description.schedule.start){
+  if(
+    description.schedule &&
+    description.schedule.start &&
+    'now' !== description.schedule.start
+  ){
     if(description.schedule.match(/^\+/)){
       description.schedule.start = description.schedule.start.replace(/^\+(\d+)/,'$1')
       job.start = new Date().getTime() + description.schedule.start
@@ -100,10 +111,16 @@ var newJob = function(message,socket){
   //if we have a start it means we are deferred
   if(!job.start){
     //jab job into local q
-    logger.info('Job queued locally as ' + job.handle + ' with a priority of ' + job.priority)
+    logger.info(
+      'Job queued locally as ' + job.handle +
+      ' with a priority of ' + job.priority
+    )
     q.push(job,job.priority || 10)
   } else {
-    logger.info('Job deferred locally as ' + job.handle + ' with a priority of ' + job.priority)
+    logger.info(
+      'Job deferred locally as ' + job.handle +
+      ' with a priority of ' + job.priority
+    )
   }
   //respond to the request with the assigned handle and queue position
   socket.end(commUtil.withLength(commUtil.build(
@@ -154,7 +171,9 @@ var shutdown = function(done){
     [
       //since there is something happening start shutting everything down and saving
       function(next){
-        logger.info('Pausing queue to prevent further jobs from being started')
+        logger.info(
+          'Pausing queue to prevent further jobs from being started'
+        )
         q.pause()
         next()
       },
@@ -170,7 +189,9 @@ var shutdown = function(done){
           if(running > 0){
             i++
             if(i % 10 === 0)
-              logger.info('Still waiting for ' + running + ' worker(s) to exit...')
+              logger.info(
+                'Still waiting for ' + running + ' worker(s) to exit...'
+              )
             return
           }
           //finish exiting
@@ -191,8 +212,11 @@ var shutdown = function(done){
         //dont write a snapshot if there is nothing queued
         if(snapshot.tasks.length === 0 && snapshot.deferred.length === 0)
           return next()
-        logger.info('Writing the current queue of jobs to: ' + config.shredder.snapshot)
-        if(fs.existsSync(config.shredder.snapshot)) fs.unlinkSync(config.shredder.snapshot)
+        logger.info(
+          'Writing the current queue of jobs to: ' + config.shredder.snapshot
+        )
+        if(fs.existsSync(config.shredder.snapshot))
+          fs.unlinkSync(config.shredder.snapshot)
         fs.writeFileSync(config.shredder.snapshot,JSON.stringify(snapshot))
         logger.info('Snapshot written successfully')
         next()
@@ -274,7 +298,7 @@ exports.stop = function(done){
         //stop scheduling any deferred jobs
         function(next){
           logger.info('Stopping scheduling of any deferred jobs')
-          if(deferredInterval) clearTimeout(deferredInterval)
+          if(deferredInterval) clearInterval(deferredInterval)
           next()
         },
         //check for running jobs and store a snapshot if we have to

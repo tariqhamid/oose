@@ -1,16 +1,15 @@
 'use strict';
 var basicAuth = require('basic-auth')
 var bodyParser = require('body-parser')
+var flash = require('connect-flash')
 var cookieParser = require('cookie-parser')
 var express = require('express')
 var session = require('express-session')
-var flash = require('connect-flash')
-var RedisStore = require('connect-redis')(session)
 var fs = require('graceful-fs')
-var methodOverride = require('method-override')
 
 var app = express()
 var server = require('http').createServer(app)
+var RedisStore = require('connect-redis')(session)
 
 var logger = require('../helpers/logger').create('executioner')
 var redis = require('../helpers/redis')
@@ -45,6 +44,7 @@ app.locals.moment = require('moment')
 /**
  * String helpers
  * @type {string}
+ * @type {string}
  */
 app.locals.S = require('string')
 
@@ -63,12 +63,11 @@ app.use(function(req,res,next){
   var username = config.executioner.user
   var password = config.executioner.password
   if(!username || !password){
-    res.status(500)
-    res.send('Missing username and/or password')
+    res.status(500).send('Missing username and/or password')
   }
   function unauthorized(res){
     res.set('WWW-Authenticate','Basic realm=Authorization Required')
-    return res.send(401)
+    return res.status(401).end()
   }
   var user = basicAuth(req)
   if(!user || !user.name || !user.pass){
@@ -85,7 +84,6 @@ app.set('views',__dirname + '/' + 'views')
 app.set('view engine','jade')
 app.use(bodyParser.urlencoded({extended:true}))
 app.use(bodyParser.json())
-app.use(methodOverride())
 app.use(cookieParser(config.executioner.cookie.secret))
 app.use(session({
   cookie: {

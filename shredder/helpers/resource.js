@@ -1,16 +1,18 @@
 'use strict';
-var ObjectManage = require('object-manage')
-var EventEmitter = require('events').EventEmitter
 var async = require('async')
-var temp = require('temp')
-var mkdirp = require('mkdirp')
 var fs = require('graceful-fs')
+var EventEmitter = require('events').EventEmitter
+var mkdirp = require('mkdirp')
+var ObjectManage = require('object-manage')
 var path = require('path')
-var config = require('../../config')
+var temp = require('temp')
+
 var peer = require('../../helpers/peer')
-var tmpDir = path.resolve(config.root + '/shredder/tmp')
-var resourceExp = /\{([^}]+)\}/ig
+
 var cleanup = []
+var config = require('../../config')
+var resourceExp = /\{([^}]+)\}/ig
+var tmpDir = path.resolve(config.root + '/shredder/tmp')
 
 //remove any leftover resources on exit
 process.on('exit',function(){
@@ -40,10 +42,14 @@ var saveResource = function(name,info,next){
       },
       //setup connection to input
       function(next){
-        peer.sendFromReadable(peerNext,fs.createReadStream(info.$get('path')),function(err,result){
-          sha1 = result
-          next()
-        })
+        peer.sendFromReadable(
+          peerNext,
+          fs.createReadStream(info.$get('path')),
+          function(err,result){
+            sha1 = result
+            next()
+          }
+        )
       }
     ],
     function(err){
@@ -231,7 +237,10 @@ Resource.prototype.render = function(string,done){
       //replace any resource references with their paths
       for(var i in that.resources){
         if(!that.resources.hasOwnProperty(i)) continue
-        string = string.replace(new RegExp('{' + i + '}','i'),that.resources[i].$get('path'))
+        string = string.replace(
+          new RegExp('{' + i + '}','i'),
+          that.resources[i].$get('path')
+        )
       }
       that.emit('render',originalString,string)
       done(null,string)

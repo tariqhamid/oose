@@ -1,7 +1,7 @@
 #!/bin/bash
 
 function banner {
-  line="${1//./-}"
+  line=$(echo $1 | tr [:print:] [-*])
   echo
   echo $line
   echo "$1"
@@ -19,15 +19,19 @@ echo
 [ ! -d "/opt/oose" ] && echo "OOSE not installed" && exit 0
 
 # start running commands
-runCommand "cd /opt/oose && git checkout stable && git pull"
+runCommand "cd /opt/oose"
+#runCommand "git checkout stable"
+runCommand "git pull"
 npm config set color false
 runCommand "npm -q --no-spin install"
 runCommand "npm -q --no-spin prune"
-runCommand "npm -q --no-spin update"
+#runCommand "npm -q --no-spin update"
 runCommand "chown -R node:node /opt/oose/dt"
-runCommand "ln -sf /etc/service/oose /opt/oose/dt"
+runCommand "ln -sf /opt/oose/dt /etc/service/oose"
 [ ! -d /opt/oose/log ] && runCommand "mkdir /opt/oose/log"
 runCommand "chown -R node:node /opt/oose/log"
+[ ! -d /var/log/node/oose ] && runCommand "mkdir -p /var/log/node/oose"
+runCommand "chown -R node:node /var/log/node"
 [ ! -d /data ] && runCommand "mkdir /data"
 runCommand "chown -R node:node /data"
 

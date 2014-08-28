@@ -18,12 +18,11 @@ app.use(function(req,res,next){
   var username = config.hideout.user
   var password = config.hideout.password
   if(!username || !password){
-    res.status(500)
-    res.send('Missing username and/or password')
+    res.status(500).end('Missing username and/or password')
   }
   function unauthorized(res){
     res.set('WWW-Authenticate','Basic realm=Authorization Required')
-    return res.send(401)
+    return res.status(401).end()
   }
   var user = basicAuth(req)
   if(!user || !user.name || !user.pass){
@@ -169,7 +168,9 @@ app.get('/',function(req,res){
  */
 exports.start = function(done){
   if(!config.hideout.user || !config.hideout.password){
-    logger.warning('Refusing to start hideout, missing username and/or password')
+    logger.warning(
+      'Refusing to start hideout, missing username and/or password'
+    )
     return done()
   }
   server.listen(config.hideout.port,config.hideout.host,function(err){

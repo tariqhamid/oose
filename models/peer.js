@@ -109,7 +109,9 @@ schema = new mongoose.Schema({
  * @this {Peer}
  */
 schema.methods.uptime = function(){
-  return moment.duration(this.os.uptime * 1000).format('d [days], h [hrs], m [min]')
+  return moment.duration(this.os.uptime * 1000).format(
+    'd [days], h [hrs], m [min]'
+  )
 }
 
 // handling of created/modified

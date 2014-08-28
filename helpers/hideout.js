@@ -47,7 +47,10 @@ var executeRequest = function(req,done){
   request(req,function(err,res,body){
     if(err) return done(err)
     if(200 !== res.statusCode){
-      logger.warning('Request failed unexpected status code ' + res.statusCode + ': ',req)
+      logger.warning(
+        'Request failed unexpected status code ' + res.statusCode + ': ',
+        req
+      )
       return done('Unexpected status code from hideout ' + res.statusCode)
     }
     var result = body

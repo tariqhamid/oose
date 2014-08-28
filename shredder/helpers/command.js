@@ -68,7 +68,9 @@ Command.prototype.execute = function(parameter,args){
       },
       //execute the command
       function(next){
-        that.job.logger.info('Executing command: ' + that.command + ' ' + args.join(' '))
+        that.job.logger.info(
+          'Executing command: ' + that.command + ' ' + args.join(' ')
+        )
         var q = cp.spawn(that.command,args)
         q.stdout.setEncoding('utf-8')
         q.stdout.on('data',function(data){

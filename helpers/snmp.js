@@ -34,17 +34,37 @@ exports.createSession = function(host,community,options){
  */
 exports.mib = {
   sysUpTime: '1.3.6.1.2.1.1.3.0',
-  ipRouteIfIndex: function(ip){return ['1.3.6.1.2.1.4.21.1.2',ip].join('.')},
+  ipRouteIfIndex: function(ip){
+    return ['1.3.6.1.2.1.4.21.1.2',ip].join('.')
+  },
   hrDeviceType: '1.3.6.1.2.1.25.3.2.1.2',
-  hrDeviceTypes: function(type){return ['1.3.6.1.2.1.25.3.1',type].join('.')},
+  hrDeviceTypes: function(type){
+    return ['1.3.6.1.2.1.25.3.1',type].join('.')
+  },
   hrProcessorLoad: '1.3.6.1.2.1.25.3.3.1.2',
   hrStorageTable: '1.3.6.1.2.1.25.2.3.1.3',
-  memoryAllocationUnit: function(index){return ['1.3.6.1.2.1.25.2.3.1.4',index].join('.')},
-  memorySize: function(index){return ['1.3.6.1.2.1.25.2.3.1.5',index].join('.')},
-  memoryUsed: function(index){return ['1.3.6.1.2.1.25.2.3.1.6',index].join('.')},
-  ifName: function(index){return ['1.3.6.1.2.1.2.2.1.2',index].join('.')},
-  ifAlias: function(index){return ['1.3.6.1.2.1.31.1.1.1.18',index].join('.')},
-  ifSpeed: function(index){return ['1.3.6.1.2.1.2.2.1.5',index].join('.')},
-  ifInOctets: function(index){return ['1.3.6.1.2.1.2.2.1.10',index].join('.')},
-  ifOutOctets: function(index){return ['1.3.6.1.2.1.2.2.1.16',index].join('.')}
+  memoryAllocationUnit: function(index){
+    return ['1.3.6.1.2.1.25.2.3.1.4',index].join('.')
+  },
+  memorySize: function(index){
+    return ['1.3.6.1.2.1.25.2.3.1.5',index].join('.')
+  },
+  memoryUsed: function(index){
+    return ['1.3.6.1.2.1.25.2.3.1.6',index].join('.')
+  },
+  ifName: function(index){
+    return ['1.3.6.1.2.1.2.2.1.2',index].join('.')
+  },
+  ifAlias: function(index){
+    return ['1.3.6.1.2.1.31.1.1.1.18',index].join('.')
+  },
+  ifSpeed: function(index){
+    return ['1.3.6.1.2.1.2.2.1.5',index].join('.')
+  },
+  ifInOctets: function(index){
+    return ['1.3.6.1.2.1.2.2.1.10',index].join('.')
+  },
+  ifOutOctets: function(index){
+    return ['1.3.6.1.2.1.2.2.1.16',index].join('.')
+  }
 }

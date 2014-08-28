@@ -61,7 +61,10 @@ exports.start = function(done){
   }
   var root = config.root
   logger.info('Starting to build inventory')
-  var rdStream = readdirp({root: path.resolve(root) || path.resolve('./data'), directoryFilter: ['!tmp']})
+  var rdStream = readdirp(
+    {root: path.resolve(root) || path.resolve('./data'),
+    directoryFilter: ['!tmp']}
+  )
   rdStream.on('warn',function(warn){
     logger.warning(warn)
   })
@@ -78,7 +81,11 @@ exports.start = function(done){
     progressMessage(progress,false)
     var sha1 = file.sha1FromPath(entry.path)
     file.redisInsert(sha1,function(err){
-      if(err) logger.warn('Failed to read ' + sha1 + ' file ' + entry.path + ' ' + err)
+      if(err){
+        logger.warn(
+          'Failed to read ' + sha1 + ' file ' + entry.path + ' ' + err
+        )
+      }
     })
   })
 }

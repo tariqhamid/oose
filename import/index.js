@@ -17,7 +17,8 @@ var listen = function(port,host,done){
     var remoteSpec = [remoteAddress,remotePort].join(':')
     logger.info('Received import connection from ' + remoteSpec)
     socket.on('close',function(failed){
-      if(failed) logger.warning('There was an error importing from ' + remoteSpec)
+      if(failed)
+        logger.warning('There was an error importing from ' + remoteSpec)
       else logger.info('Closed import connection from ' + remoteSpec)
     })
     file.fromReadable(socket,function(err,sha1){

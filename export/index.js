@@ -54,7 +54,8 @@ app.get('/:sha1/:filename',function(req,res){
       function(next){
         next()
         redis.hincrby('inventory:' + sha1,'hits',1,function(err){
-          if(err) logger.warning('Failed to increment hits(' + sha1 + '): ' + err)
+          if(err)
+            logger.warning('Failed to increment hits(' + sha1 + '): ' + err)
         })
       },
       //set headers
@@ -62,11 +63,14 @@ app.get('/:sha1/:filename',function(req,res){
         /* jshint bitwise:false */
         //add attachment for a download
         if('string' === typeof req.query.download){
-          res.set('Content-Disposition','attachment; filename=' + req.params.filename)
+          res.set(
+            'Content-Disposition',
+            'attachment; filename=' + req.params.filename
+          )
         }
         res.set('Accept-Ranges','bytes')
         res.set('Content-Type',info.mimeType)
-        //set some aggressive cache headers (this content cant change, hence sha1)
+        //set some aggressive cache headers this content cant change, hence sha1
         res.set('Cache-Control','public, max-age=31536000')
         res.set('Pragma','public')
         //byte range support
@@ -77,7 +81,10 @@ app.get('/:sha1/:filename',function(req,res){
           if(match[1]) range.start = match[1] >> 0
           if(match[2]) range.end = match[2] >> 0
           res.status(206)
-          res.set('Content-Range','bytes ' + range.start + '-' + range.end + '/' + stat.size)
+          res.set(
+            'Content-Range',
+            'bytes ' + range.start + '-' + range.end + '/' + stat.size
+          )
         }
         next()
       }
@@ -86,7 +93,9 @@ app.get('/:sha1/:filename',function(req,res){
     function(err){
       if(err){
         if('string' === typeof err) err = {code: 500, message: err}
-        logger.debug('Export error, code: ' + err.code + ', message: ' + err.message)
+        logger.debug(
+          'Export error, code: ' + err.code + ', message: ' + err.message
+        )
         res.status(err.code)
         res.send(err.message)
         return
