@@ -22,7 +22,7 @@ block content
           th Net In
           th Net Out
           th Seen
-
+        - var prettyBits = function(bits){return prettyBytes(bits).replace(/B$/,'b')}
         if peers.length
           each peer in peers
             - peer.availableCapacity = parseFloat(peer.availableCapacity,10)
@@ -78,13 +78,13 @@ block content
                   .progress-bar.progress-bar-danger(role='progressbar', aria-valuenow='#{peer.netInPercent}', aria-valuemin='0', aria-valuemax='100', style='width: #{peer.netInPercent}%;')
                     | #{peer.netInPercent}%
                 div
-                  small.text-muted #{prettyBytes(peer.netInBps)} / #{prettyBytes(peer.netSpeed)}
+                  small.text-muted #{prettyBits(peer.netInBps)} / #{prettyBits(peer.netSpeed)}
               td
                 .progress.progress-striped(style='margin-bottom: 0;')
                   .progress-bar.progress-bar-success(role='progressbar', aria-valuenow='#{peer.netOutPercent}', aria-valuemin='0', aria-valuemax='100', style='width: #{peer.netOutPercent}%;')
                     | #{peer.netOutPercent}%
                 div
-                  small.text-muted #{prettyBytes(peer.netOutBps)} / #{prettyBytes(peer.netSpeed)}
+                  small.text-muted #{prettyBits(peer.netOutBps)} / #{prettyBits(peer.netSpeed)}
               td #{peer.sentDelta}s ago
         else
           tr
