@@ -178,9 +178,8 @@ var snmpPrep = function(done){
             if(!result.length)
               return next('No get() result (and no error?)')
             //network stats
-            if(!result[0].value)
-              return next(noResultMsg('Net:ifAlias'))
-            netInfo.name = result[0].value.toString()
+            if(result[0].value)
+              netInfo.name = result[0].value.toString()
             if(!result[1].value)
               return next(noResultMsg('Net:ifSpeed'))
             netInfo.speed = result[1].value
