@@ -1,6 +1,7 @@
 'use strict';
 var async = require('async')
 var bodyParser = require('body-parser')
+var debug = require('debug')('oose:prism')
 var express = require('express')
 
 var app = express()
@@ -25,6 +26,7 @@ app.use(bodyParser.json())
  * @param {function} done
  */
 var buildCache = function(sha1,done){
+  debug(sha1,'building cache')
   var exists = []
   async.series(
     [
@@ -53,21 +55,45 @@ var buildCache = function(sha1,done){
             if(!payload.message.peers.hasOwnProperty(i)) continue
             if(payload.message.peers[i]) exists.push(i)
           }
+          debug(sha1,'got locate back',exists)
           next()
         })
         client.on('error',next)
+      },
+      //add the result to cache
+      function(next){
+        debug(sha1,'adding to prism existence')
+        redis.sadd('prism:' + sha1,exists,function(err){next(err)})
+      },
+      //add the hit counters
+      function(next){
+        debug(sha1,'setting up lb counters')
+        var hits = {}
+        for(var i = 0; i<exists.length; i++){
+          debug(sha1,exists[i])
+          hits[exists[i]] = 0
+        }
+        redis.hmset(
+          'prism:lb:' + sha1,
+          hits,
+          function(err){next(err)}
+        )
+      },
+      //set the keys to expire
+      function(next){
+        debug(sha1,'setting expire on keys')
+        redis.expire(
+          ['prism:' + sha1,'prism:lb:' + sha1],
+          config.prism.cache.expire,
+          function(err){next(err)}
+        )
       }
     ],
-    //add the result to cache
     function(err){
+      debug(sha1,'finished building cache')
       if(err) return done(err)
       if(!exists.length) return done('file not found')
-      redis.sadd('prism:' + sha1,exists,function(err){
-        if(err) return done(err)
-        redis.expire('prism:' + sha1,config.prism.cache.expire,function(err){
-          done(err)
-        })
-      })
+      done()
     }
   )
 }
@@ -112,14 +138,16 @@ app.get('/api/peerNext',function(req,res){
 
 app.get('/:sha1/:filename',function(req,res){
   var sha1 = req.params.sha1
+  var hits = []
   var peerList = []
   var peers = []
-  var winner = false
+  var winner = {}
   async.series(
     [
       //validate
       function(next){
         if(!sha1.match(/^[0-9a-f]{40}$/)) next('invalid hash')
+        debug(sha1,'got request')
         next()
       },
       ///grab from cache
@@ -127,11 +155,13 @@ app.get('/:sha1/:filename',function(req,res){
         redis.smembers('prism:' + sha1,function(err,result){
           if(err) return next(err)
           if(result && result.length){
+            debug(sha1,'cache hit found using it')
             peerList = result
             next()
           }
           //since we dont have the result in cache, build the cache, store it and grab it
           else {
+            debug(sha1,'cache miss')
             async.series(
               [
                 function(next){
@@ -159,9 +189,10 @@ app.get('/:sha1/:filename',function(req,res){
           peerList,
           function(hostname,next){
             redis.hgetall('peer:db:' + hostname,function(err,peer){
+              debug(sha1,'got result for peer info')
               if(err) return next(err)
               if(!peer) return next()
-              peer.hits = peer.hits || 0
+              if(peer.hits) delete peer.hits
               peers.push(peer)
               next()
             })
@@ -169,20 +200,30 @@ app.get('/:sha1/:filename',function(req,res){
           next
         )
       },
+      //resolving hit info
+      function(next){
+        redis.hgetall('prism:lb:' + sha1,function(err,result){
+          debug(sha1,'got result for hit info',result)
+          hits = result
+          next(err)
+        })
+      },
       //pick a winner
       function(next){
         var candidates = ''
         peers.forEach(function(peer){
-          candidates += '[' + peer.hostname + ':' + peer.hits + '] '
-          if(!winner || +peer.hits < +winner.hits) winner = peer
+          candidates += '[' + peer.hostname + ':' + hits[peer.hostname] + '] '
+          if(!winner.length || +hits[peer.hostname] < +winner.hits) winner = peer
         })
-        //logger.info('Candidates ' + candidates + 'Selecting ' + winner.hostname + ' as winner for ' + sha1)
+        winner.hits = +hits[peer.hostname]
+        debug(sha1,'Candidates ' + candidates + 'Selecting ' + winner.hostname + ' as winner')
         if(!winner) return next('Could not select peer')
         next()
       },
       //increment the hits of the winner
       function(next){
-        redis.hincrby('peer:db:' + winner.hostname,'hits',1,function(err){
+        debug(sha1,'incrementing hits on prism:lb:' + sha1)
+        redis.hincrby('prism:lb:' + sha1,winner.hostname,1,function(err){
           next(err)
         })
       }
@@ -195,7 +236,9 @@ app.get('/:sha1/:filename',function(req,res){
         return
       }
       if(err) return res.send({status: 'error', code: 1, message: err})
-      res.redirect(buildDestination(req,winner))
+      var url = buildDestination(req,winner)
+      debug(sha1,'redirecting to',url)
+      res.redirect(url)
     }
   )
 })

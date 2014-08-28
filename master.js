@@ -69,15 +69,9 @@ exports.start = function(){
           })
         }
         async.series([
-          function(next){removeKeys('peer:db:*',next)},
-          function(next){removeKeys('peer:ip',next)},
-          function(next){removeKeys('peer:rank',next)},
-          function(next){removeKeys('peer:next',next)},
-          function(next){removeKeys('peer:prism',next)},
-          function(next){removeKeys('peer:store',next)},
+          function(next){removeKeys('peer:*',next)},
           function(next){removeKeys('prism:*',next)},
-          function(next){removeKeys('inventory',next)},
-          function(next){removeKeys('inventory:*',next)}
+          function(next){removeKeys('inventory*',next)}
         ],function(err){
           if(err) return next(err)
           logger.info('Cleared ' + removed + ' keys from redis')

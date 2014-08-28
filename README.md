@@ -90,6 +90,9 @@ Here is a map of what services are on each port.
 * prism:[sha1]
   * Description: List of peers with a given hash
   * Type: Set
+* prism:lb:[sha1]
+  * Description: Hash of peers with respective hit counts for load balancing
+  * Type: Hash
 
 ### Store
 
