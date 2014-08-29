@@ -1,17 +1,17 @@
 'use strict';
 var async = require('async')
 var debug = require('debug')('oose:helper:snmp')
-var snmp = require('net-snmp')
+var snmp = require('snmp-native')
+var asn1ber = require('../node_modules/snmp-native/lib/asn1ber')
 
 var i = 0
-var bulkDepth = 256
 
 var mib2 = '1.3.6.1.2.1'
 var hrStorage = mib2 + '.25.2'
 var hrDevice = mib2 + '.25.3'
 var ifEntry = mib2 + '.2.2.1'
 
-var mibString = function(){
+var mibArray = function(){
   var arg
   var components = []
   for(var i=0; i<arguments.length; i++){
@@ -21,27 +21,21 @@ var mibString = function(){
     arg = arg.replace(/^\./g,'').replace(/\.$/g,'')
     if(arg) components.push(arg)
   }
-  return components.join('.')
+  return components.join('.').split('.').map(function(v){return +v})
 }
 
 
 
 /**
  * SNMP Helper object
- * @param {string} host Host; default: '127.0.0.1'
- * @param {string} community Community string; default: 'public'
  * @param {object} options Optional options object
  * @constructor
  */
-var SnmpHelper = function(host,community,options){
+var SnmpHelper = function(options){
   var that = this
   if(!options) options = {}
-  if(!host || 'string' !== typeof host){
-    host = '127.0.0.1'
-    options.port = 161
-  }
-  if(!community || 'string' !== typeof community) community = 'public'
-  that.sess = snmp.createSession(host,community,options)
+  //options.version = snmp.Version2c
+  that.sess = new snmp.Session(options)
   that.getQ = []
   that.getBulkQ = []
 }
@@ -53,61 +47,82 @@ var SnmpHelper = function(host,community,options){
  */
 SnmpHelper.prototype.mib = {
   sysUpTimeInstance:function(){
-    return mibString(mib2,'1.3.0')
+    return mibArray(mib2,'1.3.0')
+  },
+  ip: function(extra){
+    return mibArray(mib2,'4',extra)
+  },
+  ipAdEntAddr: function(ip){
+    return mibArray(mib2,'4.20.1.1',ip)
+  },
+  ipAdEntIfIndex: function(ip){
+    return mibArray(mib2,'4.20.1.2',ip)
+  },
+  ipAdEntNetMask: function(ip){
+    return mibArray(mib2,'4.20.1.3',ip)
   },
   ipRouteIfIndex: function(ip){
-    return mibString(mib2,'4.21.1.2',ip)
+    return mibArray(mib2,'4.21.1.2',ip)
+  },
+  ipRouteNextHop: function(ip){
+    return mibArray(mib2,'4.21.1.7',ip)
+  },
+  tcpConnectionState: function(ip,port){
+    return mibArray(mib2,'6.19.1.7.1.4',ip,port)
   },
   hrDeviceType: function(){
-    return mibString(hrDevice,'2.1.2')
+    return mibArray(hrDevice,'2.1.2')
   },
   hrDeviceTypes: function(type){
-    return mibString(hrDevice,'1',type)
+    return mibArray(hrDevice,'1',type)
   },
   hrProcessorLoad: function(){
-    return mibString(hrDevice,'3.1.2')
+    return mibArray(hrDevice,'3.1.2')
   },
   hrStorageType: function(){
-    return mibString(hrStorage,'3.1.2')
+    return mibArray(hrStorage,'3.1.2')
   },
   hrStorageTypes: function(type){
-    return mibString(hrStorage,'1',type)
+    return mibArray(hrStorage,'1',type)
   },
   hrStorageDescr: function(){
-    return mibString(hrStorage,'3.1.3')
+    return mibArray(hrStorage,'3.1.3')
   },
   hrStorageAllocationUnits: function(index){
-    return mibString(hrStorage,'3.1.4',index)
+    return mibArray(hrStorage,'3.1.4',index)
   },
   hrStorageSize: function(index){
-    return mibString(hrStorage,'3.1.5',index)
+    return mibArray(hrStorage,'3.1.5',index)
   },
   hrStorageUsed: function(index){
-    return mibString(hrStorage,'3.1.6',index)
+    return mibArray(hrStorage,'3.1.6',index)
   },
   ifAlias: function(index){
-    return mibString(mib2,'31.1.1.1.18',index)
+    return mibArray(mib2,'31.1.1.1.18',index)
   },
   ifDescr: function(index){
-    return mibString(ifEntry,'2',index)
+    return mibArray(ifEntry,'2',index)
   },
   ifSpeed: function(index){
-    return mibString(ifEntry,'5',index)
+    return mibArray(ifEntry,'5',index)
+  },
+  ifPhysAddress: function(index){
+    return mibArray(ifEntry,'6',index)
   },
   ifInOctets: function(index){
-    return mibString(ifEntry,'10',index)
+    return mibArray(ifEntry,'10',index)
   },
   ifOutOctets: function(index){
-    return mibString(ifEntry,'16',index)
+    return mibArray(ifEntry,'16',index)
   }
 }
 
 
 /**
- * Pass through the ObjectType lookup table
- * @type {exports.ObjectType|*}
+ * Pass through the ASN.1 BER Types lookup table
+ * @type {object}
  */
-SnmpHelper.prototype.ObjectType = snmp.ObjectType
+SnmpHelper.prototype.types = asn1ber.types
 
 
 /**
@@ -121,7 +136,7 @@ SnmpHelper.prototype.add = function(oid,handler){
     handler = arguments[arguments.length-1]
     var tmp = ''
     for(var i=0; i<arguments.length-1; i++){
-      tmp = mibString(tmp,arguments[i])
+      tmp = mibArray(tmp,arguments[i])
     }
     oid = tmp
     debug('add() built oid:' + oid)
@@ -141,7 +156,7 @@ SnmpHelper.prototype.addBulk = function(oid,handler){
     handler = arguments[arguments.length-1]
     var tmp = ''
     for(var i=0; i<arguments.length-1; i++){
-      tmp = mibString(tmp,arguments[i])
+      tmp = mibArray(tmp,arguments[i])
     }
     oid = tmp
     debug('addBulk() built oid:' + oid)
@@ -165,7 +180,6 @@ SnmpHelper.prototype.run = function(done){
       function(next){
         //do the bulks first usually these are tables for inventories/detection
         if(!getBulkQ.length) return next()
-        debug('getBulkQ:',getQ)
         var oids = []
         var handlers = []
         for(i=0; i<getBulkQ.length; i++){
@@ -173,60 +187,60 @@ SnmpHelper.prototype.run = function(done){
           handlers.push(getBulkQ[i].handler)
         }
         that.getBulkQ = []
-        that.sess.getBulk(oids,0,bulkDepth,function(err,res){
-          if(err) return next(err)
-          if(!res.length)
-            return next('No getBulk() result (and no error?)')
-          for(i=0; i<res.length; i++){
-            var r = res[i]
-            var s = []
-            for(var j=0; j<r.length; j++){
-              //if the requested OID is not part of this result, ignore
-              // this is a workaround for getBulk returning extra crap
-              if(
-                (oids[i] === r[j].oid) || //direct OID match
-                (0 === r[j].oid.indexOf(oids[i] + '.')) //subOID match
-              ){
-                s.push(r[j])
-                s[j].error = snmp.isVarbindError(r[j])
-                if(snmp.ObjectType.OctetString === r[j].type){
-                  s[j].value = r[j].value.toString()
+        async.eachSeries(
+          oids,
+          function(oid,treeDone){
+            that.sess.getSubtree({oid:oid},function(err,res){
+              if(err) return next(err)
+              if(!res.length)
+                return next('No getBulk() result (and no error?)')
+              for(i=0; i<res.length; i++){
+                var r = res[i]
+                r.oid = r.oid.join('.')
+                switch(r.type){
+                case asn1ber.types.ObjectIdentifier:
+                case asn1ber.types.IpAddress:
+                  r.value = r.value.join('.')
+                  break
                 }
               }
-            }
-            handlers[i](s)
+              handlers[oids.indexOf(oid)](res)
+              treeDone()
+            })
+          },
+          function(err){
+            next(err)
           }
-          next()
-        })
+        )
       },
       function(next){
         //do the get
         if(!getQ.length) return next()
-        debug('getQ:',getQ)
         var oids = []
-        var handlers = []
-        for(i=0; i<getQ.length; i++){
+        var handlers = {}
+        for(i = 0; i < getQ.length; i++){
           oids.push(getQ[i].oid)
-          handlers.push(getQ[i].handler)
+          handlers[getQ[i].oid.join('.')] = getQ[i].handler
         }
         that.getQ = []
-        that.sess.get(oids,function(err,res){
+        that.sess.getAll({oids: oids},function(err,res){
           if(err) return next(err)
           if(!res.length)
             return next('No get() result (and no error?)')
-          for(i=0; i<res.length; i++){
+          for(i = 0; i < res.length; i++){
             var r = res[i]
-            r.error = snmp.isVarbindError(r)
-            if(snmp.ObjectType.OctetString === r.type){
+            r.oid = r.oid.join('.')
+            if(asn1ber.types.ObjectIdentifier === r.type)
+              r.value = r.value.join('.')
+            if(asn1ber.types.OctetString === r.type)
               r.value = r.value.toString()
-            }
-            handlers[i](r)
+            handlers[oids[i].join('.')](r)
           }
           next()
         })
       }
     ],
-    done
+      done
   )
 }
 

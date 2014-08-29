@@ -14,8 +14,8 @@ var config = require('../config')
 var root = path.resolve(config.root)
 
 var snmp = new SnmpHelper()
-var hrDeviceProcessor = snmp.mib.hrDeviceTypes(3)
-var hrStorageRam = snmp.mib.hrStorageTypes(2)
+var hrDeviceProcessor = snmp.mib.hrDeviceTypes(3).join('.')
+var hrStorageRam = snmp.mib.hrStorageTypes(2).join('.')
 
 var isWin = ('win32' === process.platform)
 var i = 0
@@ -25,6 +25,10 @@ var netInfo = {
   index: false,
   name: 'ERROR',
   ip: false,
+  netmask: false,
+  gateway: false,
+  localListeners: [],
+  speedIndexes: [],
   speed: 0,
   in: 0,
   out: 0,
@@ -38,7 +42,6 @@ var netInfo = {
   outBps: 0
 }
 var cpuInfo = []
-var cpuAvgUsed = 0
 var ramInfo = {
   index: -1,
   unit: -1,
@@ -123,7 +126,7 @@ var snmpPrep = function(done){
             for(i=0; i < result.length; i++){
               item = result[i]
               if(item.oid &&
-                snmp.ObjectType.OID === item.type &&
+                snmp.types.ObjectIdentifier === item.type &&
                 hrDeviceProcessor === item.value
                 ){ cpuInfo.push(item.oid.split('.').slice(-1)[0]) }
             }
@@ -139,7 +142,7 @@ var snmpPrep = function(done){
               return next(noResultMsg('hrStorageType'))
             for(i=0; i < result.length; i++){
               item = result[i]
-              if(item.oid && snmp.ObjectType.OID === item.type){
+              if(item.oid && snmp.types.ObjectIdentifier === item.type){
                 if(hrStorageRam === item.value)
                   ramInfo.index = item.oid.split('.').pop()
               }
@@ -155,7 +158,7 @@ var snmpPrep = function(done){
               return next(noResultMsg('hrStorageDescr'))
             for(i=0; i < result.length; i++){
               item = result[i]
-              if(item.value && snmp.ObjectType.OctetString === item.type){
+              if(item.value && snmp.types.OctetString === item.type){
                 var x = item.value.split(' ').shift()
                 if(0 === root.indexOf(x)){
                   diskInfo.index = item.oid.split('.').pop()
@@ -171,11 +174,11 @@ var snmpPrep = function(done){
             dump('hrStorageAllocationUnits',result)
             if(!result || !result.length)
               return next(noResultMsg('hrStorageAllocationUnits'))
-            var ramOID = snmp.mib.hrStorageAllocationUnits(ramInfo.index)
-            var diskOID = snmp.mib.hrStorageAllocationUnits(diskInfo.index)
+            var ramOID = snmp.mib.hrStorageAllocationUnits(ramInfo.index).join('.')
+            var diskOID = snmp.mib.hrStorageAllocationUnits(diskInfo.index).join('.')
             for(i=0; i < result.length; i++){
               item = result[i]
-              if(item.value && snmp.ObjectType.Integer === item.type){
+              if(item.value && snmp.types.Integer === item.type){
                 if(ramOID === item.oid)
                   ramInfo.unit = +item.value
                 if(diskOID === item.oid)
@@ -193,11 +196,11 @@ var snmpPrep = function(done){
             dump('hrStorageSize',result)
             if(!result || !result.length)
               return next(noResultMsg('hrStorageSize'))
-            var ramOID = snmp.mib.hrStorageSize(ramInfo.index)
-            var diskOID = snmp.mib.hrStorageSize(diskInfo.index)
+            var ramOID = snmp.mib.hrStorageSize(ramInfo.index).join('.')
+            var diskOID = snmp.mib.hrStorageSize(diskInfo.index).join('.')
             for(i=0; i < result.length; i++){
               item = result[i]
-              if(item.value && snmp.ObjectType.Integer === item.type){
+              if(item.value && snmp.types.Integer === item.type){
                 if(ramOID === item.oid)
                   ramInfo.total = ramInfo.unit * item.value
                 if(diskOID === item.oid)
@@ -212,27 +215,46 @@ var snmpPrep = function(done){
         //detect our interface index by tracing the default route
         // RFC1213-MIB::ipRouteIfIndex.0.0.0.0
         snmp.addBulk(
-          snmp.mib.ipRouteIfIndex(),
+          snmp.mib.ip(),
           function(result){
-            dump('ipRouteIfIndex',result)
             if(!result[0].value)
-              return next(noResultMsg('ipRouteIfIndex'))
-            var defaultRouteOID = snmp.mib.ipRouteIfIndex('0.0.0.0')
-            var ips = []
+              return next(noResultMsg('ip'))
+            var entAddr = snmp.mib.ipAdEntAddr().join('.')
+            var entIndex = snmp.mib.ipAdEntIfIndex().join('.')
+            var entMask = snmp.mib.ipAdEntNetMask().join('.')
+            var defaultRouteOID = snmp.mib.ipRouteIfIndex('0.0.0.0').join('.')
+            var defaultGateway = snmp.mib.ipRouteNextHop('0.0.0.0').join('.')
+            var ipInfo = {}
+            var ip
             for(i=0; i < result.length; i++){
               item = result[i]
-              var haveIndex = (false !== netInfo.index)
-              if(item.value && snmp.ObjectType.Integer === item.type){
-                if(haveIndex && (netInfo.index === item.value))
-                  ips.push(item.oid.split('.').slice(-4).join('.'))
-                if((!haveIndex) && (defaultRouteOID === item.oid))
+              if(-1 !== item.oid.indexOf(entAddr))
+                ipInfo[item.value] = {index:null,netmask:null}
+              if(-1 !== item.oid.indexOf(entIndex)){
+                ip = item.oid.split('.').slice(-4).join('.')
+                ipInfo[item.value] = {ip:ip}
+                ipInfo[ip].index = item.value
+              }
+              if(-1 !== item.oid.indexOf(entMask)){
+                ip = item.oid.split('.').slice(-4).join('.')
+                ipInfo[ip].netmask = item.value
+                ipInfo[ipInfo[ip].index].netmask = item.value
+              }
+              if(item.value && snmp.types.Integer === item.type){
+                if(defaultRouteOID === item.oid)
                   netInfo.index = item.value
               }
-              if(3 === ips.length)
-                netInfo.ip = ips[1]
+              if(-1 !== item.oid.indexOf(defaultGateway)){
+                ipInfo[netInfo.index].gateway = item.value
+              }
             }
+            netInfo.ip = ipInfo[netInfo.index].ip
+            netInfo.netmask = ipInfo[netInfo.index].netmask
+            netInfo.gateway = ipInfo[netInfo.index].gateway
             debug('found routed network index=' + netInfo.index +
-              ', IP=' + netInfo.ip
+              ', IP=' + netInfo.ip +
+              ', netmask=' + netInfo.netmask +
+              ', gateway=' + netInfo.gateway
             )
           }
         )
@@ -246,15 +268,45 @@ var snmpPrep = function(done){
             if(!result[0].value)
               return next(noResultMsg(which))
             var searchOID =
-              (isWin ? snmp.mib.ifAlias : snmp.mib.ifDescr)(netInfo.index)
+              (isWin ?
+                snmp.mib.ifAlias(netInfo.index).join('.') :
+                snmp.mib.ifDescr(netInfo.index).join('.')
+              )
             for(i=0; i < result.length; i++){
               item = result[i]
               if(
-                (snmp.ObjectType.OctetString === item.type) &&
+                (snmp.types.OctetString === item.type) &&
                 (searchOID === item.oid)
               ){ netInfo.name = item.value }
             }
             debug('found routed network name=' + netInfo.name)
+          }
+        )
+        //bonding workaround
+        snmp.addBulk(
+          snmp.mib.ifPhysAddress(),
+          function(result){
+            dump('ifPhysAddress',result)
+            var macIndexes = {}
+            if(!result.length)
+              return next(noResultMsg('ifPhysAddress'))
+            var index
+            for(i=0; i < result.length; i++){
+              item = result[i]
+              var mac = item.valueHex.replace(/^(..)(..)(..)(..)(..)(..)$/,'$1:$2:$3:$4:$5:$6')
+              if(-1 !== mac.indexOf(':')){
+                index = +item.oid.split('.').slice(-1)
+                if(!macIndexes[mac])
+                  macIndexes[mac] = []
+                macIndexes[mac].push(index)
+              }
+            }
+            var k = Object.keys(macIndexes)
+            for(i=0; i< k.length; i++){
+              var list = macIndexes[k[i]]
+              if(-1 !== list.indexOf(netInfo.index))
+                netInfo.speedIndexes = list
+            }
           }
         )
         debug('snmpPrep() calling run()')
@@ -294,14 +346,15 @@ var snmpPoll = function(basket,done){
           function(result){
             if(!result || !result.length)
               return next(noResultMsg('hrProcessorLoad'))
+            var cpuAvgUsed = 0
             for(i = 0; i < result.length; i++){
               var item = result[i]
               if(
-                item.oid && snmp.ObjectType.Integer32 === item.type &&
+                item.oid && snmp.types.Integer === item.type &&
                 -1 !== cpuInfo.indexOf(item.oid.split('.').slice(-1)[0])
                 ){ cpuAvgUsed += item.value }
             }
-            basket.cpuUsed = cpuAvgUsed = cpuAvgUsed / cpuInfo.length
+            basket.cpuUsed = cpuAvgUsed / cpuInfo.length
             debug('collected cpuUsed: ' + basket.cpuUsed)
           }
         )
@@ -311,11 +364,11 @@ var snmpPoll = function(basket,done){
             dump('hrStorageUsed',result)
             if(!result || !result.length)
               return next(noResultMsg('hrStorageUsed'))
-            var ramOID = snmp.mib.hrStorageUsed(ramInfo.index)
-            var diskOID = snmp.mib.hrStorageUsed(diskInfo.index)
+            var ramOID = snmp.mib.hrStorageUsed(ramInfo.index).join('.')
+            var diskOID = snmp.mib.hrStorageUsed(diskInfo.index).join('.')
             for(i = 0; i < result.length; i++){
               item = result[i]
-              if(item.value && snmp.ObjectType.Integer === item.type){
+              if(item.value && snmp.types.Integer === item.type){
                 if(ramOID === item.oid)
                   ramInfo.used = ramInfo.unit * item.value
                 if(diskOID === item.oid)
@@ -329,18 +382,47 @@ var snmpPoll = function(basket,done){
             )
           }
         )
-        debug('snmpPoll() calling add()')
+        //localhost listening TCP ports
+        snmp.addBulk(
+          snmp.mib.tcpConnectionState('127.0.0.1'),
+          function(result){
+            dump('tcpConnectionState',result)
+            netInfo.localListeners = []
+            if(!result[0].value)
+              return next(noResultMsg('ip'))
+            var connections = snmp.mib.tcpConnectionState('127.0.0.1').join('.')
+            var port
+            for(i=0; i < result.length; i++){
+              item = result[i]
+              if(-1 !== item.oid.indexOf(connections)){
+                if(2 === item.value){
+                  port = item.oid.split('.').slice(-8).shift()
+                  netInfo.localListeners.push(port)
+                }
+              }
+            }
+          }
+        )
         //speed from IF-MIB::ifSpeed.<ifIndex>
-        snmp.add(
-          snmp.mib.ifSpeed(netInfo.index),
+        snmp.addBulk(
+          snmp.mib.ifSpeed(),
           function(result){
             dump('ifSpeed',result)
-            if('number' !== typeof result.value)
+            if(!result.length)
               return next(noResultMsg('ifSpeed'))
-            basket.netSpeed = netInfo.speed = result.value
+            for(i=0; i<result.length; i++){
+              var item = result[i]
+              for(var j = 0; j < netInfo.speedIndexes.length; j++){
+                if(snmp.mib.ifSpeed(netInfo.speedIndexes[j]).join('.') === item.oid){
+                  if(0 !== item.value)
+                    basket.netSpeed = netInfo.speed = item.value
+                }
+              }
+            }
             debug('collected netSpeed: ' + basket.netSpeed)
           }
         )
+        debug('snmpPoll() calling add()')
         //Net:in counter from IF-MIB::ifInOctets.<ifIndex>
         snmp.add(
           snmp.mib.ifInOctets(netInfo.index),
@@ -380,6 +462,12 @@ var snmpPoll = function(basket,done){
     ],
     function(err){
       debug('snmpPoll() completed')
+      dump('poll results',
+          '\ncpuInfo:' + util.inspect(cpuInfo),
+          '\nramInfo:' + util.inspect(ramInfo),
+          '\ndiskInfo:' + util.inspect(diskInfo),
+          '\nnetInfo:' + util.inspect(netInfo)
+      )
       done(err,basket)
     }
   )
