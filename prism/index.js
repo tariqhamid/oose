@@ -213,9 +213,10 @@ app.get('/:sha1/:filename',function(req,res){
         var candidates = ''
         peers.forEach(function(peer){
           candidates += '[' + peer.hostname + ':' + hits[peer.hostname] + '] '
-          if(!winner.length || +hits[peer.hostname] < +winner.hits) winner = peer
+          if(!winner.hostname || +hits[peer.hostname] < +hits[winner.hostname]){
+            winner = peer
+          }
         })
-        winner.hits = +hits[peer.hostname]
         debug(sha1,'Candidates ' + candidates + 'Selecting ' + winner.hostname + ' as winner')
         if(!winner) return next('Could not select peer')
         next()
