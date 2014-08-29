@@ -96,16 +96,6 @@ exports.start = function(){
           })
         } else next()
       },
-      //start next peer selection
-      function(next){
-        if(config.mesh.enabled && config.mesh.peerNext.enabled){
-          logger.info('Starting next peer selection')
-          peerNext.start(
-            config.mesh.peerNext.interval,
-            next
-          )
-        } else next()
-      },
       //start mesh
       function(next){
         if(config.$get('mesh.enabled')){
@@ -114,6 +104,17 @@ exports.start = function(){
             logger.error(err)
           })
           mesh.start(next)
+        } else next()
+      },
+      //start next peer selection
+      function(next){
+        if(config.mesh.enabled && config.mesh.peerNext.enabled){
+          logger.info('Starting next peer selection')
+          peerNext.start(
+            config.mesh.peerNext.interval,
+            500,
+            next
+          )
         } else next()
       },
       //start announce
