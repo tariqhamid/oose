@@ -1,5 +1,6 @@
 'use strict';
 var crypto = require('crypto')
+var debug = require('debug')('oose:helper:peer')
 var net = require('net')
 
 var redis = require('../helpers/redis')
@@ -48,17 +49,26 @@ exports.nextByHits = function(skip,next){
   }
   if(!(skip instanceof Array)) skip = [skip]
   var peer, winner
+  debug('getting next peer info')
   redis.hgetall('peer:next',function(err,results){
+    debug('got peer:next results',results)
     if(err) return next(err)
     if(!results) return next('could not find next peer')
     for(var i in results){
       if(!results.hasOwnProperty(i)) continue
       peer = JSON.parse(results[i])
+      if(!peer.hits) peer.hits = 0
+      peer.hits = +peer.hits
+      debug('got peer',peer)
       //skip any hostnames we dont want
       if(skip.indexOf(peer.hostname) >= 0) continue
       if(!winner || +peer.hits < +winner.hits) winner = peer
     }
-    next(null,winner)
+    //increment the hits of the winner
+    debug('incrementing peer:db:' + winner.hostname)
+    redis.hincrby('peer:db:' + winner.hostname,'hits',1,function(err){
+      next(err,winner)
+    })
   })
 }
 

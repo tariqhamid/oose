@@ -16,7 +16,8 @@ var publicParams = [
   'portPrism',
   'services',
   'diskFree',
-  'availableCapacity'
+  'availableCapacity',
+  'hits'
 ]
 
 var selectPeer = function(basket,done){

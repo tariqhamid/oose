@@ -4,7 +4,7 @@ require('node-sigint')
 
 var async = require('async')
 var cluster = require('cluster')
-var debug = require('debug')('oose:master')
+//var debug = require('debug')('oose:master')
 var fs = require('graceful-fs')
 
 var os = require('os')
@@ -96,6 +96,16 @@ exports.start = function(){
           })
         } else next()
       },
+      //start next peer selection
+      function(next){
+        if(config.mesh.enabled && config.mesh.peerNext.enabled){
+          logger.info('Starting next peer selection')
+          peerNext.start(
+            config.mesh.peerNext.interval,
+            next
+          )
+        } else next()
+      },
       //start mesh
       function(next){
         if(config.$get('mesh.enabled')){
@@ -129,17 +139,6 @@ exports.start = function(){
       function(next){
         logger.info('Going to readyState 2')
         mesh.readyState(2,next)
-      },
-      //start next peer selection
-      function(next){
-        if(config.mesh.enabled && config.mesh.peerNext.enabled){
-          logger.info('Starting next peer selection')
-          peerNext.start(
-            config.mesh.peerNext.interval,
-            config.mesh.announce.interval * 2,
-            next
-          )
-        } else next()
       },
       //start the supervisor
       function(next){
