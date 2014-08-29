@@ -107,6 +107,7 @@ exports.start = function(done){
     lastUpdate: 0,
     rate: 250
   }
+  var buffer = ''
   var windows = 'win32' === process.platform
   var cp
   debug(windows)
@@ -124,13 +125,14 @@ exports.start = function(done){
   cp.stdout.setEncoding('utf-8')
   cp.stderr.setEncoding('utf-8')
   cp.stdout.on('data',function(data){
-    processFiles(progress,data)
+    buffer = buffer + data
   })
   cp.stderr.on('data',function(data){
     debug('stderr',data)
   })
   cp.on('close',function(code){
     debug('done reading files',code)
+    processFiles(progress,buffer)
     progressMessage(progress,true)
     logger.info('Inventory complete')
     done(null,progress.fileCount)
