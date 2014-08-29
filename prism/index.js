@@ -51,9 +51,10 @@ var buildCache = function(sha1,done){
           //make sure the response is our sha1
           if(sha1 !== payload.command)
             return next('Wrong command response for ' + sha1)
+          debug(sha1,'got payload',payload.message.peers)
           for(var i in payload.message.peers){
             if(!payload.message.peers.hasOwnProperty(i)) continue
-            if(payload.message.peers[i]) exists.push(i)
+            if(payload.message.peers[i] && 'null' !== i) exists.push(i)
           }
           debug(sha1,'got locate back',exists)
           next()
@@ -69,10 +70,9 @@ var buildCache = function(sha1,done){
       function(next){
         debug(sha1,'setting up lb counters')
         var hits = {}
-        for(var i = 0; i<exists.length; i++){
-          debug(sha1,exists[i])
-          hits[exists[i]] = 0
-        }
+        exists.forEach(function(hostname){
+          hits[hostname] = 0
+        })
         redis.hmset(
           'prism:lb:' + sha1,
           hits,

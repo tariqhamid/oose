@@ -60,8 +60,9 @@ var progressMessage = function(progress,force){
  * Process files
  * @param {object} progress
  * @param {string} data
+ * @param {function} done
  */
-var processFiles = function(progress,data){
+var processFiles = function(progress,data,done){
   //replace any windows newlines
   data = data.replace(newLineExp,'\n')
   var lines = data
@@ -89,6 +90,7 @@ var processFiles = function(progress,data){
     function(err){
       if(err) logger.warning(err)
       progressMessage(progress,false)
+      done(err)
     }
   )
 }
@@ -132,9 +134,10 @@ exports.start = function(done){
   })
   cp.on('close',function(code){
     debug('done reading files',code)
-    processFiles(progress,buffer)
-    progressMessage(progress,true)
-    logger.info('Inventory complete')
-    done(null,progress.fileCount)
+    processFiles(progress,buffer,function(err){
+      progressMessage(progress,true)
+      logger.info('Inventory complete')
+      done(null,progress.fileCount)
+    })
   })
 }
