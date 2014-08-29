@@ -115,7 +115,7 @@ exports.start = function(done){
     cp = childProcess.spawn('cmd',['/c','dir','/a:-d','/s','/b','/o:n'],{cwd: config.root})
   } else {
     debug('on linux')
-    cp = childProcess.spawn('find',[config.root,'-type f'])
+    cp = childProcess.spawn('find',[config.root,'-type','f'])
   }
   cp.on('error',function(err){
     debug('error',err)
