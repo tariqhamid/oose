@@ -217,7 +217,7 @@ var snmpPrep = function(done){
         snmp.addBulk(
           snmp.mib.ip(),
           function(result){
-            if(!result[0].value)
+            if(!result || !result.length)
               return next(noResultMsg('ip'))
             var entAddr = snmp.mib.ipAdEntAddr().join('.')
             var entIndex = snmp.mib.ipAdEntIfIndex().join('.')
@@ -265,7 +265,7 @@ var snmpPrep = function(done){
           function(result){
             var which = isWin ? 'ifAlias' : 'ifDescr'
             dump(which,result)
-            if(!result[0].value)
+            if(!result || !result.length)
               return next(noResultMsg(which))
             var searchOID =
               (isWin ?
@@ -288,7 +288,7 @@ var snmpPrep = function(done){
           function(result){
             dump('ifPhysAddress',result)
             var macIndexes = {}
-            if(!result.length)
+            if(!result || !result.length)
               return next(noResultMsg('ifPhysAddress'))
             var index
             for(i=0; i < result.length; i++){
@@ -388,8 +388,8 @@ var snmpPoll = function(basket,done){
           function(result){
             dump('tcpConnectionState',result)
             netInfo.localListeners = []
-            if(!result[0].value)
-              return next(noResultMsg('ip'))
+            if(!result || !result.length)
+              return next(noResultMsg('tcpConnectionState'))
             var connections = snmp.mib.tcpConnectionState('127.0.0.1').join('.')
             var port
             for(i=0; i < result.length; i++){
@@ -408,7 +408,7 @@ var snmpPoll = function(basket,done){
           snmp.mib.ifSpeed(),
           function(result){
             dump('ifSpeed',result)
-            if(!result.length)
+            if(!result || !result.length)
               return next(noResultMsg('ifSpeed'))
             for(i=0; i<result.length; i++){
               var item = result[i]
