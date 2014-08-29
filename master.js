@@ -106,6 +106,13 @@ exports.start = function(){
           mesh.start(next)
         } else next()
       },
+      //start announce
+      function(next){
+        if(config.mesh.enabled && config.mesh.announce.enabled){
+          logger.info('Starting announce')
+          announce.start(next)
+        } else next()
+      },
       //start next peer selection
       function(next){
         if(config.mesh.enabled && config.mesh.peerNext.enabled){
@@ -115,13 +122,6 @@ exports.start = function(){
             500,
             next
           )
-        } else next()
-      },
-      //start announce
-      function(next){
-        if(config.mesh.enabled && config.mesh.announce.enabled){
-          logger.info('Starting announce')
-          announce.start(next)
         } else next()
       },
       //go to ready state 1
