@@ -39,10 +39,11 @@ var buildCache = function(sha1,done){
           config.mesh.host
         )
         client.once('readable',function(){
+          var sizebits = client.read(2)
+          if(null === sizebits)
+            return done('failed to parse locate response, empty payload')
           //read our response
-          var payload = commUtil.parse(
-            client.read(client.read(2).readUInt16BE(0))
-          )
+          var payload = commUtil.parse(client.read(sizebits.readUInt16BE(0)))
           //close the connection
           client.end()
           //check if we got an error
@@ -236,7 +237,10 @@ app.get('/:sha1/:filename',function(req,res){
         res.send('File not found')
         return
       }
-      if(err) return res.send({status: 'error', code: 1, message: err})
+      if(err){
+        res.status(500)
+        return res.send({status: 'error', code: 1, message: err})
+      }
       var url = buildDestination(req,winner)
       debug(sha1,'redirecting to',url)
       res.redirect(url)
