@@ -413,7 +413,8 @@ if [[ "$(grep .1.3.6.1.2.1.31 /etc/snmp/snmpd.conf)" == "" ]]; then
 view   systemonly  included   .1.3.6.1.2.1.2\n\
 view   systemonly  included   .1.3.6.1.2.1.4\n\
 view   systemonly  included   .1.3.6.1.2.1.25\n\
-view   systemonly  included   .1.3.6.1.2.1.31\n" /etc/snmp/snmpd.conf
+view   systemonly  included   .1.3.6.1.2.1.31\n\
+view   systemonly  included   .1.3.6.1.4.1\n" /etc/snmp/snmpd.conf
   /etc/init.d/snmpd restart
 fi
 
