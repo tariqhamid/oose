@@ -18,8 +18,9 @@ var hrDeviceProcessor = snmp.mib.hrDeviceTypes(3).join('.')
 var hrStorageRam = snmp.mib.hrStorageTypes(2).join('.')
 
 var isWin = ('win32' === process.platform)
-var i = 0
 var item
+var i
+var j
 
 var netInfo = {
   index: false,
@@ -55,10 +56,6 @@ var diskInfo = {
   free: -1
 }
 
-var noResultMsg = function(msg){
-  return 'No result for ' + msg
-}
-
 var getServices = function(basket,next){
   debug('getServices() called')
   //services
@@ -67,7 +64,7 @@ var getServices = function(basket,next){
     'mesh','supervisor','store','prism','shredder','gump','lg','executioner'
   ]
   var svc = ''
-  for(var i=0; i<svcList.length; i++){
+  for(i=0; i < svcList.length; i++){
     svc = svcList[i]
     if(config[svc].enabled) basket.services += ',' + svc
   }
@@ -121,8 +118,7 @@ var snmpPrep = function(done){
           snmp.mib.hrDeviceType(),
           function(result){
             dump('hrDeviceType',result)
-            if(!result || !result.length)
-              return next(noResultMsg('hrDeviceType table'))
+            if(!result || !result.length) return
             for(i=0; i < result.length; i++){
               item = result[i]
               if(item.oid &&
@@ -138,8 +134,7 @@ var snmpPrep = function(done){
           snmp.mib.hrStorageType(),
           function(result){
             dump('hrStorageType',result)
-            if(!result || !result.length)
-              return next(noResultMsg('hrStorageType'))
+            if(!result || !result.length) return
             for(i=0; i < result.length; i++){
               item = result[i]
               if(item.oid && snmp.types.ObjectIdentifier === item.type){
@@ -154,8 +149,7 @@ var snmpPrep = function(done){
           snmp.mib.hrStorageDescr(),
           function(result){
             dump('hrStorageDescr',result)
-            if(!result || !result.length)
-              return next(noResultMsg('hrStorageDescr'))
+            if(!result || !result.length) return
             for(i=0; i < result.length; i++){
               item = result[i]
               if(item.value && snmp.types.OctetString === item.type){
@@ -172,8 +166,7 @@ var snmpPrep = function(done){
           snmp.mib.hrStorageAllocationUnits(),
           function(result){
             dump('hrStorageAllocationUnits',result)
-            if(!result || !result.length)
-              return next(noResultMsg('hrStorageAllocationUnits'))
+            if(!result || !result.length) return
             var ramOID = snmp.mib.hrStorageAllocationUnits(ramInfo.index).join('.')
             var diskOID = snmp.mib.hrStorageAllocationUnits(diskInfo.index).join('.')
             for(i=0; i < result.length; i++){
@@ -194,8 +187,7 @@ var snmpPrep = function(done){
           snmp.mib.hrStorageSize(),
           function(result){
             dump('hrStorageSize',result)
-            if(!result || !result.length)
-              return next(noResultMsg('hrStorageSize'))
+            if(!result || !result.length) return
             var ramOID = snmp.mib.hrStorageSize(ramInfo.index).join('.')
             var diskOID = snmp.mib.hrStorageSize(diskInfo.index).join('.')
             for(i=0; i < result.length; i++){
@@ -217,8 +209,7 @@ var snmpPrep = function(done){
         snmp.addBulk(
           snmp.mib.ip(),
           function(result){
-            if(!result || !result.length)
-              return next(noResultMsg('ip'))
+            if(!result || !result.length) return
             var entAddr = snmp.mib.ipAdEntAddr().join('.')
             var entIndex = snmp.mib.ipAdEntIfIndex().join('.')
             var entMask = snmp.mib.ipAdEntNetMask().join('.')
@@ -263,10 +254,8 @@ var snmpPrep = function(done){
         snmp.addBulk(
           isWin ? snmp.mib.ifAlias() : snmp.mib.ifDescr(),
           function(result){
-            var which = isWin ? 'ifAlias' : 'ifDescr'
-            dump(which,result)
-            if(!result || !result.length)
-              return next(noResultMsg(which))
+            dump(isWin ? 'ifAlias' : 'ifDescr',result)
+            if(!result || !result.length) return
             var searchOID =
               (isWin ?
                 snmp.mib.ifAlias(netInfo.index).join('.') :
@@ -288,8 +277,7 @@ var snmpPrep = function(done){
           function(result){
             dump('ifPhysAddress',result)
             var macIndexes = {}
-            if(!result || !result.length)
-              return next(noResultMsg('ifPhysAddress'))
+            if(!result || !result.length) return
             var index
             for(i=0; i < result.length; i++){
               item = result[i]
@@ -302,7 +290,7 @@ var snmpPrep = function(done){
               }
             }
             var k = Object.keys(macIndexes)
-            for(i=0; i< k.length; i++){
+            for(i=0; i < k.length; i++){
               var list = macIndexes[k[i]]
               if(-1 !== list.indexOf(netInfo.index))
                 netInfo.speedIndexes = list
@@ -329,7 +317,6 @@ var snmpPrep = function(done){
 //all .getBulk() and .get() calls in one
 var snmpPoll = function(basket,done){
   debug('snmpPoll() called')
-  var i = 0
   //set the basket up with stuff that never changes
   basket.netIndex = netInfo.index
   basket.netName = netInfo.name
@@ -344,11 +331,10 @@ var snmpPoll = function(basket,done){
         snmp.addBulk(
           snmp.mib.hrProcessorLoad(),
           function(result){
-            if(!result || !result.length)
-              return next(noResultMsg('hrProcessorLoad'))
+            if(!result || !result.length) return
             var cpuAvgUsed = 0
-            for(i = 0; i < result.length; i++){
-              var item = result[i]
+            for(i=0; i < result.length; i++){
+              item = result[i]
               if(
                 item.oid && snmp.types.Integer === item.type &&
                 -1 !== cpuInfo.indexOf(item.oid.split('.').slice(-1)[0])
@@ -362,11 +348,10 @@ var snmpPoll = function(basket,done){
           snmp.mib.hrStorageUsed(),
           function(result){
             dump('hrStorageUsed',result)
-            if(!result || !result.length)
-              return next(noResultMsg('hrStorageUsed'))
+            if(!result || !result.length) return
             var ramOID = snmp.mib.hrStorageUsed(ramInfo.index).join('.')
             var diskOID = snmp.mib.hrStorageUsed(diskInfo.index).join('.')
-            for(i = 0; i < result.length; i++){
+            for(i=0; i < result.length; i++){
               item = result[i]
               if(item.value && snmp.types.Integer === item.type){
                 if(ramOID === item.oid)
@@ -388,8 +373,7 @@ var snmpPoll = function(basket,done){
           function(result){
             dump('tcpConnectionState',result)
             netInfo.localListeners = []
-            if(!result || !result.length)
-              return next(noResultMsg('tcpConnectionState'))
+            if(!result || !result.length) return
             var connections = snmp.mib.tcpConnectionState('127.0.0.1').join('.')
             var port
             for(i=0; i < result.length; i++){
@@ -408,11 +392,10 @@ var snmpPoll = function(basket,done){
           snmp.mib.ifSpeed(),
           function(result){
             dump('ifSpeed',result)
-            if(!result || !result.length)
-              return next(noResultMsg('ifSpeed'))
-            for(i=0; i<result.length; i++){
-              var item = result[i]
-              for(var j = 0; j < netInfo.speedIndexes.length; j++){
+            if(!result || !result.length) return
+            for(i=0; i < result.length; i++){
+              item = result[i]
+              for(j=0; j < netInfo.speedIndexes.length; j++){
                 if(snmp.mib.ifSpeed(netInfo.speedIndexes[j]).join('.') === item.oid){
                   if(0 !== item.value)
                     basket.netSpeed = netInfo.speed = item.value
@@ -428,8 +411,7 @@ var snmpPoll = function(basket,done){
           snmp.mib.ifInOctets(netInfo.index),
           function(result){
             dump('ifInOctets',result)
-            if('number' !== typeof result.value)
-              return next(noResultMsg('ifInOctets'))
+            if('number' !== typeof result.value) return
             basket.netIn = netInfo.in = result.value
             debug('collected netIn: ' + basket.netIn)
           }
@@ -439,8 +421,7 @@ var snmpPoll = function(basket,done){
           snmp.mib.ifOutOctets(netInfo.index),
           function(result){
             dump('ifOutOctets',result)
-            if('number' !== typeof result.value)
-              return next(noResultMsg('ifOutOctets'))
+            if('number' !== typeof result.value) return
             basket.netOut = netInfo.out = result.value
             debug('collected netOut: ' + basket.netOut)
           }
@@ -450,8 +431,7 @@ var snmpPoll = function(basket,done){
           snmp.mib.sysUpTimeInstance(),
           function(result){
             dump('sysUpTimeInstance',result)
-            if('number' !== typeof result.value)
-              return next(noResultMsg('sysUpTimeInstance'))
+            if('number' !== typeof result.value) return
             netInfo.previous.uptime = netInfo.uptime
             netInfo.uptime = result.value
           }
@@ -482,7 +462,7 @@ var save = function(basket,next){
 
 var collector = new Collector()
 collector.on('error',function(err){
-  logger.error(err)
+  logger.warning(err)
 })
 collector.collect(snmpPoll)
 collector.collect(getServices)

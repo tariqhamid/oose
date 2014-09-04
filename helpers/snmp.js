@@ -14,7 +14,7 @@ var ifEntry = mib2 + '.2.2.1'
 var mibArray = function(){
   var arg
   var components = []
-  for(var i=0; i<arguments.length; i++){
+  for(i=0; i < arguments.length; i++){
     arg = arguments[i]
     if('number' === typeof arg) arg = '' + arg
     if('string' !== typeof arg || !arg.length) arg = ''
@@ -135,7 +135,7 @@ SnmpHelper.prototype.add = function(oid,handler){
   if(3 < arguments.length){
     handler = arguments[arguments.length-1]
     var tmp = ''
-    for(var i=0; i<arguments.length-1; i++){
+    for(i=0; i < arguments.length-1; i++){
       tmp = mibArray(tmp,arguments[i])
     }
     oid = tmp
@@ -155,7 +155,7 @@ SnmpHelper.prototype.addBulk = function(oid,handler){
   if(3 < arguments.length){
     handler = arguments[arguments.length-1]
     var tmp = ''
-    for(var i=0; i<arguments.length-1; i++){
+    for(i=0; i < arguments.length-1; i++){
       tmp = mibArray(tmp,arguments[i])
     }
     oid = tmp
@@ -182,7 +182,7 @@ SnmpHelper.prototype.run = function(done){
         if(!getBulkQ.length) return next()
         var oids = []
         var handlers = []
-        for(i=0; i<getBulkQ.length; i++){
+        for(i=0; i < getBulkQ.length; i++){
           oids.push(getBulkQ[i].oid)
           handlers.push(getBulkQ[i].handler)
         }
@@ -192,9 +192,8 @@ SnmpHelper.prototype.run = function(done){
           function(oid,treeDone){
             that.sess.getSubtree({oid:oid},function(err,res){
               if(err) return next(err)
-              if(!res.length)
-                return next('No getBulk() result (and no error?)')
-              for(i=0; i<res.length; i++){
+              if(!res.length) return treeDone()
+              for(i=0; i < res.length; i++){
                 var r = res[i]
                 r.oid = r.oid.join('.')
                 switch(r.type){
@@ -218,16 +217,15 @@ SnmpHelper.prototype.run = function(done){
         if(!getQ.length) return next()
         var oids = []
         var handlers = {}
-        for(i = 0; i < getQ.length; i++){
+        for(i=0; i < getQ.length; i++){
           oids.push(getQ[i].oid)
           handlers[getQ[i].oid.join('.')] = getQ[i].handler
         }
         that.getQ = []
         that.sess.getAll({oids: oids},function(err,res){
           if(err) return next(err)
-          if(!res.length)
-            return next('No get() result (and no error?)')
-          for(i = 0; i < res.length; i++){
+          if(!res.length) return next()
+          for(i=0; i < res.length; i++){
             var r = res[i]
             r.oid = r.oid.join('.')
             if(asn1ber.types.ObjectIdentifier === r.type)
