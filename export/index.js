@@ -1,5 +1,7 @@
 'use strict';
 var async = require('async')
+var debug = require('debug')('oose:export')
+var dump = require('debug')('oose:export:dump')
 var express = require('express')
 var FFmpeg = require('fluent-ffmpeg')
 var fs = require('graceful-fs')
@@ -18,29 +20,54 @@ var running = false
 
 app.get('/:sha1/:filename',function(req,res){
   var sha1, filename, path, info, stat, range
+  var status = 200
+  //default headers
+  var headers = {
+    'Accept-Range': 'bytes',
+    //set some aggressive cache headers this content cant change, hence sha1
+    'Cache-Control': 'public, max-age=31536000',
+    'Pragma': 'public'
+  }
   async.series(
     [
       //get sha1 and filename
       function(next){
         sha1 = req.params.sha1
+        debug(sha1,'--------NEW REQUEST--------')
         filename = req.params.filename
+        debug(sha1,'got filename',filename)
         if(!sha1) next('Invalid path')
         if(!filename) filename = sha1
         path = file.pathFromSha1(sha1)
+        debug(sha1,'got local path',path)
         next()
       },
       //check if path exists
       function(next){
         fs.exists(path,function(exists){
-          if(!exists) return next({code: 404, message: 'File doesnt exist'})
+          if(!exists){
+            debug(sha1,'path does not exist, throwing 404')
+            status = 404
+            return next('File doesnt exist')
+          }
+          debug(sha1,'confirmed path exists')
           next()
         })
       },
       //get inventory for file
       function(next){
         redis.hgetall('inventory:' + sha1,function(err,result){
-          if(err) return next(err)
-          if(!result) return next({code: 404,message: 'File not found'})
+          if(err){
+            debug(sha1,'could not get inventory',err)
+            return next(err)
+          }
+          if(!result){
+            debug(sha1,'no inventory found, throwing 404')
+            status = 404
+            return next('File not found')
+          }
+          dump(sha1,'got inventory record',result)
+          debug(sha1,'got inventory record')
           info = result
           next()
         })
@@ -48,58 +75,57 @@ app.get('/:sha1/:filename',function(req,res){
       //convert stats to an object
       function(next){
         stat = JSON.parse(info.stat)
+        dump(sha1,'decoded stats',stat)
+        debug(sha1,'decoded stats')
         next()
       },
       //update hits
       function(next){
-        next()
         redis.hincrby('inventory:' + sha1,'hits',1,function(err){
           if(err)
             logger.warning('Failed to increment hits(' + sha1 + '): ' + err)
+          debug(sha1,'incremented hits')
+          next()
         })
       },
       //set headers
       function(next){
-        /* jshint bitwise:false */
+        headers['Content-Type'] = info.mimeType
+        headers['Content-Length'] = stat.size
         //add attachment for a download
         if('string' === typeof req.query.download){
-          res.set(
-            'Content-Disposition',
-            'attachment; filename=' + req.params.filename
-          )
+          headers['Content-Disposition'] = 'attachment; filename=' + req.params.filename
         }
-        res.set('Accept-Ranges','bytes')
-        res.set('Content-Type',info.mimeType)
-        //set some aggressive cache headers this content cant change, hence sha1
-        res.set('Cache-Control','public, max-age=31536000')
-        res.set('Pragma','public')
         //byte range support
         range = {start: 0, end: (stat.size - 1 || 0)}
         var rangeRaw = req.get('range')
         if(rangeRaw){
           var match = rangeRaw.match(/(\d+)-(\d*)/)
-          if(match[1]) range.start = match[1] >> 0
-          if(match[2]) range.end = match[2] >> 0
-          res.status(206)
-          res.set(
-            'Content-Range',
-            'bytes ' + range.start + '-' + range.end + '/' + stat.size
-          )
+          if(match[1]) range.start = +match[1]
+          if(match[2]) range.end = +match[2]
+          status = 206
+          headers['Content-Range'] =
+            'bytes ' +
+            range.start + '-' + range.end + '/' + stat.size
+          headers['Content-Length'] = (range.end - range.start) + 1
         }
+        dump(sha1,'finished setting headers',headers)
+        debug(sha1,'finished setting headers')
         next()
       }
-
     ],
     function(err){
       if(err){
-        if('string' === typeof err) err = {code: 500, message: err}
-        logger.debug(
-          'Export error, code: ' + err.code + ', message: ' + err.message
-        )
-        res.status(err.code)
-        res.send(err.message)
+        if('string' === typeof err) status = 500
+        debug(sha1,'Request failed',status,err)
+        res.status(status)
+        res.send(err)
         return
       }
+      //set our status
+      res.status(status)
+      //set our headers
+      res.set(headers)
       //setup output sniffer to track bytes sent regardless of output medium
       var sniff = new Sniffer()
       var bytesSent = 0
@@ -123,13 +149,23 @@ app.get('/:sha1/:filename',function(req,res){
         res.end()
         return
       }
-      //set content length here
-      res.set('Content-Length',(range.end - range.start) + 1)
       //setup read stream from the file
       var rs = fs.createReadStream(path,range)
-      res.on('close',function(){
+      res.on('finish',function(){
+        debug(sha1,'increase byte counter by',bytesSent)
         redis.hincrby('inventory:' + sha1,'sent',bytesSent)
-        rs.close()
+        debug(sha1,'request delivery finished')
+      })
+      res.on('close',function(){
+        debug(sha1,'got res.close')
+        debug(sha1,'readable ended?',rs._readableState.ended)
+        if(!rs._readableState.ended){
+          debug(sha1,'manually closing readable to prevent leaks!')
+          rs.close()
+        }
+        debug(sha1,'increase byte counter by',bytesSent)
+        redis.hincrby('inventory:' + sha1,'sent',bytesSent)
+        debug(sha1,'request complete')
       })
       rs.pipe(sniff).pipe(res)
     }
