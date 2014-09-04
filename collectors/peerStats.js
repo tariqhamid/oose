@@ -19,6 +19,7 @@ var hrStorageRam = snmp.mib.hrStorageTypes(2)
 
 var isWin = ('win32' === process.platform)
 var maxint32 = Math.pow(2,32)
+var maxint64 = Math.pow(2,64)
 var item
 var i
 var j
@@ -38,7 +39,8 @@ var netInfo = {
   speedIndexes: [],
   speed: 0,
   //octet histories for rate calc
-  use64bit: true,
+  use64in: true,
+  use64out: true,
   in: [],
   out: [],
   uptime: [],
@@ -477,61 +479,69 @@ var snmpPoll = function(basket,done){
         )
         debug('snmpPoll() calling add()')
         //also grab hi-cap Counter64 counts
-        if(netInfo.use64bit){
-          netInfo.use64bit = false
-          snmp.add(snmp.mib.ifHCInOctets(netInfo.index),
-            function(result,complete){
+        if(netInfo.use64in){
+          snmp.add(snmp.mib.ifHCInOctets(netInfo.index),function(result,complete){
               dump('ifHCInOctets',result)
-              if('function' !== typeof complete) complete = nullFunc
-              if('number' !== typeof result.value) return complete()
-              netInfo.use64bit = true
-              if(netInfo.in[netInfo.in.length-1] !== result.value)
-                netInfo.in.push(result.value)
-              debug('collected netIn: ' + basket.netIn)
+              if(netInfo.use64in){
+                netInfo.use64in = false
+                if('function' !== typeof complete) complete = nullFunc
+                if('number' !== typeof result.value) return complete()
+                netInfo.use64in = true
+                if(netInfo.in[netInfo.in.length - 1] !== result.value)
+                  netInfo.in.push(result.value)
+                basket.netIn = result.value
+                debug('collected 64-bit netIn: ' + basket.netIn)
+              }
               complete()
-            }
-          )
+            })
+        }
+        if(netInfo.use64out){
           snmp.add(snmp.mib.ifHCOutOctets(netInfo.index),
             function(result,complete){
               dump('ifHCOutOctets',result)
-              if('function' !== typeof complete) complete = nullFunc
-              if('number' !== typeof result.value) return complete()
-              netInfo.use64bit = true
-              if(netInfo.out[netInfo.out.length-1] !== result.value)
-                netInfo.out.push(result.value)
-              debug('collected netOut: ' + basket.netOut)
+              if(netInfo.use64out){
+                netInfo.use64out = false
+                if('function' !== typeof complete) complete = nullFunc
+                if('number' !== typeof result.value) return complete()
+                netInfo.use64out = true
+                if(netInfo.out[netInfo.out.length - 1] !== result.value)
+                  netInfo.out.push(result.value)
+                basket.netOut = result.value
+                debug('collected 64-bit netOut: ' + basket.netOut)
+              }
               complete()
             }
           )
         }
-        if(!netInfo.use64bit){
-          //Net:in counter from IF-MIB::ifInOctets.<ifIndex>
-          snmp.add(
-            snmp.mib.ifInOctets(netInfo.index),
-            function(result,complete){
-              dump('ifInOctets',result)
+        //Net:in counter from IF-MIB::ifInOctets.<ifIndex>
+        snmp.add(snmp.mib.ifInOctets(netInfo.index),function(result,complete){
+            dump('ifInOctets',result)
+            if(!netInfo.use64in){
               if('function' !== typeof complete) complete = nullFunc
               if('number' !== typeof result.value) return complete()
-              if(netInfo.in[netInfo.in.length-1] !== result.value)
+              if(netInfo.in[netInfo.in.length - 1] !== result.value)
                 netInfo.in.push(result.value)
-              debug('collected netIn: ' + result.value)
-              complete()
+              basket.netIn = result.value
+              debug('collected 32-bit netIn: ' + basket.netIn)
             }
-          )
-          //Net:out counter from IF-MIB::ifOutOctets.<ifIndex>
-          snmp.add(
-            snmp.mib.ifOutOctets(netInfo.index),
-            function(result,complete){
-              dump('ifOutOctets',result)
+            complete()
+          })
+        //Net:out counter from IF-MIB::ifOutOctets.<ifIndex>
+        snmp.add(
+          snmp.mib.ifOutOctets(netInfo.index),
+          function(result,complete){
+            dump('ifOutOctets',result)
+            if(!netInfo.use64out){
               if('function' !== typeof complete) complete = nullFunc
               if('number' !== typeof result.value) return complete()
-              if(netInfo.out[netInfo.out.length-1] !== result.value)
+              if(netInfo.out[netInfo.out.length - 1] !== result.value)
                 netInfo.out.push(result.value)
-              debug('collected netOut: ' + result.value)
-              complete()
+              basket.netOut = result.value
+              debug('collected 32-bit netOut: ' + basket.netOut)
             }
-          )
-        }
+            complete()
+          }
+        )
         //Sys:uptime counter from SNMPv2-MIB::sysUpTime.0
         snmp.add(
           snmp.mib.sysUpTimeInstance(),
