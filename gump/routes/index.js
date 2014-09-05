@@ -453,7 +453,9 @@ exports.shredderUpdate = function(req,res){
           [
             //remove tmp file
             function(next){
-              fs.unlink(file.tmp,next)
+              if(fs.existsSync(file.tmp))
+                fs.unlink(file.tmp,next)
+              else next()
             },
             //create the embed object
             function(next){
@@ -491,7 +493,9 @@ exports.shredderUpdate = function(req,res){
       //handle error status
       function(next){
         if('error' !== file.shredder.status) return next()
-        fs.unlink(file.tmp,next)
+        if(fs.existsSync(file.tmp))
+          fs.unlink(file.tmp,next)
+        else next()
       },
       //save job
       function(next){
