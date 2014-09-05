@@ -16,6 +16,7 @@ var Logger = require('./helpers/logger')
 var redis = require('./helpers/redis')
 var logger = Logger.create('main')
 
+var clone = new Child('./clone')
 var config = require('./config')
 var peerNext = new Child('./collectors/peerNext')
 var peerStats = new Child('./collectors/peerStats')
@@ -124,6 +125,18 @@ exports.start = function(){
           supervisor.start(next)
         } else next()
       },
+      //start Clone handler
+      function(next){
+        if(config.store.enabled){
+          logger.info('Starting clone system')
+          clone.start(function(err){
+            if(!err){
+              logger.info('Cloning system started')
+              next()
+            } else next(err)
+          })
+        } else next()
+      },
       //start Shredder
       function(next){
         if(config.shredder.enabled){
@@ -188,6 +201,13 @@ exports.start = function(){
           if(config.shredder.enabled){
             logger.info('Stopping shredder')
             shredder.stop(next)
+          } else next()
+        },
+        //stop clone
+        function(next){
+          if(config.shredder.enabled){
+            logger.info('Stopping clone system')
+            clone.stop(next)
           } else next()
         },
         //go to ready state 5

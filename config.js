@@ -11,9 +11,15 @@ config.$load({
   hostname: os.hostname(),
   domain: '',
   root: __dirname + '/data',
-  clones: {
-    min: 2,
-    max: 2
+  clone: {
+    port: 3009,
+    portPublic: null,
+    host: null,
+    copies: {
+      min: 2,
+      max: 2
+    },
+    concurrency: os.cpus().length || 4
   },
   workers: {
     enabled: true,

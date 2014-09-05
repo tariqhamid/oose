@@ -62,8 +62,14 @@ var queueClone = function(sha1,done){
         //if there are less than 2 peers we cant replicate
         if(peerCount < 2) return next()
         //setup clone job
-        var clone = require('../tasks/clone')
-        clone.push({sha1: sha1})
+        var client = commUtil.tcpSend(
+          'clone',
+          {sha1: sha1},
+          config.clone.port,
+          config.clone.host || '127.0.0.1'
+        )
+        client.on('error',next)
+        client.destroy()
         next()
       }
     ],
@@ -136,8 +142,8 @@ exports.redisInsert = function(sha1,done){
         {
           stat: JSON.stringify(stat),
           mimeType: mimeType,
-          copiesMin: config.clones.min,
-          copiesMax: config.clones.max
+          copiesMin: config.clone.copies.min,
+          copiesMax: config.clone.copies.max
         },
         function(err){
           if(err) return done(err)
