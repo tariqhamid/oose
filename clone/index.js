@@ -57,7 +57,7 @@ var clone = function(job,cb){
             bytesSent = bytesSent + buff.length
             sniff.resume()
           })
-          sniff.on('finish',function(){
+          ws.on('finish',function(){
             var sha1 = shasum.digest('hex')
             var duration = ((+new Date()) - start) / 1000
             if(!bytesSent) bytesSent = 0

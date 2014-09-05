@@ -149,10 +149,9 @@ exports.outputStart = function(res,title){
  * @param {object} res
  */
 exports.outputEnd = function(res){
-  res.write('</pre>' +
+  res.end('</pre>' +
     '<script type="text/javascript">\nscrollBottom();\nclearInterval(scrollInt);\n</script>' +
     '</body></html>')
-  res.end()
 }
 
 

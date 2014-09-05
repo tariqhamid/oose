@@ -44,8 +44,6 @@ var buildCache = function(sha1,done){
             return done('failed to parse locate response, empty payload')
           //read our response
           var payload = commUtil.parse(client.read(sizebits.readUInt16BE(0)))
-          //close the connection
-          client.end()
           //check if we got an error
           if('ok' !== payload.message.status)
             return next(payload.message.message)
@@ -275,8 +273,6 @@ app.post('/api/shredderJob',function(req,res){
           size = size.readUInt16BE(0)
           //read our response
           var payload = commUtil.parse(client.read(size))
-          //close the connection
-          client.end()
           //check if we got an error
           if('ok' !== payload.message.status)
             return next(payload.message.message)
