@@ -60,7 +60,7 @@ var queueClone = function(sha1,done){
         //if we have 2 or more clones dont add more
         if(cloneCount >= 2) return next()
         //if there are less than 2 peers we cant replicate
-        //if(peerCount < 2) return next()
+        if(peerCount < 2) return next()
         //setup clone job
         var client = commUtil.tcpSend(
           'clone',
@@ -82,7 +82,6 @@ var queueClone = function(sha1,done){
           next()
         })
         client.on('error',next)
-        next()
       }
     ],
     done
