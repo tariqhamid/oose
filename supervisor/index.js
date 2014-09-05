@@ -52,9 +52,8 @@ var supervisorStartup = function(){
 
 /**
  * Start Supervisor
- * @param {function} done Completion callback
  */
-exports.start = function(done){
+var start = function(){
 /*
   redis.sscan('inventory',0,function(err,result){
     if(err){
@@ -66,20 +65,19 @@ exports.start = function(done){
     done()
   })
  */
-  done()
+  process.send({status: 'ok'})
 }
+start()
 
 
 /**
  * Stop Supervisor
  */
-exports.stop = function(){
-  if(supervisorTimeout){
-    clearTimeout(supervisorTimeout)
-    msg.stopped()
+process.on('message',function(msg){
+  if('stop' === msg){
+    if(supervisorTimeout){
+      clearTimeout(supervisorTimeout)
+      msg.stopped()
+    }
   }
-}
-
-if(require.main === module){
-  exports.start(function(){ msg.started() })
-}
+})

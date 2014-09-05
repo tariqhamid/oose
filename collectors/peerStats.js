@@ -95,6 +95,9 @@ var getServices = function(basket,next){
   if(config.prism.enabled){
     basket.portPrism = config.prism.portPublic || config.prism.port
   }
+  if(config.shredder.enabled){
+    basket.portShredder = config.shredder.portPublic || config.shredder.port
+  }
   basket.portMesh = config.mesh.portPublic || config.mesh.port
   next(null,basket)
 }
@@ -592,12 +595,25 @@ collector.process(function(basket,next){
 })
 collector.save(save)
 
-
-/**
- * Export module
- * @type {Collector}
- */
-module.exports = {
-  prep: snmpPrep,
-  collector: collector
+if(require.main === module){
+  process.on('message',function(msg){
+    if('stop' === msg){
+      collector.stop(function(err){
+        if(err) process.send({status: 'error', message: err})
+        process.exit(err ? 1 : 0)
+      })
+    }
+  })
+  var start = function(){
+    snmpPrep(function(err){
+      if(err){
+        return process.send({status: 'error', message: err})
+      }
+      collector.once('loopEnd',function(){
+        process.send({status: 'ok'})
+      })
+      collector.start(config.mesh.stat.interval,0)
+    })
+  }
+  start()
 }

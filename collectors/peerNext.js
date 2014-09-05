@@ -14,6 +14,7 @@ var publicParams = [
   'portExport',
   'portImport',
   'portPrism',
+  'portShredder',
   'services',
   'diskFree',
   'availableCapacity',
@@ -87,8 +88,26 @@ peerNext.on('error',function(err){
 })
 
 
-/**
- * Export module
- * @type {Collector}
- */
-module.exports = peerNext
+if(require.main === module){
+  process.on('message',function(msg){
+    if('stop' === msg){
+      peerNext.stop(function(err){
+        if(err){
+          process.send({status: 'error', message: msg})
+          process.exit(1)
+        }
+        process.exit()
+      })
+    }
+  })
+  var start = function(){
+    peerNext.start(config.mesh.peerNext.interval,500,function(err){
+      if(err){
+        process.send({status: 'error', message: err})
+        process.exit(1)
+      }
+      process.send({status: 'ok'})
+    })
+  }
+  start()
+}

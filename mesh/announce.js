@@ -77,6 +77,7 @@ var announceSend = function(){
         message.portExport =
           config.store.export.portPublic || peer.portExport || 0
         message.portPrism = config.prism.portPublic || peer.portPrism || 0
+        message.portShredder = config.shredder.portPublic || peer.portShredder || 0
         message.portMesh = config.mesh.portPublic || peer.portMesh || 0
         message.netSpeed = peer.netSpeed || 0
         message.netInBps = peer.netInBps || 0
@@ -160,12 +161,15 @@ var announceListen = function(){
           peer.memoryTotal = packet.memoryTotal
           peer.availableCapacity = packet.availableCapacity || 0
           peer.services = packet.services
-          if(packet.services.indexOf('store') > 0){
+          if(packet.services.indexOf('store') >= 0){
             peer.portImport = packet.portImport
             peer.portExport = packet.portExport
           }
-          if(packet.services.indexOf('prism') > 0){
+          if(packet.services.indexOf('prism') >= 0){
             peer.portPrism = packet.portPrism
+          }
+          if(packet.services.indexOf('shredder') >= 0){
+            peer.portShredder = packet.portShredder
           }
           peer.portMesh = packet.portMesh
           peer.netSpeed = packet.netSpeed || 0

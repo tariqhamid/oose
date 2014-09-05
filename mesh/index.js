@@ -6,7 +6,6 @@ var communicator = require('../helpers/communicator')
 var logger = require('../helpers/logger').create('mesh')
 var redis = require('../helpers/redis')
 var shortId = require('../helpers/shortid')
-
 var config = require('../config')
 
 
@@ -183,9 +182,78 @@ Mesh.prototype.locate = function(sha1,done){
   }
 }
 
+//init mesh
+var mesh = new Mesh()
+
 
 /**
- * Export mesh instance
+ * Export mesh
  * @type {Mesh}
  */
-module.exports = new Mesh()
+module.exports = mesh
+
+
+//if this is being spawned directly, startup and setup message handlers
+if(require.main === module){
+  //shutdown
+  process.on('message',function(msg){
+    if(msg.readyState){
+      mesh.readyState(msg.readyState)
+    }
+    if('stop' === msg){
+      async.series([
+          //stop announce
+          function(next){
+            require('./announce').stop(next)
+          },
+          //stop ping
+          function(next){
+            require('./ping').stop(next)
+          },
+          //stop mesh
+          function(next){
+            mesh.stop(next)
+          }
+        ],
+        function(err){
+          if(err){
+            process.send({status: 'error', message: err})
+            process.exit(1)
+          }
+          process.exit()
+        })
+    }
+  })
+
+
+  var start = function(){
+    async.series([
+        //start mesh
+        function(next){
+          mesh.start(next)
+        },
+        //start ping
+        function(next){
+          require('./ping').start(next)
+        },
+        //start announce
+        function(next){
+          require('./announce').start(next)
+        }
+      ],
+      function(err){
+        if(err){
+          process.send({status: 'error', message: err})
+          process.exit(1)
+        }
+        process.send({status: 'ok'})
+      })
+  }
+  start()
+}
+
+
+
+
+
+

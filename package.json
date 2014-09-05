@@ -2,7 +2,7 @@
   "author": "ESITED LLC <developers@esited.com>",
   "name": "oose",
   "description": "Object Oriented Storage Engine",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "homepage": "http://oose.io/",
   "repository": {
     "type": "git",

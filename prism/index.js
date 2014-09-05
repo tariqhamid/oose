@@ -266,7 +266,7 @@ app.post('/api/shredderJob',function(req,res){
         var client = commUtil.tcpSend(
           'shred:job:push',
           {description: JSON.stringify(req.body)},
-          peerNext.portMesh,
+          peerNext.portShredder,
           peerNext.ip
         )
         client.once('readable',function(){

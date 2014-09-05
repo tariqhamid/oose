@@ -68,6 +68,9 @@ config.$load({
   },
   shredder: {
     enabled: false,
+    port: 3008,
+    portPublic: null,
+    host: null,
     concurrency: os.cpus().length || 1,
     snapshot: __dirname + '/shredder/snapshot.json'
   },

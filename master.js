@@ -6,21 +6,22 @@ var async = require('async')
 var cluster = require('cluster')
 //var debug = require('debug')('oose:master')
 var fs = require('graceful-fs')
+var mkdirp = require('mkdirp')
 
 var os = require('os')
 var program = require('commander')
 
+var Child = require('./helpers/child')
 var Logger = require('./helpers/logger')
 var redis = require('./helpers/redis')
 var logger = Logger.create('main')
 
 var config = require('./config')
-var peerNext = require('./collectors/peerNext')
-var peerStats = require('./collectors/peerStats')
-var mesh = require('./mesh')
-var ping = require('./mesh/ping')
-var announce = require('./mesh/announce')
-var shredder = require('./shredder')
+var peerNext = new Child('./collectors/peerNext')
+var peerStats = new Child('./collectors/peerStats')
+var mesh = new Child('./mesh')
+var shredder = new Child('./shredder')
+var supervisor = new Child('./supervisor')
 
 
 /**
@@ -51,7 +52,7 @@ exports.start = function(){
         var root = config.$get('root')
         fs.exists(root,function(exists){
           if(exists) return next()
-          require('mkdirp')(root,next)
+          mkdirp(root,next)
         })
       },
       //cleanup redis
@@ -81,74 +82,46 @@ exports.start = function(){
       //inventory files first if store is enabled
       function(next){
         if(!config.$get('store.enabled')) return next()
-        require('./tasks/inventory').start(function(err){
-          next(err)
-        })
+        Child.fork('./tasks/inventory',next)
       },
       //start collectors
       function(next){
         if(config.mesh.enabled && config.mesh.stat.enabled){
           logger.info('Starting stats collection')
-          peerStats.prep(function(err){
-            if(err) return next(err)
-            peerStats.collector.once('loopEnd',function(){next()})
-            peerStats.collector.start(config.mesh.stat.interval,0)
-          })
+          peerStats.start(next)
         } else next()
       },
       //start mesh
       function(next){
         if(config.$get('mesh.enabled')){
           logger.info('Starting mesh')
-          mesh.on('error',function(err){
-            logger.error(err)
-          })
           mesh.start(next)
-        } else next()
-      },
-      //start announce
-      function(next){
-        if(config.mesh.enabled && config.mesh.announce.enabled){
-          logger.info('Starting announce')
-          announce.start(next)
-        } else next()
-      },
-      //start next peer selection
-      function(next){
-        if(config.mesh.enabled && config.mesh.peerNext.enabled){
-          logger.info('Starting next peer selection')
-          peerNext.start(
-            config.mesh.peerNext.interval,
-            500,
-            next
-          )
         } else next()
       },
       //go to ready state 1
       function(next){
         logger.info('Going to readyState 1')
-        mesh.readyState(1,next)
+        mesh.send({readyState: 1})
+        next()
       },
-      //start ping
+      //start next peer selection
       function(next){
-        if(config.mesh.enabled && config.mesh.ping.enabled){
-          logger.info('Starting ping')
-          ping.start(next)
+        if(config.mesh.enabled && config.mesh.peerNext.enabled){
+          logger.info('Starting next peer selection')
+          peerNext.start(next)
         } else next()
       },
       //go to ready state 2
       function(next){
         logger.info('Going to readyState 2')
-        mesh.readyState(2,next)
+        mesh.send({readyState: 2})
+        next()
       },
       //start the supervisor
       function(next){
         if(config.supervisor.enabled){
           logger.info('Starting supervisor')
-          require('./supervisor').start(function(){
-            logger.info('Supervisor started')
-            next()
-          })
+          supervisor.start(next)
         } else next()
       },
       //start Shredder
@@ -185,7 +158,7 @@ exports.start = function(){
         if(workerOnlineCount >= workerCount){
           //go to ready state 3
           logger.info('Going to readyState 3')
-          mesh.readyState(3)
+          mesh.send({readyState: 3})
         }
       })
       //worker recovery
@@ -220,7 +193,8 @@ exports.start = function(){
         //go to ready state 5
         function(next){
           logger.info('Going to readyState 5')
-          mesh.readyState(5,next)
+          mesh.send({readyState: 5})
+          next()
         },
         //message workers to shutdown
         function(next){
@@ -253,20 +227,6 @@ exports.start = function(){
             checkWorkerCount()
           } else next()
         },
-        //stop announce
-        function(next){
-          if(config.mesh.enabled && config.mesh.announce.enabled){
-            logger.info('Stopping announce')
-            announce.stop(next)
-          } else next()
-        },
-        //stop ping
-        function(next){
-          if(config.mesh.enabled && config.mesh.ping.enabled){
-            logger.info('Stopping ping')
-            ping.stop(next)
-          } else next()
-        },
         //stop next peer selection
         function(next){
           if(config.mesh.enabled && config.mesh.peerNext.enabled){
@@ -278,13 +238,14 @@ exports.start = function(){
         function(next){
           if(config.mesh.enabled && config.mesh.stat.enabled){
             logger.info('Stopping self stat collection')
-            peerStats.collector.stop(next)
+            peerStats.stop(next)
           } else next()
         },
         //go to ready state 0
         function(next){
           logger.info('Going to readyState 0')
-          mesh.readyState(0,next)
+          mesh.send({readyState: 0})
+          next()
         },
         //stop mesh
         function(next){

@@ -100,7 +100,7 @@ var processFiles = function(progress,data,done){
  * Run inventory
  * @param {function} done
  */
-exports.start = function(done){
+var start = function(done){
   if('function' !== typeof done) done = function(){}
   logger.info('Starting to build inventory')
   var progress = {
@@ -135,9 +135,17 @@ exports.start = function(done){
   cp.on('close',function(code){
     debug('done reading files',code)
     processFiles(progress,buffer,function(err){
-      progressMessage(progress,true)
-      logger.info('Inventory complete')
-      done(null,progress.fileCount)
+      logger.info('Inventory complete, read ' + progress.fileCount + ' files')
+      done(err,progress.fileCount)
     })
   })
 }
+
+//execute inventory on open
+start(function(err){
+  if(err){
+    process.send({status: 'error', message: err})
+  }
+  process.send({status: 'ok'})
+  process.exit()
+})

@@ -64,6 +64,7 @@ Here is a map of what services are on each port.
 * 3005 - LG, the cluster looking glass
 * 3006 - Hideout, key value store for caching
 * 3007 - Executioner, local scripting and peer management system
+* 3008 - Shredder job acceptor (raw tcp)
 
 ## Redis Schema
 
