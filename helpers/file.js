@@ -195,7 +195,7 @@ exports.write = function(source,sha1,done){
 
 /**
  * Import a file directly from a stream
- * @param {object} readable  Readable stream to import from
+ * @param {stream.Readable} readable  Readable stream to import from
  * @param {function} done
  */
 exports.fromReadable = function(readable,done){
@@ -211,12 +211,12 @@ exports.fromReadable = function(readable,done){
     [
       //setup pipes and handlers for errors and update sha1 sum
       function(next){
+        readable.on('error',function(err){next(err)})
         var shasum = crypto.createHash('sha1')
         var sniff = new Sniffer()
         sniff.on('data',function(data){
           shasum.update(data)
         })
-        readable.on('error',function(err){next(err)})
         writable.on('finish',function(){
           sha1 = shasum.digest('hex')
           next()
