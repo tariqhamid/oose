@@ -202,8 +202,10 @@ exports.upload = function(req,res){
     var sniff = new Sniffer()
     var doc
     sniff.on('data',function(data){
+      sniff.pause()
       file.size += data.length
       shasum.update(data)
+      sniff.resume()
     })
     writable.on('finish',function(){
       file.sha1 = shasum.digest('hex')

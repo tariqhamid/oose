@@ -127,7 +127,9 @@ var start = function(done){
   cp.stdout.setEncoding('utf-8')
   cp.stderr.setEncoding('utf-8')
   cp.stdout.on('data',function(data){
+    cp.stdout.pause()
     buffer = buffer + data
+    cp.stdout.resume()
   })
   cp.stderr.on('data',function(data){
     debug('stderr',data)

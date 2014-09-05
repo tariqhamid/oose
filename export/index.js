@@ -130,7 +130,9 @@ app.get('/:sha1/:filename',function(req,res){
       var sniff = new Sniffer()
       var bytesSent = 0
       sniff.on('data',function(data){
+        sniff.pause()
         bytesSent += data.length
+        sniff.resume()
       })
       //start param support
       if(req.query.start && 'video/mp4' === info.mimeType){

@@ -52,8 +52,10 @@ var clone = function(job,cb){
         ws.on('connect',function(){
           var sniff = new Sniffer()
           sniff.on('data',function(buff){
+            sniff.pause()
             shasum.update(buff)
             bytesSent = bytesSent + buff.length
+            sniff.resume()
           })
           sniff.on('finish',function(){
             var sha1 = shasum.digest('hex')
@@ -81,6 +83,8 @@ var clone = function(job,cb){
 }
 
 var q = async.queue(clone,config.clone.concurrency || 1)
+//TESTING
+q.push({sha1: '77e89411d8747bcc6003bdd35768adeddfbca4cd'})
 
 
 /**

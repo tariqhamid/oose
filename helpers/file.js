@@ -102,7 +102,9 @@ exports.sum = function(path,done){
   })
   rs.on('error',done)
   rs.on('data',function(chunk){
+    rs.pause()
     shasum.update(chunk)
+    rs.resume()
   })
 }
 
@@ -215,9 +217,11 @@ exports.fromReadable = function(readable,done){
         var shasum = crypto.createHash('sha1')
         var sniff = new Sniffer()
         sniff.on('data',function(data){
+          sniff.pause()
           shasum.update(data)
+          sniff.resume()
         })
-        writable.on('finish',function(){
+        sniff.on('finish',function(){
           sha1 = shasum.digest('hex')
           next()
         })

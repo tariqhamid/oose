@@ -108,6 +108,7 @@ var executeRequest = function(job,req,done){
     //setup error and progress handling
     res.on('error',function(err){done(err)})
     res.on('data',function(data){
+      res.pause()
       frames.complete += data.length
       if(frames.complete > frames.total) frames.total = frames.complete
       //show progress message if we can
@@ -115,12 +116,17 @@ var executeRequest = function(job,req,done){
         job.logger.info(progressMessage(opts,progress,frames))
       //send a job update about our progress (force it on the last frame)
       job.update({frames: frames},(frames.total === frames.complete))
+      res.resume()
     })
     //decide what to do with the output
     if(resource){
       var shasum = crypto.createHash('sha1')
       var sniff = new Sniffer()
-      sniff.on('data',function(data){shasum.update(data)})
+      sniff.on('data',function(data){
+        sniff.pause()
+        shasum.update(data)
+        sniff.resume()
+      })
       var tmp = fs.createWriteStream(resource.path)
       tmp.on('finish',function(){
         var sha1 = shasum.digest('hex')
@@ -145,7 +151,9 @@ var executeRequest = function(job,req,done){
         //we must switch to string mode to be able to parse output
         res.setEncoding('utf-8')
         res.on('data',function(data){
+          res.pause()
           buffer += data
+          res.resume()
         })
         //parse the data using the provided regex and store the params
         res.on('end',function(){
