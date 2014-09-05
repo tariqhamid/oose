@@ -22,13 +22,15 @@ var announceLog = function(selfPeer,oldPeer,peer,packet){
     config.mesh.debug && packet.hostname === selfPeer.hostname ?
     ' [SELFIE]' :
     ''
-  logger.info(
-    peer.hostname +
-    ' (' + peer.ip + ':' + peer.portMesh + ')' +
-    ' @ ' + new Date(peer.sent).toLocaleTimeString() +
-    ' (latency ' + peer.latency + ')' +
-    selfie
-  )
+  if(config.mesh.debug > 0){
+    logger.info(
+        peer.hostname +
+        ' (' + peer.ip + ':' + peer.portMesh + ')' +
+        ' @ ' + new Date(peer.sent).toLocaleTimeString() +
+        ' (latency ' + peer.latency + ')' +
+        selfie
+    )
+  }
 }
 
 

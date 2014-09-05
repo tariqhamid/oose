@@ -5,6 +5,7 @@ var net = require('net')
 var prettyBytes = require('pretty-bytes')
 
 var communicator = require('../helpers/communicator')
+var commUtil = communicator.util
 var file = require('../helpers/file')
 var logger = require('../helpers/logger').create('clone')
 var peer = require('../helpers/peer')
@@ -79,9 +80,15 @@ var q = async.queue(clone,config.clone.concurrency || 1)
 /**
  * Handle new jobs
  * @param {*} message
+ * @param {net.Socket} socket
  */
-var newJob = function(message){
+var newJob = function(message,socket){
   q.push({sha1: message.sha1})
+  //respond to the request with the sha1 and queue position
+  socket.end(commUtil.withLength(commUtil.build(
+    message.sha1,
+    {status: 'ok', position: q.length()}
+  )))
 }
 
 

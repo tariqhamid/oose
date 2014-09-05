@@ -60,7 +60,7 @@ var queueClone = function(sha1,done){
         //if we have 2 or more clones dont add more
         if(cloneCount >= 2) return next()
         //if there are less than 2 peers we cant replicate
-        if(peerCount < 2) return next()
+        //if(peerCount < 2) return next()
         //setup clone job
         var client = commUtil.tcpSend(
           'clone',
@@ -68,8 +68,20 @@ var queueClone = function(sha1,done){
           config.clone.port,
           config.clone.host || '127.0.0.1'
         )
+        client.once('readable',function(){
+          var size = client.read(2)
+          if(null === size) return next('Failed to queue clone')
+          size = size.readUInt16BE(0)
+          //read our response
+          var payload = commUtil.parse(client.read(size))
+          //close the connection
+          client.end()
+          //check if we got an error
+          if('ok' !== payload.message.status)
+            return next(payload.message.message)
+          next()
+        })
         client.on('error',next)
-        client.destroy()
         next()
       }
     ],

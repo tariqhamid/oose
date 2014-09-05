@@ -270,10 +270,11 @@ app.post('/api/shredderJob',function(req,res){
           peerNext.ip
         )
         client.once('readable',function(){
+          var size = client.read(2)
+          if(null === size) return next('Failed to queue job')
+          size = size.readUInt16BE(0)
           //read our response
-          var payload = commUtil.parse(
-            client.read(client.read(2).readUInt16BE(0))
-          )
+          var payload = commUtil.parse(client.read(size))
           //close the connection
           client.end()
           //check if we got an error
