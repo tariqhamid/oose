@@ -10,7 +10,9 @@ var isBinary = /[\x00-\x08\x0E-\x1F]/
 var mib2 = '.1.3.6.1.2.1'
 var hrStorage = mib2 + '.25.2'
 var hrDevice = mib2 + '.25.3'
-var ifEntry = mib2 + '.2.2.1'
+var ifTable = mib2 + '.2.2'
+var ifEntry = ifTable + '.1'
+var tcpConnectionTable = mib2 + '.6.19'
 
 var mibString = function(){
   var arg
@@ -77,8 +79,59 @@ var SnmpHelper = function(options){
  * @return {String} OID string
  */
 SnmpHelper.prototype.mib = {
-  sysUpTimeInstance:function(){
-    return mibString(mib2,'1.3.0')
+  hrDeviceType: function(){
+    return mibString(hrDevice,'2.1.2')
+  },
+  hrDeviceTypes: function(type){
+    return mibString(hrDevice,'1',type)
+  },
+  hrProcessorLoad: function(){
+    return mibString(hrDevice,'3.1.2')
+  },
+  hrStorageAllocationUnits: function(index){
+    return mibString(hrStorage,'3.1.4',index)
+  },
+  hrStorageDescr: function(){
+    return mibString(hrStorage,'3.1.3')
+  },
+  hrStorageSize: function(index){
+    return mibString(hrStorage,'3.1.5',index)
+  },
+  hrStorageType: function(){
+    return mibString(hrStorage,'3.1.2')
+  },
+  hrStorageTypes: function(type){
+    return mibString(hrStorage,'1',type)
+  },
+  hrStorageUsed: function(index){
+    return mibString(hrStorage,'3.1.6',index)
+  },
+  ifAlias: function(index){
+    return mibString(mib2,'31.1.1.1.18',index)
+  },
+  ifDescr: function(index){
+    return mibString(ifEntry,'2',index)
+  },
+  ifPhysAddress: function(index){
+    return mibString(ifEntry,'6',index)
+  },
+  ifSpeed: function(index){
+    return mibString(ifEntry,'5',index)
+  },
+  ifInOctets: function(index){
+    return mibString(ifEntry,'10',index)
+  },
+  ifOutOctets: function(index){
+    return mibString(ifEntry,'16',index)
+  },
+  ifHCInOctets: function(index){
+    return mibString(mib2,'31.1.1.1.6',index)
+  },
+  ifHCOutOctets: function(index){
+    return mibString(mib2,'31.1.1.1.10',index)
+  },
+  ifTable: function(){
+    return mibString(ifTable)
   },
   ip: function(extra){
     return mibString(mib2,'4',extra)
@@ -98,59 +151,17 @@ SnmpHelper.prototype.mib = {
   ipRouteNextHop: function(ip){
     return mibString(mib2,'4.21.1.7',ip)
   },
+  nsCacheTimeout: function(){
+    return mibString(mib2,'8072.1.5.3.1.2')
+  },
+  sysUpTimeInstance:function(){
+    return mibString(mib2,'1.3.0')
+  },
+  tcpConnectionTable: function(){
+    return mibString(tcpConnectionTable)
+  },
   tcpConnectionState: function(ip,port){
-    return mibString(mib2,'6.19.1.7.1.4',ip,port)
-  },
-  hrDeviceType: function(){
-    return mibString(hrDevice,'2.1.2')
-  },
-  hrDeviceTypes: function(type){
-    return mibString(hrDevice,'1',type)
-  },
-  hrProcessorLoad: function(){
-    return mibString(hrDevice,'3.1.2')
-  },
-  hrStorageType: function(){
-    return mibString(hrStorage,'3.1.2')
-  },
-  hrStorageTypes: function(type){
-    return mibString(hrStorage,'1',type)
-  },
-  hrStorageDescr: function(){
-    return mibString(hrStorage,'3.1.3')
-  },
-  hrStorageAllocationUnits: function(index){
-    return mibString(hrStorage,'3.1.4',index)
-  },
-  hrStorageSize: function(index){
-    return mibString(hrStorage,'3.1.5',index)
-  },
-  hrStorageUsed: function(index){
-    return mibString(hrStorage,'3.1.6',index)
-  },
-  ifAlias: function(index){
-    return mibString(mib2,'31.1.1.1.18',index)
-  },
-  ifDescr: function(index){
-    return mibString(ifEntry,'2',index)
-  },
-  ifSpeed: function(index){
-    return mibString(ifEntry,'5',index)
-  },
-  ifPhysAddress: function(index){
-    return mibString(ifEntry,'6',index)
-  },
-  ifInOctets: function(index){
-    return mibString(ifEntry,'10',index)
-  },
-  ifOutOctets: function(index){
-    return mibString(ifEntry,'16',index)
-  },
-  ifHCInOctets: function(index){
-    return mibString(mib2,'31.1.1.1.6',index)
-  },
-  ifHCOutOctets: function(index){
-    return mibString(mib2,'31.1.1.1.10',index)
+    return mibString(tcpConnectionTable,'1.7.1.4',ip,port)
   }
 }
 

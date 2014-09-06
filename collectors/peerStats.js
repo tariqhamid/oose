@@ -13,7 +13,7 @@ var SnmpHelper = require('../helpers/snmp')
 var config = require('../config')
 var root = path.resolve(config.root)
 
-var snmp = new SnmpHelper()
+var snmp = new SnmpHelper({community: 'private'})
 var hrDeviceProcessor = snmp.mib.hrDeviceTypes(3)
 var hrStorageRam = snmp.mib.hrStorageTypes(2)
 
@@ -161,6 +161,40 @@ var snmpPrep = function(done){
   debug('snmpPrep() called')
   async.series(
     [
+      function(next){
+        snmp.sess.set(
+          {
+            oid: snmp.mib.nsCacheTimeout(snmp.mib.ifTable()),
+            type: snmp.types.Integer,
+            value: 1
+          },
+          //ignore errors, this may not exist (non Net-SNMP)
+          function(err,varbinds){
+            if(varbinds && 1 === varbinds[0].value)
+              debug('ifTable update rate set to 1sec')
+            else
+              debug('ifTable update rate setting unavailable')
+            next()
+          }
+        )
+      },
+      function(next){
+        snmp.sess.set(
+          {
+            oid: snmp.mib.nsCacheTimeout(snmp.mib.tcpConnectionTable()),
+            type: snmp.types.Integer,
+            value: 1
+          },
+          //ignore errors, this may not exist (non Net-SNMP)
+          function(err,varbinds){
+            if(varbinds && 1 === varbinds[0].value)
+              debug('tcpConnectionTable update rate set to 1sec')
+            else
+              debug('tcpConnectionTable update rate setting unavailable')
+            next()
+          }
+        )
+      },
       function(next){
         debug('snmpPrep() calling addBulk()')
         //locate all CPUs
