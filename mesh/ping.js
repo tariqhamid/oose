@@ -1,4 +1,5 @@
 'use strict';
+var debug = require('debug')('oose:mesh:ping')
 var util = require('util')
 
 var logger = require('../helpers/logger').create('mesh:ping')
@@ -32,9 +33,7 @@ var pingClient = function(res,rinfo){
   if(res.token === thisToken){
     pingHosts[rinfo.address] = new Date().getTime() - res.starttime
   } else {
-    logger.warning(
-     '[MESH PING] Out of order ping response detected and ignored'
-    )
+    debug('[MESH PING] Out of order ping response detected and ignored')
   }
 }
 
@@ -61,6 +60,7 @@ var pingStop = function(mesh){
 
 /**
  * Send a ping request to multicast
+ * @param {Mesh} mesh
  */
 var pingSend = function(mesh){
   thisToken = shortId.generate()
@@ -68,7 +68,7 @@ var pingSend = function(mesh){
     token:thisToken,
     starttime:new Date().getTime()
   })
-  logger.debug('hosts:' + util.inspect(pingHosts))
+  debug('hosts:' + util.inspect(pingHosts))
 }
 
 
