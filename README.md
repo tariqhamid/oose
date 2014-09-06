@@ -50,6 +50,20 @@ Second, start the system.
 $ node app
 ```
 
+## Testing
+
+The default test suite can be ran using npm
+
+```
+$ npm test
+```
+
+For development a more interactive test method might be best
+
+```
+$ mocha -R spec --watch
+```
+
 ## Port Layout
 
 By default OOSE starts several services, all of which run on different ports and listen on all interfaces.
