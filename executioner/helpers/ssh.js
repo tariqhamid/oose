@@ -92,9 +92,9 @@ SSH.prototype.commandBuffered = function(cmd,next){
 
 
 /**
- * Run an ssh command stream the output
+ * Run a ssh command stream the output
  * @param {string} cmd
- * * @param {Stream.Writable} writable
+ * @param {Stream.Writable} writable
  * @param {function} next
  */
 SSH.prototype.commandStream = function(cmd,writable,next){

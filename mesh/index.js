@@ -1,11 +1,13 @@
 'use strict';
 var async = require('async')
+var debug = require('debug')('oose:mesh')
 var EventEmitter = require('events').EventEmitter
 
 var communicator = require('../helpers/communicator')
 var logger = require('../helpers/logger').create('mesh')
 var redis = require('../helpers/redis')
 var shortId = require('../helpers/shortid')
+
 var config = require('../config')
 
 
@@ -40,9 +42,16 @@ Mesh.prototype.start = function(done){
   //start tcp
   self.tcp = communicator.TCP({port: config.mesh.port})
   //connection error handling
-  self.udp.on('error',function(err){self.emit('error',err)})
-  self.tcp.on('error',function(err){self.emit('error',err)})
+  self.udp.on('error',function(err){
+    debug('UDP error:',err)
+    self.emit('error',err)
+  })
+  self.tcp.on('error',function(err){
+    debug('TCP error:',err)
+    self.emit('error',err)
+  })
   self.tcp.on('locate',function(message,socket){
+    debug('TCP locate received:',message,socket)
     self.locate(message.sha1,function(err,result){
       var response
       if(err) response = {status: 'error', code: 1, message: err}
@@ -87,12 +96,16 @@ Mesh.prototype.stop = function(done){
   var self = this
   //this looks excessive but its the only way to
   // maintain the scope of the close functions
-  async.series([
-    function(next){self.udp.close(next)},
-    function(next){self.tcp.close(next)}
-  ],function(err){
-    if(err) logger.error('Mesh failed to stop: ' + err)
-  })
+  async.series(
+    [
+      function(next){self.udp.close(next)},
+      function(next){self.tcp.close(next)}
+    ],
+    function(err){
+      if(err) logger.error('Mesh failed to stop: ' + err)
+      debug('Stopped.')
+    }
+  )
   done()
 }
 
@@ -107,11 +120,9 @@ Mesh.prototype.readyState = function(state,done){
   if('function' !== typeof done) done = function(){}
   if(!config.mesh.enabled) return done()
   var self = this
-  if('function' !== typeof done) done = function(){}
   redis.hset('peer:db:' + config.hostname,'readyState',state,function(err){
     if(err) done(err)
-    self.udp.send('readyState',{readyState: state})
-    done()
+    self.udp.send('readyState',{readyState: state},done)
   })
 }
 
@@ -123,64 +134,91 @@ Mesh.prototype.readyState = function(state,done){
  */
 Mesh.prototype.locate = function(sha1,done){
   var self = this
-  //check for Buffer first, because it false positives the typeof below
-  if(sha1 instanceof Buffer && 20 === sha1.length){
-    //called with a SHA1 binary Buffer, convert and fall thru
-    sha1 = sha1.toString('hex')
-  } else if('object' === typeof sha1){
-    //called from the main listener
-    logger.debug(
-        '[MCAST LOCATE] who has ' + sha1.sha1 +
-        ' tell ' + sha1.rinfo.address +
-        ' @ ' + sha1.token
-    )
-    redis.sismember('inventory',sha1.sha1,function(err,result){
-      self.udp.send(sha1.token,{sha1:sha1.sha1,exists:!!result})
-    })
-  }// intentionally no else
-  if('string' === typeof sha1 && 40 === sha1.length){
-    //called with a SHA1 hex string
-    var token = shortId.generate()
-    var basket = {}, locateTimeout
-    var hostname = ''
-    self.udp.on(token,function(req,rinfo){
-      async.series(
-        [
-          //log the action
-          function(next){
-            logger.debug('[LOCATE@' + token + '] ' + rinfo.address + ' says ' +
-                (req.exists ? 'YES' : 'NO') + ' for ' + sha1
-            )
-            next()
-          },
-          //resolve ip to peer hostname
-          function(next){
-            redis.hget('peer:ip',rinfo.address,function(err,result){
-              if(err) return next(err)
-              hostname = result
-              next()
-            })
-          },
-          //add to basket
-          function(next){
-            basket[hostname] = req.exists
-            next()
-          }
-        ],
-        //each recv packet resets the return timer to 1/4 sec
-        function(err){
-          if(err) logger.error('Failed to respond to locate: ' + err)
-          clearTimeout(locateTimeout)
-          locateTimeout = setTimeout(function(){
-            self.udp.removeAllListeners(token)
-            self.udp.send('locate:result',{sha1:sha1,resultSet:basket})
-            done(null,basket)
-          },250)
+  var basket
+  async.series(
+    [
+      function(next){
+        //called with a SHA1 binary Buffer, convert
+        if(sha1 instanceof Buffer && 20 === sha1.length){
+          sha1 = sha1.toString('hex')
         }
-      )
-    })
-    self.udp.send('locate',{token:token,sha1:sha1})
-  }
+        next()
+      },
+      function(next){
+        if('object' !== typeof sha1) return next()
+        //called from the main listener
+        debug(
+            '[MCAST LOCATE] who has ' + sha1.sha1 +
+            ' tell ' + sha1.rinfo.address +
+            ' @ ' + sha1.token
+        )
+        redis.sismember('inventory',sha1.sha1,function(err,result){
+          self.udp.send(
+            sha1.token,
+            {sha1:sha1.sha1,exists:!!result},
+            next
+          )
+        })
+      },
+      function(next){
+        if('string' === typeof sha1 && 40 === sha1.length){
+          //called with a SHA1 hex string
+          var token = shortId.generate()
+          var locateTimeout
+          var hostname = ''
+          basket = {}
+          self.udp.on(token,function(req,rinfo){
+            async.series(
+              [
+                //log the action
+                function(next){
+                  debug(
+                      '[LOCATE@' + token + '] ' + rinfo.address + ' says ' +
+                      (req.exists ? 'YES' : 'NO') + ' for ' + sha1
+                  )
+                  next()
+                },
+                //resolve ip to peer hostname
+                function(next){
+                  redis.hget('peer:ip',rinfo.address,function(err,result){
+                    if(err) return next(err)
+                    hostname = result
+                    next()
+                  })
+                },
+                //add to basket
+                function(next){
+                  basket[hostname] = req.exists
+                  next()
+                }
+              ],
+              //each recv packet resets the return timer to 1/4 sec
+              function(err){
+                if(err) logger.error('Failed to respond to locate: ' + err)
+                clearTimeout(locateTimeout)
+                locateTimeout = setTimeout(function(){
+                  debug('Locate response window closed')
+                  self.udp.removeAllListeners(token)
+                  self.udp.send(
+                    'locate:result',
+                    {sha1:sha1,resultSet:basket},
+                    function(){
+                      next()
+                    }
+                  )
+                },250)
+              }
+            )
+          })
+          self.udp.send('locate',{token:token,sha1:sha1},next)
+        }
+      }
+    ],
+    function(err){
+      debug('Locate result for ' + sha1,basket)
+      done(err,basket)
+    }
+  )
 }
 
 //init mesh
@@ -202,7 +240,8 @@ if(require.main === module){
       mesh.readyState(msg.readyState)
     }
     if('stop' === msg){
-      async.series([
+      async.series(
+        [
           //stop announce
           function(next){
             require('./announce').stop(next)
@@ -222,7 +261,8 @@ if(require.main === module){
             process.exit(1)
           }
           process.exit()
-        })
+        }
+      )
     }
   })
 
@@ -252,9 +292,3 @@ if(require.main === module){
   }
   start()
 }
-
-
-
-
-
-

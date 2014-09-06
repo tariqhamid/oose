@@ -1,5 +1,6 @@
 'use strict';
 var async = require('async')
+var debug = require('debug')('oose:mesh:announce')
 
 var logger = require('../helpers/logger').create('mesh:announce')
 var redis = require('../helpers/redis')
@@ -7,7 +8,11 @@ var redis = require('../helpers/redis')
 var config = require('../config')
 var mesh = require('../mesh')
 
+var nullFunc = function(){}
+
 var announceInterval
+var bootTimeout
+var bootCb = null
 
 
 /**
@@ -18,26 +23,24 @@ var announceInterval
  * @param {object} packet
  */
 var announceLog = function(selfPeer,oldPeer,peer,packet){
-  var selfie =
-    config.mesh.debug && packet.hostname === selfPeer.hostname ?
-    ' [SELFIE]' :
-    ''
-  if(config.mesh.debug > 0){
-    logger.info(
-        peer.hostname +
-        ' (' + peer.ip + ':' + peer.portMesh + ')' +
-        ' @ ' + new Date(peer.sent).toLocaleTimeString() +
-        ' (latency ' + peer.latency + ')' +
-        selfie
-    )
-  }
+  var msg =
+    peer.hostname +
+    ' (' + peer.ip + ':' + peer.portMesh + ')' +
+    ' @ ' + new Date(peer.sent).toLocaleTimeString() +
+    ' (' +
+    (('function' === typeof bootCb) ? 'bootreply' : 'latency ' + peer.latency) +
+    ')' +
+    ((packet.hostname === selfPeer.hostname) ? ' [SELFIE]' : '')
+  debug(msg)
+  if(config.mesh.debug > 0) logger.info(msg)
 }
 
 
 /**
  * Send announcement
+ * @param {Mesh} mesh
  */
-var announceSend = function(){
+var announceSend = function(mesh){
   var peer = {}
   var message = {}
   var peerCount = 0
@@ -91,10 +94,8 @@ var announceSend = function(){
       },
       //send message
       function(next){
-        mesh.udp.send('announce',message)
-        next()
+        mesh.udp.send('announce',message,next)
       }
-      //setup the next timeout
     ],function(err){
       if(err) logger.error(err)
     }
@@ -104,10 +105,11 @@ var announceSend = function(){
 
 /**
  * Listen for announce packets
+ * @param {Mesh} mesh
  */
-var announceListen = function(){
+var announceListen = function(mesh){
   mesh.udp.on('boot',function(){
-    announceSend()
+    announceSend(mesh)
   })
   mesh.udp.on('announce',function(packet,rinfo){
     var selfPeer = {}
@@ -230,10 +232,19 @@ var announceListen = function(){
             next(err)
           })
         }
-        //save to peerRank
+      ],
       //process announce receipt
-      ],function(err){
+      //each recv packet resets the return timer to 1/4 sec
+      function(err){
         if(err) logger.error(err)
+        clearTimeout(bootTimeout)
+        if('function' === typeof bootCb){
+          bootTimeout = setTimeout(function(){
+            debug('booting completed')
+            if('function' === typeof bootCb) bootCb()
+            bootCb = null
+          },250)
+        }
         announceLog(selfPeer,oldPeer,peer,packet)
       }
     )
@@ -246,11 +257,20 @@ var announceListen = function(){
  * @param {function} done
  */
 exports.start = function(done){
-  if('function' !== typeof done) done = function(){}
-  announceListen()
-  mesh.udp.send('boot')
-  announceInterval = setInterval(announceSend,config.mesh.announce.interval)
-  setTimeout(done,250)
+  if('function' !== typeof done) done = nullFunc
+  bootCb = done
+  announceListen(mesh)
+  mesh.udp.send(
+    'boot',
+    null,
+    function(){
+      debug('boot packet sent')
+    }
+  )
+  announceInterval = setInterval(
+    function(){announceSend(mesh)},
+    config.mesh.announce.interval
+  )
 }
 
 
@@ -259,7 +279,7 @@ exports.start = function(done){
  * @param {function} done
  */
 exports.stop = function(done){
-  if('function' !== typeof done) done = function(){}
+  if('function' !== typeof done) done = nullFunc
   if(announceInterval)
     clearInterval(announceInterval)
   done()

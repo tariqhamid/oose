@@ -41,8 +41,9 @@ var pingClient = function(res,rinfo){
 
 /**
  * Setup listeners for ping requests
+ * @param {Mesh} mesh
  */
-var pingListen = function(){
+var pingListen = function(mesh){
   mesh.udp.on('ping',pingServer) //server
   mesh.udp.on('pong',pingClient) //client
 }
@@ -50,8 +51,9 @@ var pingListen = function(){
 
 /**
  * Remove listeners for ping requests
+ * @param {Mesh} mesh
  */
-var pingStop = function(){
+var pingStop = function(mesh){
   mesh.udp.removeListener('ping',pingServer)
   mesh.udp.removeListener('pong',pingClient)
 }
@@ -60,7 +62,7 @@ var pingStop = function(){
 /**
  * Send a ping request to multicast
  */
-var pingSend = function(){
+var pingSend = function(mesh){
   thisToken = shortId.generate()
   mesh.udp.send('ping',{
     token:thisToken,
