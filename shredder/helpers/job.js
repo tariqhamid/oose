@@ -77,16 +77,19 @@ var generateSignature = function(job){
     if(item.sha1 && 40 === item.sha1.length) return
     valid = false
   })
-  //if we dont have all the required information then there is no chance of creating a signature
+  //if we don't have all the required information
+  // then there is no chance of creating a signature
   if(!valid) return null
-  //start to assemble the fingerprint that will be hashed to generate the job signature
+  //start to assemble the fingerprint
+  // which will be hashed to generate the job signature
   var fingerprint = {}
   //add sha1's of the resources
   fingerprint.resource = []
   job.description.$get('resource').forEach(function(item){
     fingerprint.resource.push(item.sha1)
   })
-  //add the entire encoding stanza (any difference here will yield a different result
+  //add the entire encoding stanza
+  // any difference here will yield a different result
   fingerprint.encoding = job.description.$get('encoding')
   //add the entire save section as this will also yield different output
   fingerprint.save = job.description.$get('save')
@@ -322,7 +325,7 @@ Job.prototype.cacheCheck = function(next){
   if(null === that.signature) that.signature = generateSignature(that)
   //if our signature is still null just return
   if(null === that.signature) return next('no signature')
-  //since we do have a signature try to see if hideout has a record of this build
+  //since we have a signature try to see if hideout has a record of this build
   hideout.exists(that.signature,function(err,exists){
     if(err) return next(err)
     if(!exists) return next('does not exist')

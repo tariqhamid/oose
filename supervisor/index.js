@@ -43,8 +43,13 @@ var supervisorStartup = function(){
       var message = {}
       message.sent = new Date().getTime()
       message.hostname = config.hostname
-//      cmdBus.emit('patrolReq',message)
-//      supervisorTimeout = setTimeout(supervisorPatrol,config.supervisor.patrolInterval)
+/*
+      cmdBus.emit('patrolReq',message)
+      supervisorTimeout = setTimeout(
+        supervisorPatrol,
+        config.supervisor.patrolInterval
+      )
+*/
     }
   })
 }
@@ -61,7 +66,10 @@ var start = function(){
     } else {
       logger.info(result)
     }
-    supervisorTimeout = setTimeout(exports.start(),config.supervisor.retryInterval)
+    supervisorTimeout = setTimeout(
+      exports.start(),
+      config.supervisor.retryInterval
+    )
     done()
   })
  */

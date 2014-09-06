@@ -84,7 +84,7 @@ var clone = function(job,cb){
 
 var q = async.queue(clone,config.clone.concurrency || 1)
 //TESTING
-q.push({sha1: '77e89411d8747bcc6003bdd35768adeddfbca4cd'})
+//q.push({sha1: '77e89411d8747bcc6003bdd35768adeddfbca4cd'})
 
 
 /**

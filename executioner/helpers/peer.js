@@ -5,11 +5,12 @@ var net = require('net')
 var string = require('string')
 
 var SSH = require('../helpers/ssh')
-var Peer = require('../../models/peer').model
+var Peer = require('../../models/peer')
+var PeerModel = Peer.model
 
 var config = require('../../config')
 
-var validStatuses = Peer.schema.path('status').enum().enumValues
+var validStatuses = PeerModel.schema.path('status').enum().enumValues
 
 
 /**
@@ -18,7 +19,8 @@ var validStatuses = Peer.schema.path('status').enum().enumValues
  */
 var servicedir = '/etc/service/oose'
 var dtStop = ['svc -d ' + servicedir]
-var dtStart = ['chmod +x /opt/oose/dt/run /opt/oose/dt/log/run','svc -u ' + servicedir]
+var dtStart =
+  ['chmod +x /opt/oose/dt/run /opt/oose/dt/log/run','svc -u ' + servicedir]
 var actions = {
   restart: {
     name: 'restart',
@@ -54,7 +56,7 @@ var commandFail = function(next){
  * @param {function} done
  */
 var peerFind = function(id,done){
-  Peer.findById(id,function(err,result){
+  PeerModel.findById(id,function(err,result){
     if(err) return done(err.message)
     if(!result) return done('Could not find peer')
     done(null,result)
@@ -64,7 +66,7 @@ var peerFind = function(id,done){
 
 /**
  * Connect to a peer using net
- * @param {Peer} peer
+ * @param {PeerModel} peer
  * @param {function} done
  * @return {*}
  */
@@ -83,7 +85,7 @@ var peerNetConnect = function(peer,done){
 
 /**
  * Start a new SSH helper and connect to a peer
- * @param {Peer} peer
+ * @param {PeerModel} peer
  * @param {function} done
  */
 var peerSshConnect = function(peer,done){
@@ -94,7 +96,7 @@ var peerSshConnect = function(peer,done){
 
 /**
  * Log the result of an action to the peer
- * @param {Peer} peer
+ * @param {Peer._schema} peer
  * @param {string} level
  * @param {string} msg
  * @param {string} status
@@ -134,10 +136,11 @@ exports.outputStart = function(res,title){
   res.write(
     '<html><head><title>' + ((title) ? title : '') + '</title>' +
     '<style type="text/css">' +
-    'body {background:#000; color:#fff; font-family:monospace; font-size:16px;}' +
+    'body {background:#000;color:#fff;font-family:monospace;font-size:16px;}' +
     '</style>' +
     '<script type="text/javascript">\n' +
-    'var scrollBottom = function(){window.scrollTo(0,document.body.scrollHeight)};\n' +
+    'var scrollBottom = ' +
+    'function(){window.scrollTo(0,document.body.scrollHeight)};\n' +
     'var scrollInt = setInterval(scrollBottom,100);\n' +
     '</script></head><body>\n')
   res.write('<pre>') //this one begins streaming mode
@@ -150,7 +153,8 @@ exports.outputStart = function(res,title){
  */
 exports.outputEnd = function(res){
   res.end('</pre>' +
-    '<script type="text/javascript">\nscrollBottom();\nclearInterval(scrollInt);\n</script>' +
+    '<script type="text/javascript">\nscrollBottom();\n' +
+    'clearInterval(scrollInt);\n</script>' +
     '</body></html>')
 }
 
@@ -248,14 +252,18 @@ exports.refresh = function(id,next){
             [
               //get the os version
               function(next){
-                client.commandBuffered('cat /etc/debian_version',function(err,result){
-                  if(err) return next(err)
-                  result = result.trim()
-                  if(!result) return next('Could not get the version of Debian')
-                  peer.os.name = 'Debian'
-                  peer.os.version = result
-                  next()
-                })
+                client.commandBuffered(
+                  'cat /etc/debian_version',
+                  function(err,result){
+                    if(err) return next(err)
+                    result = result.trim()
+                    if(!result)
+                      return next('Could not get the version of Debian')
+                    peer.os.name = 'Debian'
+                    peer.os.version = result
+                    next()
+                  }
+                )
               },
               //get the kernel version
               function(next){
@@ -275,11 +283,15 @@ exports.refresh = function(id,next){
               },
               //get the oose version (if we can)
               function(next){
-                var cmd = 'node -p "JSON.parse(require(\'fs\').readFileSync(\'/opt/oose/package.json\')).version"'
-                client.commandBuffered(cmd,function(err,result){
-                  peer.version = result.trim() || 'unknown'
-                  next()
-                })
+                client.commandBuffered(
+                  'node -p "JSON.parse(' +
+                  'require(\'fs\').readFileSync(\'/opt/oose/package.json\'))' +
+                  '.version"',
+                  function(err,result){
+                    peer.version = result.trim() || 'unknown'
+                    next()
+                  }
+                )
               },
               //get the uptime
               function(next){
@@ -350,16 +362,27 @@ exports.prepare = function(id,writable,next){
               //send the ssl key
               function(next){
                 if(!config.executioner.ssl.key) return next()
-                client.sendFile(config.executioner.ssl.key,'/etc/nginx/ssl/ssl.key',next)
+                client.sendFile(
+                  config.executioner.ssl.key,
+                  '/etc/nginx/ssl/ssl.key',
+                  next
+                )
               },
               //send the ssl cert
               function(next){
                 if(!config.executioner.ssl.crt) return next()
-                client.sendFile(config.executioner.ssl.crt,'/etc/nginx/ssl/ssl.crt',next)
+                client.sendFile(
+                  config.executioner.ssl.crt,
+                  '/etc/nginx/ssl/ssl.crt',
+                  next
+                )
               },
               //run preparation script
               function(next){
-                client.scriptStream(__dirname + '/../scripts/prepare.sh',writable,next)
+                client.scriptStream(
+                  __dirname + '/../scripts/prepare.sh',
+                  writable,next
+                )
               }
             ],
             next
@@ -416,7 +439,11 @@ exports.install = function(id,writable,next){
         peerSshConnect(peer,function(err,client){
           if(err) return next(err)
           client.on('error',commandFail(next))
-          client.scriptStream(__dirname + '/../scripts/install.sh',writable,next)
+          client.scriptStream(
+            __dirname + '/../scripts/install.sh',
+            writable,
+            next
+          )
         })
       }
     ],
@@ -468,7 +495,11 @@ exports.upgrade = function(id,writable,next){
         peerSshConnect(peer,function(err,client){
           if(err) return next(err)
           client.on('error',commandFail(next))
-          client.scriptStream(__dirname + '/../scripts/upgrade.sh',writable,next)
+          client.scriptStream(
+            __dirname + '/../scripts/upgrade.sh',
+            writable,
+            next
+          )
         })
       }
     ],
@@ -584,7 +615,14 @@ exports.action = function(id,action,next){
         [
           function(next){
             if(err) peerLog(peer,'warning',err,null,next)
-            else peerLog(peer,'info','Peer ' + action.name + ' successful',action.status || null,next)
+            else
+              peerLog(
+                peer,
+                'info',
+                'Peer ' + action.name + ' successful',
+                action.status || null,
+                next
+              )
           }
         ],function(error){
           next(err || error)
@@ -629,8 +667,22 @@ exports.custom = function(id,command,writable,next){
       async.series(
         [
           function(next){
-            if(err) peerLog(peer,'error','Error executing ' + command + ':' + err,null,next)
-            else peerLog(peer,'success','Successfully executed: ' + command,null,next)
+            if(err)
+              peerLog(
+                peer,
+                'error',
+                'Error executing ' + command + ':' + err,
+                null,
+                next
+              )
+            else
+              peerLog(
+                peer,
+                'success',
+                  'Successfully executed: ' + command,
+                null,
+                next
+              )
           }
         ],
         function(error){

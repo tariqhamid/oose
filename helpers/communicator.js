@@ -95,20 +95,40 @@ util.withLength = function(payload){
  * @param {object} message Additional message/command parameters
  * @param {number} port Destination port
  * @param {string} address Destination address (or multicast address)
- * @param {stream} readable Optional stream to deliver after command
+ * @param {Stream=} opt_readable Optional stream to deliver after command
  * @return {net.socket}
  */
-util.tcpSend = function(command,message,port,address,readable){
+util.tcpSend = function(command,message,port,address,opt_readable){
   if(!port) throw new Error('Tried to send a TCP message without a port')
   var payload = util.withLength(util.build(command,message))
   var client = net.connect(port,address || '127.0.0.1')
   client.on('connect',function(){
+    client.safeRead = util.safeRead.bind(client)
     client.write(payload)
-    if(readable instanceof stream.Readable){
-      readable.pipe(client)
+    if(opt_readable instanceof stream.Readable){
+      opt_readable.pipe(client)
     }
   })
   return client
+}
+
+
+/**
+ * Safe Read (guaranteed to return requested bytes)
+ * @param {Socket|ReadStream} stream Optional reference of object with .read()
+ * @param {number} bytes How much to receive
+ * @this {Socket|ReadStream} Optionally bound, for single arg usage
+ * @return {Buffer|String} All the requested bytes
+ */
+util.safeRead = function(stream,bytes){
+  if(1 === arguments.length){
+    //we are being used in bind() mode
+    bytes = stream
+    stream = this
+  }
+  var input
+  do { input = stream.read(bytes) } while(null === input)
+  return input
 }
 
 
@@ -135,6 +155,11 @@ var UDP = function(options){
         options.multicast.address,options.multicast.interfaceAddress || null
       )
     }
+    logger.info(
+      'UDP bound on ' +
+      [options.address,options.port].join(':') +
+      ((options.multicast && options.multicast.address) ? ' (multicast)' : '')
+    )
     self.emit('ready',self.socket)
   })
   self.socket.on('message',function(packet,rinfo){
@@ -211,8 +236,9 @@ var TCP = function(options){
   self.options = options
   self.server = net.createServer()
   self.server.on('connection',function(socket){
+    socket.safeRead = util.safeRead.bind(socket)
     socket.once('readable',function(){
-      var lengthRaw = socket.read(2)
+      var lengthRaw = socket.safeRead(2)
       if(!lengthRaw)
         return self.emit(
           'error',
@@ -220,7 +246,7 @@ var TCP = function(options){
           ':' + socket.remotePort
         )
       var length = lengthRaw.readUInt16BE(0)
-      var payload = util.parse(socket.read(length))
+      var payload = util.parse(socket.safeRead(length))
       if(!payload) return self.emit('error','Failed to parse payload')
       self.emit(payload.command,payload.message,socket)
     })
@@ -228,6 +254,10 @@ var TCP = function(options){
   })
   self.server.on('error',function(err){self.emit('error',err)})
   self.server.listen(options.port,options.address,function(){
+    logger.info(
+      'TCP listener bound on ' +
+      [options.address,options.port].join(':')
+    )
     self.emit('ready',self.server)
   })
 }

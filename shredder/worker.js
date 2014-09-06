@@ -142,7 +142,7 @@ var runJob = function(job,done){
   )
 }
 
-//receive one and only one message from master and that should be the job description
+//receive one message from master which should be the job description
 process.once('message',function(m){
   if(!m.options){
     logger.error('Received invalid message from master, exiting',m)

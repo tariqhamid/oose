@@ -94,7 +94,8 @@ app.get('/:sha1/:filename',function(req,res){
         headers['Content-Length'] = stat.size
         //add attachment for a download
         if('string' === typeof req.query.download){
-          headers['Content-Disposition'] = 'attachment; filename=' + req.params.filename
+          headers['Content-Disposition'] =
+            'attachment; filename=' + req.params.filename
         }
         //byte range support
         range = {start: 0, end: (stat.size - 1 || 0)}

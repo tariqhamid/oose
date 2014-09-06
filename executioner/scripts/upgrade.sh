@@ -3,9 +3,9 @@
 function banner {
   line=$(echo $1 | tr [:print:] [-*])
   echo
-  echo $line
+  echo ${line}
   echo "$1"
-  echo $line
+  echo ${line}
 }
 
 function runCommand {

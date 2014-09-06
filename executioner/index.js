@@ -130,7 +130,9 @@ app.get('/',routes.index)
  */
 exports.start = function(done){
   if(!config.executioner.user || !config.executioner.password){
-    logger.warning('Refusing to start executioner, missing username and/or password')
+    logger.warning(
+      'Refusing to start executioner, missing username and/or password'
+    )
     return done()
   }
   server.listen(config.executioner.port,config.executioner.host,function(err){

@@ -18,7 +18,7 @@ ssl_certificate_key ssl/ssl.key;
 proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
 #important for backend persistence and websockets
 proxy_http_version 1.1;
-proxy_set_header  Host \$host;
+proxy_set_header  Host $host;
 proxy_set_header  X-Real-IP $remote_addr;
 proxy_set_header  X-Forwarded-For $proxy_add_x_forwarded_for;
 proxy_pass_header User-Agent;
@@ -30,8 +30,8 @@ proxy_set_header Connection '';
 proxy_set_header Upgrade '';
 
 #remap any backend refs to something that might work
-proxy_redirect http://localhost:3001/ $scheme://$host:\$server_port/;
-proxy_redirect http://127.0.0.1:3001/ $scheme://$host:\$server_port/;
+proxy_redirect http://localhost:3001/ $scheme://$host:$server_port/;
+proxy_redirect http://127.0.0.1:3001/ $scheme://$host:$server_port/;
 
 location /nginx_status {
   stub_status on;
@@ -255,9 +255,9 @@ NGX_CONFIG
 function banner {
   line=$(echo $1 | tr [:print:] [-*])
   echo
-  echo $line
+  echo ${line}
   echo "$1"
-  echo $line
+  echo ${line}
 }
 
 function runCommand {
@@ -278,7 +278,7 @@ function catDebFile {
   file="$2"
   debfile="/var/cache/apt/archives/$(dpkg -l ${pkgname} | grep "^ii " | \
     sed -e"s/^ii.*\(${pkgname}\) *\([0-9][^ ]*\) *\([^ ]*\) .*$/\1_\2_\3.deb/")"
-  [ -f "${debfile}" ] && dpkg --fsys-tarfile $debfile | tar xfO - ".${file}"
+  [ -f "${debfile}" ] && dpkg --fsys-tarfile ${debfile} | tar xfO - ".${file}"
 }
 
 banner "Preparing Peer for OOSE installation"
@@ -305,13 +305,13 @@ fi
 
 # setup security limits if not already
 limitfile="/etc/security/limits.d/node.conf"
-if [[ $(grep -e "node\s+soft" $limitfile) == "" ]]; then
+if [[ $(grep -e "node\s+soft" ${limitfile}) == "" ]]; then
   limitSet=2
   echo "root            soft    nofile          262144\n\
 root            hard    nofile          524288\n\
 node            soft    nofile          262144\n\
 node            hard    nofile          524288\n\
-" > $limitfile
+" > ${limitfile}
 fi
 
 # run some sanity commands
@@ -367,9 +367,9 @@ if [[ "$(which npm)" == "" ]]; then
   /bin/bash /tmp/npminstall.sh 2> /dev/null
   rcode="$?"
   rm -f /tmp/npminstall.sh
-  if [ "$rcode" -gt 0 ]; then
+  if [ "${rcode}" -gt 0 ]; then
     echo "Failed to install NPM"
-    exit $rcode
+    exit ${rcode}
   fi
 fi
 

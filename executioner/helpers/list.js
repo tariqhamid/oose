@@ -1,6 +1,13 @@
 'use strict';
 var async = require('async')
 
+
+/**
+ * Remove list items by IDs
+ * @param {mongoose.Model} Model
+ * @param {Array} idList
+ * @param {Function} done
+ */
 exports.remove = function(Model,idList,done){
   var count = 0
   async.each(
@@ -23,10 +30,19 @@ exports.remove = function(Model,idList,done){
   )
 }
 
+
+/**
+ * Calculate limits for page views
+ * @param {number} start
+ * @param {number} count
+ * @param {number} limit
+ * @return {{start: number, end: number, previous: number, next: number}}
+ */
 exports.pagination = function(start,count,limit){
+  count = +count
   if(start > count) start = count - limit
   var page = {
-    start: start,
+    start: +start,
     end: start + limit,
     previous: start - limit,
     next: start + limit

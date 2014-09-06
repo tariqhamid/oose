@@ -85,7 +85,8 @@ Mesh.prototype.start = function(done){
  */
 Mesh.prototype.stop = function(done){
   var self = this
-  //this looks excessive but its the only way to maintain the scope of the close functions
+  //this looks excessive but its the only way to
+  // maintain the scope of the close functions
   async.series([
     function(next){self.udp.close(next)},
     function(next){self.tcp.close(next)}

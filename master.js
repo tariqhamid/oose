@@ -61,7 +61,7 @@ exports.start = function(){
         var removed = 0
         var removeKeys = function(pattern,next){
           redis.keys(pattern,function(err,keys){
-            async.each(
+            async.eachSeries(
               keys,
               function(key,next){
                 redis.del(key,function(err,count){removed += count; next(err)})

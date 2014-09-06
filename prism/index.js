@@ -39,11 +39,12 @@ var buildCache = function(sha1,done){
           config.mesh.host
         )
         client.once('readable',function(){
-          var sizebits = client.read(2)
+          var sizebits = client.safeRead(2)
           if(null === sizebits)
             return done('failed to parse locate response, empty payload')
           //read our response
-          var payload = commUtil.parse(client.read(sizebits.readUInt16BE(0)))
+          var payload =
+            commUtil.parse(client.safeRead(sizebits.readUInt16BE(0)))
           //check if we got an error
           if('ok' !== payload.message.status)
             return next(payload.message.message)
@@ -158,7 +159,8 @@ app.get('/:sha1/:filename',function(req,res){
             peerList = result
             next()
           }
-          //since we dont have the result in cache, build the cache, store it and grab it
+          //since we don't have the result in cache,
+          // build the cache, store it and grab it
           else {
             debug(sha1,'cache miss')
             async.series(
@@ -216,7 +218,10 @@ app.get('/:sha1/:filename',function(req,res){
             winner = peer
           }
         })
-        debug(sha1,'Candidates ' + candidates + 'Selecting ' + winner.hostname + ' as winner')
+        debug(sha1,
+          'Candidates ' + candidates +
+          'Selecting ' + winner.hostname + ' as winner'
+        )
         if(!winner) return next('Could not select peer')
         next()
       },
@@ -268,11 +273,11 @@ app.post('/api/shredderJob',function(req,res){
           peerNext.ip
         )
         client.once('readable',function(){
-          var size = client.read(2)
+          var size = client.safeRead(2)
           if(null === size) return next('Failed to queue job')
           size = size.readUInt16BE(0)
           //read our response
-          var payload = commUtil.parse(client.read(size))
+          var payload = commUtil.parse(client.safeRead(size))
           //check if we got an error
           if('ok' !== payload.message.status)
             return next(payload.message.message)

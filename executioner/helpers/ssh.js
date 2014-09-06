@@ -114,7 +114,8 @@ SSH.prototype.commandStream = function(cmd,writable,next){
           exitCode = code
         })
         stream.on('end',function(){
-          if(0 !== exitCode) return next('Failed to execute (' + exitCode + '): ' + cmd)
+          if(0 !== exitCode)
+            return next('Failed to execute (' + exitCode + '): ' + cmd)
           next()
         })
       })

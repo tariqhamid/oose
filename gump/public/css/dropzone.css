@@ -127,7 +127,7 @@
   top: 0;
   bottom: 0;
   left: 0;
-  width: 0%;
+  width: 0;
   background-color: #8cc657;
 }
 .dropzone .dz-preview.dz-processing .dz-progress,
@@ -168,9 +168,7 @@
   -o-transition: opacity 0.3s ease-in-out;
   -ms-transition: opacity 0.3s ease-in-out;
   transition: opacity 0.3s ease-in-out;
-  background-image: url('/images/spritemap.png');
-  background-repeat: no-repeat;
-  background-position: 0 0;
+  background: url('../images/spritemap.png') no-repeat 0 0;
   position: absolute;
   width: 428px;
   height: 123px;
@@ -181,7 +179,7 @@
 }
 @media all and (-webkit-min-device-pixel-ratio: 1.5) {
   .dropzone .dz-default.dz-message {
-    background-image: url("../images/spritemap@2x.png");
+    background-image: url('../images/spritemap.png');
     -webkit-background-size: 428px 406px;
     -moz-background-size: 428px 406px;
     background-size: 428px 406px;
@@ -200,13 +198,13 @@
 .dropzone.dz-drag-hover .dz-message {
   opacity: 0.15;
   filter: alpha(opacity=15);
-  -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=15)";
+  -ms-filter: 'progid:DXImageTransform.Microsoft.Alpha(Opacity=15)';
 }
 .dropzone.dz-started .dz-message {
   display: block;
   opacity: 0;
   filter: alpha(opacity=0);
-  -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=0)";
+  -ms-filter: 'progid:DXImageTransform.Microsoft.Alpha(Opacity=0)';
 }
 .dropzone .dz-preview,
 .dropzone-previews .dz-preview {
@@ -219,7 +217,7 @@
   display: block;
   opacity: 0.1;
   filter: alpha(opacity=10);
-  -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=10)";
+  -ms-filter: 'progid:DXImageTransform.Microsoft.Alpha(Opacity=10)';
 }
 .dropzone .dz-preview.dz-success .dz-success-mark,
 .dropzone-previews .dz-preview.dz-success .dz-success-mark {
@@ -244,21 +242,20 @@
   display: block;
   opacity: 0;
   filter: alpha(opacity=0);
-  -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=0)";
+  -ms-filter: 'progid:DXImageTransform.Microsoft.Alpha(Opacity=0)';
   -webkit-transition: opacity 0.4s ease-in-out;
   -moz-transition: opacity 0.4s ease-in-out;
   -o-transition: opacity 0.4s ease-in-out;
   -ms-transition: opacity 0.4s ease-in-out;
   transition: opacity 0.4s ease-in-out;
-  background-image: url("../images/spritemap.png");
-  background-repeat: no-repeat;
+  background: url('../images/spritemap.png') no-repeat;
 }
 @media all and (-webkit-min-device-pixel-ratio: 1.5) {
   .dropzone .dz-preview .dz-error-mark,
   .dropzone-previews .dz-preview .dz-error-mark,
   .dropzone .dz-preview .dz-success-mark,
   .dropzone-previews .dz-preview .dz-success-mark {
-    background-image: url("../images/spritemap@2x.png");
+    background-image: url('../images/spritemap.png');
     -webkit-background-size: 428px 406px;
     -moz-background-size: 428px 406px;
     background-size: 428px 406px;
@@ -295,16 +292,14 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 0%;
+  width: 0;
   height: 100%;
-  background-image: url("../images/spritemap.png");
-  background-repeat: repeat-x;
-  background-position: 0px -400px;
+  background: url('../images/spritemap.png') repeat-x 0 -400px;
 }
 @media all and (-webkit-min-device-pixel-ratio: 1.5) {
   .dropzone .dz-preview .dz-progress .dz-upload,
   .dropzone-previews .dz-preview .dz-progress .dz-upload {
-    background-image: url("../images/spritemap@2x.png");
+    background-image: url('../images/spritemap.png');
     -webkit-background-size: 428px 406px;
     -moz-background-size: 428px 406px;
     background-size: 428px 406px;
@@ -315,7 +310,7 @@
   display: block;
   opacity: 0;
   filter: alpha(opacity=0);
-  -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=0)";
+  -ms-filter: 'progid:DXImageTransform.Microsoft.Alpha(Opacity=0)';
   -webkit-transition: opacity 0.4s ease-in-out;
   -moz-transition: opacity 0.4s ease-in-out;
   -o-transition: opacity 0.4s ease-in-out;
@@ -327,7 +322,7 @@
   display: block;
   opacity: 0;
   filter: alpha(opacity=0);
-  -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=0)";
+  -ms-filter: 'progid:DXImageTransform.Microsoft.Alpha(Opacity=0)';
   -webkit-transition: opacity 0.3s ease-in-out;
   -moz-transition: opacity 0.3s ease-in-out;
   -o-transition: opacity 0.3s ease-in-out;
@@ -429,5 +424,5 @@
   }
 }
 
-.dropzone {margin: 10px 0; min-height: 75px; background: url('/images/upload_bg.png') center no-repeat;}
+.dropzone {margin: 10px 0; min-height: 75px; background: url('../images/upload_bg.png') center no-repeat;}
 .dropzone .dz-default {display: none; text-align: center;}

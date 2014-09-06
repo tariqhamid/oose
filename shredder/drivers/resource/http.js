@@ -194,7 +194,8 @@ exports.category = 'resource'
  * Driver description
  * @type {string}
  */
-exports.description = 'Offers ability to use http as a resource retrieval method'
+exports.description =
+  'Offers ability to use http as a resource retrieval method'
 
 
 /**
@@ -219,7 +220,8 @@ exports.run = function(job,parameter,options,done){
       chain,
       //execute each member of the chain and gracefully handle errors
       function(opts,next){
-        //setup the request and dont provide a resource, since these are intermediate requests
+        //setup the request and don't provide a resource
+        // since these are intermediate requests
         opts.name = options.name
         var req = {
           resource: null,

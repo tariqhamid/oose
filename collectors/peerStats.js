@@ -19,7 +19,6 @@ var hrStorageRam = snmp.mib.hrStorageTypes(2)
 
 var isWin = ('win32' === process.platform)
 var maxint32 = Math.pow(2,32)
-var maxint64 = Math.pow(2,64)
 var item
 var i
 var j
@@ -347,7 +346,10 @@ var snmpPrep = function(done){
             var index
             for(i=0; i < result.length; i++){
               item = result[i]
-              var mac = item.valueHex.replace(/^(..)(..)(..)(..)(..)(..)$/,'$1:$2:$3:$4:$5:$6')
+              var mac = item.valueHex.replace(
+                /^(..)(..)(..)(..)(..)(..)$/,
+                '$1:$2:$3:$4:$5:$6'
+              ).toUpperCase()
               if(-1 !== mac.indexOf(':')){
                 index = +item.oid.split('.').slice(-1)
                 if(!macIndexes[mac])
@@ -483,7 +485,9 @@ var snmpPoll = function(basket,done){
         debug('snmpPoll() calling add()')
         //also grab hi-cap Counter64 counts
         if(netInfo.use64in){
-          snmp.add(snmp.mib.ifHCInOctets(netInfo.index),function(result,complete){
+          snmp.add(
+            snmp.mib.ifHCInOctets(netInfo.index),
+            function(result,complete){
               dump('ifHCInOctets',result)
               if(netInfo.use64in){
                 netInfo.use64in = false
@@ -496,7 +500,8 @@ var snmpPoll = function(basket,done){
                 debug('collected 64-bit netIn: ' + basket.netIn)
               }
               complete()
-            })
+            }
+          )
         }
         if(netInfo.use64out){
           snmp.add(snmp.mib.ifHCOutOctets(netInfo.index),
@@ -517,7 +522,9 @@ var snmpPoll = function(basket,done){
           )
         }
         //Net:in counter from IF-MIB::ifInOctets.<ifIndex>
-        snmp.add(snmp.mib.ifInOctets(netInfo.index),function(result,complete){
+        snmp.add(
+          snmp.mib.ifInOctets(netInfo.index),
+          function(result,complete){
             dump('ifInOctets',result)
             if(!netInfo.use64in){
               if('function' !== typeof complete) complete = nullFunc
@@ -528,7 +535,8 @@ var snmpPoll = function(basket,done){
               debug('collected 32-bit netIn: ' + basket.netIn)
             }
             complete()
-          })
+          }
+        )
         //Net:out counter from IF-MIB::ifOutOctets.<ifIndex>
         snmp.add(
           snmp.mib.ifOutOctets(netInfo.index),

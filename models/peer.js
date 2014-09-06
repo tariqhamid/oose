@@ -3,7 +3,6 @@ var mongoose = require('mongoose')
 var ip = require('ip')
 var fs = require('graceful-fs')
 var config = require('../config')
-var schema
 
 //moment and the duration plugin
 require('moment-duration-format')
@@ -15,7 +14,12 @@ mongoose.plugin(require('mongoose-list'),{
   'sort': 'hostname'
 })
 
-schema = new mongoose.Schema({
+
+/**
+ * Schema type definition
+ * @type _schema {{hostname: string, ip: number, config: string, version: string, sshUsername: string, sshPort: number, status: string, log: {date: Date, message: string, level: string}[], metrics: {dateCreated: Date, dateModified: Date}, os: {name: string, version: string, arch: string, kernel: string, uptime: string, load: Array}}}
+ */
+var _schema = {
   hostname: {
     type: String,
     required: true,
@@ -100,13 +104,14 @@ schema = new mongoose.Schema({
     uptime: String,
     load: Array
   }
-})
+}
+var schema = new mongoose.Schema(_schema)
 
 
 /**
  * Do some shit here that makes the uptime fancy
  * @return {*}
- * @this {Peer}
+ * @this {PeerModel}
  */
 schema.methods.uptime = function(){
   return moment.duration(this.os.uptime * 1000).format(
@@ -127,13 +132,21 @@ schema.pre('save',function(next){
 
 
 /**
+ * Internal schema definition
+ * @type {_schema}
+ */
+exports._schema = _schema
+
+
+/**
  * Mongoose schema
- * @type {exports.Schema}
+ * @type {mongoose.Schema}
  */
 exports.schema = schema
 
 
 /**
  * Mongoose model
+ * @type {mongoose.Model}
  */
 exports.model = mongoose.model('Peer',schema)

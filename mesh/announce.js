@@ -78,9 +78,12 @@ var announceSend = function(){
           config.store.import.portPublic || peer.portImport || 0
         message.portExport =
           config.store.export.portPublic || peer.portExport || 0
-        message.portPrism = config.prism.portPublic || peer.portPrism || 0
-        message.portShredder = config.shredder.portPublic || peer.portShredder || 0
-        message.portMesh = config.mesh.portPublic || peer.portMesh || 0
+        message.portPrism =
+          config.prism.portPublic || peer.portPrism || 0
+        message.portShredder =
+          config.shredder.portPublic || peer.portShredder || 0
+        message.portMesh =
+          config.mesh.portPublic || peer.portMesh || 0
         message.netSpeed = peer.netSpeed || 0
         message.netInBps = peer.netInBps || 0
         message.netOutBps = peer.netOutBps || 0

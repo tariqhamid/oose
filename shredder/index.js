@@ -103,7 +103,8 @@ var newJob = function(message,socket){
     'now' !== description.schedule.start
   ){
     if(description.schedule.match(/^\+/)){
-      description.schedule.start = description.schedule.start.replace(/^\+(\d+)/,'$1')
+      description.schedule.start =
+        description.schedule.start.replace(/^\+(\d+)/,'$1')
       job.start = new Date().getTime() + description.schedule.start
     } else {
       job.start = moment(description.schedule.start)
@@ -137,7 +138,10 @@ var newJob = function(message,socket){
  */
 var meshStart = function(done){
   //start tcp
-  tcp = communicator.TCP({port: config.shredder.port, host: config.shredder.host})
+  tcp = communicator.TCP({
+    port: config.shredder.port,
+    host: config.shredder.host
+  })
   // shred:job:push - queue entry acceptor
   tcp.on('shred:job:push',function(message,socket){
     newJob(message,socket)
@@ -171,7 +175,7 @@ var shutdown = function(done){
   }
   async.series(
     [
-      //since there is something happening start shutting everything down and saving
+      //since there is something happening start saving everything
       function(next){
         logger.info(
           'Pausing queue to prevent further jobs from being started'
@@ -247,7 +251,11 @@ if(require.main === module){
           if(!fs.existsSync(config.shredder.root))
             mkdirp.sync(config.shredder.root)
           if(!fs.existsSync(config.shredder.root))
-            return next('Root folder [' + path.resolve(config.shredder.root) + '] does not exist')
+            return next(
+              'Root folder [' +
+              path.resolve(config.shredder.root) +
+              '] does not exist'
+            )
           next()
         },//check to see if there is a snapshot to restore
         function(next){

@@ -6,7 +6,8 @@ var peerHelper = require('../helpers/peer')
 var list = require('../helpers/list')
 var Peer = require('../../models/peer').model
 
-var operationCompleteMessage = 'Operation complete, close this window and refresh the previous page'
+var operationCompleteMessage =
+  'Operation complete, close this window and refresh the previous page'
 var validStatuses = Peer.schema.path('status').enum().enumValues
 
 
@@ -16,7 +17,11 @@ var validStatuses = Peer.schema.path('status').enum().enumValues
  * @param {object} res
  */
 exports.list = function(req,res){
-  if('post' === req.method.toLowerCase() && req.body.remove && req.body.remove.length){
+  if(
+    'post' === req.method.toLowerCase() &&
+    req.body.remove &&
+    req.body.remove.length
+  ){
     //test
     if(req.body.test){
       async.each(
@@ -164,8 +169,12 @@ exports.list = function(req,res){
     //delete
     else if (req.body.delete){
       list.remove(Peer,req.body.remove,function(err,count){
-        if(err) req.flash('error','Removed ' + count + ' item(s) before removal failed ' + err)
-        else{
+        if(err)
+          req.flash(
+            'error',
+            'Removed ' + count + ' item(s) before removal failed ' + err
+          )
+        else {
           req.flash('success','Deleted ' + count + ' item(s)')
           res.redirect('/peer')
         }
@@ -182,15 +191,22 @@ exports.list = function(req,res){
     var start = (req.query.start >> 0) || 0
     var search = req.query.search || ''
     if(start < 0) start = 0
-    Peer.list({start: start, limit: limit, find: search},function(err,count,results){
-      res.render('peer/list',{
-        page: list.pagination(start,count,limit),
-        count: count,
-        search: search,
+    Peer.list(
+      {
+        start: start,
         limit: limit,
-        list: results
-      })
-    })
+        find: search
+      },
+      function(err,count,results){
+        res.render('peer/list',{
+          page: list.pagination(start,count,limit),
+          count: count,
+          search: search,
+          limit: limit,
+          list: results
+        })
+      }
+    )
   }
 }
 
@@ -274,7 +290,10 @@ exports.save = function(req,res){
         var snapshot = doc.toJSON()
         delete snapshot.log
         delete snapshot._id
-        doc.log.push({message: 'Peer saved ' + JSON.stringify(snapshot), level: 'success'})
+        doc.log.push({
+          message: 'Peer saved ' + JSON.stringify(snapshot),
+          level: 'success'
+        })
         next()
       },
       //save

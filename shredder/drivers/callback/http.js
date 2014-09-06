@@ -34,7 +34,14 @@ exports.description = 'Sends job updates via HTTP JSON POST'
 exports.run = function(job,parameter,options,done){
   var metrics = job.metrics.$strip()
   if(!options.url) return done('No callback URL set')
-  //job.logger.info('Sending job update to ' + options.url + ' with metrics ' + JSON.stringify(metrics))
+/*
+  job.logger.info(
+    'Sending job update to ' +
+    options.url +
+    ' with metrics ' +
+    JSON.stringify(metrics)
+  )
+*/
   options.method = 'POST'
   //ignore shitty ssl
   options.strictSSL = false

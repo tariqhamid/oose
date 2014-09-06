@@ -1,13 +1,14 @@
 'use strict';
 var async = require('async')
+var childProcess = require('child_process')
 var debug = require('debug')('oose:task:inventory')
 var path = require('path')
-var childProcess = require('child_process')
 
 var file = require('../helpers/file')
 var logger = require('../helpers/logger').create('task:inventory')
 
 var config = require('../config')
+
 var flipSlashExp = /\\/g
 var newLineExp = /\r\n/g
 var rootExp = new RegExp(
@@ -46,11 +47,11 @@ var progressThrottle = function(progress,force){
 var progressMessage = function(progress,force){
   var duration = ((+new Date()) - progress.start) / 1000
   var fps = (progress.fileCount / (duration || 0.1)).toFixed(2)
-  if(progressThrottle(progress,force)){
+  if(force || progressThrottle(progress,force)){
     logger.info(
-        'Initial inventory read ' + progress.fileCount +
-        ' files in ' + duration +
-        ' seconds averaging ' + fps + '/fps'
+      'Initial inventory read ' + progress.fileCount +
+      ' files in ' + duration +
+      ' seconds averaging ' + fps + '/fps'
     )
   }
 }
@@ -61,9 +62,15 @@ var progressMessage = function(progress,force){
  * @param {object} progress
  * @param {string} data
  * @param {function} done
+ * @return {void} fire escape
  */
 var processFiles = function(progress,data,done){
   //replace any windows newlines
+  var complete = function(err){
+    if(err) logger.warning(err)
+    progressMessage(progress,true)
+    done(err)
+  }
   data = data.replace(newLineExp,'\n')
   var lines = data
     .split('\n')
@@ -71,7 +78,8 @@ var processFiles = function(progress,data,done){
     .map(function(val){
       return val.replace(flipSlashExp,'/').replace(rootExp,'')
     })
-  async.each(
+  if(0 === lines.length) return complete()
+  async.eachSeries(
     lines,
     function(entry,next){
       //disqualify tmp
@@ -80,18 +88,25 @@ var processFiles = function(progress,data,done){
       progress.fileCount++
       //get the sha1 from the entry
       var sha1 = file.sha1FromPath(entry)
-      file.redisInsert(sha1,function(err){
-        if(err)
-          return next('Failed to read ' + sha1 + ' file ' + data + ' ' + err)
-        debug('inserted file',sha1)
+      if(40 === sha1.length){
+        file.redisInsert(sha1,function(err){
+          if(err){
+            logger.warning(
+              'Failed to read ' + sha1 + ' file ' +
+              entry + ' ' + err
+            )
+          } else debug('inserted file',sha1)
+          next()
+        })
+      } else {
+        debug('file had invalid sha1',entry)
+        logger.warning(
+          'Failed to read file ' + entry + ' invalid sha1 returned: ' + sha1
+        )
         next()
-      })
+      }
     },
-    function(err){
-      if(err) logger.warning(err)
-      progressMessage(progress,false)
-      done(err)
-    }
+    complete
   )
 }
 
@@ -112,10 +127,13 @@ var start = function(done){
   var buffer = ''
   var windows = 'win32' === process.platform
   var cp
-  debug(windows)
   if(windows){
     debug('on windows')
-    cp = childProcess.spawn('cmd',['/c','dir','/a:-d','/s','/b','/o:n'],{cwd: config.root})
+    cp = childProcess.spawn(
+      'cmd',
+      ['/c','dir','/a:-d','/s','/b','/o:n'],
+      {cwd: config.root}
+    )
   } else {
     debug('on linux')
     cp = childProcess.spawn('find',[config.root,'-type','f'])
@@ -137,7 +155,11 @@ var start = function(done){
   cp.on('close',function(code){
     debug('done reading files',code)
     processFiles(progress,buffer,function(err){
-      logger.info('Inventory complete, read ' + progress.fileCount + ' files')
+      logger.info(
+        'Inventory complete, read ' +
+        (progress.fileCount ? progress.fileCount : 0) +
+        ' files'
+      )
       done(err,progress.fileCount)
     })
   })

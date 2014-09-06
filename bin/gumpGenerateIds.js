@@ -11,12 +11,12 @@ var config = require('../config')
 mongoose.connect(config.mongoose.dsn,config.mongoose.options,function(err){
   if(err) throw err
   logger.info('Starting to fill in missing file IDs for Gump')
-  var stream = File.find({},function(err,results){
+  File.find({},function(err,results){
     if(err){
       logger.error(err)
       process.exit()
     }
-    async.each(
+    async.eachSeries(
       results,
       function(doc,next){
         if(!doc.handle) doc.handle = shortid.generate()

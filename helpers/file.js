@@ -33,11 +33,11 @@ var queueClone = function(sha1,done){
           config.mesh.host
         )
         client.once('readable',function(){
-          var size = client.read(2)
+          var size = client.safeRead(2)
           if(null === size) return next('Could not execute locate')
           size = size.readUInt16BE(0)
           //read our response
-          var payload = commUtil.parse(client.read(size))
+          var payload = commUtil.parse(client.safeRead(size))
           //check if we got an error
           if('ok' !== payload.message.status)
             return next(payload.message.message)
@@ -68,11 +68,11 @@ var queueClone = function(sha1,done){
           config.clone.host || '127.0.0.1'
         )
         client.once('readable',function(){
-          var size = client.read(2)
+          var size = client.safeRead(2)
           if(null === size) return next('Failed to queue clone')
           size = size.readUInt16BE(0)
           //read our response
-          var payload = commUtil.parse(client.read(size))
+          var payload = commUtil.parse(client.safeRead(size))
           //check if we got an error
           if('ok' !== payload.message.status)
             return next(payload.message.message)
