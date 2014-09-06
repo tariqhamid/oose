@@ -31,6 +31,7 @@ config.$load({
   //services
   mesh: {
     enabled: true,
+    restartDelay: 1000,
     port: 3000,
     debug: 0,
     portPublic: null,

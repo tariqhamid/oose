@@ -96,24 +96,27 @@ exports.start = function(){
       function(next){
         if(config.mesh.enabled){
           logger.info('Starting mesh')
-          var restartDelay = 1000
           var restart = function(){
             mesh.start(function(err){
               if(err) logger.error('Child restart error:',err)
               else logger.info('Child restarted')
             })
           }
+          var resetTimeout = function(){
+            if(mesh.restartTimeout) clearTimeout(mesh.restartTimeout)
+            mesh.restartTimeout = setTimeout(restart,config.mesh.restartDelay)
+          }
           mesh.on('error',function(err){
             logger.error('Child failed:',err)
-            setTimeout(restart,restartDelay)
+            resetTimeout()
           })
           mesh.on('exit',function(code){
             logger.error('Child exited with code:',code)
-            setTimeout(restart,restartDelay)
+            resetTimeout()
           })
           mesh.on('close',function(){
             logger.error('Child closed?')
-            setTimeout(restart,restartDelay)
+            resetTimeout()
           })
           mesh.start(next)
         } else next()
