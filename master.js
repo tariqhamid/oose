@@ -4,12 +4,11 @@ require('node-sigint')
 
 var async = require('async')
 var cluster = require('cluster')
+var program = require('commander')
 //var debug = require('debug')('oose:master')
 var fs = require('graceful-fs')
 var mkdirp = require('mkdirp')
-
 var os = require('os')
-var program = require('commander')
 
 var Child = require('./helpers/child')
 var Logger = require('./helpers/logger')
@@ -17,12 +16,13 @@ var redis = require('./helpers/redis')
 var logger = Logger.create('main')
 
 var clone = new Child('./clone')
-var config = require('./config')
 var peerNext = new Child('./collectors/peerNext')
 var peerStats = new Child('./collectors/peerStats')
 var mesh = new Child('./mesh')
 var shredder = new Child('./shredder')
 var supervisor = new Child('./supervisor')
+
+var config = require('./config')
 
 
 /**
@@ -50,7 +50,7 @@ exports.start = function(){
     [
       //make sure the root folder exists
       function(next){
-        var root = config.$get('root')
+        var root = config.root
         fs.exists(root,function(exists){
           if(exists) return next()
           mkdirp(root,next)
@@ -82,7 +82,7 @@ exports.start = function(){
       },
       //inventory files first if store is enabled
       function(next){
-        if(!config.$get('store.enabled')) return next()
+        if(!config.store.enabled) return next()
         Child.fork('./tasks/inventory',next)
       },
       //start collectors
@@ -94,8 +94,27 @@ exports.start = function(){
       },
       //start mesh
       function(next){
-        if(config.$get('mesh.enabled')){
+        if(config.mesh.enabled){
           logger.info('Starting mesh')
+          var restartDelay = 1000
+          var restart = function(){
+            mesh.start(function(err){
+              if(err) logger.error('Child restart error:',err)
+              else logger.info('Child restarted')
+            })
+          }
+          mesh.on('error',function(err){
+            logger.error('Child failed:',err)
+            setTimeout(restart,restartDelay)
+          })
+          mesh.on('exit',function(code){
+            logger.error('Child exited with code:',code)
+            setTimeout(restart,restartDelay)
+          })
+          mesh.on('close',function(){
+            logger.error('Child closed?')
+            setTimeout(restart,restartDelay)
+          })
           mesh.start(next)
         } else next()
       },

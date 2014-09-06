@@ -70,7 +70,7 @@ Child.prototype.start = function(done){
   that.cp.on('exit',function(code){
     that.debug('Child exited with code',code)
     that.exitCode = code
-    that.emit('exit')
+    that.emit('exit',code)
   })
   //on close pass the event upwards
   that.cp.on('close',function(){
