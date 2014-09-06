@@ -170,7 +170,7 @@ var snmpPrep = function(done){
           },
           //ignore errors, this may not exist (non Net-SNMP)
           function(err,varbinds){
-            if(varbinds && 1 === varbinds[0].value)
+            if(!err && varbinds && 1 === varbinds[0].value)
               debug('ifTable update rate set to 1sec')
             else
               debug('ifTable update rate setting unavailable')
@@ -187,7 +187,7 @@ var snmpPrep = function(done){
           },
           //ignore errors, this may not exist (non Net-SNMP)
           function(err,varbinds){
-            if(varbinds && 1 === varbinds[0].value)
+            if(!err && varbinds && 1 === varbinds[0].value)
               debug('tcpConnectionTable update rate set to 1sec')
             else
               debug('tcpConnectionTable update rate setting unavailable')
