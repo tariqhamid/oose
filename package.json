@@ -23,6 +23,7 @@
     "bcrypt": "0.8.x",
     "body-parser": "1.7.x",
     "buffer-crc32": "^0.2.3",
+    "callsite": "^1.0.0",
     "caterpillar": "2.0.x",
     "caterpillar-filter": "2.0.x",
     "caterpillar-human": "2.1.x",
@@ -69,6 +70,11 @@
     "tough-cookie": "0.12.x"
   },
   "scripts": {
-    "start": "node app -vv"
+    "start": "node app -vv",
+    "test": "node ./node_modules/mocha/bin/mocha"
+  },
+  "devDependencies": {
+    "chai": "^1.9.1",
+    "mocha": "^1.21.4"
   }
 }
