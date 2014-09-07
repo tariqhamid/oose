@@ -36,6 +36,8 @@ var Child = function(module,options){
   that.startupError = null
   //track if we are stopping
   that.stopping = false
+  //tracl if we are running
+  that.running = false
   //move to the ready status
   that.status('ready')
 }
@@ -57,8 +59,9 @@ Child.prototype.defaultOptions = {
  * @return {string}
  */
 Child.prototype.status = function(status){
-  if(!status) return this.status.status
-  this.status.status = status
+  if(!status) return this._status || 'dead'
+  this._status = status
+  this.debug('status changed to',status)
   this.emit('status',status)
 }
 
@@ -129,10 +132,13 @@ Child.prototype.start = function(done){
     //handle the initial message
     if('ok' === msg.status){
       that.debug('child started without error')
+      that.running = true
       that.status('ok')
       done()
     } else {
       var err = msg.message || 'an unknown error has occurred'
+      //kill the child if it didnt exit already
+      that.cp.kill()
       that.debug('child started with error',err)
       that.startupError = err
       that.status('error')
@@ -155,7 +161,8 @@ Child.prototype.stop = function(timeout,done){
   }
   var that = this
   //make sure the child is running first
-  if('ok' !== that.status()){
+  debug('stop called',that.status())
+  if(!that.running){
     that.status('ready')
     return done()
   }
@@ -172,6 +179,7 @@ Child.prototype.stop = function(timeout,done){
   }
   that.cp.once('close',function(){
     that.status('ready')
+    that.running = false
     done(that.exitCode ? that.exitCode : null)
   })
 }

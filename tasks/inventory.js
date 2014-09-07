@@ -117,6 +117,7 @@ var processFiles = function(progress,data,done){
  * @param {function} done
  */
 childOnce(
+  'oose:inventory',
   function(done){
     if('function' !== typeof done) done = function(){}
     logger.info('Starting to build inventory')
