@@ -15,6 +15,13 @@ var prism = require('./prism')
 
 
 /**
+ * Set process title
+ * @type {string}
+ */
+process.title = 'oose:worker'
+
+
+/**
  * Start worker
  */
 exports.start = function(){

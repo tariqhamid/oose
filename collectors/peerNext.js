@@ -90,6 +90,7 @@ peerNext.on('error',function(err){
 
 if(require.main === module){
   child(
+    'oose:peerNext',
     function(done){
       peerNext.start(config.mesh.peerNext.interval,500,function(err){
         done(err)

@@ -12,7 +12,7 @@ logger.info('Spawned and waiting for job description')
  * Set the process title
  * @type {string}
  */
-process.title = 'OOSE: shredder'
+process.title = 'oose:shredder:worker'
 
 
 /**

@@ -26,6 +26,14 @@ var shredder = child('./shredder')
 var supervisor = child('./supervisor')
 
 var config = require('./config')
+var running = false
+
+
+/**
+ * Set process title
+ * @type {string}
+ */
+process.title = 'oose:master'
 
 
 /**
@@ -166,8 +174,9 @@ exports.start = function(){
       cluster.on('online',function(worker){
         debug('Worker ' + worker.id + ' online')
         workerOnlineCount++
-        if(workerOnlineCount >= workerCount){
+        if(workerOnlineCount >= workerCount && !running){
           //go to ready state 3
+          running = true
           debug('Going to readyState 3')
           mesh.send({readyState: 3})
           logger.info('Startup complete')
@@ -283,6 +292,7 @@ exports.start = function(){
           logger.error('Shutdown already failed once, forcing exit')
           process.exit()
         } else {
+          running = false
           logger.info('Shutdown complete')
           process.exit()
         }

@@ -105,6 +105,7 @@ var newJob = function(message,socket){
 
 if(require.main === module){
   child(
+    'oose:clone',
     function(done){
       //start tcp
       tcp = communicator.TCP({port: config.clone.port, host: config.clone.host})
