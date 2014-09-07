@@ -8,6 +8,7 @@ process.on('message',function(msg){
 })
 
 child(
+  'oose:test:child',
   //startup
   function(done){
     done()

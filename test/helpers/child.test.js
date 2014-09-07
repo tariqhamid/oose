@@ -5,8 +5,19 @@ var Child = require('../../helpers/child')
 
 describe('helpers/child',function(){
   describe('lifecycle',function(){
+    var child
+    beforeEach(function(done){
+      child = Child.parent('../assets/child')
+      done()
+    })
+    afterEach(function(done){
+      if('ok' === child.status()){
+        child.stop(function(err){
+          done(err)
+        })
+      } else done()
+    })
     it('should start/stop',function(done){
-      var child = Child.parent('../assets/child')
       child.start(function(err){
         if(err) return done(err)
         child.stop(function(err){
@@ -15,7 +26,6 @@ describe('helpers/child',function(){
       })
     })
     it('should respawn',function(done){
-      var child = Child.parent('../assets/child')
       child.start(function(err){
         if(err) return done(err)
         child.on('respawn',function(pid){
@@ -27,12 +37,10 @@ describe('helpers/child',function(){
       })
     })
     it('should gracefully not send messages to children',function(done){
-      var child = Child.parent('../assets/child')
       child.send('foo')
       done()
     })
     it('should ignore stopping a not running child',function(done){
-      var child = Child.parent('../assets/child')
       child.once('status',function(status){
         expect(status).to.equal('ready')
         done()
@@ -51,11 +59,11 @@ describe('helpers/child',function(){
   })
   describe('status',function(){
     var child
-    before(function(done){
+    beforeEach(function(done){
       child = Child.parent('../assets/child')
       done()
     })
-    after(function(done){
+    afterEach(function(done){
       if('ok' === child.status()){
         child.stop(function(err){
           done(err)
@@ -79,28 +87,34 @@ describe('helpers/child',function(){
       })
     })
     it('should be respawning',function(done){
-      child.once('status',function(status){
-        expect(status).to.equal('respawn')
+      child.start(function(err){
+        if(err) return done(err)
         child.once('status',function(status){
-          expect(status).to.equal('starting')
+          expect(status).to.equal('respawn')
           child.once('status',function(status){
-            expect(status).to.equal('ok')
+            expect(status).to.equal('starting')
+            child.once('status',function(status){
+              expect(status).to.equal('ok')
+              done()
+            })
+          })
+        })
+        child.kill()
+      })
+    })
+    it('should be stopping',function(done){
+      child.start(function(err){
+        if(err) return done(err)
+        child.once('status',function(status){
+          expect(status).to.equal('stopping')
+          child.once('status',function(status){
+            expect(status).to.equal('ready')
             done()
           })
         })
-      })
-      child.kill()
-    })
-    it('should be stopping',function(done){
-      child.once('status',function(status){
-        expect(status).to.equal('stopping')
-        child.once('status',function(status){
-          expect(status).to.equal('ready')
-          done()
+        child.stop(function(err){
+          if(err) done(err)
         })
-      })
-      child.stop(function(err){
-        if(err) done(err)
       })
     })
   })

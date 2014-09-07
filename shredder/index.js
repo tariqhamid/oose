@@ -236,6 +236,7 @@ var shutdown = function(done){
 
 if(require.main === module){
   child(
+    'oose:shredder',
     function(done){
       async.series(
         [

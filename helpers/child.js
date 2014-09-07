@@ -179,9 +179,14 @@ Child.prototype.stop = function(timeout,done){
 
 /**
  * Kill the child
+ * @return {bool}
  */
 Child.prototype.kill = function(){
-  this.cp.kill()
+  if(this.cp){
+    this.cp.kill()
+    return true
+  }
+  return false
 }
 
 
@@ -234,10 +239,12 @@ Child.parent = function(module,options){
 
 /**
  * Helper to setup a child to interact with the parent
+ * @param {string} title process title
  * @param {function} start
  * @param {function} stop
  */
-Child.child = function(start,stop){
+Child.child = function(title,start,stop){
+  process.title = title
   process.on('message',function(msg){
     if('stop' === msg){
       stop(function(err){
@@ -263,9 +270,11 @@ Child.child = function(start,stop){
 
 /**
  * Child once wrapper
+ * @param {string} title process title
  * @param {function} exec
  */
-Child.childOnce = function(exec){
+Child.childOnce = function(title,exec){
+  process.title = title
   exec(function(err){
     if(err){
       process.send({status: 'error', message: err})

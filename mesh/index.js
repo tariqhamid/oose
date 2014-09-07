@@ -237,6 +237,7 @@ module.exports = mesh
 //if this is being spawned directly, startup and setup message handlers
 if(require.main === module){
   child(
+    'oose:mesh',
     function(done){
       async.series(
         [
