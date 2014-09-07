@@ -49,7 +49,6 @@ var snmpScrub = function(r){
   //pre-convert OctetString to actual text
   case asn1ber.types.OctetString:
     //but if it seems binary leave it alone
-    debug(isBinary.test(r.value.toString()))
     if(!isBinary.test(r.value.toString()))
       r.value = r.value.toString()
     break
@@ -151,8 +150,8 @@ SnmpHelper.prototype.mib = {
   ipRouteNextHop: function(ip){
     return mibString(mib2,'4.21.1.7',ip)
   },
-  nsCacheTimeout: function(){
-    return mibString(mib2,'8072.1.5.3.1.2')
+  nsCacheTimeout: function(oid){
+    return mibString(mib2,'8072.1.5.3.1.2',oid)
   },
   sysUpTimeInstance:function(){
     return mibString(mib2,'1.3.0')
