@@ -84,7 +84,7 @@ util.parse = function(packet){
 util.withLength = function(payload){
   var length = new Buffer(2)
   length.writeUInt16BE(payload.length,0)
-  return Buffer.concat([length,payload])
+  return Buffer.concat([new Buffer('OOSE'),length,payload])
 }
 
 
@@ -125,9 +125,14 @@ util.safeRead = function(stream,bytes){
     bytes = stream
     stream = this
   }
+  //set up a read timeout so we can't end up while-looping forever on bunk data
+  var gtfo = false
+  setTimeout(function(){gtfo = true},1000)
   var input
-  do { input = stream.read(bytes) } while(null === input)
-  return input
+  do {
+    input = stream.read(bytes)
+  } while(!gtfo && null === input)
+  return gtfo ? false : input
 }
 
 
@@ -159,6 +164,7 @@ var UDP = function(options){
       [options.address,options.port].join(':') +
       ((options.multicast && options.multicast.address) ? ' (multicast)' : '')
     )
+    self.on('error',function(err){debug('UDP ERROR!',err)})
     self.emit('ready',self.socket)
   })
   self.socket.on('message',function(packet,rinfo){
@@ -236,14 +242,20 @@ var TCP = function(options){
   self.server = net.createServer()
   self.server.on('connection',function(socket){
     socket.safeRead = util.safeRead.bind(socket)
+    var badPacket = function(msg){
+      self.emit(
+        'error',
+          msg + ': ' + socket.remoteAddress +
+          ':' + socket.remotePort
+      )
+    }
     socket.once('readable',function(){
+      var magic = socket.safeRead(4)
+      if(!magic || 'OOSE' !== magic.toString())
+        return badPacket('Not an OOSE packet')
       var lengthRaw = socket.safeRead(2)
       if(!lengthRaw)
-        return self.emit(
-          'error',
-          'Invalid socket data ' + socket.remoteAddress +
-          ':' + socket.remotePort
-        )
+        return badPacket('Invalid socket data')
       var length = lengthRaw.readUInt16BE(0)
       var payload = util.parse(socket.safeRead(length))
       if(!payload) return self.emit('error','Failed to parse payload')
@@ -257,6 +269,7 @@ var TCP = function(options){
       'TCP listener bound on ' +
       [options.address,options.port].join(':')
     )
+    self.on('error',function(err){debug('TCP ERROR!',err)})
     self.emit('ready',self.server)
   })
 }

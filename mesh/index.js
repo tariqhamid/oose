@@ -20,6 +20,7 @@ var config = require('../config')
 var Mesh = function(){
   var self = this
   EventEmitter.call(self)
+  self.on('error',function(err){debug('ERROR!',err)})
 }
 Mesh.prototype = Object.create(EventEmitter.prototype)
 
@@ -44,24 +45,24 @@ Mesh.prototype.start = function(done){
   self.tcp = communicator.TCP({port: config.mesh.port})
   //connection error handling
   self.udp.on('error',function(err){
-    debug('UDP error:',err)
-    self.emit('error',err)
+    self.emit('error',{UDP:err})
   })
   self.tcp.on('error',function(err){
-    debug('TCP error:',err)
-    self.emit('error',err)
+    self.emit('error',{TCP:err})
   })
   self.tcp.on('locate',function(message,socket){
-    debug('TCP locate received:',message,socket)
+    debug('TCP locate received:',message)
     self.locate(message.sha1,function(err,result){
       var response
-      if(err) response = {status: 'error', code: 1, message: err}
-      else response = {status: 'ok', code: 1, peers: result}
-      socket.end(
-        communicator.util.withLength(
-          communicator.util.build(message.sha1,response)
+      if(!socket._writableState.ended){
+        if(err) response = {status: 'error',code: 1,message: err}
+        else response = {status: 'ok',code: 1,peers: result}
+        socket.end(
+          communicator.util.withLength(
+            communicator.util.build(message.sha1,response)
+          )
         )
-      )
+      }
     })
   })
   async.series(

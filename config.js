@@ -67,7 +67,6 @@ config.$load({
     port: 3003,
     portPublic: null,
     host: null,
-
     cache: {
       expire: 300
     }
