@@ -22,8 +22,8 @@
     "basic-auth": "1.0.x",
     "bcrypt": "0.8.x",
     "body-parser": "1.8.x",
-    "buffer-crc32": "^0.2.3",
-    "callsite": "^1.0.0",
+    "buffer-crc32": "0.2.x",
+    "callsite": "1.0.x",
     "caterpillar": "2.0.x",
     "caterpillar-filter": "2.0.x",
     "caterpillar-human": "2.1.x",
@@ -76,7 +76,7 @@
     "test": "node ./node_modules/mocha/bin/mocha"
   },
   "devDependencies": {
-    "chai": "^1.9.1",
-    "mocha": "^1.21.4"
+    "chai": "1.9.x",
+    "mocha": "1.21.x"
   }
 }
