@@ -57,8 +57,9 @@ Child.prototype.defaultOptions = {
  * @return {string}
  */
 Child.prototype.status = function(status){
-  if(!status) return this.status.status
-  this.status.status = status
+  if(!status) return this._status || 'dead'
+  this._status = status
+  this.debug('status changed to',status)
   this.emit('status',status)
 }
 
@@ -155,6 +156,7 @@ Child.prototype.stop = function(timeout,done){
   }
   var that = this
   //make sure the child is running first
+  debug('stop called',that.status())
   if('ok' !== that.status()){
     that.status('ready')
     return done()
