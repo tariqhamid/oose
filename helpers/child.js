@@ -146,6 +146,7 @@ Child.prototype.start = function(done){
  * Tell a process to shutdown gracefully
  * @param {number} timeout
  * @param {function} done
+ * @return {*}
  */
 Child.prototype.stop = function(timeout,done){
   if('function' === typeof timeout){
@@ -153,6 +154,11 @@ Child.prototype.stop = function(timeout,done){
     timeout = 0
   }
   var that = this
+  //make sure the child is running first
+  if('ok' !== that.status()){
+    that.status('ready')
+    return done()
+  }
   //mark that we are stopping to prevent respawns
   that.status('stopping')
   that.stopping = true
@@ -183,9 +189,14 @@ Child.prototype.kill = function(){
  * Send process a message
  * @param {*} msg
  * @param {net.Socket} socket
+ * @return {Bool}
  */
 Child.prototype.send = function(msg,socket){
-  this.cp.send(msg,socket)
+  if(this.cp){
+    this.cp.send(msg,socket)
+    return true
+  }
+  return false
 }
 
 

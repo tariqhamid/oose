@@ -26,6 +26,21 @@ describe('helpers/child',function(){
         child.cp.kill()
       })
     })
+    it('should gracefully not send messages to children',function(done){
+      var child = Child.parent('../assets/child')
+      child.send('foo')
+      done()
+    })
+    it('should ignore stopping a not running child',function(done){
+      var child = Child.parent('../assets/child')
+      child.once('status',function(status){
+        expect(status).to.equal('ready')
+        done()
+      })
+      child.stop(function(err){
+        if(err) done(err)
+      })
+    })
   })
   describe('one time',function(){
     it('run once and quit',function(done){
