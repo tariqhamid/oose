@@ -4,6 +4,7 @@ var childProcess = require('child_process')
 var debug = require('debug')('oose:task:inventory')
 var path = require('path')
 
+var childOnce = require('../helpers/child').childOnce
 var file = require('../helpers/file')
 var logger = require('../helpers/logger').create('task:inventory')
 
@@ -115,61 +116,55 @@ var processFiles = function(progress,data,done){
  * Run inventory
  * @param {function} done
  */
-var start = function(done){
-  if('function' !== typeof done) done = function(){}
-  logger.info('Starting to build inventory')
-  var progress = {
-    start: +(new Date()),
-    fileCount: 0,
-    lastUpdate: 0,
-    rate: 250
-  }
-  var buffer = ''
-  var windows = 'win32' === process.platform
-  var cp
-  if(windows){
-    debug('on windows')
-    cp = childProcess.spawn(
-      'cmd',
-      ['/c','dir','/a:-d','/s','/b','/o:n'],
-      {cwd: config.root}
-    )
-  } else {
-    debug('on linux')
-    cp = childProcess.spawn('find',[config.root,'-type','f'])
-  }
-  cp.on('error',function(err){
-    debug('error',err)
-    done(err)
-  })
-  cp.stdout.setEncoding('utf-8')
-  cp.stderr.setEncoding('utf-8')
-  cp.stdout.on('data',function(data){
-    cp.stdout.pause()
-    buffer = buffer + data
-    cp.stdout.resume()
-  })
-  cp.stderr.on('data',function(data){
-    debug('stderr',data)
-  })
-  cp.on('close',function(code){
-    debug('done reading files',code)
-    processFiles(progress,buffer,function(err){
-      logger.info(
-        'Inventory complete, read ' +
-        (progress.fileCount ? progress.fileCount : 0) +
-        ' files'
-      )
-      done(err,progress.fileCount)
+childOnce(
+  function(done){
+    if('function' !== typeof done) done = function(){}
+    logger.info('Starting to build inventory')
+    var progress = {
+      start: +(new Date()),
+      fileCount: 0,
+      lastUpdate: 0,
+      rate: 250
+    }
+    var buffer = ''
+    var windows = 'win32' === process.platform
+    var cp
+    if(windows){
+      debug('on windows')
+      cp = childProcess.spawn('cmd',[
+          '/c',
+          'dir',
+          '/a:-d',
+          '/s',
+          '/b',
+          '/o:n'
+        ],{cwd: config.root})
+    }
+    else{
+      debug('on linux')
+      cp = childProcess.spawn('find',[config.root,'-type','f'])
+    }
+    cp.on('error',function(err){
+      debug('error',err)
+      done(err)
     })
-  })
-}
-
-//execute inventory on open
-start(function(err){
-  if(err){
-    process.send({status: 'error', message: err})
+    cp.stdout.setEncoding('utf-8')
+    cp.stderr.setEncoding('utf-8')
+    cp.stdout.on('data',function(data){
+      cp.stdout.pause()
+      buffer = buffer + data
+      cp.stdout.resume()
+    })
+    cp.stderr.on('data',function(data){
+      debug('stderr',data)
+    })
+    cp.on('close',function(code){
+      debug('done reading files',code)
+      processFiles(progress,buffer,function(err){
+        logger.info('Inventory complete, read ' +
+          (progress.fileCount ? progress.fileCount : 0) + ' files')
+        done(err,progress.fileCount)
+      })
+    })
   }
-  process.send({status: 'ok'})
-  process.exit()
-})
+)

@@ -1,6 +1,7 @@
 'use strict';
 var async = require('async')
 var childProcess = require('child_process')
+var debug = require('debug')('oose:shredder')
 var fs = require('graceful-fs')
 var mkdirp = require('mkdirp')
 var moment = require('moment')
@@ -8,6 +9,7 @@ var os = require('os')
 var path = require('path')
 var util = require('util')
 
+var child = require('../helpers/child').child
 var communicator = require('../helpers/communicator')
 var commUtil = communicator.util
 var Logger = require('../helpers/logger')
@@ -146,7 +148,7 @@ var meshStart = function(done){
   tcp.on('shred:job:push',function(message,socket){
     newJob(message,socket)
   })
-  logger.info('Listening for new shredder jobs')
+  debug('Listening for new shredder jobs')
   //check and see if there is a snapshot if so load it
   done()
 }
@@ -232,101 +234,77 @@ var shutdown = function(done){
   )
 }
 
-
 if(require.main === module){
-  /**
-   * Start shredder (but not necessarily the Shredder-queue)
-   * @param {function} done
-   * @return {*}
-   */
-  var start = function(done){
-    if('function' !== typeof done) done = function(){}
-    async.series([
-        //setup root folder for processing jobs
-        function(next){
-          //check if root exists
-          if(!config.shredder.root)
-            config.$set('shredder.root',path.resolve(config.root))
-          //make sure the root folder exists
-          if(!fs.existsSync(config.shredder.root))
-            mkdirp.sync(config.shredder.root)
-          if(!fs.existsSync(config.shredder.root))
-            return next(
-              'Root folder [' +
-              path.resolve(config.shredder.root) +
-              '] does not exist'
-            )
-          next()
-        },//check to see if there is a snapshot to restore
-        function(next){
-          if(!fs.existsSync(config.shredder.snapshot)) return next()
-          logger.info('Found shredder snapshot... restoring')
-          var snapshot = JSON.parse(fs.readFileSync(config.shredder.snapshot))
-          //repopulate deferred
-          snapshot.deferred.forEach(function(task){
-            deferred.push(task)
-          })
-          //push tasks into q
-          snapshot.tasks.forEach(function(task){
-            q.push(task.data,task.data.priority || 10)
-          })
-          fs.unlinkSync(config.shredder.snapshot)
-          logger.info('Finished restoring jobs')
-          next()
-        },//setup for deferred scheduling
-        function(next){
-          //start trying to schedule the deferred jobs
-          deferredInterval = setInterval(scheduleDeferred,15000)
-          next()
-        },//start listening for new jobs from mesh
-        function(next){
-          meshStart(next)
+  child(
+    function(done){
+      async.series(
+        [
+          //setup root folder for processing jobs
+          function(next){
+            //check if root exists
+            if(!config.shredder.root)
+              config.$set('shredder.root',path.resolve(config.root))
+            //make sure the root folder exists
+            if(!fs.existsSync(config.shredder.root))
+              mkdirp.sync(config.shredder.root)
+            if(!fs.existsSync(config.shredder.root))
+              return next(
+                  'Root folder [' +
+                  path.resolve(config.shredder.root) +
+                  '] does not exist'
+              )
+            next()
+          },//check to see if there is a snapshot to restore
+          function(next){
+            if(!fs.existsSync(config.shredder.snapshot)) return next()
+            logger.info('Found shredder snapshot... restoring')
+            var snapshot = JSON.parse(fs.readFileSync(config.shredder.snapshot))
+            //repopulate deferred
+            snapshot.deferred.forEach(function(task){
+              deferred.push(task)
+            })
+            //push tasks into q
+            snapshot.tasks.forEach(function(task){
+              q.push(task.data,task.data.priority || 10)
+            })
+            fs.unlinkSync(config.shredder.snapshot)
+            logger.info('Finished restoring jobs')
+            next()
+          },//setup for deferred scheduling
+          function(next){
+            //start trying to schedule the deferred jobs
+            deferredInterval = setInterval(scheduleDeferred,15000)
+            next()
+          },//start listening for new jobs from mesh
+          function(next){
+            meshStart(next)
+          }
+        ],
+        function(err){
+          if(err) return done(err)
+          running = true
+          done()
         }
-      ],function(err){
-        if(err) return done(err)
-        running = true
-        done()
-      })
-  }
-
-  /**
-   * Stop server
-   * @param {function} done
-   */
-  var stop = function(done){
-    if('function' !== typeof done) done = function(){}
-    if(running){
+      )
+    },
+    function(done){
+      if(!running) return done()
       logger.info('Starting to shutdown shredder')
       async.series([
-          //stop scheduling any deferred jobs
-          function(next){
-            logger.info('Stopping scheduling of any deferred jobs')
-            if(deferredInterval) clearInterval(deferredInterval)
-            next()
-          },//check for running jobs and store a snapshot if we have to
-          function(next){
-            logger.info('Shutting down and saving state if necessary')
-            shutdown(next)
-          }
-        ],function(err){
-          logger.info('Shredder shutdown complete')
-          done(err)
-        })
-    }
-  }
-  process.on('message',function(msg){
-    if('stop' === msg){
-      stop(function(err){
-        if(err) process.send({status: 'error', message: err})
-        process.exit(err ? 1 : 0)
+        //stop scheduling any deferred jobs
+        function(next){
+          logger.info('Stopping scheduling of any deferred jobs')
+          if(deferredInterval) clearInterval(deferredInterval)
+          next()
+        },//check for running jobs and store a snapshot if we have to
+        function(next){
+          logger.info('Shutting down and saving state if necessary')
+          shutdown(next)
+        }
+      ],function(err){
+        logger.info('Shredder shutdown complete')
+        done(err)
       })
     }
-  })
-  start(function(err){
-    if(err){
-      process.send({status: 'error', message: err})
-      process.exit(1)
-    }
-    process.send({status: 'ok'})
-  })
+  )
 }

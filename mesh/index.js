@@ -3,6 +3,7 @@ var async = require('async')
 var debug = require('debug')('oose:mesh')
 var EventEmitter = require('events').EventEmitter
 
+var child = require('../helpers/child').child
 var communicator = require('../helpers/communicator')
 var logger = require('../helpers/logger').create('mesh')
 var redis = require('../helpers/redis')
@@ -234,12 +235,27 @@ module.exports = mesh
 
 //if this is being spawned directly, startup and setup message handlers
 if(require.main === module){
-  //shutdown
-  process.on('message',function(msg){
-    if(msg.readyState){
-      mesh.readyState(msg.readyState)
-    }
-    if('stop' === msg){
+  child(
+    function(done){
+      async.series(
+        [
+          //start mesh
+          function(next){
+            mesh.start(next)
+          },
+          //start ping
+          function(next){
+            require('./ping').start(next)
+          },
+          //start announce
+          function(next){
+            require('./announce').start(next)
+          }
+        ],
+        done
+      )
+    },
+    function(done){
       async.series(
         [
           //stop announce
@@ -255,40 +271,8 @@ if(require.main === module){
             mesh.stop(next)
           }
         ],
-        function(err){
-          if(err){
-            process.send({status: 'error', message: err})
-            process.exit(1)
-          }
-          process.exit()
-        }
+        done
       )
     }
-  })
-
-
-  var start = function(){
-    async.series([
-        //start mesh
-        function(next){
-          mesh.start(next)
-        },
-        //start ping
-        function(next){
-          require('./ping').start(next)
-        },
-        //start announce
-        function(next){
-          require('./announce').start(next)
-        }
-      ],
-      function(err){
-        if(err){
-          process.send({status: 'error', message: err})
-          process.exit(1)
-        }
-        process.send({status: 'ok'})
-      })
-  }
-  start()
+  )
 }

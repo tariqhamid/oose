@@ -1,10 +1,12 @@
 'use strict';
 var async = require('async')
 var crypto = require('crypto')
+var debug = require('debug')('oose:clone')
 var fs = require('graceful-fs')
 var net = require('net')
 var prettyBytes = require('pretty-bytes')
 
+var child = require('../helpers/child').child
 var communicator = require('../helpers/communicator')
 var commUtil = communicator.util
 var file = require('../helpers/file')
@@ -101,35 +103,21 @@ var newJob = function(message,socket){
   )))
 }
 
-
 if(require.main === module){
-  var start = function(done){
-    //start tcp
-    tcp = communicator.TCP({port: config.clone.port, host: config.clone.host})
-    // shred:job:push - queue entry acceptor
-    tcp.on('clone',function(message,socket){
-      newJob(message,socket)
-    })
-    logger.info('Listening for new clone jobs')
-    //check and see if there is a snapshot if so load it
-    done()
-  }
-  var stop = function(done){
-    tcp.close(done)
-  }
-  process.on('message',function(msg){
-    if('stop' === msg){
-      stop(function(err){
-        if(err) process.send({status: 'error', message: err})
-        process.exit(err ? 1 : 0)
+  child(
+    function(done){
+      //start tcp
+      tcp = communicator.TCP({port: config.clone.port, host: config.clone.host})
+      // shred:job:push - queue entry acceptor
+      tcp.on('clone',function(message,socket){
+        newJob(message,socket)
       })
+      debug('Listening for new clone jobs')
+      //check and see if there is a snapshot if so load it
+      done()
+    },
+    function(done){
+      tcp.close(done)
     }
-  })
-  start(function(err){
-    if(err){
-      process.send({status: 'error', message: err})
-      process.exit(1)
-    }
-    process.send({status: 'ok'})
-  })
+  )
 }

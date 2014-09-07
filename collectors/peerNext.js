@@ -1,6 +1,7 @@
 'use strict';
 var async = require('async')
 
+var child = require('../helpers/child').child
 var Collector = require('../helpers/collector')
 var logger = require('../helpers/logger').create('collector:peerNext')
 var redis = require('../helpers/redis')
@@ -87,27 +88,17 @@ peerNext.on('error',function(err){
   logger.error(err)
 })
 
-
 if(require.main === module){
-  process.on('message',function(msg){
-    if('stop' === msg){
+  child(
+    function(done){
+      peerNext.start(config.mesh.peerNext.interval,500,function(err){
+        done(err)
+      })
+    },
+    function(done){
       peerNext.stop(function(err){
-        if(err){
-          process.send({status: 'error', message: msg})
-          process.exit(1)
-        }
-        process.exit()
+        done(err)
       })
     }
-  })
-  var start = function(){
-    peerNext.start(config.mesh.peerNext.interval,500,function(err){
-      if(err){
-        process.send({status: 'error', message: err})
-        process.exit(1)
-      }
-      process.send({status: 'ok'})
-    })
-  }
-  start()
+  )
 }

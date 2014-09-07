@@ -1,11 +1,10 @@
 'use strict';
 var crc32 = require('buffer-crc32')
+var debug = require('debug')('oose:communicator')
 var dgram = require('dgram')
 var EventEmitter = require('events').EventEmitter
 var net = require('net')
 var stream = require('stream')
-
-var logger = require('../helpers/logger').create('communicator')
 
 var config = require('../config')
 
@@ -155,7 +154,7 @@ var UDP = function(options){
         options.multicast.address,options.multicast.interfaceAddress || null
       )
     }
-    logger.info(
+    debug(
       'UDP bound on ' +
       [options.address,options.port].join(':') +
       ((options.multicast && options.multicast.address) ? ' (multicast)' : '')
@@ -167,12 +166,12 @@ var UDP = function(options){
     //if the packet is duplicate just ignore it
     if(dup){
       if(config.mesh.debug > 0)
-        logger.warning('Duplicate packet ignored',rinfo)
+        debug('Duplicate packet ignored',rinfo)
       return
     }
     var payload
     if(packet === null){
-      logger.warn(
+      debug(
         'Null packet received from ' + rinfo.address + ':' + rinfo.port
       )
       payload = {}
@@ -254,7 +253,7 @@ var TCP = function(options){
   })
   self.server.on('error',function(err){self.emit('error',err)})
   self.server.listen(options.port,options.address,function(){
-    logger.info(
+    debug(
       'TCP listener bound on ' +
       [options.address,options.port].join(':')
     )

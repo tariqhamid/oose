@@ -5,7 +5,7 @@ require('node-sigint')
 var async = require('async')
 var cluster = require('cluster')
 var program = require('commander')
-//var debug = require('debug')('oose:master')
+var debug = require('debug')('oose:master')
 var fs = require('graceful-fs')
 var mkdirp = require('mkdirp')
 var os = require('os')
@@ -15,12 +15,15 @@ var Logger = require('./helpers/logger')
 var redis = require('./helpers/redis')
 var logger = Logger.create('main')
 
-var clone = new Child('./clone')
-var peerNext = new Child('./collectors/peerNext')
-var peerStats = new Child('./collectors/peerStats')
-var mesh = new Child('./mesh')
-var shredder = new Child('./shredder')
-var supervisor = new Child('./supervisor')
+var child = Child.parent
+var once = Child.fork
+
+var clone = child('./clone')
+var peerNext = child('./collectors/peerNext')
+var peerStats = child('./collectors/peerStats')
+var mesh = child('./mesh')
+var shredder = child('./shredder')
+var supervisor = child('./supervisor')
 
 var config = require('./config')
 
@@ -43,6 +46,7 @@ exports.start = function(){
     .parse(process.argv)
 
   //set log verbosity
+  debug('setting up console logging with level',program.verbose)
   Logger.consoleFilter.setConfig({level: (program.verbose || 0) + 4})
 
   //start booting
@@ -50,14 +54,17 @@ exports.start = function(){
     [
       //make sure the root folder exists
       function(next){
+        debug('ensure root folder exists')
         var root = config.root
         fs.exists(root,function(exists){
           if(exists) return next()
+          debug('creating root folder')
           mkdirp(root,next)
         })
       },
       //cleanup redis
       function(next){
+        debug('starting to cleanup redis')
         var removed = 0
         var removeKeys = function(pattern,next){
           redis.keys(pattern,function(err,keys){
@@ -76,19 +83,20 @@ exports.start = function(){
           function(next){removeKeys('inventory*',next)}
         ],function(err){
           if(err) return next(err)
-          logger.info('Cleared ' + removed + ' keys from redis')
+          debug('finished clearing redis, removed ' + removed + ' keys')
           next()
         })
       },
       //inventory files first if store is enabled
       function(next){
         if(!config.store.enabled) return next()
-        Child.fork('./tasks/inventory',next)
+        debug('Executing inventory')
+        once('./tasks/inventory',next)
       },
       //start collectors
       function(next){
         if(config.mesh.enabled && config.mesh.stat.enabled){
-          logger.info('Starting stats collection')
+          debug('Starting stats collection')
           peerStats.start(next)
         } else next()
       },
@@ -101,7 +109,7 @@ exports.start = function(){
       },
       //go to ready state 1
       function(next){
-        logger.info('Going to readyState 1')
+        debug('Going to readyState 1')
         mesh.send({readyState: 1})
         next()
       },
@@ -114,7 +122,7 @@ exports.start = function(){
       },
       //go to ready state 2
       function(next){
-        logger.info('Going to readyState 2')
+        debug('Going to readyState 2')
         mesh.send({readyState: 2})
         next()
       },
@@ -129,24 +137,14 @@ exports.start = function(){
       function(next){
         if(config.store.enabled){
           logger.info('Starting clone system')
-          clone.start(function(err){
-            if(!err){
-              logger.info('Cloning system started')
-              next()
-            } else next(err)
-          })
+          clone.start(next)
         } else next()
       },
       //start Shredder
       function(next){
         if(config.shredder.enabled){
           logger.info('Starting shredder')
-          shredder.start(function(err){
-            if(!err){
-              logger.info('Shredder started')
-              next()
-            } else next(err)
-          })
+          shredder.start(next)
         } else next()
       }
     ],
@@ -166,18 +164,19 @@ exports.start = function(){
       //worker online notification
       var workerOnlineCount = 0
       cluster.on('online',function(worker){
-        logger.info('Worker ' + worker.id + ' online')
+        debug('Worker ' + worker.id + ' online')
         workerOnlineCount++
         if(workerOnlineCount >= workerCount){
           //go to ready state 3
-          logger.info('Going to readyState 3')
+          debug('Going to readyState 3')
           mesh.send({readyState: 3})
+          logger.info('Startup complete')
         }
       })
       //worker recovery
       cluster.on('exit',function(worker,code,signal){
         if(0 !== code){
-          logger.info(
+          logger.warning(
             'Worker ' + worker.id + ' died (' + (signal || code) + ') restarted'
           )
           //start the new worker
@@ -199,7 +198,7 @@ exports.start = function(){
         //stop shredder
         function(next){
           if(config.shredder.enabled){
-            logger.info('Stopping shredder')
+            debug('Stopping shredder')
             shredder.stop(next)
           } else next()
         },
@@ -212,7 +211,7 @@ exports.start = function(){
         },
         //go to ready state 5
         function(next){
-          logger.info('Going to readyState 5')
+          debug('Going to readyState 5')
           mesh.send({readyState: 5})
           next()
         },
@@ -257,13 +256,13 @@ exports.start = function(){
         //stats
         function(next){
           if(config.mesh.enabled && config.mesh.stat.enabled){
-            logger.info('Stopping self stat collection')
+            debug('Stopping self stat collection')
             peerStats.stop(next)
           } else next()
         },
         //go to ready state 0
         function(next){
-          logger.info('Going to readyState 0')
+          debug('Going to readyState 0')
           mesh.send({readyState: 0})
           next()
         },
@@ -284,7 +283,7 @@ exports.start = function(){
           logger.error('Shutdown already failed once, forcing exit')
           process.exit()
         } else {
-          logger.info('Stopped')
+          logger.info('Shutdown complete')
           process.exit()
         }
       }

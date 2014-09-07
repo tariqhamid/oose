@@ -1,4 +1,5 @@
 'use strict';
+var child = require('../helpers/child').child
 var logger = require('../helpers/logger').create('supervisor')
 var redis = require('../helpers/redis')
 
@@ -54,38 +55,31 @@ var supervisorStartup = function(){
   })
 }
 
-
-/**
- * Start Supervisor
- */
-var start = function(){
-/*
-  redis.sscan('inventory',0,function(err,result){
-    if(err){
-      logger.warn('Could not load inventory: ',err)
-    } else {
-      logger.info(result)
+if(require.main === module){
+  child(
+    function(done){
+      /*
+       redis.sscan('inventory',0,function(err,result){
+       if(err){
+       logger.warn('Could not load inventory: ',err)
+       } else {
+       logger.info(result)
+       }
+       supervisorTimeout = setTimeout(
+       exports.start(),
+       config.supervisor.retryInterval
+       )
+       done()
+       })
+       */
+      done()
+    },
+    function(done){
+      if(supervisorTimeout){
+        clearTimeout(supervisorTimeout)
+        msg.stopped()
+      }
+      done()
     }
-    supervisorTimeout = setTimeout(
-      exports.start(),
-      config.supervisor.retryInterval
-    )
-    done()
-  })
- */
-  process.send({status: 'ok'})
+  )
 }
-start()
-
-
-/**
- * Stop Supervisor
- */
-process.on('message',function(msg){
-  if('stop' === msg){
-    if(supervisorTimeout){
-      clearTimeout(supervisorTimeout)
-      msg.stopped()
-    }
-  }
-})

@@ -5,6 +5,7 @@ var dump = require('debug')('oose:peerStats:dump')
 var path = require('path')
 var util = require('util')
 
+var child = require('../helpers/child').child
 var Collector = require('../helpers/collector')
 var logger = require('../helpers/logger').create('collector:peerStats')
 var redis = require('../helpers/redis')
@@ -638,24 +639,20 @@ collector.process(function(basket,next){
 collector.save(save)
 
 if(require.main === module){
-  process.on('message',function(msg){
-    if('stop' === msg){
+  child(
+    function(done){
+      snmpPrep(function(err){
+        if(err) return done(err)
+        collector.once('loopEnd',function(){
+          done()
+        })
+        collector.start(config.mesh.stat.interval,0)
+      })
+    },
+    function(done){
       collector.stop(function(err){
-        if(err) process.send({status: 'error', message: err})
-        process.exit(err ? 1 : 0)
+        done(err)
       })
     }
-  })
-  var start = function(){
-    snmpPrep(function(err){
-      if(err){
-        return process.send({status: 'error', message: err})
-      }
-      collector.once('loopEnd',function(){
-        process.send({status: 'ok'})
-      })
-      collector.start(config.mesh.stat.interval,0)
-    })
-  }
-  start()
+  )
 }

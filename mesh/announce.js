@@ -32,7 +32,6 @@ var announceLog = function(selfPeer,oldPeer,peer,packet){
     ')' +
     ((packet.hostname === selfPeer.hostname) ? ' [SELFIE]' : '')
   debug(msg)
-  if(config.mesh.debug > 0) logger.info(msg)
 }
 
 

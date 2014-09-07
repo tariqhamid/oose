@@ -64,6 +64,34 @@ For development a more interactive test method might be best
 $ mocha -R spec --watch
 ```
 
+## Logging
+
+Console logging is cotrolled by pass one or more `-v` to the app
+
+eg
+```
+$ node app -vv
+```
+
+* `` - nothing is logged
+* `v` - Only high level process messages are logged
+* `vv` - Normal logging for interactive shells
+* `vvv` - Debug logging with call traces
+* `vvvv` - Debug logging without call traces
+
+## Debug Logging
+
+All debug logging now uses the [https://github.com/visionmedia/debug](debug)
+package.
+
+The following can be used to see all messages (typically used in dev)
+```
+$ DEBUG=oose* node app -vv
+```
+
+From there follow the debug filtering rules defined
+[https://github.com/visionmedia/debug#wildcards](here)
+
 ## Port Layout
 
 By default OOSE starts several services, all of which run on different ports and listen on all interfaces.
