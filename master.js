@@ -27,6 +27,24 @@ var supervisor = child('./supervisor')
 
 var config = require('./config')
 var running = false
+var shutdownAttempted = false
+
+
+/**
+ * Restart failed workers
+ * @param {cluster.worker} worker
+ * @param {number} code
+ * @param {string} signal
+ */
+var workerRestart = function(worker,code,signal){
+  if(0 !== code && !shutdownAttempted){
+    logger.warning(
+        'Worker ' + worker.id + ' died (' + (signal || code) + ') restarted'
+    )
+    //start the new worker
+    cluster.fork()
+  }
+}
 
 
 /**
@@ -183,18 +201,9 @@ exports.start = function(){
         }
       })
       //worker recovery
-      cluster.on('exit',function(worker,code,signal){
-        if(0 !== code){
-          logger.warning(
-            'Worker ' + worker.id + ' died (' + (signal || code) + ') restarted'
-          )
-          //start the new worker
-          cluster.fork()
-        }
-      })
+      cluster.on('exit',workerRestart)
     }
   )
-  var shutdownAttempted = false
   var shutdown = function(){
     //register force kill for the second
     process.on('SIGINT',function(){
@@ -228,6 +237,7 @@ exports.start = function(){
         function(next){
           if(config.workers.enabled){
             logger.info('Stopping all workers')
+            cluster.removeListener('exit',workerRestart)
             for(var id in cluster.workers){
               if(cluster.workers.hasOwnProperty(id))
                 cluster.workers[id].send('shutdown')
