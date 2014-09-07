@@ -129,32 +129,40 @@ SSH.prototype.commandStream = function(cmd,writable,next){
  * Run a bash script and stream the output
  * @param {string} command
  * @param {Stream.Writable} writable
- * @param {function} next
+ * @param {function} done
  */
-SSH.prototype.commandShell = function(command,writable,next){
+SSH.prototype.commandShell = function(command,writable,done){
   var that = this
   var client = that.client
   async.series(
     [
       //execute the command
       function(next){
-        client.shell(function(err,stream){
-          if(err) return next(err)
-          stream.setEncoding('utf-8')
-          stream.on('error',function(err){next(err)})
-          stream.on('end',function(){
-            next()
-          })
-          stream.on('readable',function(){
-            writable.write(stream.read())
-          })
-          stream.write('export TERM=dumb\n')
-          stream.write('export DEBIAN_FRONTEND=noninteractive\n')
-          stream.end(command + ' ; exit $?\n')
-        })
+        client.shell(
+          {
+            rows: 1024,
+            cols: 1024,
+            width: 1920,
+            height: 1080,
+            term: 'dumb'
+          },
+          function(err,stream){
+            if(err) return next(err)
+            stream.setEncoding('utf-8')
+            stream.on('error',function(err){next(err)})
+            stream.on('end',function(){
+              next()
+            })
+            stream.on('data',function(data){
+              writable.write(data)
+            })
+            stream.write('export DEBIAN_FRONTEND=noninteractive\n')
+            stream.end(command + ' ; exit $?\n')
+          }
+        )
       }
     ],
-    next
+    done
   )
 }
 
@@ -190,14 +198,13 @@ SSH.prototype.scriptStream = function(script,writable,next){
           stream.on('end', function(){
             next()
           })
-          stream.on('readable',function(){
-            var data = stream.read()
+          stream.on('data',function(data){
             writable.write(data)
           })
           stream.write('export TERM=dumb\n')
           stream.write('export DEBIAN_FRONTEND=noninteractive\n')
           stream.write(cmd + ' ; exit $?\n')
-          //stream.end()
+          stream.end()
         })
       },
       //remove the tmpfile

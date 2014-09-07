@@ -7,6 +7,25 @@ var ObjectManage = require('object-manage')
 var path = require('path')
 
 
+/**
+ * Setup a debugger prefixed with the pid
+ * @param {String|number} pid
+ * @param {debug} inst Debugger instance to call
+ * @return {function}
+ */
+var pidDebug = function(pid,inst){
+  inst = inst || debug
+  return function(){
+    var args = [pid]
+    for(var i in arguments){
+      if(!arguments.hasOwnProperty(i)) continue
+      args.push(arguments[i])
+    }
+    inst.apply(null,args)
+  }
+}
+
+
 
 /**
  * Fork a child process and call done when it exits
@@ -24,6 +43,9 @@ var Child = function(module,options){
   //load options
   that.options = new ObjectManage(that.defaultOptions)
   that.options.$load(options || {})
+  that.options.module = module
+  //setup an early debug
+  that.debug = pidDebug(module)
   //module to be ran
   that.module = path.resolve([dir,module].join('/'))
   //handle for child
@@ -91,6 +113,8 @@ Child.prototype.start = function(done){
   //spawn the new process, capture the pid
   that.cp = childProcess.fork(that.module)
   that.pid = that.cp.pid
+  //now that we have a pid, relabel the debugger
+  that.debug = pidDebug(that.pid)
   that.debug(
     'Spawned process with pid of ' + that.cp.pid + ' to execute ' + that.module)
   //store the exitCode if we get it, and pass the event upwards
@@ -179,8 +203,11 @@ Child.prototype.stop = function(timeout,done){
   }
   that.cp.once('close',function(){
     that.status('ready')
+    //restore early debugger until we start again
+    that.debug = pidDebug(that.options.module)
     that.running = false
-    done(that.exitCode ? that.exitCode : null)
+    done(that.exitCode ?
+      that.module + ' failed with code: ' + that.exitCode : null)
   })
 }
 
@@ -191,6 +218,7 @@ Child.prototype.stop = function(timeout,done){
  */
 Child.prototype.kill = function(){
   if(this.cp){
+    this.debug('sent kill')
     this.cp.kill()
     return true
   }
@@ -206,6 +234,7 @@ Child.prototype.kill = function(){
  */
 Child.prototype.send = function(msg,socket){
   if(this.cp){
+    this.debug('sent message',msg)
     this.cp.send(msg,socket)
     return true
   }
@@ -252,25 +281,47 @@ Child.parent = function(module,options){
  * @param {function} stop
  */
 Child.child = function(title,start,stop){
+  var debug = pidDebug(process.pid,require('debug')('oose:child:process'))
+  var doStop = function(){
+    stop(function(err){
+      if(err){
+        debug('stop failed',err)
+        process.send({status: 'error', message: err})
+        process.exit(1)
+        return
+      }
+      debug('stop complete')
+      process.exit()
+    })
+  }
+  debug('setting process title',title)
   process.title = title
+  process.on('SIGTERM',function(){
+    debug('ignored SIGTERM')
+  })
+  process.on('SIGINT',function(){
+    debug('ignored SIGINT')
+  })
+  process.on('SIGHUP',function(){
+    debug('got SIGHUP, gracefully exiting')
+    doStop()
+  })
   process.on('message',function(msg){
+    debug('got message',msg)
     if('stop' === msg){
-      stop(function(err){
-        if(err){
-          process.send({status: 'error', message: err})
-          process.exit(1)
-          return
-        }
-        process.exit()
-      })
+      debug('got stop, shutting down')
+      doStop()
     }
   })
+  debug('executing start')
   start(function(err){
     if(err){
+      debug('start failed',err)
       process.send({status: 'error',message: err})
       process.exit(1)
       return
     }
+    debug('start finished')
     process.send({status: 'ok'})
   })
 }
@@ -282,13 +333,27 @@ Child.child = function(title,start,stop){
  * @param {function} exec
  */
 Child.childOnce = function(title,exec){
+  var debug = pidDebug(process.pid,require('debug')('oose:childOnce:process'))
+  debug('setting process title',title)
   process.title = title
+  process.on('SIGTERM',function(){
+    debug('ignored SIGTERM')
+  })
+  process.on('SIGINT',function(){
+    debug('ignored SIGINT')
+  })
+  process.on('SIGHUP',function(){
+    debug('ignored SIGHUP')
+  })
+  debug('executing childOnce')
   exec(function(err){
     if(err){
+      debug('childOnce failed',err)
       process.send({status: 'error', message: err})
       process.exit(1)
       return
     }
+    debug('childOnce finished without error')
     process.send({status: 'ok'})
     process.exit()
   })

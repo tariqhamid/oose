@@ -269,6 +269,13 @@ exports.start = function(){
             peerStats.stop(next)
           } else next()
         },
+        //stop the supervisor
+        function(next){
+          if(config.supervisor.enabled){
+            logger.info('Stopping supervisor')
+            supervisor.stop(next)
+          } else next()
+        },
         //go to ready state 0
         function(next){
           debug('Going to readyState 0')

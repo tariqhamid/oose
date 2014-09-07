@@ -40,6 +40,7 @@
     "fluent-ffmpeg": "<2.0.0",
     "generic-pool": "2.1.x",
     "graceful-fs": "3.0.x",
+    "html-entities": "1.1.x",
     "ip": "0.3.x",
     "jade": "1.6.x",
     "markdown": "0.5.x",
@@ -67,6 +68,7 @@
     "string": "2.0.x",
     "syslog-protocol": "1.0.x",
     "temp": "0.8.x",
+    "through2": "0.6.x",
     "tough-cookie": "0.12.x"
   },
   "scripts": {

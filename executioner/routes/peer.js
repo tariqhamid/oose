@@ -1,6 +1,8 @@
 'use strict';
 var async = require('async')
 var dns = require('dns')
+var entities = new (require('html-entities').XmlEntities)()
+var through2 = require('through2')
 
 var peerHelper = require('../helpers/peer')
 var list = require('../helpers/list')
@@ -9,6 +11,21 @@ var Peer = require('../../models/peer').model
 var operationCompleteMessage =
   'Operation complete, close this window and refresh the previous page'
 var validStatuses = Peer.schema.path('status').enum().enumValues
+
+
+/**
+ * Helper to setup an html entity encoded writable stream
+ * @param {http.res} res
+ * @return {Stream.Transform}
+ */
+var encodeEntities = function(res){
+  var writable = through2(function(chunk,enc,next){
+    this.push(entities.encode(chunk.toString()))
+    next()
+  })
+  writable.pipe(res)
+  return writable
+}
 
 
 /**
@@ -56,7 +73,7 @@ exports.list = function(req,res){
       async.each(
         req.body.remove,
         function(id,next){
-          peerHelper.prepare(id,res,next)
+          peerHelper.prepare(id,encodeEntities(res),next)
         },
         function(err){
           if(err) peerHelper.banner(res,'ERROR: ' + err)
@@ -71,7 +88,7 @@ exports.list = function(req,res){
       async.each(
         req.body.remove,
         function(id,next){
-          peerHelper.install(id,res,next)
+          peerHelper.install(id,encodeEntities(res),next)
         },
         function(err){
           if(err) peerHelper.banner(res,'ERROR: ' + err)
@@ -86,7 +103,7 @@ exports.list = function(req,res){
       async.each(
         req.body.remove,
         function(id,next){
-          peerHelper.upgrade(id,res,next)
+          peerHelper.upgrade(id,encodeEntities(res),next)
         },
         function(err){
           if(err) peerHelper.banner(res,'ERROR: ' + err)
@@ -101,7 +118,7 @@ exports.list = function(req,res){
       async[req.body.runCommandParallel ? 'each' : 'eachSeries'](
         req.body.remove,
         function(id,next){
-          peerHelper.custom(id,req.body.command,res,next)
+          peerHelper.custom(id,req.body.command,encodeEntities(res),next)
         },
         function(err){
           if(err) peerHelper.banner(res,'ERROR: ' + err)
