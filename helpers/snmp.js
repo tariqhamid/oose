@@ -151,7 +151,7 @@ SnmpHelper.prototype.mib = {
     return mibString(mib2,'4.21.1.7',ip)
   },
   nsCacheTimeout: function(oid){
-    return mibString(mib2,'8072.1.5.3.1.2',oid)
+    return mibString('1.3.6.1.4.1.8072.1.5.3.1.2',oid)
   },
   sysUpTimeInstance:function(){
     return mibString(mib2,'1.3.0')
