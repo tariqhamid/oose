@@ -21,7 +21,7 @@
     "async": "0.9.x",
     "basic-auth": "1.0.x",
     "bcrypt": "0.8.x",
-    "body-parser": "1.7.x",
+    "body-parser": "1.8.x",
     "buffer-crc32": "^0.2.3",
     "callsite": "^1.0.0",
     "caterpillar": "2.0.x",
