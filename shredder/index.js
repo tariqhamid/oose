@@ -1,5 +1,6 @@
 'use strict';
 var async = require('async')
+var axon = require('axon')
 var childProcess = require('child_process')
 var debug = require('debug')('oose:shredder')
 var fs = require('graceful-fs')
@@ -10,8 +11,6 @@ var path = require('path')
 var util = require('util')
 
 var child = require('../helpers/child').child
-var communicator = require('../helpers/communicator')
-var commUtil = communicator.util
 var Logger = require('../helpers/logger')
 var shortId = require('../helpers/shortid')
 var logger = Logger.create('shredder')
@@ -21,7 +20,7 @@ var config = require('../config')
 var deferred = []
 var deferredInterval = null
 var running = false
-var tcp
+var server
 
 
 /**
@@ -140,13 +139,14 @@ var newJob = function(message,socket){
  */
 var meshStart = function(done){
   //start tcp
-  tcp = communicator.TCP({
-    port: config.shredder.port,
-    host: config.shredder.host
-  })
+  server = axon.socket('rep')
   // shred:job:push - queue entry acceptor
-  tcp.on('shred:job:push',function(message,socket){
-    newJob(message,socket)
+  server.on('message',function(command,message,reply){
+    if('job' === command)
+      newJob(message,reply)
+  })
+  server.on('error',function(err){
+    logger.warning('Server socket error',err)
   })
   debug('Listening for new shredder jobs')
   //check and see if there is a snapshot if so load it
@@ -160,7 +160,7 @@ var meshStart = function(done){
  * @return {*}
  */
 var meshStop = function(done){
-  tcp.close(done)
+  server.close(done)
 }
 
 

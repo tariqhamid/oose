@@ -1,5 +1,6 @@
 'use strict';
 var async = require('async')
+var axon = require('axon')
 var bodyParser = require('body-parser')
 var debug = require('debug')('oose:prism')
 var express = require('express')
@@ -7,8 +8,6 @@ var express = require('express')
 var app = express()
 var server = require('http').createServer(app)
 
-var commUtil = require('../helpers/communicator').util
-//var logger = require('../helpers/logger').create('prism')
 var peer = require('../helpers/peer')
 var redis = require('../helpers/redis')
 
@@ -32,34 +31,20 @@ var buildCache = function(sha1,done){
     [
       //acquire list of peers from locate up on the master
       function(next){
-        var client = commUtil.tcpSend(
-          'locate',
-          {sha1: sha1},
-          config.mesh.port,
-          config.mesh.host
-        )
-        client.once('readable',function(){
-          var sizebits = client.safeRead(2)
-          if(null === sizebits)
-            return done('failed to parse locate response, empty payload')
-          //read our response
-          var payload =
-            commUtil.parse(client.safeRead(sizebits.readUInt16BE(0)))
-          //check if we got an error
-          if('ok' !== payload.message.status)
-            return next(payload.message.message)
-          //make sure the response is our sha1
-          if(sha1 !== payload.command)
-            return next('Wrong command response for ' + sha1)
-          debug(sha1,'got payload',payload.message.peers)
-          for(var i in payload.message.peers){
-            if(!payload.message.peers.hasOwnProperty(i)) continue
-            if(payload.message.peers[i] && 'null' !== i) exists.push(i)
+        var client = axon.socket('req')
+        client.connect(config.mesh.port,config.mesh.host)
+        client.send('locate',{sha1: sha1},function(err,result){
+          if(err) return next(err)
+          if(!result.peers) return next()
+          var peers = result.peers
+          debug(sha1,'got payload',peers)
+          for(var i in peers){
+            if(!peers.hasOwnProperty(i)) continue
+            if(peers[i] && 'null' !== i) exists.push(i)
           }
           debug(sha1,'got locate back',exists)
           next()
         })
-        client.on('error',next)
       },
       //add the result to cache
       function(next){
@@ -266,26 +251,18 @@ app.post('/api/shredderJob',function(req,res){
       },
       //send the request to that peer
       function(next){
-        var client = commUtil.tcpSend(
+        var client = axon.socket('req')
+        client.connect(peerNext.portShredder,peerNext.ip)
+        client.send(
           'shred:job:push',
           {description: JSON.stringify(req.body)},
-          peerNext.portShredder,
-          peerNext.ip
+          function(err,result){
+            if(err) return next(err)
+            if(!result.handle) return next('No job handle created')
+            jobHandle = result.handle
+            next()
+          }
         )
-        client.once('readable',function(){
-          var size = client.safeRead(2)
-          if(null === size) return next('Failed to queue job')
-          size = size.readUInt16BE(0)
-          //read our response
-          var payload = commUtil.parse(client.safeRead(size))
-          //check if we got an error
-          if('ok' !== payload.message.status)
-            return next(payload.message.message)
-          if(!payload.message.handle) return next('No job handle created')
-          jobHandle = payload.message.handle
-          next()
-        })
-        client.on('error',next)
       }
     ],
     function(err){

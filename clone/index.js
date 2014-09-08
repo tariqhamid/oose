@@ -1,5 +1,6 @@
 'use strict';
 var async = require('async')
+var axon = require('axon')
 var crypto = require('crypto')
 var debug = require('debug')('oose:clone')
 var fs = require('graceful-fs')
@@ -7,15 +8,13 @@ var net = require('net')
 var prettyBytes = require('pretty-bytes')
 
 var child = require('../helpers/child').child
-var communicator = require('../helpers/communicator')
-var commUtil = communicator.util
 var file = require('../helpers/file')
 var logger = require('../helpers/logger').create('clone')
 var peer = require('../helpers/peer')
 var Sniffer = require('../helpers/Sniffer')
 
 var config = require('../config')
-var tcp
+var server = axon.socket('rep')
 
 
 /**
@@ -91,16 +90,12 @@ var q = async.queue(clone,config.clone.concurrency || 1)
 
 /**
  * Handle new jobs
- * @param {*} message
- * @param {net.Socket} socket
+ * @param {object} message
+ * @param {function} reply
  */
-var newJob = function(message,socket){
+var newJob = function(message,reply){
   q.push({sha1: message.sha1})
-  //respond to the request with the sha1 and queue position
-  socket.end(commUtil.withLength(commUtil.build(
-    message.sha1,
-    {status: 'ok', position: q.length()}
-  )))
+  reply(null,{status: 'ok', position: q.length()})
 }
 
 if(require.main === module){
@@ -108,17 +103,21 @@ if(require.main === module){
     'oose:clone',
     function(done){
       //start tcp
-      tcp = communicator.TCP({port: config.clone.port, host: config.clone.host})
+      server.bind(config.clone.port,config.clone.host)
       // shred:job:push - queue entry acceptor
-      tcp.on('clone',function(message,socket){
-        newJob(message,socket)
+      server.on('message',function(command,message,reply){
+        if('job' === command)
+          newJob(message,reply)
+      })
+      server.on('error',function(err){
+        logger.warning('Server socket error',err)
       })
       debug('Listening for new clone jobs')
       //check and see if there is a snapshot if so load it
       done()
     },
     function(done){
-      tcp.close(done)
+      server.close(done)
     }
   )
 }

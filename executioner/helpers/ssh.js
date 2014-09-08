@@ -66,11 +66,15 @@ SSH.prototype.commandBuffered = function(cmd,next){
         var stdout = ''
         var stderr = ''
         stream.setEncoding('utf-8')
-        stream.on('readable',function(){
-          stdout = stdout + stream.read()
+        stream.on('data',function(data){
+          stream.pause()
+          stdout = stdout + data
+          stream.resume()
         })
-        stream.stderr.on('readable',function(){
-          stderr = stderr + stream.stderr.read()
+        stream.stderr.on('data',function(data){
+          stream.pause()
+          stderr = stderr + data
+          stream.resume()
         })
         stream.on('exit',function(code){ exitCode = code })
         stream.on('end',function(){
@@ -107,8 +111,8 @@ SSH.prototype.commandStream = function(cmd,writable,next){
         if(err) return next(err)
         var exitCode
         stream.setEncoding('utf-8')
-        stream.on('readable',function(){
-          writable.write(stream.read())
+        stream.on('data',function(data){
+          writable.write(data)
         })
         stream.on('exit',function(code){
           exitCode = code

@@ -1,5 +1,6 @@
 'use strict';
 var async = require('async')
+var axon = require('axon')
 var crypto = require('crypto')
 var fs = require('graceful-fs')
 var mkdirp = require('mkdirp')
@@ -7,7 +8,6 @@ var mmm = require('mmmagic')
 var path = require('path')
 var temp = require('temp')
 
-var commUtil = require('../helpers/communicator').util
 var redis = require('../helpers/redis')
 var Sniffer = require('../helpers/Sniffer')
 
@@ -26,33 +26,22 @@ var queueClone = function(sha1,done){
     [
       //do a location on the sha1
       function(next){
-        var client = commUtil.tcpSend(
-          'locate',
-          {sha1: sha1},
-          config.mesh.port,
-          config.mesh.host
-        )
-        client.once('readable',function(){
-          var size = client.safeRead(2)
-          if(null === size) return next('Could not execute locate')
-          size = size.readUInt16BE(0)
-          //read our response
-          var payload = commUtil.parse(client.safeRead(size))
-          //check if we got an error
-          if('ok' !== payload.message.status)
-            return next(payload.message.message)
-          //make sure the response is our sha1
-          if(sha1 !== payload.command)
+        var client = axon.socket('req')
+        client.connect(config.mesh.port,config.mesh.host)
+        client.send('locate',{sha1: sha1},function(err,result){
+          if(err) return next(err)
+          if(sha1 !== result.sha1)
             return next('Wrong command response for ' + sha1)
-          for(var i in payload.message.peers){
-            if(payload.message.peers.hasOwnProperty(i)){
+          if(!result.peers) return
+          var peers = result.peers
+          for(var i in peers){
+            if(peers.hasOwnProperty(i)){
               peerCount++
-              if(payload.message.peers[i]) cloneCount++
+              if(peers[i]) cloneCount++
             }
           }
           next()
         })
-        client.on('error',next)
       },
       //queue a clone if we need to
       function(next){
@@ -61,24 +50,11 @@ var queueClone = function(sha1,done){
         //if there are less than 2 peers we cant replicate
         if(peerCount < 2) return next()
         //setup clone job
-        var client = commUtil.tcpSend(
-          'clone',
-          {sha1: sha1},
-          config.clone.port,
-          config.clone.host || '127.0.0.1'
-        )
-        client.once('readable',function(){
-          var size = client.safeRead(2)
-          if(null === size) return next('Failed to queue clone')
-          size = size.readUInt16BE(0)
-          //read our response
-          var payload = commUtil.parse(client.safeRead(size))
-          //check if we got an error
-          if('ok' !== payload.message.status)
-            return next(payload.message.message)
-          next()
+        var client = axon.socket('req')
+        axon.connect(config.clone.port,config.clone.host || '127.0.0.1')
+        client.send('clone',{sha1: sha1},function(err){
+          next(err)
         })
-        client.on('error',next)
       }
     ],
     done
