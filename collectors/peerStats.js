@@ -263,6 +263,7 @@ var snmpPrep = function(done){
           }
         )
       },
+/*
       function(next){
         snmp.sess.set(
           {
@@ -284,6 +285,7 @@ var snmpPrep = function(done){
           }
         )
       },
+*/
       function(next){
         debug('snmpPrep() calling addBulk()')
         //locate all CPUs
@@ -537,6 +539,7 @@ var snmpPoll = function(basket,done){
             complete()
           }
         )
+/*
         //localhost listening TCP ports
         snmp.addBulk(
           snmp.mib.tcpConnectionState('127.0.0.1'),
@@ -559,6 +562,7 @@ var snmpPoll = function(basket,done){
             complete()
           }
         )
+*/
         //speed from IF-MIB::ifSpeed.<ifIndex>
         snmp.addBulk(
           snmp.mib.ifSpeed(),
