@@ -90,10 +90,10 @@ var ooseInfo = {
 
 var nullFunc = function(){}
 
-var getServices = function(basket,next){
+var getServices = function(next){
   debug('getServices() called')
   //services
-  basket.services = ''
+  ooseInfo.services = ''
   var svcList = [
     'announce',
     'ping',
@@ -123,7 +123,7 @@ var getServices = function(basket,next){
   if(config.shredder.enabled){
     ooseInfo.portShredder = config.shredder.portPublic || config.shredder.port
   }
-  next(null,basket)
+  next()
 }
 
 var capHistory = function(next){
