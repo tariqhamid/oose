@@ -6,7 +6,7 @@ var redis = require('redis')
 
 var config = require('../config')
 
-var primaryHandle = false
+var primaryHandle = null
 
 var nullCb = function(){}
 var pool = genericPool.Pool({
@@ -52,6 +52,28 @@ if(!primaryHandle){
     }
   ],function(err){
     if(err) debug('grabbing primaryHandle failed: ',err)
+  })
+}
+
+
+/**
+ * Remove keys by a pattern
+ * @param {string} pattern
+ * @param {function} next
+ */
+primaryHandle.removeKeysPattern = function(pattern,next){
+  var removed = 0
+  primaryHandle.keys(pattern,function(err,keys){
+    async.eachSeries(
+      keys,
+      function(key,next){
+        primaryHandle.del(key,function(err,count){removed += count; next(err)})
+      },
+      function(err){
+        if(err) return next(err)
+        next(null,removed)
+      }
+    )
   })
 }
 

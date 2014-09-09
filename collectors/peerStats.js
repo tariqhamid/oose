@@ -90,12 +90,20 @@ var ooseInfo = {
 
 var nullFunc = function(){}
 
-var getServices = function(next){
+var getServices = function(basket,next){
   debug('getServices() called')
   //services
-  ooseInfo.services = ''
+  basket.services = ''
   var svcList = [
-    'mesh','supervisor','store','prism','shredder','gump','lg','executioner'
+    'announce',
+    'ping',
+    'supervisor',
+    'store',
+    'prism',
+    'shredder',
+    'gump',
+    'lg',
+    'executioner'
   ]
   var svc = ''
   for(i=0; i < svcList.length; i++){
@@ -115,8 +123,7 @@ var getServices = function(next){
   if(config.shredder.enabled){
     ooseInfo.portShredder = config.shredder.portPublic || config.shredder.port
   }
-  ooseInfo.portMesh = config.mesh.portPublic || config.mesh.port
-  next()
+  next(null,basket)
 }
 
 var capHistory = function(next){
@@ -171,7 +178,6 @@ var calcNetStats = function(basket,next){
 }
 
 var calcCapStats = function(basket,next){
-  console.log(next)
   debug('calcCapStats() called')
   basket.availableCapacity = 100 * (basket.diskFree / basket.diskTotal)
   //issue #32 avail comes back infinity (this is a safeguard)
@@ -685,7 +691,7 @@ if(require.main === module){
         collector.once('loopEnd',function(){
           done()
         })
-        collector.start(config.mesh.stat.interval,0)
+        collector.start(config.announce.interval,0)
       })
     },
     function(done){

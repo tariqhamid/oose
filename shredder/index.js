@@ -1,5 +1,6 @@
 'use strict';
 var async = require('async')
+var axon = require('axon')
 var childProcess = require('child_process')
 var debug = require('debug')('oose:shredder')
 var fs = require('graceful-fs')
@@ -10,8 +11,6 @@ var path = require('path')
 var util = require('util')
 
 var child = require('../helpers/child').child
-var communicator = require('../helpers/communicator')
-var commUtil = communicator.util
 var Logger = require('../helpers/logger')
 var shortId = require('../helpers/shortid')
 var logger = Logger.create('shredder')
@@ -21,7 +20,7 @@ var config = require('../config')
 var deferred = []
 var deferredInterval = null
 var running = false
-var tcp
+var server = axon.socket('rep')
 
 
 /**
@@ -85,9 +84,9 @@ var scheduleDeferred = function(){
 /**
  * Process an incoming job
  * @param {object} message
- * @param {Socket} socket
+ * @param {function} reply
  */
-var newJob = function(message,socket){
+var newJob = function(message,reply){
   //build job description
   var job = {
     handle: shortId.generate(),
@@ -127,10 +126,7 @@ var newJob = function(message,socket){
     )
   }
   //respond to the request with the assigned handle and queue position
-  socket.end(commUtil.withLength(commUtil.build(
-    job.handle,
-    {status: 'ok', handle: job.handle, position: q.length()}
-  )))
+  reply(null,{status: 'ok', handle: job.handle, position: q.length()})
 }
 
 
@@ -138,15 +134,16 @@ var newJob = function(message,socket){
  * Set up and listen
  * @param {function} done Callback
  */
-var meshStart = function(done){
+var tcpStart = function(done){
   //start tcp
-  tcp = communicator.TCP({
-    port: config.shredder.port,
-    host: config.shredder.host
-  })
+  server.bind(config.shredder.port,config.shredder.host)
   // shred:job:push - queue entry acceptor
-  tcp.on('shred:job:push',function(message,socket){
-    newJob(message,socket)
+  server.on('message',function(message,reply){
+    debug('got message',message)
+    newJob(message,reply)
+  })
+  server.on('error',function(err){
+    logger.warning('Server socket error',err)
   })
   debug('Listening for new shredder jobs')
   //check and see if there is a snapshot if so load it
@@ -155,12 +152,12 @@ var meshStart = function(done){
 
 
 /**
- * Stop mesh listening
+ * Stop listening
  * @param {function} done
  * @return {*}
  */
-var meshStop = function(done){
-  tcp.close(done)
+var tcpStop = function(done){
+  server.close(done)
 }
 
 
@@ -212,7 +209,7 @@ var shutdown = function(done){
       //  (any that we received in the meantime will be stored)
       function(next){
         logger.info('Ceasing to listen for new jobs')
-        meshStop(next)
+        tcpStop(next)
       },
       //setup and write our snapshot of remaining items in the q
       function(next){
@@ -276,9 +273,9 @@ if(require.main === module){
             //start trying to schedule the deferred jobs
             deferredInterval = setInterval(scheduleDeferred,15000)
             next()
-          },//start listening for new jobs from mesh
+          },//start listening for new jobs
           function(next){
-            meshStart(next)
+            tcpStart(next)
           }
         ],
         function(err){

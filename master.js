@@ -11,6 +11,7 @@ var mkdirp = require('mkdirp')
 var os = require('os')
 
 var Child = require('./helpers/child')
+var lifecycle = new (require('./helpers/lifecycle'))()
 var Logger = require('./helpers/logger')
 var redis = require('./helpers/redis')
 var logger = Logger.create('main')
@@ -18,16 +19,34 @@ var logger = Logger.create('main')
 var child = Child.parent
 var once = Child.fork
 
+var announce = child('./announce')
 var clone = child('./clone')
+var locate = child('./locate')
 var peerNext = child('./collectors/peerNext')
 var peerStats = child('./collectors/peerStats')
-var mesh = child('./mesh')
+var ping = child('./ping')
 var shredder = child('./shredder')
 var supervisor = child('./supervisor')
 
 var config = require('./config')
 var running = false
-var shutdownAttempted = false
+var stopping = false
+
+//parse cli
+program
+  .version(config.version)
+  .option(
+  '-v, --verbose',
+  'Increase logging',
+  function(v,total){
+    return total + 1
+  },
+  0
+).parse(process.argv)
+
+//set log verbosity
+debug('setting up console logging with level',program.verbose)
+Logger.consoleFilter.setConfig({level: (program.verbose || 0) + 4})
 
 
 /**
@@ -37,7 +56,7 @@ var shutdownAttempted = false
  * @param {string} signal
  */
 var workerRestart = function(worker,code,signal){
-  if(0 !== code && !shutdownAttempted){
+  if(0 !== code && !stopping){
     logger.warning(
         'Worker ' + worker.id + ' died (' + (signal || code) + ') restarted'
     )
@@ -55,134 +74,145 @@ process.title = 'oose:master'
 
 
 /**
- * Start master
+ * Touch root to ensure existence
  */
-exports.start = function(){
-  //parse cli
-  program
-    .version(config.version)
-    .option(
-    '-v, --verbose',
-    'Increase logging',
-    function(v,total){
-      return total + 1
+lifecycle.add(function(next){
+  debug('ensure root folder exists')
+  var root = config.root
+  fs.exists(root,function(exists){
+    if(exists) return next()
+    debug('creating root folder')
+    mkdirp(root,next)
+  })
+})
+
+
+/**
+ * Remove any existing keys from redis
+ */
+lifecycle.add(function(next){
+  debug('starting to cleanup redis')
+  var removed = 0
+  var done = function(next){
+    return function(err,count){
+      removed = removed + count
+      next()
+    }
+  }
+  async.series([
+    function(next){redis.removeKeysPattern('peer:*',done(next))},
+    function(next){redis.removeKeysPattern('prism:*',done(next))},
+    function(next){redis.removeKeysPattern('inventory*',done(next))}
+  ],function(err){
+    if(err) return next(err)
+    debug('finished clearing redis, removed ' + removed + ' keys')
+    next()
+  })
+})
+
+
+/**
+ * Inventory filesystem
+ */
+if(config.store.enabled){
+  lifecycle.add(function(next){
+    debug('Executing inventory')
+    once('./tasks/inventory',next)
+  })
+}
+
+
+/**
+ * Collect stats about the peer if we can
+ */
+if(config.announce.enabled){
+  lifecycle.add(
+    function(next){
+      debug('Starting stats collection')
+      peerStats.start(next)
     },
-    0
+    function(next){
+      debug('Stopping stats collection')
+      peerStats.stop(next)
+    }
   )
-    .parse(process.argv)
+}
 
-  //set log verbosity
-  debug('setting up console logging with level',program.verbose)
-  Logger.consoleFilter.setConfig({level: (program.verbose || 0) + 4})
 
-  //start booting
-  async.series(
-    [
-      //make sure the root folder exists
-      function(next){
-        debug('ensure root folder exists')
-        var root = config.root
-        fs.exists(root,function(exists){
-          if(exists) return next()
-          debug('creating root folder')
-          mkdirp(root,next)
-        })
-      },
-      //cleanup redis
-      function(next){
-        debug('starting to cleanup redis')
-        var removed = 0
-        var removeKeys = function(pattern,next){
-          redis.keys(pattern,function(err,keys){
-            async.eachSeries(
-              keys,
-              function(key,next){
-                redis.del(key,function(err,count){removed += count; next(err)})
-              },
-              next
-            )
-          })
-        }
-        async.series([
-          function(next){removeKeys('peer:*',next)},
-          function(next){removeKeys('prism:*',next)},
-          function(next){removeKeys('inventory*',next)}
-        ],function(err){
-          if(err) return next(err)
-          debug('finished clearing redis, removed ' + removed + ' keys')
-          next()
-        })
-      },
-      //inventory files first if store is enabled
-      function(next){
-        if(!config.store.enabled) return next()
-        debug('Executing inventory')
-        once('./tasks/inventory',next)
-      },
-      //start collectors
-      function(next){
-        if(config.mesh.enabled && config.mesh.stat.enabled){
-          debug('Starting stats collection')
-          peerStats.start(next)
-        } else next()
-      },
-      //start mesh
-      function(next){
-        if(config.mesh.enabled){
-          logger.info('Starting mesh')
-          mesh.start(next)
-        } else next()
-      },
-      //go to ready state 1
-      function(next){
-        debug('Going to readyState 1')
-        mesh.send({readyState: 1})
-        next()
-      },
-      //start next peer selection
-      function(next){
-        if(config.mesh.enabled && config.mesh.peerNext.enabled){
-          logger.info('Starting next peer selection')
-          peerNext.start(next)
-        } else next()
-      },
-      //go to ready state 2
-      function(next){
-        debug('Going to readyState 2')
-        mesh.send({readyState: 2})
-        next()
-      },
-      //start the supervisor
-      function(next){
-        if(config.supervisor.enabled){
-          logger.info('Starting supervisor')
-          supervisor.start(next)
-        } else next()
-      },
-      //start Clone handler
-      function(next){
-        if(config.store.enabled){
-          logger.info('Starting clone system')
-          clone.start(next)
-        } else next()
-      },
-      //start Shredder
-      function(next){
-        if(config.shredder.enabled){
-          logger.info('Starting shredder')
-          shredder.start(next)
-        } else next()
-      }
-    ],
-    function(err){
-      if(err){
-        logger.error('Startup failed: ' + err)
-        process.exit()
-      }
-      if(!config.workers.enabled){
-        logger.info('Not starting workers, they are disabled')
-        return
-      }
+/**
+ * Ping system
+ */
+if(config.ping.enabled){
+  lifecycle.add(
+    function(next){
+      logger.info('Starting ping')
+      ping.start(next)
+    },
+    function(next){
+      logger.info('Stopping ping')
+      ping.stop(next)
+    }
+  )
+}
+
+
+/**
+ * Announce system
+ */
+if(config.announce.enabled){
+  lifecycle.add(
+    function(next){
+      logger.info('Starting announce')
+      announce.start(next)
+    },
+    function(next){
+      logger.info('Stopping announce')
+      announce.stop(next)
+    }
+  )
+}
+
+
+/**
+ * Peer next selection
+ */
+if(config.announce.enabled){
+  lifecycle.add(
+    function(next){
+      logger.info('Starting next peer selection')
+      peerNext.start(next)
+    },
+    function(next){
+      logger.info('Stopping next peer selection')
+      peerNext.stop(next)
+    }
+  )
+}
+
+
+/**
+ * Supervisor
+ */
+if(config.supervisor.enabled){
+  lifecycle.add(
+    function(next){
+      logger.info('Starting supervisor')
+      supervisor.start(next)
+    },
+    function(next){
+      logger.info('Stopping supervisor')
+      supervisor.stop(next)
+    }
+  )
+}
+
+
+/**
+ * Workers
+ */
+if(config.workers.enabled){
+  lifecycle.add(
+    function(next){
       //start workers
       var workerCount = config.workers.count || os.cpus().length || 4
       logger.info('Starting ' + workerCount + ' workers')
@@ -193,61 +223,28 @@ exports.start = function(){
         debug('Worker ' + worker.id + ' online')
         workerOnlineCount++
         if(workerOnlineCount >= workerCount && !running){
-          //go to ready state 3
-          running = true
-          debug('Going to readyState 3')
-          mesh.send({readyState: 3})
-          logger.info('Startup complete')
+          logger.info('Workers started')
+          next()
         }
       })
       //worker recovery
       cluster.on('exit',workerRestart)
-    }
-  )
-  var shutdown = function(){
-    //register force kill for the second
-    process.on('SIGINT',function(){
-      process.exit()
-    })
-    //start the shutdown process
-    logger.info('Beginning shutdown')
-    async.series(
-      [
-        //stop shredder
-        function(next){
-          if(config.shredder.enabled){
-            debug('Stopping shredder')
-            shredder.stop(next)
-          } else next()
-        },
-        //stop clone
-        function(next){
-          if(config.shredder.enabled){
-            logger.info('Stopping clone system')
-            clone.stop(next)
-          } else next()
-        },
-        //go to ready state 5
-        function(next){
-          debug('Going to readyState 5')
-          mesh.send({readyState: 5})
-          next()
-        },
-        //message workers to shutdown
-        function(next){
-          if(config.workers.enabled){
+    },
+    function(next){
+      async.series(
+        [
+          //message workers to shutdown
+          function(next){
             logger.info('Stopping all workers')
             cluster.removeListener('exit',workerRestart)
             for(var id in cluster.workers){
               if(cluster.workers.hasOwnProperty(id))
-                cluster.workers[id].send('shutdown')
+                cluster.workers[id].send('stop')
             }
             next()
-          } else next()
-        },
-        //stop workers
-        function(next){
-          if(config.workers.enabled){
+          },
+          //stop workers
+          function(next){
             //wait for the workers to all die
             var checkWorkerCount = function(){
               if(!cluster.workers) return next()
@@ -263,59 +260,103 @@ exports.start = function(){
               }
             }
             checkWorkerCount()
-          } else next()
-        },
-        //stop next peer selection
-        function(next){
-          if(config.mesh.enabled && config.mesh.peerNext.enabled){
-            logger.info('Stopping next peer selection')
-            peerNext.stop(next)
-          } else next()
-        },
-        //stats
-        function(next){
-          if(config.mesh.enabled && config.mesh.stat.enabled){
-            debug('Stopping self stat collection')
-            peerStats.stop(next)
-          } else next()
-        },
-        //stop the supervisor
-        function(next){
-          if(config.supervisor.enabled){
-            logger.info('Stopping supervisor')
-            supervisor.stop(next)
-          } else next()
-        },
-        //go to ready state 0
-        function(next){
-          debug('Going to readyState 0')
-          mesh.send({readyState: 0})
-          next()
-        },
-        //stop mesh
-        function(next){
-          if(config.mesh.enabled){
-            logger.info('Stopping mesh')
-            mesh.stop(next)
-          } else next()
-        }
-      ],
-      function(err){
-        if(err && !shutdownAttempted){
-          shutdownAttempted = true
-          logger.error('Shutdown failed: ' + err)
-        } else if(err && shutdownAttempted){
-          logger.error('Shutdown failed: ' + err)
-          logger.error('Shutdown already failed once, forcing exit')
-          process.exit()
-        } else {
-          running = false
-          logger.info('Shutdown complete')
-          process.exit()
-        }
+          }
+        ],
+        next
+      )
+    }
+  )
+}
+
+
+/**
+ * Clone receiver
+ */
+if(config.store.enabled){
+  lifecycle.add(
+    function(next){
+      logger.info('Starting clone system')
+      clone.start(next)
+    },
+    function(next){
+      logger.info('Stopping clone system')
+      clone.stop(next)
+    }
+  )
+}
+
+/**
+ * Locate system
+ */
+if(config.locate.enabled){
+  lifecycle.add(
+    function(next){
+      logger.info('Starting locate')
+      locate.start(next)
+    },
+    function(next){
+      logger.info('Stopping locate')
+      locate.stop(next)
+    }
+  )
+}
+
+
+/**
+ * Shredder
+ */
+if(config.shredder.enabled){
+  lifecycle.add(
+    function(next){
+      logger.info('Starting shredder')
+      shredder.start(next)
+    },
+    function(next){
+      logger.info('Stopping shredder')
+      shredder.stop(next)
+    }
+  )
+}
+
+
+/**
+ * Shutdown
+ */
+var stop = function(){
+  stopping = true
+  //register force kill for the second
+  process.on('SIGTERM',process.exit)
+  process.on('SIGINT',process.exit)
+  //start the shutdown process
+  logger.info('Beginning shutdown')
+  lifecycle.stop(function(err){
+    if(err){
+      logger.error('Shutdown failed: ' + err)
+    } else {
+      running = false
+      stopping = false
+      logger.info('Shutdown complete')
+    }
+    process.exit()
+  })
+}
+process.once('SIGINT',stop)
+process.once('SIGTERM',stop)
+
+
+/**
+ * Start master
+ */
+exports.start = function(){
+  lifecycle.start(
+    function(err){
+      if(err){
+        logger.error('Startup failed: ' + err)
+        process.exit()
       }
-    )
-  }
-  process.once('SIGINT',shutdown)
-  process.once('SIGTERM',shutdown)
+      //go to ready state 3
+      running = true
+      logger.info('Startup complete')
+    }
+  )
 }

@@ -11,10 +11,11 @@ var config = require('../config')
 var publicParams = [
   'hostname',
   'ip',
-  'portMesh',
+  'portAnnounce',
   'portExport',
   'portImport',
   'portPrism',
+  'portPing',
   'portShredder',
   'services',
   'diskFree',
@@ -92,7 +93,7 @@ if(require.main === module){
   child(
     'oose:peerNext',
     function(done){
-      peerNext.start(config.mesh.peerNext.interval,500,function(err){
+      peerNext.start(config.announce.interval,500,function(err){
         done(err)
       })
     },

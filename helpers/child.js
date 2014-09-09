@@ -286,7 +286,7 @@ Child.child = function(title,start,stop){
     stop(function(err){
       if(err){
         debug('stop failed',err)
-        process.send({status: 'error', message: err})
+        if(process.send) process.send({status: 'error', message: err})
         process.exit(1)
         return
       }
@@ -296,16 +296,30 @@ Child.child = function(title,start,stop){
   }
   debug('setting process title',title)
   process.title = title
-  process.on('SIGTERM',function(){
-    debug('ignored SIGTERM')
-  })
-  process.on('SIGINT',function(){
-    debug('ignored SIGINT')
-  })
-  process.on('SIGHUP',function(){
-    debug('got SIGHUP, gracefully exiting')
-    doStop()
-  })
+  //if we are running as a child, setup handlers
+  if(process.send){
+    process.on('SIGTERM',function(){
+      debug('ignored SIGTERM')
+    })
+    process.on('SIGINT',function(){
+      debug('ignored SIGINT')
+    })
+    process.on('SIGHUP',function(){
+      debug('got SIGHUP, gracefully exiting')
+      doStop()
+    })
+  } else {
+    //for single process handling
+    require('node-sigint')
+    process.on('SIGTERM',function(){
+      debug('got SIGTERM')
+      doStop()
+    })
+    process.on('SIGINT',function(){
+      debug('got SIGINT')
+      doStop()
+    })
+  }
   process.on('message',function(msg){
     debug('got message',msg)
     if('stop' === msg){
@@ -317,12 +331,12 @@ Child.child = function(title,start,stop){
   start(function(err){
     if(err){
       debug('start failed',err)
-      process.send({status: 'error',message: err})
+      if(process.send) process.send({status: 'error',message: err})
       process.exit(1)
       return
     }
     debug('start finished')
-    process.send({status: 'ok'})
+    if(process.send) process.send({status: 'ok'})
   })
 }
 
@@ -349,12 +363,12 @@ Child.childOnce = function(title,exec){
   exec(function(err){
     if(err){
       debug('childOnce failed',err)
-      process.send({status: 'error', message: err})
+      if(process.send) process.send({status: 'error', message: err})
       process.exit(1)
       return
     }
     debug('childOnce finished without error')
-    process.send({status: 'ok'})
+    if(process.send) process.send({status: 'ok'})
     process.exit()
   })
 }
