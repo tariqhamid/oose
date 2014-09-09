@@ -54,6 +54,7 @@
     "mongoose-list": "0.2.x",
     "mongoose-merge-plugin": "0.0.x",
     "mongoose-validator": "<1.0.0",
+    "multicast-events": "^2.1.2",
     "node-sigint": "0.0.x",
     "object-manage": "0.8.x",
     "pkginfo": "0.3.x",
