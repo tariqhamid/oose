@@ -242,6 +242,7 @@ var getIpInfo = function(ipInfo,item,next){
 //only need to get these once, they won't change
 var snmpPrep = function(done){
   debug('snmpPrep() called')
+  var snmpRefresh = (config.announce.interval/1000)>>0 //jshint ignore:line
   async.series(
     [
       getServices,
@@ -250,12 +251,12 @@ var snmpPrep = function(done){
           {
             oid: snmp.mib.nsCacheTimeout(snmp.mib.ifTable()),
             type: snmp.types.Integer,
-            value: 1
+            value: snmpRefresh
           },
           //ignore errors, this may not exist (non Net-SNMP)
           function(err,varbinds){
             if(!err && varbinds && 1 === varbinds[0].value)
-              debug('ifTable update rate set to 1sec')
+              debug('ifTable update rate set to ' + snmpRefresh + ' sec')
             else
               debug('ifTable update rate setting unavailable')
             next()
@@ -267,12 +268,16 @@ var snmpPrep = function(done){
           {
             oid: snmp.mib.nsCacheTimeout(snmp.mib.tcpConnectionTable()),
             type: snmp.types.Integer,
-            value: 1
+            value: snmpRefresh
           },
           //ignore errors, this may not exist (non Net-SNMP)
           function(err,varbinds){
             if(!err && varbinds && 1 === varbinds[0].value)
-              debug('tcpConnectionTable update rate set to 1sec')
+              debug(
+                'tcpConnectionTable update rate set to ' +
+                snmpRefresh +
+                ' sec'
+              )
             else
               debug('tcpConnectionTable update rate setting unavailable')
             next()
