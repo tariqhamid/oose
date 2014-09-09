@@ -127,7 +127,7 @@
   top: 0;
   bottom: 0;
   left: 0;
-  width: 0;
+  width: 0%;
   background-color: #8cc657;
 }
 .dropzone .dz-preview.dz-processing .dz-progress,
@@ -168,7 +168,9 @@
   -o-transition: opacity 0.3s ease-in-out;
   -ms-transition: opacity 0.3s ease-in-out;
   transition: opacity 0.3s ease-in-out;
-  background: url('../images/spritemap.png') no-repeat 0 0;
+  background-image: url('/images/spritemap.png');
+  background-repeat: no-repeat;
+  background-position: 0 0;
   position: absolute;
   width: 428px;
   height: 123px;
@@ -179,7 +181,7 @@
 }
 @media all and (-webkit-min-device-pixel-ratio: 1.5) {
   .dropzone .dz-default.dz-message {
-    background-image: url('../images/spritemap.png');
+    background-image: url('/images/spritemap@2x.png');
     -webkit-background-size: 428px 406px;
     -moz-background-size: 428px 406px;
     background-size: 428px 406px;
@@ -248,14 +250,15 @@
   -o-transition: opacity 0.4s ease-in-out;
   -ms-transition: opacity 0.4s ease-in-out;
   transition: opacity 0.4s ease-in-out;
-  background: url('../images/spritemap.png') no-repeat;
+  background-image: url('../images/spritemap.png');
+  background-repeat: no-repeat;
 }
 @media all and (-webkit-min-device-pixel-ratio: 1.5) {
   .dropzone .dz-preview .dz-error-mark,
   .dropzone-previews .dz-preview .dz-error-mark,
   .dropzone .dz-preview .dz-success-mark,
   .dropzone-previews .dz-preview .dz-success-mark {
-    background-image: url('../images/spritemap.png');
+    background-image: url('/images/spritemap@2x.png');
     -webkit-background-size: 428px 406px;
     -moz-background-size: 428px 406px;
     background-size: 428px 406px;
@@ -292,14 +295,16 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 0;
+  width: 0%;
   height: 100%;
-  background: url('../images/spritemap.png') repeat-x 0 -400px;
+  background-image: url('/images/spritemap.png');
+  background-repeat: repeat-x;
+  background-position: 0px -400px;
 }
 @media all and (-webkit-min-device-pixel-ratio: 1.5) {
   .dropzone .dz-preview .dz-progress .dz-upload,
   .dropzone-previews .dz-preview .dz-progress .dz-upload {
-    background-image: url('../images/spritemap.png');
+    background-image: url('/images/spritemap@2x.png');
     -webkit-background-size: 428px 406px;
     -moz-background-size: 428px 406px;
     background-size: 428px 406px;
@@ -424,5 +429,5 @@
   }
 }
 
-.dropzone {margin: 10px 0; min-height: 75px; background: url('../images/upload_bg.png') center no-repeat;}
+.dropzone {margin: 10px 0; min-height: 75px; background: url('/images/upload_bg.png') center no-repeat;}
 .dropzone .dz-default {display: none; text-align: center;}
