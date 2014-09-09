@@ -31,7 +31,7 @@ process.on('SIGTERM',function(){})
  * Mongoose
  */
 if(config.mongoose.enabled){
-  lifecycle.start(
+  lifecycle.add(
     function(next){
       mongoose.connect(config.mongoose.dsn,config.mongoose.options,next)
     }
