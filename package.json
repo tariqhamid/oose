@@ -18,9 +18,9 @@
     "node": ">=0.10.0"
   },
   "dependencies": {
-    "amp": "^0.3.1",
+    "amp": "0.3.x",
     "async": "0.9.x",
-    "axon": "^2.0.0",
+    "axon": "2.0.x",
     "basic-auth": "1.0.x",
     "bcrypt": "0.8.x",
     "body-parser": "1.8.x",
@@ -59,7 +59,6 @@
     "object-manage": "0.8.x",
     "pkginfo": "0.3.x",
     "pretty-bytes": "1.0.x",
-    "punt": "^2.2.0",
     "q": "1.0.x",
     "random-js": "1.0.x",
     "readdirp": "1.1.x",

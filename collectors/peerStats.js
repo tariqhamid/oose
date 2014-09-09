@@ -49,10 +49,7 @@ var netInfo = {
   use64out: true,
   in: [],
   out: [],
-  uptime: [],
-  //set by summarizing the above
-  inBps: 0,
-  outBps: 0
+  uptime: []
 }
 //simple list of CPU SNMP indexes
 var cpuInfo = []
@@ -127,6 +124,7 @@ var getServices = function(next){
 }
 
 var capHistory = function(next){
+  debug('capHistory() called')
   var len = netInfo.uptime.length - 10
   if(0 < len){
     netInfo.uptime = netInfo.uptime.splice(len)
@@ -136,45 +134,76 @@ var capHistory = function(next){
   next()
 }
 
-var reduceHistory = function(dir,start){
+var checkOctetWrap = function(dir,done){
+  debug('checkOctetWrap() called')
   dir = (dir && -1 !== ['in','out'].indexOf(dir)) ? dir : 'out'
-  var i
+
   var nI = netInfo[dir]
-  for(i=start; i >= 0; i--){ nI[i] = nI[i] - maxint32 }
+  var len = nI.length - 1
+  var delta
+  var x
+  var y
+
+  for(x = 0; x < len; x++){
+    delta = (nI[x+1] - nI[x])
+    if(0 > delta){
+      dump(dir + 'Octets wrap detected, reducing: ',nI)
+      while(0 > delta){
+        for(y = +x; y >= 0; y--){ nI[y] = nI[y] - maxint32 }
+        delta = (nI[x+1] - nI[x])
+      }
+      dump(dir + 'Octets post-reduction: ',nI)
+      break
+    }
+  }
+  if('function' === typeof done) done(delta)
+  else return delta
 }
 
-var calcBps = function(dir){
+var calcBps = function(dir,resultCb){
+  debug('calcBps(\'' + dir + '\') called')
   dir = (dir && -1 !== ['in','out'].indexOf(dir)) ? dir : 'out'
   var len = netInfo.uptime.length - 1
   var window = (netInfo.uptime[len] - netInfo.uptime[len-1])
   //pass-thru bailout for insufficient samples available (just restarted?)
-  if(0 === len || 0 >= window) return 0
+  if(0 === len || 0 >= window) return resultCb(0)
   //netInfo arrays must be same lengths or something is fishy
   if(netInfo.uptime.length !== (netInfo.in.length + netInfo.out.length)/2){
     debug('netInfo octet info corrupt?')
-    return 0
+    return resultCb(0)
   }
-  var nI = netInfo[dir]
-  var delta
-  var i = 0
-  for(; i < len; i++){
-    delta = (nI[i+1] - nI[i])
-    if(0 > delta){
-      debug(dir + 'Octets wrap detected, reducing previous history',nI)
-      reduceHistory(dir,i)
-      debug(dir + 'Octets post-reduction: ',nI)
-      delta = (nI[i+1] - nI[i])
-      break
-    }
-  }
-  return Math.abs((delta * 8) / window) || 0
+  checkOctetWrap(dir,function(delta){
+    var bps = (delta * 8) / window
+    debug('calcBps(\'' + dir + '\') complete:',delta,window,bps)
+    resultCb(Math.abs(bps) || 0)
+  })
 }
 
 var calcNetStats = function(basket,next){
   debug('calcNetStats() called')
-  basket.netInBps = calcBps('in')
-  basket.netOutBps = calcBps('out')
-  next(null,basket)
+  async.parallel(
+    [
+      function(done){
+        calcBps('in',function(bps){
+          basket.netInBps = bps
+          done()
+        })
+      },
+      function(done){
+        calcBps('out',function(bps){
+          basket.netOutBps = bps
+          done()
+        })
+      }
+    ],
+    function(){
+      debug(
+        'calculated bps in=' + basket.netInBps +
+        ', out=' + basket.netInBps
+      )
+      next(null,basket)
+    }
+  )
 }
 
 var calcCapStats = function(basket,next){
@@ -182,6 +211,7 @@ var calcCapStats = function(basket,next){
   basket.availableCapacity = 100 * (basket.diskFree / basket.diskTotal)
   //issue #32 avail comes back infinity (this is a safeguard)
   if('Infinity' === basket.availableCapacity) basket.availableCapacity = 100
+  debug('calculated capacity=' + basket.availableCapacity)
   next(null,basket)
 }
 
@@ -624,11 +654,11 @@ var snmpPoll = function(basket,done){
             if('number' !== typeof result.value) return complete()
             if(netInfo.out.length !== netInfo.uptime.length)
               netInfo.uptime.push(result.value/100)
-            capHistory(complete)
+            complete()
           }
         )
         debug('snmpPoll() calling run()')
-        snmp.run(next)
+        snmp.run(function(){ capHistory(next) })
       }
     ],
     function(err){
@@ -647,17 +677,17 @@ var snmpPoll = function(basket,done){
 var initBasket = function(basket,next){
   //set the basket up with stuff that never changes
   basket.services = ooseInfo.services
-  basket.portImport = ooseInfo.portImport
   basket.portExport = ooseInfo.portExport
+  basket.portImport = ooseInfo.portImport
   basket.portPrism = ooseInfo.portPrism
   basket.portShredder = ooseInfo.portShredder
-  basket.portMesh = ooseInfo.portMesh
+  basket.services = ooseInfo.services
   basket.netIndex = netInfo.index
   basket.netName = netInfo.name
   basket.netIp = netInfo.ip
-  basket.cpuCount = cpuCount
-  basket.memoryTotal = ramInfo.total
   basket.diskTotal = diskInfo.total
+  basket.memoryTotal = ramInfo.total
+  basket.cpuCount = cpuCount
   next(null,basket)
 }
 
