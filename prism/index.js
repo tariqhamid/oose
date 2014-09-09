@@ -32,11 +32,10 @@ var buildCache = function(sha1,done){
       //acquire list of peers from locate up on the master
       function(next){
         var client = axon.socket('req')
-        client.connect(config.mesh.port,config.mesh.host)
-        client.send('locate',{sha1: sha1},function(err,result){
+        client.connect(+config.locate.port,config.locate.host || '127.0.0.1')
+        client.send({sha1: sha1},function(err,result){
           if(err) return next(err)
-          if(!result.peers) return next()
-          var peers = result.peers
+          var peers = result
           debug(sha1,'got payload',peers)
           for(var i in peers){
             if(!peers.hasOwnProperty(i)) continue
@@ -239,6 +238,7 @@ app.get('/:sha1/:filename',function(req,res){
 
 app.post('/api/shredderJob',function(req,res){
   var peerNext, jobHandle
+  debug('got shredder job request')
   async.series(
     [
       //figure out next peer
@@ -246,17 +246,21 @@ app.post('/api/shredderJob',function(req,res){
         peer.nextByHits(function(err,result){
           if(err) return next(err)
           peerNext = result
+          debug('selected peer for shredder job',peerNext.hostname)
           next()
         })
       },
       //send the request to that peer
       function(next){
         var client = axon.socket('req')
-        client.connect(peerNext.portShredder,peerNext.ip)
+        debug(
+          'setting up connection to send job',
+          peerNext.ip + ':' + peerNext.portShredder)
+        client.connect(+peerNext.portShredder,peerNext.ip)
         client.send(
-          'shred:job:push',
           {description: JSON.stringify(req.body)},
           function(err,result){
+            debug('job sent',err,result)
             if(err) return next(err)
             if(!result.handle) return next('No job handle created')
             jobHandle = result.handle

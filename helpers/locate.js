@@ -1,6 +1,6 @@
 'use strict';
 var async = require('async')
-var debug = require('oose:locate')
+var debug = require('debug')('oose:helper:locate')
 
 var shortId = require('../helpers/shortid')
 var redis = require('../helpers/redis')
@@ -40,7 +40,7 @@ Locate.prototype.lookup = function(sha1,done){
       },
       //lookup peers
       function(next){
-        redis.smembers('peer:rank',function(err,result){
+        redis.smembers('peer:list',function(err,result){
           if(err) return next(err)
           peers = result
           next()
@@ -49,6 +49,7 @@ Locate.prototype.lookup = function(sha1,done){
       //send to peers
       function(next){
         that.multicast.on(that.token,function(req,rinfo){
+          debug('got locate response',req,rinfo)
           var hostname = ''
           var done = function(){
             debug(that.sha1,'Locate response window closed')
@@ -97,6 +98,7 @@ Locate.prototype.lookup = function(sha1,done){
       }
     ],
     function(err){
+      if(err) debug(that.sha1,'Locate error',err)
       debug(that.sha1,'Locate result',that.basket)
       done(err,that.basket)
     }

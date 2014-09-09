@@ -49,7 +49,7 @@ var clone = function(job,cb){
         logger.info('Starting to replicate ' + job.sha1)
         //setup streams
         var rs = fs.createReadStream(file.pathFromSha1(job.sha1))
-        var ws = net.connect(winner.portImport,winner.ip)
+        var ws = net.connect(+winner.portImport,winner.ip)
         ws.on('connect',function(){
           var sniff = new Sniffer()
           sniff.on('data',function(buff){
@@ -94,6 +94,7 @@ var q = async.queue(clone,config.clone.concurrency || 1)
  * @param {function} reply
  */
 var newJob = function(message,reply){
+  debug('got new job',message)
   q.push({sha1: message.sha1})
   reply(null,{status: 'ok', position: q.length()})
 }

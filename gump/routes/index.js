@@ -176,7 +176,7 @@ exports.upload = function(req,res){
         },
         //send to import
         function(next){
-          var client = net.connect(peerNext.portImport,peerNext.ip)
+          var client = net.connect(+peerNext.portImport,peerNext.ip)
           client.on('error',function(err){
             next(err)
           })

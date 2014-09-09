@@ -1,7 +1,8 @@
 'use strict';
-var async = require('async')
+var debug = require('debug')('oose:worker')
 var mongoose = require('mongoose')
 
+var lifecycle = new (require('./helpers/lifecycle'))()
 var logger = require('./helpers/logger').create('worker')
 
 var config = require('./config')
@@ -21,105 +22,147 @@ var prism = require('./prism')
 process.title = 'oose:worker'
 
 
+//ignore process control (only listen to our master)
+process.on('SIGINT',function(){})
+process.on('SIGTERM',function(){})
+
+
+/**
+ * Mongoose
+ */
+if(config.mongoose.enabled){
+  lifecycle.start(
+    function(next){
+      mongoose.connect(config.mongoose.dsn,config.mongoose.options,next)
+    }
+  )
+}
+
+
+/**
+ * Store
+ */
+if(config.store.enabled){
+  //import
+  lifecycle.add(
+    function(next){
+      storeImport.start(next)
+    },
+    function(next){
+      storeImport.stop(next)
+    }
+  )
+  //export
+  lifecycle.add(
+    function(next){
+      storeExport.start(next)
+    },
+    function(next){
+      storeExport.stop(next)
+    }
+  )
+}
+
+
+/**
+ * Prism
+ */
+if(config.prism.enabled){
+  //import
+  lifecycle.add(
+    function(next){
+      prism.start(next)
+    },
+    function(next){
+      prism.stop(next)
+    }
+  )
+}
+
+
+/**
+ * Gump
+ */
+if(config.mongoose.enabled && config.gump.enabled){
+  lifecycle.add(
+    function(next){
+      gump.start(next)
+    },
+    function(next){
+      gump.stop(next)
+    }
+  )
+}
+
+
+/**
+ * Hideout
+ */
+if(config.mongoose.enabled && config.hideout.enabled){
+  lifecycle.add(
+    function(next){
+      hideout.start(next)
+    },
+    function(next){
+      hideout.stop(next)
+    }
+  )
+}
+
+
+/**
+ * LG
+ */
+if(config.lg.enabled){
+  lifecycle.add(
+    function(next){
+      lg.start(next)
+    },
+    function(next){
+      lg.stop(next)
+    }
+  )
+}
+
+
+/**
+ * Executioner
+ */
+if(config.mongoose.enabled && config.executioner.enabled){
+  lifecycle.add(
+    function(next){
+      executioner.start(next)
+    },
+    function(next){
+      executioner.stop(next)
+    }
+  )
+}
+
+
+/**
+ * Stop worker
+ */
+var stop = function(){
+  debug('worker stopping')
+  lifecycle.stop(function(err){
+    if(err) logger.error(err)
+    debug('worker shutdown complete')
+    process.exit(0)
+  })
+}
+process.on('message',function(message){
+  if('stop' === message) stop()
+})
+
+
 /**
  * Start worker
  */
 exports.start = function(){
-  async.parallel(
-    [
-      function(next){
-        if(config.store.enabled)
-          storeImport.start(next)
-        else next()
-      },
-      function(next){
-        if(config.store.enabled)
-          storeExport.start(next)
-        else next()
-      },
-      function(next){
-        if(config.prism.enabled)
-          prism.start(next)
-        else next()
-      },
-      function(next){
-        if(config.mongoose.enabled){
-          mongoose.connect(config.mongoose.dsn,config.mongoose.options,next)
-        } else next()
-      },
-      function(next){
-        if(config.mongoose.enabled && config.gump.enabled){
-          gump.start(next)
-        } else next()
-      },
-      function(next){
-        if(config.mongoose.enabled && config.hideout.enabled){
-          hideout.start(next)
-        } else next()
-      },
-      function(next){
-        if(config.lg.enabled){
-          lg.start(next)
-        } else next()
-      },
-      function(next){
-        if(config.mongoose.enabled && config.executioner.enabled){
-          executioner.start(next)
-        } else next()
-      }
-    ],
-    function(err){
-      if(err) logger.error(err)
-      //worker startup complete
-    }
-  )
-  var workerShutdown = function(){
-    async.parallel(
-      [
-        function(next){
-          if(config.store.enabled)
-            storeImport.stop(next)
-          else next()
-        },
-        function(next){
-          if(config.store.enabled)
-            storeExport.stop(next)
-          else next()
-        },
-        function(next){
-          if(config.prism.enabled)
-            prism.stop(next)
-          else next()
-        },
-        function(next){
-          if(config.gump.enabled)
-            gump.stop(next)
-          else next()
-        },
-        function(next){
-          if(config.hideout.enabled)
-            hideout.stop(next)
-          else next()
-        },
-        function(next){
-          if(config.lg.enabled)
-            lg.stop(next)
-          else next()
-        },
-        function(next){
-          if(config.executioner.enabled){
-            executioner.stop(next)
-          } else next()
-        }
-      ],
-      function(err){
-        if(err) throw err
-        process.exit(0)
-      }
-    )
-  }
-  process.on('message',function(message){
-    if('shutdown' === message) workerShutdown()
+  debug('worker starting')
+  lifecycle.start(function(err){
+    if(err) logger.error(err)
+    debug('worker startup complete')
   })
-  process.on('SIGINT',function(){})
 }

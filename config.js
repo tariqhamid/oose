@@ -29,20 +29,31 @@ config.$load({
     seed: '3123572'
   },
   //services
-  mesh: {
+  announce: {
     enabled: true,
-    restartDelay: 1000,
     port: 3000,
-    portPublic: null,
     multicast: {
-      address: '226.0.0.1',
-      interfaceAddress: null,
-      ttl: 1
+      address: '226.0.0.1'
     },
-    ping: { enabled: true, interval: 1000 },
-    stat: { enabled: true, interval: 1000 },
-    peerNext: { enabled: true, interval: 5000 },
-    announce: { enabled: true, interval: 5000 }
+    interval: 5000,
+    bootTimeout: 250
+  },
+  ping: {
+    enabled: true,
+    port: 3010,
+    host: null,
+    multicast: {
+      address: '226.0.0.1'
+    },
+    interval: 1000
+  },
+  locate: {
+    enabled: true,
+    port: 3011,
+    host: null,
+    multicast: {
+      address: '226.0.0.1'
+    }
   },
   supervisor: {
     enabled: false,
@@ -74,7 +85,6 @@ config.$load({
   shredder: {
     enabled: false,
     port: 3008,
-    portPublic: null,
     host: null,
     concurrency: os.cpus().length || 1,
     snapshot: __dirname + '/shredder/snapshot.json'

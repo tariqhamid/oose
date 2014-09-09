@@ -98,7 +98,7 @@ By default OOSE starts several services, all of which run on different ports and
 
 Here is a map of what services are on each port.
 
-* 3000 - MESH, the announcement and heartbeat system
+* 3000 - Announcement system (multicast)
 * 3001 - Export, the file retrieval system
 * 3002 - Import, accepts new files in a raw TCP stream
 * 3003 - Prism, the reflector and load balancer
@@ -106,7 +106,10 @@ Here is a map of what services are on each port.
 * 3005 - LG, the cluster looking glass
 * 3006 - Hideout, key value store for caching
 * 3007 - Executioner, local scripting and peer management system
-* 3008 - Shredder job acceptor (raw tcp)
+* 3008 - Shredder job acceptor (axon)
+* 3009 - Clone system (axon)
+* 3010 - Ping system (multicast)
+* 3011 - Locate system (axon)
 
 ## Redis Schema
 

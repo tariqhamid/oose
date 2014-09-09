@@ -2,15 +2,7 @@
 var cluster = require('cluster')
 
 //master startup
-if(cluster.isMaster){
-  process.title = 'OOSE: master'
-  var master = require('./master')
-  master.start(0)
-}
+if(cluster.isMaster) require('./master').start()
 
 //worker startup
-if(cluster.isWorker){
-  process.title = 'OOSE: worker'
-  var worker = require('./worker')
-  worker.start()
-}
+if(cluster.isWorker) require('./worker').start()

@@ -85,7 +85,7 @@ exports.sendFromReadable = function(peer,stream,next){
   sniff.on('data',function(data){
     shasum.update(data)
   })
-  var client = net.connect(peer.portImport,peer.ip)
+  var client = net.connect(+peer.portImport,peer.ip)
   client.on('error',function(err){
     next(err)
   })

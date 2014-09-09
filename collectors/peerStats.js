@@ -78,7 +78,15 @@ var getServices = function(basket,next){
   //services
   basket.services = ''
   var svcList = [
-    'mesh','supervisor','store','prism','shredder','gump','lg','executioner'
+    'announce',
+    'ping',
+    'supervisor',
+    'store',
+    'prism',
+    'shredder',
+    'gump',
+    'lg',
+    'executioner'
   ]
   var svc = ''
   for(i=0; i < svcList.length; i++){
@@ -98,7 +106,6 @@ var getServices = function(basket,next){
   if(config.shredder.enabled){
     basket.portShredder = config.shredder.portPublic || config.shredder.port
   }
-  basket.portMesh = config.mesh.portPublic || config.mesh.port
   next(null,basket)
 }
 
@@ -647,7 +654,7 @@ if(require.main === module){
         collector.once('loopEnd',function(){
           done()
         })
-        collector.start(config.mesh.stat.interval,0)
+        collector.start(config.announce.interval,0)
       })
     },
     function(done){

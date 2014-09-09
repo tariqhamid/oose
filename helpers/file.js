@@ -27,13 +27,10 @@ var queueClone = function(sha1,done){
       //do a location on the sha1
       function(next){
         var client = axon.socket('req')
-        client.connect(config.mesh.port,config.mesh.host)
-        client.send('locate',{sha1: sha1},function(err,result){
+        client.connect(+config.locate.port,config.locate.host || '127.0.0.1')
+        client.send({sha1: sha1},function(err,result){
           if(err) return next(err)
-          if(sha1 !== result.sha1)
-            return next('Wrong command response for ' + sha1)
-          if(!result.peers) return
-          var peers = result.peers
+          var peers = result
           for(var i in peers){
             if(peers.hasOwnProperty(i)){
               peerCount++
@@ -51,8 +48,8 @@ var queueClone = function(sha1,done){
         if(peerCount < 2) return next()
         //setup clone job
         var client = axon.socket('req')
-        axon.connect(config.clone.port,config.clone.host || '127.0.0.1')
-        client.send('clone',{sha1: sha1},function(err){
+        client.connect(+config.clone.port,config.clone.host || '127.0.0.1')
+        client.send({sha1: sha1},function(err){
           next(err)
         })
       }
