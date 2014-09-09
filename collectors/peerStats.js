@@ -20,6 +20,12 @@ var hrStorageRam = snmp.mib.hrStorageTypes(2)
 
 var isWin = ('win32' === process.platform)
 var maxint32 = Math.pow(2,32)
+var entAddr = snmp.mib.ipAdEntAddr()
+var entIndex = snmp.mib.ipAdEntIfIndex()
+var entMask = snmp.mib.ipAdEntNetMask()
+var defaultRouteOID = snmp.mib.ipRouteIfIndex('0.0.0.0')
+var defaultGateway = snmp.mib.ipRouteNextHop('0.0.0.0')
+var hexMacRegex = /^(..)(..)(..)(..)(..)(..)$/;
 var item
 var i
 var j
@@ -50,6 +56,7 @@ var netInfo = {
 }
 //simple list of CPU SNMP indexes
 var cpuInfo = []
+var cpuCount = 0
 var ramInfo = {
   //RAM storage SNMP index
   index: -1,
@@ -70,86 +77,101 @@ var diskInfo = {
   //free space in bytes
   free: -1
 }
+var ooseInfo = {
+  //services list
+  services: '',
+  //
+  portImport: 0,
+  portExport: 0,
+  portPrism: 0,
+  portShredder: 0,
+  portMesh: 0
+}
 
 var nullFunc = function(){}
 
-var getServices = function(basket,next){
+var getServices = function(next){
   debug('getServices() called')
   //services
-  basket.services = ''
+  ooseInfo.services = ''
   var svcList = [
     'mesh','supervisor','store','prism','shredder','gump','lg','executioner'
   ]
   var svc = ''
   for(i=0; i < svcList.length; i++){
     svc = svcList[i]
-    if(config[svc].enabled) basket.services += ',' + svc
+    if(config[svc].enabled) ooseInfo.services += ',' + svc
   }
   //service ports
   if(config.store.enabled){
-    basket.portImport =
+    ooseInfo.portImport =
       config.store.import.portPublic || config.store.import.port
-    basket.portExport =
+    ooseInfo.portExport =
       config.store.export.portPublic || config.store.export.port
   }
   if(config.prism.enabled){
-    basket.portPrism = config.prism.portPublic || config.prism.port
+    ooseInfo.portPrism = config.prism.portPublic || config.prism.port
   }
   if(config.shredder.enabled){
-    basket.portShredder = config.shredder.portPublic || config.shredder.port
+    ooseInfo.portShredder = config.shredder.portPublic || config.shredder.port
   }
-  basket.portMesh = config.mesh.portPublic || config.mesh.port
-  next(null,basket)
+  ooseInfo.portMesh = config.mesh.portPublic || config.mesh.port
+  next()
 }
 
-var calcNetStats = function(basket,next){
-  debug('calcNetStats() called')
-  if(netInfo.uptime.length !== (netInfo.in.length + netInfo.out.length)/2)
-    return next('netInfo octet info corrupt?')
-  //pass-thru bailout for insufficient samples available (just restarted?)
-  if(1 === netInfo.uptime.length){
-    basket.netInBps = 0
-    basket.netOutBps = 0
-    return next(null,basket)
-  }
-  var deltaIn
-  var deltaOut
-  var window
-  for(i=1; i < netInfo.uptime.length; i++){
-    deltaIn = (netInfo.in[i] - netInfo.in[i-1])
-    deltaOut = (netInfo.out[i] - netInfo.out[i-1])
-    if(0 > deltaIn){
-      debug('inOctets wrap detected, reducing previous history',netInfo.in)
-      for(j=i-1; j >= 0; j--){
-        netInfo.in[j] = netInfo.in[j] - maxint32
-      }
-      debug('inOctets post-reduction: ',netInfo.in)
-      deltaIn = (netInfo.in[i] - netInfo.in[i-1])
-    }
-    if(0 > deltaOut){
-      debug('outOctets wrap detected, reducing previous history',netInfo.out)
-      for(j=i-1; j >= 0; j--){
-        netInfo.out[j] = netInfo.out[j] - maxint32
-      }
-      debug('outOctets post-reduction: ',netInfo.out)
-      deltaOut = (netInfo.out[i] - netInfo.out[i-1])
-    }
-    window = (netInfo.uptime[i] - netInfo.uptime[i-1])
-    netInfo.inBps = (deltaIn * 8) / window
-    netInfo.outBps = (deltaOut * 8) / window
-  }
+var capHistory = function(next){
   var len = netInfo.uptime.length - 10
   if(0 < len){
     netInfo.uptime = netInfo.uptime.splice(len)
     netInfo.in = netInfo.in.splice(len)
     netInfo.out = netInfo.out.splice(len)
   }
-  basket.netInBps = netInfo.inBps
-  basket.netOutBps = netInfo.outBps
+  next()
+}
+
+var reduceHistory = function(dir,start){
+  dir = (dir && -1 !== ['in','out'].indexOf(dir)) ? dir : 'out'
+  var i
+  var nI = netInfo[dir]
+  for(i=start; i >= 0; i--){ nI[i] = nI[i] - maxint32 }
+}
+
+var calcBps = function(dir){
+  dir = (dir && -1 !== ['in','out'].indexOf(dir)) ? dir : 'out'
+  var len = netInfo.uptime.length - 1
+  var window = (netInfo.uptime[len] - netInfo.uptime[len-1])
+  //pass-thru bailout for insufficient samples available (just restarted?)
+  if(0 === len || 0 >= window) return 0
+  //netInfo arrays must be same lengths or something is fishy
+  if(netInfo.uptime.length !== (netInfo.in.length + netInfo.out.length)/2){
+    debug('netInfo octet info corrupt?')
+    return 0
+  }
+  var nI = netInfo[dir]
+  var delta
+  var i = 0
+  for(; i < len; i++){
+    delta = (nI[i+1] - nI[i])
+    if(0 > delta){
+      debug(dir + 'Octets wrap detected, reducing previous history',nI)
+      reduceHistory(dir,i)
+      debug(dir + 'Octets post-reduction: ',nI)
+      delta = (nI[i+1] - nI[i])
+      break
+    }
+  }
+  return Math.abs((delta * 8) / window) || 0
+}
+
+var calcNetStats = function(basket,next){
+  debug('calcNetStats() called')
+  basket.netInBps = calcBps('in')
+  basket.netOutBps = calcBps('out')
   next(null,basket)
 }
 
 var calcCapStats = function(basket,next){
+  console.log(next)
   debug('calcCapStats() called')
   basket.availableCapacity = 100 * (basket.diskFree / basket.diskTotal)
   //issue #32 avail comes back infinity (this is a safeguard)
@@ -157,11 +179,36 @@ var calcCapStats = function(basket,next){
   next(null,basket)
 }
 
+var getIpInfo = function(ipInfo,item,next){
+  var ip
+  if(-1 !== item.oid.indexOf(entAddr))
+    ipInfo[item.value] = {index:null,netmask:null}
+  if(-1 !== item.oid.indexOf(entIndex)){
+    ip = item.oid.split('.').slice(-4).join('.')
+    ipInfo[item.value] = {ip:ip}
+    ipInfo[ip].index = item.value
+  }
+  if(-1 !== item.oid.indexOf(entMask)){
+    ip = item.oid.split('.').slice(-4).join('.')
+    ipInfo[ip].netmask = item.value
+    ipInfo[ipInfo[ip].index].netmask = item.value
+  }
+  if(item.value && snmp.types.Integer === item.type){
+    if(defaultRouteOID === item.oid)
+      netInfo.index = item.value
+  }
+  if(-1 !== item.oid.indexOf(defaultGateway)){
+    ipInfo[netInfo.index].gateway = item.value
+  }
+  next()
+}
+
 //only need to get these once, they won't change
 var snmpPrep = function(done){
   debug('snmpPrep() called')
   async.series(
     [
+      getServices,
       function(next){
         snmp.sess.set(
           {
@@ -212,6 +259,7 @@ var snmpPrep = function(done){
                 hrDeviceProcessor === item.value
                 ){ cpuInfo.push(item.oid.split('.').slice(-1)[0]) }
             }
+            cpuCount = cpuInfo.length
             debug('found CPU indexes:',cpuInfo)
             complete()
           }
@@ -306,44 +354,24 @@ var snmpPrep = function(done){
           function(result,complete){
             if('function' !== typeof complete) complete = nullFunc
             if(!result || !result.length) return complete()
-            var entAddr = snmp.mib.ipAdEntAddr()
-            var entIndex = snmp.mib.ipAdEntIfIndex()
-            var entMask = snmp.mib.ipAdEntNetMask()
-            var defaultRouteOID = snmp.mib.ipRouteIfIndex('0.0.0.0')
-            var defaultGateway = snmp.mib.ipRouteNextHop('0.0.0.0')
             var ipInfo = {}
-            var ip
-            for(i=0; i < result.length; i++){
-              item = result[i]
-              if(-1 !== item.oid.indexOf(entAddr))
-                ipInfo[item.value] = {index:null,netmask:null}
-              if(-1 !== item.oid.indexOf(entIndex)){
-                ip = item.oid.split('.').slice(-4).join('.')
-                ipInfo[item.value] = {ip:ip}
-                ipInfo[ip].index = item.value
+            async.eachSeries(
+              result,
+              function(item,next){
+                getIpInfo(ipInfo,item,next)
+              },
+              function(){
+                netInfo.ip = ipInfo[netInfo.index].ip
+                netInfo.netmask = ipInfo[netInfo.index].netmask
+                netInfo.gateway = ipInfo[netInfo.index].gateway
+                debug('found routed network index=' + netInfo.index +
+                    ', IP=' + netInfo.ip +
+                    ', netmask=' + netInfo.netmask +
+                    ', gateway=' + netInfo.gateway
+                )
+                complete()
               }
-              if(-1 !== item.oid.indexOf(entMask)){
-                ip = item.oid.split('.').slice(-4).join('.')
-                ipInfo[ip].netmask = item.value
-                ipInfo[ipInfo[ip].index].netmask = item.value
-              }
-              if(item.value && snmp.types.Integer === item.type){
-                if(defaultRouteOID === item.oid)
-                  netInfo.index = item.value
-              }
-              if(-1 !== item.oid.indexOf(defaultGateway)){
-                ipInfo[netInfo.index].gateway = item.value
-              }
-            }
-            netInfo.ip = ipInfo[netInfo.index].ip
-            netInfo.netmask = ipInfo[netInfo.index].netmask
-            netInfo.gateway = ipInfo[netInfo.index].gateway
-            debug('found routed network index=' + netInfo.index +
-              ', IP=' + netInfo.ip +
-              ', netmask=' + netInfo.netmask +
-              ', gateway=' + netInfo.gateway
             )
-            complete()
           }
         )
         //useful name from IF-MIB::ifAlias.<ifIndex> (windows)
@@ -382,7 +410,7 @@ var snmpPrep = function(done){
             for(i=0; i < result.length; i++){
               item = result[i]
               var mac = item.valueHex.replace(
-                /^(..)(..)(..)(..)(..)(..)$/,
+                hexMacRegex,
                 '$1:$2:$3:$4:$5:$6'
               ).toUpperCase()
               if(-1 !== mac.indexOf(':')){
@@ -421,13 +449,6 @@ var snmpPrep = function(done){
 //all .getBulk() and .get() calls in one
 var snmpPoll = function(basket,done){
   debug('snmpPoll() called')
-  //set the basket up with stuff that never changes
-  basket.netIndex = netInfo.index
-  basket.netName = netInfo.name
-  basket.netIp = netInfo.ip
-  basket.cpuCount = cpuInfo.length
-  basket.memoryTotal = ramInfo.total
-  basket.diskTotal = diskInfo.total
   async.series(
     [
       function(next){
@@ -445,7 +466,7 @@ var snmpPoll = function(basket,done){
                 -1 !== cpuInfo.indexOf(item.oid.split('.').slice(-1)[0])
                 ){ cpuAvgUsed += item.value }
             }
-            basket.cpuUsed = cpuAvgUsed / cpuInfo.length
+            basket.cpuUsed = cpuAvgUsed / cpuCount
             debug('collected cpuUsed: ' + basket.cpuUsed)
             complete()
           }
@@ -597,7 +618,7 @@ var snmpPoll = function(basket,done){
             if('number' !== typeof result.value) return complete()
             if(netInfo.out.length !== netInfo.uptime.length)
               netInfo.uptime.push(result.value/100)
-            complete()
+            capHistory(complete)
           }
         )
         debug('snmpPoll() calling run()')
@@ -617,6 +638,23 @@ var snmpPoll = function(basket,done){
   )
 }
 
+var initBasket = function(basket,next){
+  //set the basket up with stuff that never changes
+  basket.services = ooseInfo.services
+  basket.portImport = ooseInfo.portImport
+  basket.portExport = ooseInfo.portExport
+  basket.portPrism = ooseInfo.portPrism
+  basket.portShredder = ooseInfo.portShredder
+  basket.portMesh = ooseInfo.portMesh
+  basket.netIndex = netInfo.index
+  basket.netName = netInfo.name
+  basket.netIp = netInfo.ip
+  basket.cpuCount = cpuCount
+  basket.memoryTotal = ramInfo.total
+  basket.diskTotal = diskInfo.total
+  next(null,basket)
+}
+
 var save = function(basket,next){
   redis.hmset('peer:db:' + config.hostname,basket,function(err){
     if(err) next(err)
@@ -628,8 +666,8 @@ var collector = new Collector()
 collector.on('error',function(err){
   logger.warning(err)
 })
+collector.collect(initBasket)
 collector.collect(snmpPoll)
-collector.collect(getServices)
 collector.process(calcNetStats)
 collector.process(calcCapStats)
 collector.process(function(basket,next){

@@ -42,7 +42,7 @@ var _schema = {
   },
   version: {
     type: String,
-    default: 'unkown'
+    default: 'unknown'
   },
   sshUsername: {
     type: String,
