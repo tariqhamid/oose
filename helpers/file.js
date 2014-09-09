@@ -2,14 +2,15 @@
 var async = require('async')
 var axon = require('axon')
 var crypto = require('crypto')
+var debug = require('debug')('oose:helper:file')
 var fs = require('graceful-fs')
 var mkdirp = require('mkdirp')
 var mmm = require('mmmagic')
 var path = require('path')
 var temp = require('temp')
 
+var Sniffer = require('../helpers/sniffer')
 var redis = require('../helpers/redis')
-var Sniffer = require('../helpers/Sniffer')
 
 var config = require('../config')
 
@@ -27,9 +28,11 @@ var queueClone = function(sha1,done){
       //do a location on the sha1
       function(next){
         var client = axon.socket('req')
+        debug(sha1,'making locate request')
         client.connect(+config.locate.port,config.locate.host || '127.0.0.1')
         client.send({sha1: sha1},function(err,result){
           if(err) return next(err)
+          debug(sha1,'got locate back',err,result)
           var peers = result
           for(var i in peers){
             if(peers.hasOwnProperty(i)){
@@ -37,6 +40,7 @@ var queueClone = function(sha1,done){
               if(peers[i]) cloneCount++
             }
           }
+          debug(sha1,'clone count',cloneCount)
           next()
         })
       },
@@ -47,9 +51,13 @@ var queueClone = function(sha1,done){
         //if there are less than 2 peers we cant replicate
         if(peerCount < 2) return next()
         //setup clone job
+        debug(sha1,'need a clone sending a clone request')
         var client = axon.socket('req')
+        debug(sha1,'connecting to ' +
+          config.clone.host + ':' + config.clone.host)
         client.connect(+config.clone.port,config.clone.host || '127.0.0.1')
         client.send({sha1: sha1},function(err){
+          debug(sha1,'got clone request back',err)
           next(err)
         })
       }
@@ -171,6 +179,7 @@ exports.write = function(source,sha1,done){
  * @param {function} done
  */
 exports.fromReadable = function(readable,done){
+  debug('new from readable request')
   var sha1 = ''
   var exists = {redis: false, fs: false}
   var destination = ''
@@ -191,8 +200,9 @@ exports.fromReadable = function(readable,done){
           shasum.update(data)
           sniff.resume()
         })
-        sniff.on('finish',function(){
+        writable.on('finish',function(){
           sha1 = shasum.digest('hex')
+          debug('write finished with sha1',sha1)
           next()
         })
         readable.pipe(sniff).pipe(writable)
@@ -214,7 +224,7 @@ exports.fromReadable = function(readable,done){
       //find out if we already know the hash on the filesystem
       function(next){
         fs.exists(destination,function(result){
-          exists.fs = result || false
+          exists.fs = !!result
           next()
         })
       },

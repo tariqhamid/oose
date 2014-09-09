@@ -106,9 +106,8 @@ if(require.main === module){
       //start tcp
       server.bind(config.clone.port,config.clone.host)
       // shred:job:push - queue entry acceptor
-      server.on('message',function(command,message,reply){
-        if('job' === command)
-          newJob(message,reply)
+      server.on('message',function(message,reply){
+        newJob(message,reply)
       })
       server.on('error',function(err){
         logger.warning('Server socket error',err)

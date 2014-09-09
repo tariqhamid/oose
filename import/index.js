@@ -1,4 +1,5 @@
 'use strict';
+var debug = require('debug')('oose:import')
 var net = require('net')
 
 var config = require('../config')
@@ -15,17 +16,17 @@ var listen = function(port,host,done){
     var remoteAddress = socket.remoteAddress
     var remotePort = socket.remotePort
     var remoteSpec = [remoteAddress,remotePort].join(':')
-    logger.info('Received import connection from ' + remoteSpec)
+    debug('Received import connection from ' + remoteSpec)
     socket.on('close',function(failed){
       if(failed)
         logger.warning('There was an error importing from ' + remoteSpec)
-      else logger.info('Closed import connection from ' + remoteSpec)
+      else debug('Closed import connection from ' + remoteSpec)
     })
     file.fromReadable(socket,function(err,sha1){
       //socket.end(sha1)
-      logger.info(sha1 + ' received on port ' + port)
+      debug(sha1 + ' received on port ' + port)
       if(err) logger.warning(err)
-      else logger.info(sha1 + ' imported successfully')
+      else debug(sha1 + ' imported successfully')
     })
   })
   server.listen(port,host,done)
