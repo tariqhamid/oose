@@ -17,9 +17,6 @@ First, setup a local config file like so.
 ```js
 'use strict';
 module.exports = {
-  mesh: {
-    debug: 1
-  },
   store: {
     enabled: true
   },
@@ -36,8 +33,7 @@ module.exports = {
     enabled: true,
   },
   shredder: {
-    enabled: true,
-    transcode: {videos: {enabled: true}}
+    enabled: true
   }
 }
 ```
@@ -507,13 +503,28 @@ Shredder exposes itself through an HTTP JSONP API.
 
 ## Changelog
 
-### 0.4.0
+### 0.5.0 [Closed Issues](https://github.com/eSited/oose/issues?q=milestone%3A0.5.0)
+* Removed mesh in favor of more exposed communications
+* Implemented multicast helper
+* Implemented axon for TCP p2p communication
+* Exposed announce as its own subsystem
+* Exposed ping as its own subsystem
+* Exposed locate as its own subsystem
+* Exposed clone as its own subsystem
+* Major overhaul of SNMP collection system
+* Addition of Child helper for controlling sub processes
+* All sub systems now run in their own sub process
+* Fixed several crashes related to inter-peer communication
+* Better error handling and watchdog ability through sub processes
+* Introduction of unit testing, more test coverage to follow
+
+### 0.4.0 [Closed Issues](https://github.com/eSited/oose/issues?q=milestone%3A0.4.0)
 * Upgraded to Express 4 system wide
 * Upgraded to object-manage 0.8 system wide
 * Dropped restler in favor of request
 * Work in progress...
 
-### 0.3.0
+### 0.3.0 [Closed Issues](https://github.com/eSited/oose/issues?q=milestone%3A0.3.0)
 * Fix next peer selection to be a list
 * Added start param support to export (MP4 pseudo streaming)
 * Added looking glass (lg) for cluster status
