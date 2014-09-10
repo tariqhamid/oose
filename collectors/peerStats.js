@@ -701,7 +701,7 @@ var initBasket = function(basket,next){
 }
 
 var save = function(basket,next){
-  redis.hmset('peer:db:' + config.hostname,basket,function(err){
+  redis.hmset('peer:db:' + config.hostname,basket.$get(),function(err){
     if(err) next(err)
     else next(null,basket)
   })

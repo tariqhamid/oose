@@ -1,6 +1,7 @@
 'use strict';
 var async = require('async')
 var EventEmitter = require('events').EventEmitter
+var ObjectManage = require('object-manage')
 
 
 
@@ -9,9 +10,14 @@ var EventEmitter = require('events').EventEmitter
  * @constructor
  */
 var Collector = function(){
-  EventEmitter.call(this)
-  this.tasks = {collect: [], process: [], save: []}
-  this.timeout = null
+  var that = this
+  EventEmitter.call(that)
+  that.tasks = {
+    collect: [],
+    process: [],
+    save: []
+  }
+  that.interval = null
 }
 Collector.prototype = Object.create(EventEmitter.prototype)
 
@@ -21,7 +27,8 @@ Collector.prototype = Object.create(EventEmitter.prototype)
  * @param {function} fn
  */
 Collector.prototype.collect = function(fn){
-  this.tasks.collect.push(fn)
+  var that = this
+  that.tasks.collect.push(fn)
 }
 
 
@@ -30,7 +37,8 @@ Collector.prototype.collect = function(fn){
  * @param {function} fn
  */
 Collector.prototype.process = function(fn){
-  this.tasks.process.push(fn)
+  var that = this
+  that.tasks.process.push(fn)
 }
 
 
@@ -39,35 +47,37 @@ Collector.prototype.process = function(fn){
  * @param {function} fn
  */
 Collector.prototype.save = function(fn){
-  this.tasks.save.push(fn)
+  var that = this
+  that.tasks.save.push(fn)
 }
 
 
 /**
  * Run the main collector loop
- * @param {Number} interval
+ * @param {function} done
  */
-Collector.prototype.run = function(interval){
-  var self = this
-  self.emit('start',interval)
-  var run = function(){
-    self.emit('loopStart')
-    var basket = {}
-    var tasks = [function(done){done(null,basket)}].concat(
-      self.tasks.collect,
-      self.tasks.process,
-      self.tasks.save
-    )
-    async.waterfall(tasks,function(err){
-      if(err) self.emit('error',err)
-      else {
-        self.emit('loopEnd',basket)
-        self.timeout = setTimeout(run,interval)
-      }
-    })
-  }
-  //kick off loop
-  run()
+Collector.prototype.run = function(done){
+  var that = this
+  that.emit('loopStart')
+  var basket = new ObjectManage()
+  var tasks = [function(done){done(null,basket)}].concat(
+    that.tasks.collect,
+    that.tasks.process,
+    that.tasks.save
+  )
+  tasks.forEach(function(func,i,o){
+    o[i] = function(basket,next){
+      func(basket,function(err,basket){
+        if(!(basket instanceof ObjectManage)){
+          return next('Failed to pass basket to next()')
+        }
+        next(err,basket)
+      })
+    }
+  })
+  async.waterfall(tasks,function(err){
+    done(err,basket)
+  })
 }
 
 
@@ -78,15 +88,22 @@ Collector.prototype.run = function(interval){
  * @param {function} done
  */
 Collector.prototype.start = function(interval,delay,done){
-  var self = this
+  var that = this
   if('function' === typeof delay){
     done = delay
     delay = null
   }
   if('function' !== typeof done) done = function(){}
   setTimeout(function(){
-    self.run(interval)
-  },delay || 0)
+    that.emit('start')
+    that.interval = setInterval(function(){
+      that.run(function(err,basket){
+        if(err)
+          return that.emit('error',err)
+        that.emit('loopEnd',basket)
+      })
+    },interval)
+  },delay)
   done()
 }
 
@@ -96,9 +113,10 @@ Collector.prototype.start = function(interval,delay,done){
  * @param {function} done
  */
 Collector.prototype.stop = function(done){
+  var that = this
   if('function' !== typeof done) done = function(){}
-  if(this.timeout) clearTimeout(this.timeout)
-  this.emit('end')
+  if(that.interval) clearInterval(that.interval)
+  that.emit('end')
   done()
 }
 

@@ -65,9 +65,9 @@ var selectPeer = function(basket,done){
     function(err){
       if(err){
         logger.error(err)
-        return done(err)
+        return done(err,basket)
       }
-      basket = peerInfo
+      basket.$load(peerInfo)
       done(null,basket)
     }
   )
@@ -75,7 +75,7 @@ var selectPeer = function(basket,done){
 
 var save = function(basket,done){
   if(Object.keys(basket).length > 0){
-    redis.hmset('peer:next',basket,function(err){
+    redis.hmset('peer:next',basket.$get(),function(err){
       if(err) done('Couldn\'t save next peer:' + err)
       else done(null,basket)
     })
