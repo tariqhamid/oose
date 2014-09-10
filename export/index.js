@@ -12,7 +12,7 @@ var server = require('http').createServer(app)
 var file = require('../helpers/file')
 var logger = require('../helpers/logger').create('export')
 var redis = require('../helpers/redis')
-var Sniffer = require('../helpers/Sniffer')
+var Sniffer = require('../helpers/sniffer')
 
 var config = require('../config')
 

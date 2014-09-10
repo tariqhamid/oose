@@ -11,7 +11,7 @@ var child = require('../helpers/child').child
 var file = require('../helpers/file')
 var logger = require('../helpers/logger').create('clone')
 var peer = require('../helpers/peer')
-var Sniffer = require('../helpers/Sniffer')
+var Sniffer = require('../helpers/sniffer')
 
 var config = require('../config')
 var server = axon.socket('rep')

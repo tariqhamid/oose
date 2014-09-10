@@ -1,6 +1,6 @@
 'use strict';
-var SyslogServer = require('./helpers/syslog-server')
-var SyslogClient = require('./helpers/syslog-client')
+var SyslogServer = require('./helpers/syslogServer')
+var SyslogClient = require('./helpers/syslogClient')
 
 var server = new SyslogServer()
 var client = new SyslogClient({producer:{appName:'oose:fucker'}})

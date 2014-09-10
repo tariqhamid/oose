@@ -6,7 +6,7 @@ var prettyBytes = require('pretty-bytes')
 var request = require('request')
 var url = require('url')
 
-var Sniffer = require('../../../helpers/Sniffer')
+var Sniffer = require('../../../helpers/sniffer')
 
 
 /**

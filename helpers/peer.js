@@ -4,7 +4,7 @@ var debug = require('debug')('oose:helper:peer')
 var net = require('net')
 
 var redis = require('../helpers/redis')
-var Sniffer = require('../helpers/Sniffer')
+var Sniffer = require('../helpers/sniffer')
 
 
 /**

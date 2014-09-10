@@ -9,7 +9,7 @@ var Q = require('q')
 var request = require('request')
 var temp = require('temp')
 
-var Sniffer = require('../../helpers/Sniffer')
+var Sniffer = require('../../helpers/sniffer')
 var Logger = require('../../helpers/logger')
 var shortid = require('../../helpers/shortid')
 var logger = Logger.create('gump')

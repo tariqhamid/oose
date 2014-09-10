@@ -9,7 +9,7 @@ var mmm = require('mmmagic')
 var path = require('path')
 var temp = require('temp')
 
-var Sniffer = require('../helpers/Sniffer')
+var Sniffer = require('../helpers/sniffer')
 var redis = require('../helpers/redis')
 
 var config = require('../config')
