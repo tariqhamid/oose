@@ -1,7 +1,4 @@
 'use strict';
-//fix windows handling of ctrl+c
-require('node-sigint')
-
 var async = require('async')
 var cluster = require('cluster')
 var program = require('commander')
@@ -45,8 +42,8 @@ program
 ).parse(process.argv)
 
 //set log verbosity
-debug('setting up console logging with level',program.verbose)
-Logger.consoleFilter.setConfig({level: (program.verbose || 0) + 4})
+debug('setting up console logging with level',+program.verbose)
+Logger.consoleFilter.setConfig({level: (+program.verbose || 0) + 4})
 
 
 /**
@@ -64,13 +61,6 @@ var workerRestart = function(worker,code,signal){
     cluster.fork()
   }
 }
-
-
-/**
- * Set process title
- * @type {string}
- */
-process.title = 'oose:master'
 
 
 /**
@@ -210,7 +200,7 @@ if(config.supervisor.enabled){
 /**
  * Workers
  */
-if(config.workers.enabled){
+if(config.workers.enabled && require.main !== module){
   lifecycle.add(
     function(next){
       //start workers
@@ -266,6 +256,8 @@ if(config.workers.enabled){
       )
     }
   )
+} else {
+  logger.info('Workers disabled, maybe we are in standalone mode?')
 }
 
 
@@ -321,9 +313,31 @@ if(config.shredder.enabled){
 
 
 /**
- * Shutdown
+ * Start master
+ * @param {function} done
  */
-var stop = function(){
+exports.start = function(done){
+  lifecycle.start(
+    function(err){
+      if(err){
+        logger.error('Startup failed: ' + err)
+        done(err)
+        return
+      }
+      //go to ready state 3
+      running = true
+      logger.info('Startup complete')
+      done()
+    }
+  )
+}
+
+
+/**
+ * Stop master
+ * @param {function} done
+ */
+exports.stop = function(done){
   stopping = true
   //register force kill for the second
   process.on('SIGTERM',process.exit)
@@ -333,31 +347,25 @@ var stop = function(){
   lifecycle.stop(function(err){
     if(err){
       logger.error('Shutdown failed: ' + err)
+      return done(err)
     } else {
       running = false
       stopping = false
       logger.info('Shutdown complete')
+      done()
     }
-    process.exit()
   })
 }
-process.once('SIGINT',stop)
-process.once('SIGTERM',stop)
 
-
-/**
- * Start master
- */
-exports.start = function(){
-  lifecycle.start(
-    function(err){
-      if(err){
-        logger.error('Startup failed: ' + err)
-        process.exit()
-      }
-      //go to ready state 3
-      running = true
-      logger.info('Startup complete')
+if(require.main === module){
+  var master = exports
+  Child.child(
+    'oose:master',
+    function(done){
+      master.start(done)
+    },
+    function(done){
+      master.stop(done)
     }
   )
 }

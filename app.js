@@ -1,8 +1,30 @@
 'use strict';
 var cluster = require('cluster')
 
-//master startup
-if(cluster.isMaster) require('./master').start()
+var child = require('./helpers/child').child
 
-//worker startup
-if(cluster.isWorker) require('./worker').start()
+if(require.main === module){
+  if(cluster.isMaster){
+    var master = require('./master')
+    child(
+      'oose:master',
+      function(done){
+        master.start(done)
+      },
+      function(done){
+        master.stop(done)
+      }
+    )
+  } else {
+    var worker = require('./worker')
+    child(
+      'oose:worker',
+      function(done){
+        worker.start(done)
+      },
+      function(done){
+        worker.stop(done)
+      }
+    )
+  }
+}

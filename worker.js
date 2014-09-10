@@ -2,6 +2,7 @@
 var debug = require('debug')('oose:worker')
 var mongoose = require('mongoose')
 
+var child = require('./helpers/child').child
 var lifecycle = new (require('./helpers/lifecycle'))()
 var logger = require('./helpers/logger').create('worker')
 
@@ -141,28 +142,49 @@ if(config.mongoose.enabled && config.executioner.enabled){
 
 
 /**
- * Stop worker
+ * Start worker
+ * @param {function} done
  */
-var stop = function(){
-  debug('worker stopping')
-  lifecycle.stop(function(err){
-    if(err) logger.error(err)
-    debug('worker shutdown complete')
-    process.exit(0)
+exports.start = function(done){
+  debug('worker starting')
+  lifecycle.start(function(err){
+    if(err){
+      logger.error(err)
+      done(err)
+      return
+    }
+    debug('worker startup complete')
+    done()
   })
 }
-process.on('message',function(message){
-  if('stop' === message) stop()
-})
 
 
 /**
- * Start worker
+ * Stop worker
+ * @param {function} done
  */
-exports.start = function(){
-  debug('worker starting')
-  lifecycle.start(function(err){
-    if(err) logger.error(err)
-    debug('worker startup complete')
+exports.stop = function(done){
+  debug('worker stopping')
+  lifecycle.stop(function(err){
+    if(err){
+      logger.error(err)
+      done(err)
+      return
+    }
+    debug('worker shutdown complete')
+    done()
   })
+}
+
+if(require.main === module){
+  var worker = exports
+  child(
+    'oose:worker',
+    function(done){
+      worker.start(done)
+    },
+    function(done){
+      worker.stop(done)
+    }
+  )
 }
