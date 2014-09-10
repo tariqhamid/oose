@@ -503,7 +503,8 @@ Shredder exposes itself through an HTTP JSONP API.
 
 ## Changelog
 
-### 0.5.0 [Closed Issues](https://github.com/eSited/oose/issues?q=milestone%3A0.5.0)
+### 0.5.0
+[Closed Issues](https://github.com/eSited/oose/issues?q=milestone%3A0.5.0)
 * Removed mesh in favor of more exposed communications
 * Implemented multicast helper
 * Implemented axon for TCP p2p communication
@@ -518,13 +519,15 @@ Shredder exposes itself through an HTTP JSONP API.
 * Better error handling and watchdog ability through sub processes
 * Introduction of unit testing, more test coverage to follow
 
-### 0.4.0 [Closed Issues](https://github.com/eSited/oose/issues?q=milestone%3A0.4.0)
+### 0.4.0
+[Closed Issues](https://github.com/eSited/oose/issues?q=milestone%3A0.4.0)
 * Upgraded to Express 4 system wide
 * Upgraded to object-manage 0.8 system wide
 * Dropped restler in favor of request
 * Work in progress...
 
-### 0.3.0 [Closed Issues](https://github.com/eSited/oose/issues?q=milestone%3A0.3.0)
+### 0.3.0
+[Closed Issues](https://github.com/eSited/oose/issues?q=milestone%3A0.3.0)
 * Fix next peer selection to be a list
 * Added start param support to export (MP4 pseudo streaming)
 * Added looking glass (lg) for cluster status
