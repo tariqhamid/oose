@@ -42,6 +42,7 @@ var buildCache = function(sha1,done){
             if(peers[i] && 'null' !== i) exists.push(i)
           }
           debug(sha1,'got locate back',exists)
+          if(0 === exists.length) return next('file not found')
           next()
         })
       },
