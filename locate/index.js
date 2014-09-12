@@ -16,10 +16,11 @@ var server = axon.socket('rep')
 var multicastListen = function(multicast){
   multicast.on('locate',function(message,rinfo){
     var reply = function(err,exists){
-      if(err)
+      if(err){
         logger.error('locate response failed',err)
-      else
-        multicast.send(message.token,{exists: exists})
+        exists = false
+      }
+      multicast.send(message.token,{exists: exists})
     }
     //check if we have the file
     if(!message.sha1) return reply('no sha1 provided')

@@ -83,7 +83,7 @@ var processFiles = function(progress,data,done){
   if(0 === lines.length) return complete()
   async.eachLimit(
     lines,
-    os.cpus().length || 4,
+    config.inventory.concurrency || os.cpus().length || 1,
     function(entry,next){
       //disqualify tmp
       if(entry.match(tmpExp)) return next()

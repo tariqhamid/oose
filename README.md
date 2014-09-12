@@ -503,6 +503,12 @@ Shredder exposes itself through an HTTP JSONP API.
 
 ## Changelog
 
+### 0.5.1
+* Fixed issue with failing to complete locate
+* Fixed bug with prism not throwing 404's on empty locate
+* Fixed bug with export not throwing 404's on non existent files
+* Inventory now runs in parallel with configurable concurrence
+
 ### 0.5.0
 [Closed Issues](https://github.com/eSited/oose/issues?q=milestone%3A0.5.0)
 * Removed mesh in favor of more exposed communications

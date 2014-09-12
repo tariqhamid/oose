@@ -66,7 +66,7 @@ Locate.prototype.lookup = function(sha1,done){
                 redis.hget('peer:ip',rinfo.address,function(err,result){
                   if(err) return next(err)
                   hostname = result
-                  that.basket[hostname] = req.exists
+                  that.basket[hostname] = !!req.exists
                   if(peers.indexOf(hostname) > -1)
                     peers.splice(peers.indexOf(hostname),1)
                   next()
@@ -78,7 +78,6 @@ Locate.prototype.lookup = function(sha1,done){
               if(err){
                 debug(that.sha1,'Failed to respond to locate: ' + err)
                 that.errors.push(err)
-                return
               }
               clearTimeout(that.timeout)
               //if we have all the peers return now
