@@ -2,6 +2,7 @@
 var async = require('async')
 var childProcess = require('child_process')
 var debug = require('debug')('oose:task:inventory')
+var os = require('os')
 var path = require('path')
 
 var childOnce = require('../helpers/child').childOnce
@@ -80,8 +81,9 @@ var processFiles = function(progress,data,done){
       return val.replace(flipSlashExp,'/').replace(rootExp,'')
     })
   if(0 === lines.length) return complete()
-  async.eachSeries(
+  async.eachLimit(
     lines,
+    config.inventory.concurrency || os.cpus().length || 1,
     function(entry,next){
       //disqualify tmp
       if(entry.match(tmpExp)) return next()

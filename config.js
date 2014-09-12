@@ -164,6 +164,9 @@ config.$load({
     enabled: false,
     dsn: 'mongodb://localhost/oose',
     options: {native_parser: true} //jshint ignore:line
+  },
+  inventory: {
+    concurrency: null
   }
 })
 
