@@ -48,7 +48,7 @@ app.get('/:sha1/:filename',function(req,res){
           if(!exists){
             debug(sha1,'path does not exist, throwing 404')
             status = 404
-            return next('File doesnt exist')
+            return next('file not found')
           }
           debug(sha1,'confirmed path exists')
           next()
@@ -64,7 +64,7 @@ app.get('/:sha1/:filename',function(req,res){
           if(!result){
             debug(sha1,'no inventory found, throwing 404')
             status = 404
-            return next('File not found')
+            return next('file not found')
           }
           dump(sha1,'got inventory record',result)
           debug(sha1,'got inventory record')
@@ -117,7 +117,7 @@ app.get('/:sha1/:filename',function(req,res){
     ],
     function(err){
       if(err){
-        if('string' === typeof err) status = 500
+        if(!status) status = 500
         debug(sha1,'Request failed',status,err)
         res.status(status)
         res.send(err)
