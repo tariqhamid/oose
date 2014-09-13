@@ -22,13 +22,20 @@ app.use(bodyParser.json())
 /**
  * Build cache for prism
  * @param {string} sha1
- * @param {function} done
+ * @param {object} req
+ * @param {object} res
  */
-var buildCache = function(sha1,done){
+var buildCache = function(sha1,req,res){
   debug(sha1,'building cache')
   var exists = []
   async.series(
     [
+      //remove any existing redis keys when we get called here
+      function(next){
+        redis.del(['prism:' + sha1,'prism:lb:' + sha1],function(err){
+          next(err)
+        })
+      },
       //acquire list of peers from locate up on the master
       function(next){
         var client = axon.socket('req')
@@ -61,7 +68,7 @@ var buildCache = function(sha1,done){
         redis.hmset(
           'prism:lb:' + sha1,
           hits,
-          function(err){next(err)}
+          function(err){ next(err) }
         )
       },
       //set the keys to expire
@@ -76,9 +83,17 @@ var buildCache = function(sha1,done){
     ],
     function(err){
       debug(sha1,'finished building cache')
-      if(err) return done(err)
-      if(!exists.length) return done('file not found')
-      done()
+      if(err){
+        if('file not found' === err){
+          res.status(404).send(err)
+        } else{
+          debug('cache build error',err)
+          res.status(500).send(err)
+        }
+      } else {
+        debug('cache build success, redirecting to',req.url)
+        res.redirect(302,req.url)
+      }
     }
   )
 }
@@ -131,7 +146,8 @@ app.get('/:sha1/:filename',function(req,res){
     [
       //validate
       function(next){
-        if(!sha1.match(/^[0-9a-f]{40}$/)) next('invalid hash')
+        if(!sha1.match(/^[0-9a-f]{40}$/))
+          return next('invalid hash')
         debug(sha1,'got request')
         next()
       },
@@ -142,31 +158,11 @@ app.get('/:sha1/:filename',function(req,res){
           if(result && result.length){
             debug(sha1,'cache hit found using it')
             peerList = result
-            next()
+            return next()
           }
           //since we don't have the result in cache,
-          // build the cache, store it and grab it
-          else {
-            debug(sha1,'cache miss')
-            async.series(
-              [
-                function(next){
-                  buildCache(sha1,next)
-                },
-                function(next){
-                  redis.smembers('prism:' + sha1,function(err,result){
-                    if(err) return next(err)
-                    if(!result) return next('file not found')
-                    peerList = result
-                    next()
-                  })
-                }
-              ],
-              function(err){
-                next(err)
-              }
-            )
-          }
+          // build the cache, store it and grab it and 302 back here
+          buildCache(sha1,req,res)
         })
       },
       //resolve peer info
@@ -183,15 +179,31 @@ app.get('/:sha1/:filename',function(req,res){
               next()
             })
           },
-          next
+          function(err){
+            if(err) return next(err)
+            if(!peers.length) return next('No peers found')
+            next()
+          }
         )
       },
       //resolving hit info
       function(next){
         redis.hgetall('prism:lb:' + sha1,function(err,result){
           debug(sha1,'got result for hit info',result)
-          hits = result
-          next(err)
+          //check if we dont have hits, if not create them
+          if(!result){
+            peerList.forEach(function(hostname){
+              hits[hostname] = 0
+            })
+            redis.hmset('prism:lb:' + sha1,hits,function(err){
+              next(err)
+            })
+          }
+          //if we do have hits just continue on
+          else {
+            hits = result
+            next(err)
+          }
         })
       },
       //pick a winner
