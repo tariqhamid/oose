@@ -48,14 +48,24 @@ Locate.prototype.lookup = function(sha1,done){
       },
       //send to peers
       function(next){
+        var done = function(){
+          debug(that.sha1,'Locate response window closed')
+          that.multicast.removeAllListeners(that.token)
+          next()
+        }
+        var timeout = function(){
+          //otherwise continue to wait
+          that.timeout = setTimeout(
+            function(){
+              debug(that.sha1,'calling locate timeout')
+              done()
+            },
+            250
+          )
+        }
         that.multicast.on(that.token,function(req,rinfo){
           debug('got locate response',req,rinfo)
           var hostname = ''
-          var done = function(){
-            debug(that.sha1,'Locate response window closed')
-            that.multicast.removeAllListeners(that.token)
-            next()
-          }
           debug(that.sha1,'[LOCATE@' + that.token + '] ' +
             rinfo.address + ' says ' +
             (req.exists ? 'YES' : 'NO'))
@@ -82,8 +92,8 @@ Locate.prototype.lookup = function(sha1,done){
               clearTimeout(that.timeout)
               //if we have all the peers return now
               if(0 === peers.length) return next()
-              //otherwise continue to wait
-              that.timeout = setTimeout(done,250)
+              //otherwise rearm the timeout
+              timeout()
             }
           )
         })
@@ -92,6 +102,9 @@ Locate.prototype.lookup = function(sha1,done){
           {token: that.token, sha1: that.sha1},
           function(err){
             if(err) next(err)
+            //setup the initial timeout now that we sent
+            debug('setting up initial timeout for fail window')
+            timeout()
           }
         )
       }
