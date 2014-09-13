@@ -507,6 +507,9 @@ Shredder exposes itself through an HTTP JSONP API.
 
 ## Changelog
 
+### 0.5.2
+* Fixes #130 related to prism hangs
+
 ### 0.5.1
 * Fixed issue with failing to complete locate
 * Fixed bug with prism not throwing 404's on empty locate
