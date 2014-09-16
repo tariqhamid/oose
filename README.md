@@ -507,6 +507,10 @@ Shredder exposes itself through an HTTP JSONP API.
 
 ## Changelog
 
+### 0.5.6
+* Fix inventory handling of stream for builds
+* Shredder workers now implement the helpers/child system
+
 ### 0.5.5
 * Fixes #134 related to hash update fails
 * Completely removed all occurrences of streams1 and upgraded everything to
