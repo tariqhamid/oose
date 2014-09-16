@@ -4,7 +4,7 @@ var debug = require('debug')('oose:export')
 var dump = require('debug')('oose:export:dump')
 var express = require('express')
 var fs = require('graceful-fs')
-var promisePipe = require('promisePipe')
+var promisePipe = require('promisepipe')
 var through2 = require('through2')
 
 var app = express()
