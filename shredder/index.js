@@ -1,7 +1,6 @@
 'use strict';
 var async = require('async')
 var axon = require('axon')
-var childProcess = require('child_process')
 var debug = require('debug')('oose:shredder')
 var fs = require('graceful-fs')
 var mkdirp = require('mkdirp')
@@ -10,11 +9,12 @@ var os = require('os')
 var path = require('path')
 var util = require('util')
 
-var child = require('../helpers/child').child
+var Child = require('../helpers/child')
 var Logger = require('../helpers/logger')
 var shortId = require('../helpers/shortid')
 var logger = Logger.create('shredder')
 
+var child = Child.child
 var config = require('../config')
 
 var deferred = []
@@ -30,20 +30,24 @@ var server = axon.socket('rep')
  */
 var spawnWorker = function(opts,done){
   logger.info('Starting to spawn worker for job ' + opts.handle)
-  var worker = childProcess.fork(__dirname + '/worker.js')
-  worker.on('error',function(err){
-    done(util.inspect(err))
+  var worker = Child.parent('./worker',{respawn: false})
+  worker.start(function(err){
+    if(err) return done(err)
+    worker.cp.on('error',function(err){
+      done(util.inspect(err))
+    })
+    worker.cp.on('exit',function(code){
+      if(0 !== code)
+        return done('Worker failed, exited with code: ' + code)
+      logger.info(
+        'Worker for job ' +
+        opts.handle + ' has finished and exited without error'
+      )
+      done()
+    })
+    //start the worker by sending it options
+    worker.send({options: opts})
   })
-  worker.on('exit',function(code){
-    if(0 !== code)
-      return done('Worker failed, exited with code: ' + code)
-    logger.info(
-      'Worker for job ' + opts.handle + ' has finished and exited without error'
-    )
-    done()
-  })
-  //start the worker by sending it options
-  worker.send({options: opts})
 }
 
 
