@@ -503,6 +503,28 @@ Shredder exposes itself through an HTTP JSONP API.
 
 ## Changelog
 
+### 0.5.6
+* Fix inventory handling of stream for builds
+* Shredder workers now implement the helpers/child system
+
+### 0.5.5
+* Fixes #134 related to hash update fails
+* Completely removed all occurrences of streams1 and upgraded everything to
+streams2
+* Fixes #135 where callbacks would be called multiple times during sending
+of files to peers using peer.sendFromReadble
+* Fixes #132 by increasing the default timeout for locates and making the
+setting configurable
+* Closes #136 child helper will now kill all children on exit
+* Closes #131 prism only uses a single locate connection now and all of the
+one off connections now close properly once the transaction is finished
+* Fixes #129 which prevented shredder from properly load balancing jobs
+* Fixes #128 now reports file size of clones
+* Closes #122 executioner now makes a backup of the config file before replacing
+it
+* Fixes #130 removes prism redirect loops, reduces failed locates, better
+logic handling to prevent failures under load and unstable network conditions
+
 ### 0.5.2
 * Fixes #130 related to prism hangs
 

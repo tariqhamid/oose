@@ -6,6 +6,18 @@ var EventEmitter = require('events').EventEmitter
 var ObjectManage = require('object-manage')
 var path = require('path')
 
+var children = []
+
+
+/**
+ * Emergency shutdown handler
+ */
+process.on('exit',function(){
+  children.forEach(function(child){
+    child.kill()
+  })
+})
+
 
 /**
  * Setup a debugger prefixed with the pid
@@ -62,6 +74,8 @@ var Child = function(module,options){
   that.running = false
   //move to the ready status
   that.status('ready')
+  //register to emergency kill
+  children.push(that)
 }
 Child.prototype = Object.create(EventEmitter.prototype)
 

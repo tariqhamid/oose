@@ -3,10 +3,10 @@ var async = require('async')
 var crypto = require('crypto')
 var fs = require('graceful-fs')
 var prettyBytes = require('pretty-bytes')
+var promisePipe = require('promisepipe')
 var request = require('request')
+var through2 = require('through2')
 var url = require('url')
-
-var Sniffer = require('../../../helpers/sniffer')
 
 
 /**
@@ -68,6 +68,7 @@ var executeRequest = function(job,req,done){
   var opts = req.opts || {}
   var resource = req.resource || null
   var jar = req.jar || request.jar()
+  var writable
   //make sure a url was provided
   if(!opts.url && !opts.uri)
     return done('No URL for retrieval of ' + (opts.name || 'no name'))
@@ -105,71 +106,89 @@ var executeRequest = function(job,req,done){
       lastUpdate: 0,
       rate: 10000
     }
-    //setup error and progress handling
-    res.on('error',function(err){done(err)})
-    res.on('data',function(data){
-      res.pause()
-      frames.complete += data.length
-      if(frames.complete > frames.total) frames.total = frames.complete
-      //show progress message if we can
-      if(progressThrottle(progress,frames))
-        job.logger.info(progressMessage(opts,progress,frames))
-      //send a job update about our progress (force it on the last frame)
-      job.update({frames: frames},(frames.total === frames.complete))
-      res.resume()
-    })
     //decide what to do with the output
     if(resource){
       var shasum = crypto.createHash('sha1')
-      var sniff = new Sniffer()
-      sniff.on('data',function(data){
-        sniff.pause()
-        shasum.update(data)
-        sniff.resume()
-      })
-      var tmp = fs.createWriteStream(resource.path)
-      tmp.on('finish',function(){
-        var sha1 = shasum.digest('hex')
-        var rv = job.resource.load(opts.name,{sha1: sha1})
-        if(!rv){
-          job.logger.warning(
-            'Failed to update resource ' + opts.name +
-            ' with sha1 of ' + sha1
-          )
+      //setup a sniffer to capture the sha1 for integrity
+      writable = through2(
+        function(chunk,enc,next){
+          try {
+            frames.complete += chunk.length
+            if(frames.complete > frames.total) frames.total = frames.complete
+            //show progress message if we can
+            if(progressThrottle(progress,frames))
+              job.logger.info(progressMessage(opts,progress,frames))
+            //send a job update about our progress (force it on the last frame)
+            job.update({frames: frames},(frames.total === frames.complete))
+            shasum.update(chunk)
+            next(null,chunk)
+          } catch(err){
+            next(err)
+          }
         }
-        job.logger.info(
-          'Successfully retrieved resource from ' + opts.url +
-          ' and saved to ' + resource.path
-        )
-        done()
-      })
-      res.pipe(sniff).pipe(tmp)
+      )
+      var tmp = fs.createWriteStream(resource.path)
+      promisePipe(res,writable,tmp).then(
+        function(){
+          var sha1 = shasum.digest('hex')
+          var rv = job.resource.load(opts.name,{sha1: sha1})
+          if(!rv){
+            job.logger.warning(
+              'Failed to update resource ' + opts.name +
+              ' with sha1 of ' + sha1
+            )
+          }
+          job.logger.info(
+            'Successfully retrieved resource from ' + opts.url +
+            ' and saved to ' + resource.path
+          )
+          done()
+        },
+        function(err){
+          done('Failed in stream ' + err.source + ': ' + err.message)
+        }
+      )
     } else {
       //if there is a parse argument lets buffer the data and parse it
       if(opts.parse){
-        var buffer = ''
+        var buffer
+        writable = through2(
+          function(chunk,enc,next){
+            buffer = buffer + chunk
+            next(null,chunk)
+          }
+        )
         //we must switch to string mode to be able to parse output
         res.setEncoding('utf-8')
-        res.on('data',function(data){
-          res.pause()
-          buffer += data
-          res.resume()
-        })
-        //parse the data using the provided regex and store the params
-        res.on('end',function(){
-          var exp, match
-          for(var i in opts.parse){
-            if(!opts.parse.hasOwnProperty(i)) continue
-            exp = new RegExp(opts.parse[i],'i')
-            match = exp.exec(buffer)
-            if(match && match[1]) req.parameter.$set(i,match[1])
+        //execute the pipe
+        promisePipe(res,writable).then(
+          //parse the data using the provided regex and store the params
+          function(){
+            var exp, match
+            for(var i in opts.parse){
+              if(!opts.parse.hasOwnProperty(i)) continue
+              exp = new RegExp(opts.parse[i],'i')
+              match = exp.exec(buffer)
+              if(match && match[1]) req.parameter.$set(i,match[1])
+            }
+            done()
+          },
+          function(err){
+            done('Failed in stream ' + err.source + ': ' + err.message)
           }
-          done()
-        })
+        )
       }
       //if no resource is passed and no parse args defined, ignore the output
       else {
-        res.on('end',function(){done()})
+        writable = through2()
+        promisePipe(res,writable).then(
+          function(){
+            done()
+          },
+          function(err){
+            done('Failed in stream ' + err.source + ': ' + err.message)
+          }
+        )
       }
     }
   })

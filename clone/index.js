@@ -6,12 +6,13 @@ var debug = require('debug')('oose:clone')
 var fs = require('graceful-fs')
 var net = require('net')
 var prettyBytes = require('pretty-bytes')
+var promisePipe = require('promisepipe')
+var through2 = require('through2')
 
 var child = require('../helpers/child').child
 var file = require('../helpers/file')
 var logger = require('../helpers/logger').create('clone')
 var peer = require('../helpers/peer')
-var Sniffer = require('../helpers/sniffer')
 
 var config = require('../config')
 var server = axon.socket('rep')
@@ -31,6 +32,7 @@ var clone = function(job,cb){
   //track some stats
   var winner
   var bytesSent = 0
+  var filePath = file.pathFromSha1(job.sha1)
   var start = +(new Date())
   var shasum = crypto.createHash('sha1')
   //start process
@@ -45,36 +47,53 @@ var clone = function(job,cb){
           next()
         })
       },
+      //check file existence
+      function(next){
+        fs.exists(filePath,function(exists){
+          if(!exists) return next('File not found for clone')
+          next()
+        })
+      },
+      //wire up pipe
       function(next){
         logger.info('Starting to replicate ' + job.sha1)
-        //setup streams
-        var rs = fs.createReadStream(file.pathFromSha1(job.sha1))
+        //setup a sniffer to capture the sha1 for integrity
+        var sniff = through2(
+          function(chunk,enc,next){
+            try {
+              bytesSent = bytesSent + chunk.length
+              shasum.update(chunk)
+              next(null,chunk)
+            } catch(err){
+              next(err)
+            }
+          }
+        )
+        //setup readable from file system
+        var rs = fs.createReadStream(filePath)
+        //connect to our per for writing
         var ws = net.connect(+winner.portImport,winner.ip)
-        ws.on('connect',function(){
-          var sniff = new Sniffer()
-          sniff.on('data',function(buff){
-            sniff.pause()
-            shasum.update(buff)
-            bytesSent = bytesSent + buff.length
-            sniff.resume()
-          })
-          ws.on('finish',function(){
+        promisePipe(rs,sniff,ws).then(
+          function(){
             var sha1 = shasum.digest('hex')
             var duration = ((+new Date()) - start) / 1000
             if(!bytesSent) bytesSent = 0
             if(!duration) duration = 1
             var bytesPerSec = prettyBytes(bytesSent / duration) + '/sec'
             logger.info(
-              'Finished replicating ' + job.sha1 +
+              'Finished replicating ' +
+              prettyBytes(bytesSent) + ' ' +
+              job.sha1 +
               ' as ' + sha1 +
               ' to ' + winner.hostname + '.' + winner.domain +
               ' in ' + duration + ' seconds ' +
               'averaging ' + bytesPerSec)
-            next()
-          })
-          sniff.on('error',next)
-          rs.pipe(sniff).pipe(ws)
-        })
+            next(null,sha1)
+          },
+          function(err){
+            next('Failed in stream ' + err.source + ': ' + err.message)
+          }
+        )
       }
     ],
     function(err){

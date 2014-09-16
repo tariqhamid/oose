@@ -12,9 +12,10 @@ var peer = require('../helpers/peer')
 var redis = require('../helpers/redis')
 
 var config = require('../config')
-
+var locate = axon.socket('req')
 var running = false
 
+app.disable('etag')
 app.use(bodyParser.urlencoded({extended:true}))
 app.use(bodyParser.json())
 
@@ -22,10 +23,9 @@ app.use(bodyParser.json())
 /**
  * Build cache for prism
  * @param {string} sha1
- * @param {object} req
- * @param {object} res
+ * @param {function} done
  */
-var buildCache = function(sha1,req,res){
+var buildCache = function(sha1,done){
   debug(sha1,'building cache')
   var exists = []
   async.series(
@@ -38,9 +38,7 @@ var buildCache = function(sha1,req,res){
       },
       //acquire list of peers from locate up on the master
       function(next){
-        var client = axon.socket('req')
-        client.connect(+config.locate.port,config.locate.host || '127.0.0.1')
-        client.send({sha1: sha1},function(err,result){
+        locate.send({sha1: sha1},function(err,result){
           if(err) return next(err)
           var peers = result
           debug(sha1,'got payload',peers)
@@ -83,17 +81,7 @@ var buildCache = function(sha1,req,res){
     ],
     function(err){
       debug(sha1,'finished building cache')
-      if(err){
-        if('file not found' === err){
-          res.status(404).send(err)
-        } else{
-          debug('cache build error',err)
-          res.status(500).send(err)
-        }
-      } else {
-        debug('cache build success, redirecting to',req.url)
-        res.redirect(302,req.url)
-      }
+      done(err)
     }
   )
 }
@@ -106,23 +94,36 @@ var buildCache = function(sha1,req,res){
  * @return {string}
  */
 var buildDestination = function(req,winner){
-  if(!winner) return false
+  debug('buildDestination','building destination url')
+  if(!winner){
+    debug('buildDestination','error, no winner exists')
+    return false
+  }
   var destination = req.protocol + '://' + winner.hostname
   if(config.domain){
     destination += '.' + config.domain
+    debug('buildDestination','adding domain',destination)
   }
   if(
-    (80 !== winner.portExport && 'http' === req.protocol) ||
-    443 !== winner.portExport && 'https' === req.protocol
+    (80 !== +winner.portExport && 'http' === req.protocol) ||
+    (443 !== +winner.portExport && 'https' === req.protocol)
   ){
     destination += ':' + winner.portExport
+    debug('buildDestination','adding port',destination)
   }
   destination += req.originalUrl
+  debug('buildDestination','merging with original uri',destination)
   return destination
 }
 
+
+/**
+ * Query the system for the next available peer
+ */
 app.get('/api/peerNext',function(req,res){
+  debug('peerNext','got request, asking redis')
   redis.hgetall('peer:next',function(err,results){
+    debug('peerNext','got response from redis',err,results)
     if(err) return res.json({status: 'error', code: 1, message: err})
     var peers = []
     for(var k in results){
@@ -132,10 +133,70 @@ app.get('/api/peerNext',function(req,res){
       if(info.domain) info.host = info.hostname + '.' + info.domain
       peers.push(info)
     }
+    debug('peerNext','peer list compiled, done',peers)
     res.json({status: 'ok', code: 0, peers: peers})
   })
 })
 
+
+/**
+ * Accept new shredder jobs
+ */
+app.post('/api/shredderJob',function(req,res){
+  var peerNext, jobHandle
+  debug('got shredder job request')
+  async.series(
+    [
+      //figure out next peer
+      function(next){
+        peer.nextByHits(function(err,result){
+          if(err) return next(err)
+          peerNext = result
+          debug('selected peer for shredder job',peerNext.hostname)
+          next()
+        })
+      },
+      //send the request to that peer
+      function(next){
+        var client = axon.socket('req')
+        debug(
+          'setting up connection to send job',
+          peerNext.ip + ':' + peerNext.portShredder)
+        client.connect(+peerNext.portShredder,peerNext.ip)
+        client.send(
+          {description: JSON.stringify(req.body)},
+          function(err,result){
+            client.close()
+            if(err) return next(err)
+            debug('job sent',err,result)
+            if(!result.handle) return next('No job handle created')
+            jobHandle = result.handle
+            next()
+          }
+        )
+      }
+    ],
+    function(err){
+      if(err){
+        return res.json({
+          status: 'error',
+          code: 1,
+          message: err
+        })
+      }
+      return res.json({
+        status: 'ok',
+        code: 0,
+        handle: jobHandle
+      })
+    }
+  )
+})
+
+
+/**
+ * Main file request lookup
+ */
 app.get('/:sha1/:filename',function(req,res){
   var sha1 = req.params.sha1
   var hits = []
@@ -151,18 +212,30 @@ app.get('/:sha1/:filename',function(req,res){
         debug(sha1,'got request')
         next()
       },
-      ///grab from cache
+      ///check for cache
       function(next){
-        redis.smembers('prism:' + sha1,function(err,result){
+        redis.exists('prism:' + sha1,function(err,exists){
           if(err) return next(err)
-          if(result && result.length){
+          if(exists){
             debug(sha1,'cache hit found using it')
-            peerList = result
             return next()
           }
           //since we don't have the result in cache,
-          // build the cache, store it and grab it and 302 back here
-          buildCache(sha1,req,res)
+          debug(sha1,'cache miss')
+          buildCache(sha1,function(err){
+            debug(sha1,'build cache returned',err)
+            next(err)
+          })
+        })
+      },
+      function(next){
+        debug(sha1,'looking up redis key for peer list')
+        redis.smembers('prism:' + sha1,function(err,result){
+          debug(sha1,'got peer list',err,result)
+          if(err) return next(err)
+          if(!result || !result.length) return next('file not found')
+          peerList = result
+          next()
         })
       },
       //resolve peer info
@@ -216,8 +289,8 @@ app.get('/:sha1/:filename',function(req,res){
           }
         })
         debug(sha1,
-          'Candidates ' + candidates +
-          'Selecting ' + winner.hostname + ' as winner'
+            'Candidates ' + candidates +
+            'Selecting ' + winner.hostname + ' as winner'
         )
         if(!winner) return next('Could not select peer')
         next()
@@ -243,59 +316,18 @@ app.get('/:sha1/:filename',function(req,res){
         return res.send({status: 'error', code: 1, message: err})
       }
       var url = buildDestination(req,winner)
+      //check for erroneous url check
+      if(!url){
+        res.status(500)
+        res.send({
+          status: 'error',
+          code: 2,
+          message: 'Could not build destination url'
+        })
+        return
+      }
       debug(sha1,'redirecting to',url)
       res.redirect(url)
-    }
-  )
-})
-
-
-app.post('/api/shredderJob',function(req,res){
-  var peerNext, jobHandle
-  debug('got shredder job request')
-  async.series(
-    [
-      //figure out next peer
-      function(next){
-        peer.nextByHits(function(err,result){
-          if(err) return next(err)
-          peerNext = result
-          debug('selected peer for shredder job',peerNext.hostname)
-          next()
-        })
-      },
-      //send the request to that peer
-      function(next){
-        var client = axon.socket('req')
-        debug(
-          'setting up connection to send job',
-          peerNext.ip + ':' + peerNext.portShredder)
-        client.connect(+peerNext.portShredder,peerNext.ip)
-        client.send(
-          {description: JSON.stringify(req.body)},
-          function(err,result){
-            debug('job sent',err,result)
-            if(err) return next(err)
-            if(!result.handle) return next('No job handle created')
-            jobHandle = result.handle
-            next()
-          }
-        )
-      }
-    ],
-    function(err){
-      if(err){
-        return res.json({
-          status: 'error',
-          code: 1,
-          message: err
-        })
-      }
-      return res.json({
-        status: 'ok',
-        code: 0,
-        handle: jobHandle
-      })
     }
   )
 })
@@ -307,11 +339,29 @@ app.post('/api/shredderJob',function(req,res){
  */
 exports.start = function(done){
   if('function' !== typeof done) done = function(){}
-  server.timeout = 0
-  server.listen(config.prism.port,config.prism.host,function(err){
-    running = true
-    done(err)
-  })
+  //server.timeout = 0
+  async.series(
+    [
+      function(next){
+        locate.connect(
+          +config.locate.port,
+          config.locate.host || '127.0.0.1',
+          next
+        )
+      },
+      function(next){
+        server.listen(
+          +config.prism.port,
+          config.prism.host,
+          next
+        )
+      }
+    ],
+    function(err){
+      if(!err) running = true
+      done(err)
+    }
+  )
 }
 
 
@@ -320,10 +370,23 @@ exports.start = function(done){
  * @param {function} done
  */
 exports.stop = function(done){
-  if('function' !== typeof done) done = function(){}
-  if(server && running){
-    running = false
-    server.close()
-  }
-  done()
+  async.series(
+    [
+      function(next){
+        if(!server) return next()
+        debug('closing server')
+        server.close(function(err){
+          debug('server closed',err)
+        })
+        next()
+      },
+      function(next){
+        if(!locate) return next()
+        debug('closing locate')
+        locate.close()
+        next()
+      }
+    ],
+    done
+  )
 }

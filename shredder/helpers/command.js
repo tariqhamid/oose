@@ -2,6 +2,7 @@
 var async = require('async')
 var EventEmitter = require('events').EventEmitter
 var cp = require('child_process')
+var through2 = require('through2')
 
 
 
@@ -15,6 +16,8 @@ var Command = function(job,command){
   EventEmitter.call(this)
   this.job = job
   this.command = command
+  this.stdout = through2()
+  this.stderr = through2()
 }
 Command.prototype = Object.create(EventEmitter.prototype)
 
@@ -72,14 +75,8 @@ Command.prototype.execute = function(parameter,args){
           'Executing command: ' + that.command + ' ' + args.join(' ')
         )
         var q = cp.spawn(that.command,args)
-        q.stdout.setEncoding('utf-8')
-        q.stdout.on('data',function(data){
-          that.emit('stdout',data)
-        })
-        q.stderr.setEncoding('utf-8')
-        q.stderr.on('data',function(data){
-          that.emit('stderr',data)
-        })
+        q.stdout.pipe(that.stdout)
+        q.stderr.pipe(that.stderr)
         q.on('error',function(err){
           next(err)
         })

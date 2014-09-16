@@ -19,12 +19,12 @@ var validStatuses = Peer.schema.path('status').enum().enumValues
  * @return {Stream.Transform}
  */
 var encodeEntities = function(res){
-  var writable = through2(function(chunk,enc,next){
-    this.push(entities.encode(chunk.toString()))
-    next()
-  })
-  writable.pipe(res)
-  return writable
+  return through2(
+    function(chunk,enc,next){
+      res.write(entities.encode(chunk.toString()))
+      next(null,chunk)
+    }
+  )
 }
 
 
@@ -76,8 +76,8 @@ exports.list = function(req,res){
           peerHelper.prepare(id,encodeEntities(res),next)
         },
         function(err){
-          if(err) peerHelper.banner(res,'ERROR: ' + err)
-          else peerHelper.banner(res,'COMPLETE')
+          if(err) req.flash('error',err)
+          peerHelper.banner(res,operationCompleteMessage)
           peerHelper.outputEnd(res)
         }
       )
@@ -91,8 +91,8 @@ exports.list = function(req,res){
           peerHelper.install(id,encodeEntities(res),next)
         },
         function(err){
-          if(err) peerHelper.banner(res,'ERROR: ' + err)
-          else peerHelper.banner(res,'COMPLETE')
+          if(err) req.flash('error',err)
+          peerHelper.banner(res,operationCompleteMessage)
           peerHelper.outputEnd(res)
         }
       )
@@ -106,8 +106,8 @@ exports.list = function(req,res){
           peerHelper.upgrade(id,encodeEntities(res),next)
         },
         function(err){
-          if(err) peerHelper.banner(res,'ERROR: ' + err)
-          else peerHelper.banner(res,'COMPLETE')
+          if(err) req.flash('error',err)
+          peerHelper.banner(res,operationCompleteMessage)
           peerHelper.outputEnd(res)
         }
       )
@@ -121,8 +121,8 @@ exports.list = function(req,res){
           peerHelper.custom(id,req.body.command,encodeEntities(res),next)
         },
         function(err){
-          if(err) peerHelper.banner(res,'ERROR: ' + err)
-          else peerHelper.banner(res,'COMPLETE')
+          if(err) req.flash('error',err)
+          peerHelper.banner(res,operationCompleteMessage)
           peerHelper.outputEnd(res)
         }
       )
@@ -383,7 +383,7 @@ exports.prepare = function(req,res){
   async.series(
     [
       function(next){
-        peerHelper.prepare(req.query.id,res,next)
+        peerHelper.prepare(req.query.id,encodeEntities(res),next)
       }
     ],
     function(err){
@@ -406,7 +406,7 @@ exports.install = function(req,res){
   async.series(
     [
       function(next){
-        peerHelper.install(req.query.id,res,next)
+        peerHelper.install(req.query.id,encodeEntities(res),next)
       }
     ],
     function(err){
@@ -429,7 +429,7 @@ exports.upgrade = function(req,res){
   async.series(
     [
       function(next){
-        peerHelper.upgrade(req.query.id,res,next)
+        peerHelper.upgrade(req.query.id,encodeEntities(res),next)
       }
     ],
     function(err){
@@ -452,12 +452,12 @@ exports.runCommand = function(req,res){
   async.series(
     [
       function(next){
-        peerHelper.custom(req.body.id,req.body.command,res,next)
+        peerHelper.custom(req.body.id,req.body.command,encodeEntities(res),next)
       }
     ],
     function(err){
       if(err) req.flash('error',err)
-      else req.flash('success','Peer upgraded successfully')
+      else req.flash('success','Command executed')
       peerHelper.banner(res,operationCompleteMessage)
       peerHelper.outputEnd(res)
     }

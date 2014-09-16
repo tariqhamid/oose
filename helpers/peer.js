@@ -2,9 +2,10 @@
 var crypto = require('crypto')
 var debug = require('debug')('oose:helper:peer')
 var net = require('net')
+var promisePipe = require('promisepipe')
+var through2 = require('through2')
 
 var redis = require('../helpers/redis')
-var Sniffer = require('../helpers/sniffer')
 
 
 /**
@@ -57,13 +58,17 @@ exports.nextByHits = function(skip,next){
     for(var i in results){
       if(!results.hasOwnProperty(i)) continue
       peer = JSON.parse(results[i])
-      if(!peer.hits) peer.hits = 0
+      if(!peer.hits || 'NaN' === peer.hits || 'none' === peer.hits)
+        peer.hits = 0
       peer.hits = +peer.hits
-      debug('got peer',peer)
+      debug('got peer',peer.hostname,peer.hits)
       //skip any hostnames we dont want
       if(skip.indexOf(peer.hostname) >= 0) continue
-      if(!winner || +peer.hits < +winner.hits) winner = peer
+      if(!winner || peer.hits < winner.hits) winner = peer
     }
+    debug(
+      'selected ' + winner.hostname + ' as winner with ' + winner.hits + ' hits'
+    )
     //increment the hits of the winner
     debug('incrementing peer:db:' + winner.hostname)
     redis.hincrby('peer:db:' + winner.hostname,'hits',1,function(err){
@@ -81,21 +86,23 @@ exports.nextByHits = function(skip,next){
  */
 exports.sendFromReadable = function(peer,stream,next){
   var shasum = crypto.createHash('sha1')
-  var sniff = new Sniffer()
-  sniff.on('data',function(data){
-    shasum.update(data)
-  })
+  var sniff = through2(
+    function(chunk,enc,next){
+      try {
+        shasum.update(chunk)
+        next(null,chunk)
+      } catch(err){
+        next(err)
+      }
+    }
+  )
   var client = net.connect(+peer.portImport,peer.ip)
-  client.on('error',function(err){
-    next(err)
-  })
-  client.on('end',function(){
-    next(null,shasum.digest('hex'))
-  })
-  client.on('connect',function(){
-    stream.pipe(sniff).pipe(client)
-    stream.on('error',function(err){
-      next(err)
-    })
-  })
+  promisePipe(stream,sniff,client).then(
+    function(){
+      next(null,shasum.digest('hex'))
+    },
+    function(err){
+      next('Failed in stream ' + err.source + ' ' + err.message)
+    }
+  )
 }

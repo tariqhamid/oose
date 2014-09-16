@@ -1,18 +1,14 @@
 'use strict';
 var async = require('async')
 
+var Child = require('../helpers/child')
 var Job = require('./helpers/job')
 var logger = require('../helpers/logger').create('shredder:worker')
 
+var child = Child.child
+
 //inform that we are alive
 logger.info('Spawned and waiting for job description')
-
-
-/**
- * Set the process title
- * @type {string}
- */
-process.title = 'oose:shredder:worker'
 
 
 /**
@@ -152,7 +148,7 @@ process.once('message',function(m){
   var opts = m.options
   logger.info('Received description from master for job ' + opts.handle)
   //adjust the process title
-  process.title = 'OOSE: shredder ' + opts.handle
+  process.title = 'oose:shredder:' + opts.handle
   //setup our job maintainer
   logger.info('Starting to process job ' + opts.handle)
   var job = new Job(opts.handle,opts.description)
@@ -168,3 +164,17 @@ process.once('message',function(m){
     }
   })
 })
+
+if(require.main === module){
+  child(
+    'oose:shredder:worker',
+    //startup
+    function(done){
+      done()
+    },
+    //shutdown
+    function(done){
+      done()
+    }
+  )
+}

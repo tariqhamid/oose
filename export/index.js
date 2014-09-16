@@ -3,8 +3,9 @@ var async = require('async')
 var debug = require('debug')('oose:export')
 var dump = require('debug')('oose:export:dump')
 var express = require('express')
-var FFmpeg = require('fluent-ffmpeg')
 var fs = require('graceful-fs')
+var promisePipe = require('promisepipe')
+var through2 = require('through2')
 
 var app = express()
 var server = require('http').createServer(app)
@@ -12,7 +13,6 @@ var server = require('http').createServer(app)
 var file = require('../helpers/file')
 var logger = require('../helpers/logger').create('export')
 var redis = require('../helpers/redis')
-var Sniffer = require('../helpers/sniffer')
 
 var config = require('../config')
 
@@ -128,21 +128,13 @@ app.get('/:sha1/:filename',function(req,res){
       //set our headers
       res.set(headers)
       //setup output sniffer to track bytes sent regardless of output medium
-      var sniff = new Sniffer()
       var bytesSent = 0
-      sniff.on('data',function(data){
-        sniff.pause()
-        bytesSent += data.length
-        sniff.resume()
-      })
-      //start param support
-      if(req.query.start && 'video/mp4' === info.mimeType){
-        var ffmpeg = new FFmpeg({source: path})
-        ffmpeg.setStartTime(req.query.start)
-        //tell ffmpeg to write to our sniffer
-        ffmpeg.writeToStream(sniff,{end: true})
-        return
-      }
+      var sniff = through2(
+        function(chunk,enc,next){
+          bytesSent = bytesSent + chunk.length
+          next(null,chunk)
+        }
+      )
       //validate range for sanity
       if(range.end < range.start) range.end = range.start
       //if the file is 0 length just end now
@@ -154,11 +146,7 @@ app.get('/:sha1/:filename',function(req,res){
       }
       //setup read stream from the file
       var rs = fs.createReadStream(path,range)
-      res.on('finish',function(){
-        debug(sha1,'increase byte counter by',bytesSent)
-        redis.hincrby('inventory:' + sha1,'sent',bytesSent)
-        debug(sha1,'request delivery finished')
-      })
+      //setup a close handler to deal with connection slams
       res.on('close',function(){
         debug(sha1,'got res.close')
         debug(sha1,'readable ended?',rs._readableState.ended)
@@ -170,7 +158,14 @@ app.get('/:sha1/:filename',function(req,res){
         redis.hincrby('inventory:' + sha1,'sent',bytesSent)
         debug(sha1,'request complete')
       })
-      rs.pipe(sniff).pipe(res)
+      //execute the pipe
+      promisePipe(rs,sniff,res).then(
+        function(){
+          debug(sha1,'increase byte counter by',bytesSent)
+          redis.hincrby('inventory:' + sha1,'sent',bytesSent)
+          debug(sha1,'request delivery finished')
+        }
+      )
     }
   )
 })

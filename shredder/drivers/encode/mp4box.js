@@ -1,4 +1,6 @@
 'use strict';
+var through2 = require('through2')
+
 var Command = require('../../helpers/command')
 
 
@@ -32,12 +34,16 @@ exports.description = 'GPAC video encoding platform'
  */
 exports.run = function(job,parameter,options,done){
   var cmd = new Command(job,'MP4Box')
-  cmd.on('stderror',function(data){
-    job.logger.warning(data)
+  var warn = through2(function(chunk,enc,next){
+    job.logger.warning(chunk.toString())
+    next(null,chunk)
   })
-  cmd.on('stdout',function(data){
-    job.logger.info(data)
+  var info = through2(function(chunk,enc,next){
+    job.logger.info(chunk.toString())
+    next(null,chunk)
   })
+  cmd.stderr.pipe(warn)
+  cmd.stdout.pipe(info)
   cmd.on('error',function(err){
     done(err)
   })

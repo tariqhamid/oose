@@ -4,6 +4,7 @@ var childProcess = require('child_process')
 var debug = require('debug')('oose:task:inventory')
 var os = require('os')
 var path = require('path')
+var through2 = require('through2')
 
 var childOnce = require('../helpers/child').childOnce
 var file = require('../helpers/file')
@@ -130,6 +131,7 @@ childOnce(
       rate: 250
     }
     var buffer = ''
+    var exitCode = 0
     var windows = 'win32' === process.platform
     var cp
     if(windows){
@@ -151,18 +153,23 @@ childOnce(
       debug('error',err)
       done(err)
     })
-    cp.stdout.setEncoding('utf-8')
-    cp.stderr.setEncoding('utf-8')
-    cp.stdout.on('data',function(data){
-      cp.stdout.pause()
-      buffer = buffer + data
-      cp.stdout.resume()
+    var err = through2(function(chunk,enc,next){
+      debug('stderr',chunk.toString())
+      next(null,chunk)
     })
-    cp.stderr.on('data',function(data){
-      debug('stderr',data)
-    })
+    cp.stderr.pipe(err)
     cp.on('close',function(code){
-      debug('done reading files',code)
+      debug('exited with code',code)
+      exitCode = code
+    })
+    cp.stdout.on('readable',function(){
+      var data = cp.stdout.read()
+      if(data)
+        buffer = buffer + data.toString()
+    })
+    cp.stdout.on('end',function(code){
+      exitCode = code
+      debug('done reading files',exitCode)
       processFiles(progress,buffer,function(err){
         logger.info('Inventory complete, read ' +
           (progress.fileCount ? progress.fileCount : 0) + ' files')

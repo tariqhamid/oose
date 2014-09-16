@@ -1,8 +1,12 @@
 'use strict';
 var async = require('async')
+var debug = require('debug')('oose:executioner:helper:ssh')
 var EventEmitter = require('events').EventEmitter
 var path = require('path')
-var SSH2 = require('ssh2')
+var promisePipe = require('promisepipe')
+var ss = require('stream-stream')
+var Ssh2 = require('ssh2')
+var through2 = require('through2')
 
 var shortid = require('../../helpers/shortid')
 
@@ -15,7 +19,7 @@ var shortid = require('../../helpers/shortid')
 var SSH = function(){
   var that = this
   EventEmitter.call(that)
-  that.client = new SSH2()
+  that.client = new Ssh2()
   that.client.on('error',function(err){that.emit('error',err)})
 }
 SSH.prototype = Object.create(EventEmitter.prototype)
@@ -30,7 +34,7 @@ SSH.prototype = Object.create(EventEmitter.prototype)
  */
 SSH.prototype.connect = function(peer,privateKey,done){
   var that = this
-  var client = new SSH2()
+  var client = new Ssh2()
   var complete = function(err){done(err)}
   client.once('error',complete)
   client.on('ready',function(){
@@ -55,41 +59,41 @@ SSH.prototype.connect = function(peer,privateKey,done){
 SSH.prototype.commandBuffered = function(cmd,next){
   var client = this.client
   if(!(cmd instanceof Array)) cmd = [cmd]
-  var commandOut = ''
-  var commandErr = ''
+  var out = ''
   async.eachSeries(
     cmd,
     function(cmd,next){
       client.exec(cmd,function(err,stream){
         if(err) return next(err)
         var exitCode = 0
-        var stdout = ''
-        var stderr = ''
-        stream.setEncoding('utf-8')
-        stream.on('data',function(data){
-          stream.pause()
-          stdout = stdout + data
-          stream.resume()
+        var buffer = ''
+        var concat = ss()
+        var writable = through2(function(chunk,enc,next){
+          buffer = buffer + chunk
+          next(null,chunk)
         })
-        stream.stderr.on('data',function(data){
-          stream.pause()
-          stderr = stderr + data
-          stream.resume()
-        })
+        writable.setEncoding('utf-8')
+        concat.write(stream)
+        concat.write(stream.stderr)
+        concat.end()
         stream.on('exit',function(code){ exitCode = code })
-        stream.on('end',function(){
-          var err = null
-          if(0 !== exitCode)
-            err = 'Failed to execute (' + exitCode + '): ' + cmd
-          //save the buffer
-          commandOut = commandOut + stdout
-          commandErr = commandErr + stderr
-          next(err)
-        })
+        promisePipe(concat,writable).then(
+          function(){
+            var err = null
+            if(0 !== exitCode)
+              err = 'Failed to execute (' + exitCode + '): ' + cmd
+            //save the buffer
+            out = out + buffer
+            next(err)
+          },
+          function(err){
+            next('Failed in stream ' + err.source + ': ' + err.message)
+          }
+        )
       })
     },
     function(err){
-      next(err,commandOut,commandErr)
+      next(err,out)
     }
   )
 }
@@ -110,18 +114,19 @@ SSH.prototype.commandStream = function(cmd,writable,next){
       client.exec(cmd,function(err,stream){
         if(err) return next(err)
         var exitCode
-        stream.setEncoding('utf-8')
-        stream.on('data',function(data){
-          writable.write(data)
-        })
         stream.on('exit',function(code){
           exitCode = code
         })
-        stream.on('end',function(){
-          if(0 !== exitCode)
-            return next('Failed to execute (' + exitCode + '): ' + cmd)
-          next()
-        })
+        promisePipe(stream,writable).then(
+          function(){
+            if(0 !== exitCode)
+              return next('Failed to execute (' + exitCode + '): ' + cmd)
+            next()
+          },
+          function(err){
+            next('Failed in stream ' + err.source + ': ' + err.message)
+          }
+        )
       })
     },
     next
@@ -136,6 +141,7 @@ SSH.prototype.commandStream = function(cmd,writable,next){
  * @param {function} done
  */
 SSH.prototype.commandShell = function(command,writable,done){
+  debug(command,'starting command shell')
   var that = this
   var client = that.client
   async.series(
@@ -152,16 +158,18 @@ SSH.prototype.commandShell = function(command,writable,done){
           },
           function(err,stream){
             if(err) return next(err)
-            stream.setEncoding('utf-8')
-            stream.on('error',function(err){next(err)})
-            stream.on('end',function(){
-              next()
-            })
-            stream.on('data',function(data){
-              writable.write(data)
-            })
+            debug(command,'got shell stream back')
             stream.write('export DEBIAN_FRONTEND=noninteractive\n')
             stream.end(command + ' ; exit $?\n')
+            promisePipe(stream,writable).then(
+              function(){
+                debug(command,'piping to writable finished')
+                next()
+              },
+              function(err){
+                next('Failed in stream ' + err.source + ': ' + err.message)
+              }
+            )
           }
         )
       }
@@ -198,17 +206,18 @@ SSH.prototype.scriptStream = function(script,writable,next){
         var cmd = '/bin/bash ' + tmpfile
         client.shell(function(err,stream){
           if(err) return next(err)
-          stream.setEncoding('utf-8')
-          stream.on('end', function(){
-            next()
-          })
-          stream.on('data',function(data){
-            writable.write(data)
-          })
           stream.write('export TERM=dumb\n')
           stream.write('export DEBIAN_FRONTEND=noninteractive\n')
           stream.write(cmd + ' ; exit $?\n')
           stream.end()
+          promisePipe(stream,writable).then(
+            function(){
+              next()
+            },
+            function(err){
+              next('Failed in stream ' + err.source + ': ' + err.message)
+            }
+          )
         })
       },
       //remove the tmpfile
