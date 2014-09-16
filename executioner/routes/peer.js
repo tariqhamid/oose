@@ -23,10 +23,6 @@ var encodeEntities = function(res){
     function(chunk,enc,next){
       res.write(entities.encode(chunk.toString()))
       next(null,chunk)
-    },
-    function(){
-      peerHelper.banner(res,operationCompleteMessage)
-      peerHelper.outputEnd(res)
     }
   )
 }
@@ -81,6 +77,8 @@ exports.list = function(req,res){
         },
         function(err){
           if(err) req.flash('error',err)
+          peerHelper.banner(res,operationCompleteMessage)
+          peerHelper.outputEnd(res)
         }
       )
     }
@@ -94,6 +92,8 @@ exports.list = function(req,res){
         },
         function(err){
           if(err) req.flash('error',err)
+          peerHelper.banner(res,operationCompleteMessage)
+          peerHelper.outputEnd(res)
         }
       )
     }
@@ -107,6 +107,8 @@ exports.list = function(req,res){
         },
         function(err){
           if(err) req.flash('error',err)
+          peerHelper.banner(res,operationCompleteMessage)
+          peerHelper.outputEnd(res)
         }
       )
     }
@@ -120,6 +122,8 @@ exports.list = function(req,res){
         },
         function(err){
           if(err) req.flash('error',err)
+          peerHelper.banner(res,operationCompleteMessage)
+          peerHelper.outputEnd(res)
         }
       )
     }
@@ -454,6 +458,8 @@ exports.runCommand = function(req,res){
     function(err){
       if(err) req.flash('error',err)
       else req.flash('success','Command executed')
+      peerHelper.banner(res,operationCompleteMessage)
+      peerHelper.outputEnd(res)
     }
   )
 }
