@@ -155,6 +155,7 @@ childOnce(
       done(err)
     })
     var capture = through2(function(chunk,enc,next){
+      debug('stdout',chunk.toString())
       buffer = buffer + chunk.toString()
       next(null,chunk)
     })
@@ -164,20 +165,22 @@ childOnce(
     })
     cp.stderr.pipe(err)
     cp.on('close',function(code){
+      debug('exited with code',code)
       exitCode = code
     })
-    promisePipe(cp.stdout,capture).then(
-      function(){
-        debug('done reading files',exitCode)
-        processFiles(progress,buffer,function(err){
-          logger.info('Inventory complete, read ' +
-            (progress.fileCount ? progress.fileCount : 0) + ' files')
-          done(err,progress.fileCount)
-        })
-      },
-      function(err){
-        done('Failed in stream ' + err.source + ': ' + err.message)
-      }
-    )
+    cp.stdout.on('readable',function(){
+      var data = cp.stdout.read()
+      if(data)
+        buffer = buffer + data.toString()
+    })
+    cp.stdout.on('end',function(code){
+      exitCode = code
+      debug('done reading files',exitCode)
+      processFiles(progress,buffer,function(err){
+        logger.info('Inventory complete, read ' +
+          (progress.fileCount ? progress.fileCount : 0) + ' files')
+        done(err,progress.fileCount)
+      })
+    })
   }
 )
