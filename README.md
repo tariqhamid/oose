@@ -508,10 +508,9 @@ Shredder exposes itself through an HTTP JSONP API.
 ## Changelog
 
 ### 0.5.6
+ [Closed Issues](https://github.com/eSited/oose/issues?q=milestone%3A0.5.6+is%3Aclosed)
 * Fix inventory handling of stream for builds
 * Shredder workers now implement the helpers/child system
-
-### 0.5.5
 * Fixes #134 related to hash update fails
 * Completely removed all occurrences of streams1 and upgraded everything to
 streams2
@@ -539,7 +538,7 @@ logic handling to prevent failures under load and unstable network conditions
 * Inventory now runs in parallel with configurable concurrence
 
 ### 0.5.0
-[Closed Issues](https://github.com/eSited/oose/issues?q=milestone%3A0.5.0)
+[Closed Issues](https://github.com/eSited/oose/issues?q=milestone%3A0.5.0+is%3Aclosed)
 * Removed mesh in favor of more exposed communications
 * Implemented multicast helper
 * Implemented axon for TCP p2p communication
@@ -555,14 +554,14 @@ logic handling to prevent failures under load and unstable network conditions
 * Introduction of unit testing, more test coverage to follow
 
 ### 0.4.0
-[Closed Issues](https://github.com/eSited/oose/issues?q=milestone%3A0.4.0)
+[Closed Issues](https://github.com/eSited/oose/issues?q=milestone%3A0.4.0+is%3Aclosed)
 * Upgraded to Express 4 system wide
 * Upgraded to object-manage 0.8 system wide
 * Dropped restler in favor of request
 * Work in progress...
 
 ### 0.3.0
-[Closed Issues](https://github.com/eSited/oose/issues?q=milestone%3A0.3.0)
+[Closed Issues](https://github.com/eSited/oose/issues?q=milestone%3A0.3.0+is%3Aclosed)
 * Fix next peer selection to be a list
 * Added start param support to export (MP4 pseudo streaming)
 * Added looking glass (lg) for cluster status
