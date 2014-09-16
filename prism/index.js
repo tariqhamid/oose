@@ -12,9 +12,10 @@ var peer = require('../helpers/peer')
 var redis = require('../helpers/redis')
 
 var config = require('../config')
-
+var locate =  axon.socket('req')
 var running = false
 
+app.disable('etag')
 app.use(bodyParser.urlencoded({extended:true}))
 app.use(bodyParser.json())
 
@@ -22,10 +23,9 @@ app.use(bodyParser.json())
 /**
  * Build cache for prism
  * @param {string} sha1
- * @param {object} req
- * @param {object} res
+ * @param {function} done
  */
-var buildCache = function(sha1,req,res){
+var buildCache = function(sha1,done){
   debug(sha1,'building cache')
   var exists = []
   async.series(
@@ -38,9 +38,7 @@ var buildCache = function(sha1,req,res){
       },
       //acquire list of peers from locate up on the master
       function(next){
-        var client = axon.socket('req')
-        client.connect(+config.locate.port,config.locate.host || '127.0.0.1')
-        client.send({sha1: sha1},function(err,result){
+        locate.send({sha1: sha1},function(err,result){
           if(err) return next(err)
           var peers = result
           debug(sha1,'got payload',peers)
@@ -83,6 +81,8 @@ var buildCache = function(sha1,req,res){
     ],
     function(err){
       debug(sha1,'finished building cache')
+      done(err)
+      return
       if(err){
         if('file not found' === err){
           res.status(404).send(err)
@@ -106,18 +106,25 @@ var buildCache = function(sha1,req,res){
  * @return {string}
  */
 var buildDestination = function(req,winner){
-  if(!winner) return false
+  debug('building destination url')
+  if(!winner){
+    debug('error, no winner exists')
+    return false
+  }
   var destination = req.protocol + '://' + winner.hostname
   if(config.domain){
     destination += '.' + config.domain
+    debug('adding domain',destination)
   }
   if(
-    (80 !== winner.portExport && 'http' === req.protocol) ||
-    443 !== winner.portExport && 'https' === req.protocol
+    (80 !== +winner.portExport && 'http' === req.protocol) ||
+    (443 !== +winner.portExport && 'https' === req.protocol)
   ){
     destination += ':' + winner.portExport
+    debug('adding port',destination)
   }
   destination += req.originalUrl
+  debug('adding original uri',destination)
   return destination
 }
 
@@ -151,18 +158,32 @@ app.get('/:sha1/:filename',function(req,res){
         debug(sha1,'got request')
         next()
       },
-      ///grab from cache
+      ///check for cache
       function(next){
-        redis.smembers('prism:' + sha1,function(err,result){
+        redis.exists('prism:' + sha1,function(err,exists){
           if(err) return next(err)
-          if(result && result.length){
+          if(exists){
+          //force a lookup every time for now; TODO: REMOVE THIS
+          //if(false){
             debug(sha1,'cache hit found using it')
-            peerList = result
             return next()
           }
           //since we don't have the result in cache,
-          // build the cache, store it and grab it and 302 back here
-          buildCache(sha1,req,res)
+          debug(sha1,'cache miss')
+          buildCache(sha1,function(err){
+            debug(sha1,'build cache returned',err)
+            next(err)
+          })
+        })
+      },
+      function(next){
+        debug(sha1,'looking up redis key for peer list')
+        redis.smembers('prism:' + sha1,function(err,result){
+          debug(sha1,'got peer list',err,result)
+          if(err) return next(err)
+          if(!result || !result.length) return next('file not found')
+          peerList = result
+          next()
         })
       },
       //resolve peer info
@@ -242,6 +263,11 @@ app.get('/:sha1/:filename',function(req,res){
         return res.send({status: 'error', code: 1, message: err})
       }
       var url = buildDestination(req,winner)
+      if(!url){
+        res.status(500)
+        res.send({status: 'error', code: 2, message: 'Could not build destination url'})
+        return
+      }
       debug(sha1,'redirecting to',url)
       res.redirect(url)
     }
@@ -306,11 +332,21 @@ app.post('/api/shredderJob',function(req,res){
  */
 exports.start = function(done){
   if('function' !== typeof done) done = function(){}
-  server.timeout = 0
-  server.listen(config.prism.port,config.prism.host,function(err){
-    running = true
-    done(err)
-  })
+  //server.timeout = 0
+  async.series(
+    [
+      function(next){
+        locate.connect(+config.locate.port,config.locate.host || '127.0.0.1',next)
+      },
+      function(next){
+        server.listen(config.prism.port,config.prism.host,next)
+      }
+    ],
+    function(err){
+      if(!err) running = true
+      done(err)
+    }
+  )
 }
 
 
