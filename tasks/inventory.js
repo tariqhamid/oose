@@ -4,7 +4,6 @@ var childProcess = require('child_process')
 var debug = require('debug')('oose:task:inventory')
 var os = require('os')
 var path = require('path')
-var promisePipe = require('promisepipe')
 var through2 = require('through2')
 
 var childOnce = require('../helpers/child').childOnce
@@ -153,11 +152,6 @@ childOnce(
     cp.on('error',function(err){
       debug('error',err)
       done(err)
-    })
-    var capture = through2(function(chunk,enc,next){
-      debug('stdout',chunk.toString())
-      buffer = buffer + chunk.toString()
-      next(null,chunk)
     })
     var err = through2(function(chunk,enc,next){
       debug('stderr',chunk.toString())
