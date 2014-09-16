@@ -545,10 +545,28 @@ exports.updateConfig = function(id,next){
           client.on('error',commandFail(next))
           client.client.sftp(function(err,sftp){
             if(err) return next(err)
-            var stream = sftp.createWriteStream('/opt/oose/config.local.js')
-            stream.on('error',function(err){next(err)})
-            stream.on('finish',function(){next()})
-            stream.end(peer.config)
+            async.series(
+              [
+                //rename old config file
+                function(next){
+                  sftp.rename(
+                    '/opt/oose/config.local.js',
+                    '/opt/oose/config.local.js.bak',
+                    next
+                  )
+                },
+                //upload new config file
+                function(next){
+                  var stream = sftp.createWriteStream(
+                    '/opt/oose/config.local.js'
+                  )
+                  stream.on('error',function(err){next(err)})
+                  stream.on('finish',function(){next()})
+                  stream.end(peer.config)
+                }
+              ],
+              next
+            )
           })
         })
       }

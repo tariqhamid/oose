@@ -23,7 +23,6 @@ var listen = function(port,host,done){
       else debug('Closed import connection from ' + remoteSpec)
     })
     file.fromReadable(socket,function(err,sha1){
-      //socket.end(sha1)
       debug(sha1 + ' received on port ' + port)
       if(err) logger.warning(err)
       else debug(sha1 + ' imported successfully')

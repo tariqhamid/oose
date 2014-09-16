@@ -7,9 +7,10 @@ var fs = require('graceful-fs')
 var mkdirp = require('mkdirp')
 var mmm = require('mmmagic')
 var path = require('path')
+var promisePipe = require('promisepipe')
 var temp = require('temp')
+var through2 = require('through2')
 
-var Sniffer = require('../helpers/Sniffer')
 var redis = require('../helpers/redis')
 
 var config = require('../config')
@@ -31,6 +32,7 @@ var queueClone = function(sha1,done){
         debug(sha1,'making locate request')
         client.connect(+config.locate.port,config.locate.host || '127.0.0.1')
         client.send({sha1: sha1},function(err,result){
+          client.close()
           if(err) return next(err)
           debug(sha1,'got locate back',err,result)
           var peers = result
@@ -47,9 +49,15 @@ var queueClone = function(sha1,done){
       //queue a clone if we need to
       function(next){
         //if we have 2 or more clones dont add more
-        if(cloneCount >= 2) return next()
+        if(cloneCount >= 2){
+          debug(sha1,'already have 2 clones, no more needed')
+          return next()
+        }
         //if there are less than 2 peers we cant replicate
-        if(peerCount < 2) return next()
+        if(peerCount < 2){
+          debug(sha1,'not enough peers to make a clone')
+          return next()
+        }
         //setup clone job
         debug(sha1,'need a clone sending a clone request')
         var client = axon.socket('req')
@@ -57,8 +65,10 @@ var queueClone = function(sha1,done){
           config.clone.host + ':' + config.clone.host)
         client.connect(+config.clone.port,config.clone.host || '127.0.0.1')
         client.send({sha1: sha1},function(err){
+          client.close()
           debug(sha1,'got clone request back',err)
-          next(err)
+          if(err) return next(err)
+          next()
         })
       }
     ],
@@ -75,15 +85,22 @@ var queueClone = function(sha1,done){
 exports.sum = function(path,done){
   var shasum = crypto.createHash('sha1')
   var rs = fs.createReadStream(path)
-  rs.on('end',function(){
-    done(null,shasum.digest('hex'))
+  var sniff = through2(function(chunk,enc,next){
+    try {
+      shasum.update(chunk)
+      next(null,chunk)
+    } catch(err){
+      next(err)
+    }
   })
-  rs.on('error',done)
-  rs.on('data',function(chunk){
-    rs.pause()
-    shasum.update(chunk)
-    rs.resume()
-  })
+  promisePipe(rs,sniff).then(
+    function(){
+      done(null,shasum.digest('hex'))
+    },
+    function(err){
+      done('Failed in stream ' + err.source + ': ' + err.message)
+    }
+  )
 }
 
 
@@ -192,20 +209,28 @@ exports.fromReadable = function(readable,done){
     [
       //setup pipes and handlers for errors and update sha1 sum
       function(next){
-        readable.on('error',function(err){next(err)})
         var shasum = crypto.createHash('sha1')
-        var sniff = new Sniffer()
-        sniff.on('data',function(data){
-          sniff.pause()
-          shasum.update(data)
-          sniff.resume()
-        })
-        writable.on('finish',function(){
-          sha1 = shasum.digest('hex')
-          debug('write finished with sha1',sha1)
-          next()
-        })
-        readable.pipe(sniff).pipe(writable)
+        //setup a sniffer to capture the sha1 for integrity
+        var sniff = through2(
+          function(chunk,enc,next){
+            try {
+              shasum.update(chunk)
+              next(null,chunk)
+            } catch(err){
+              next(err)
+            }
+          }
+        )
+        promisePipe(readable,sniff,writable).then(
+          function(){
+            sha1 = shasum.digest('hex')
+            debug('write finished with sha1',sha1)
+            next()
+          },
+          function(err){
+            next('Failed in stream ' + err.source + ': ' + err.message)
+          }
+        )
       },
       //figure out our sha1 hash and setup paths
       function(next){
@@ -217,7 +242,8 @@ exports.fromReadable = function(readable,done){
       function(next){
         redis.exists(sha1,function(err,result){
           if(err) return next(err)
-          exists.redis = result || false
+          exists.redis = !!result
+          debug(sha1,'redis existence',exists.redis)
           next()
         })
       },
@@ -225,22 +251,24 @@ exports.fromReadable = function(readable,done){
       function(next){
         fs.exists(destination,function(result){
           exists.fs = !!result
+          debug(sha1,'fs existence',exists.fs)
           next()
         })
       },
       //remove the temp file if it does exist (no longer needed)
       function(next){
-        if(exists.fs) fs.unlink(tmp,next)
-        else next()
+        if(!exists.fs) return next()
+        debug(sha1,'removing tmp file since fs has a copy')
+        fs.unlink(tmp,next)
       },
       //copy on to the file system if we must
       function(next){
         if(exists.fs) return next()
+        debug(sha1,'saving to filesystem')
         mkdirp(destinationFolder,function(err){
           if(err){
             return next(
-              'Failed to create folder ' + destinationFolder + ' ' + err,
-              sha1
+              'Failed to create folder ' + destinationFolder + ' ' + err
             )
           }
           fs.rename(tmp,destination,function(err){
@@ -249,6 +277,7 @@ exports.fromReadable = function(readable,done){
                 'Failed to rename ' + tmp + ' to ' + destination + ' ' + err
               )
             }
+            debug(sha1,'finished saving to filesystem')
             next()
           })
         })
@@ -256,14 +285,23 @@ exports.fromReadable = function(readable,done){
     //do some final processing
     ],function(err){
       //clean up the temp file regardless
-      if(fs.existsSync(tmp)) fs.unlinkSync(tmp)
+      if(fs.existsSync(tmp)){
+        debug(sha1,'tmp file exists, removing it')
+        fs.unlinkSync(tmp)
+      }
       if(err) return done(err)
       //if we already had the file just return
-      if(exists.fs && exists.redis) return done(null,sha1)
+      if(exists.fs && exists.redis){
+        debug(sha1,'already in the system, finished')
+        return done(null,sha1)
+      }
       //insert into redis
+      debug(sha1,'importing into redis')
       exports.redisInsert(sha1,function(err){
         if(err) return done(err)
+        debug(sha1,'finished inserting into redis, trying to clone')
         queueClone(sha1,function(err){
+          debug(sha1,'done trying to queue clones, finished')
           done(err,sha1)
         })
       })

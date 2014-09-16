@@ -12,6 +12,7 @@ var peer = require('../../helpers/peer')
 var cleanup = []
 var config = require('../../config')
 var resourceExp = /\{([^}]+)\}/ig
+var sha1Exp = /^[0-9a-f]{40}$/i
 var tmpDir = path.resolve(config.root + '/shredder/tmp')
 
 //remove any leftover resources on exit
@@ -36,6 +37,8 @@ var saveResource = function(name,info,next){
       //select next peer
       function(next){
         peer.next(function(err,result){
+          if(err) return next(err)
+          if(!result) return next('Could not select peer')
           peerNext = result
           next()
         })
@@ -44,8 +47,10 @@ var saveResource = function(name,info,next){
       function(next){
         peer.sendFromReadable(
           peerNext,
-          fs.createReadStream(info.$get('path')),
+          fs.createReadStream(info.path),
           function(err,result){
+            if(err) return next(err)
+            if(!sha1Exp.test(result)) return next('Invalid sha1 returned')
             sha1 = result
             next()
           }
@@ -273,10 +278,10 @@ Resource.prototype.save = function(resources,next){
     resources,
     function(name,next){
       var resource = that.resources[name]
-      if('undefined' === typeof resource) return next()
+      if(!resource) return next()
       saveResource(name,resource,function(err,result){
         if(err) return next(err)
-        if(!result) return next('No sha1 returned with result')
+        if(!sha1Exp.test(result)) return next('Invalid sha1 returned')
         //save the resource map
         map[name] = result
         next()

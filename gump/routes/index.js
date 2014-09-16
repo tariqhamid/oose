@@ -1,15 +1,17 @@
 'use strict';
 var async = require('async')
 var crypto = require('crypto')
+var debug = require('debug')('oose:gump')
 var fs = require('graceful-fs')
 var mkdirp = require('mkdirp')
 var net = require('net')
 var Path = require('path')
+var promisePipe = require('promisepipe')
 var Q = require('q')
 var request = require('request')
 var temp = require('temp')
+var through2 = require('through2')
 
-var Sniffer = require('../../helpers/Sniffer')
 var Logger = require('../../helpers/logger')
 var shortid = require('../../helpers/shortid')
 var logger = Logger.create('gump')
@@ -158,38 +160,44 @@ exports.upload = function(req,res){
       }
     )
   }
-  var sendToOOSE = function(file,next){
+  var sendToOose = function(file,next){
+    debug(file.sha1,'starting to send to OOSE')
     var peerNext = {}
     async.series(
       [
         //ask for nextPeer
         function(next){
           var url = prismBaseUrl() + '/api/peerNext'
+          debug(file.sha1,'sending request to prism for peerNext',url)
           request(url,function(err,res,body){
             if(err) return next(err)
             body = JSON.parse(body)
             if(!body.peers || !body.peers.length)
               return next('Next peer could not be found')
             peerNext = body.peers[0]
+            debug(file.sha1,'resolved ' + peerNext.hostname + ' as winner')
             next()
           })
         },
         //send to import
         function(next){
+          //setup readable to tmp file
+          var readable = fs.createReadStream(file.tmp)
+          //setup writable to oose peer
           var client = net.connect(+peerNext.portImport,peerNext.ip)
-          client.on('error',function(err){
-            next(err)
-          })
-          client.on('connect',function(){
-            var rs = fs.createReadStream(file.tmp)
-            rs.pipe(client)
-            client.on('end',function(){
+          promisePipe(readable,client).then(
+            function(){
+              debug(file.sha1,'successfully sent file to OOSE')
               next()
-            })
-          })
+            },
+            function(err){
+              next('Failed in stream ' + err.source + ': ' + err.message)
+            }
+          )
         },
         //remove tmp file
         function(next){
+          debug(file.sha1,'removing tmp file')
           fs.unlink(file.tmp,next)
         }
       ],
@@ -197,97 +205,132 @@ exports.upload = function(req,res){
     )
   }
   var processFile = function(file){
+    debug(file.filename,'starting to process uploaded file')
     var writable = fs.createWriteStream(file.tmp)
     var shasum = crypto.createHash('sha1')
-    var sniff = new Sniffer()
     var doc
-    sniff.on('data',function(data){
-      sniff.pause()
-      file.size += data.length
-      shasum.update(data)
-      sniff.resume()
-    })
-    writable.on('finish',function(){
-      file.sha1 = shasum.digest('hex')
-      async.series(
-        [
-          //send to oose or shredder
-          function(next){
-            if(file.mimetype.match(/^(video|audio)\//i)){
-              sendToShredder(file,next)
-            } else {
-              sendToOOSE(file,next)
-            }
-          },
-          //create parents
-          function(next){
-            File.mkdirp(Object.create(path),next)
-          },
-          //create doc
-          function(next){
-            var currentPath = path.slice(0)
-            currentPath.push(file.filename)
-            //lets figure out if the path is already taken
-            var nameIterator = 0
-            var pathCount = 0
-            async.doUntil(
-              function(next){
-                File.count({path: File.encode(currentPath)},function(err,count){
-                  if(err) return next(err)
-                  pathCount = count
-                  next()
-                })
-              },
-              function(){
-                if(0 === pathCount) return true
-                nameIterator++
-                currentPath.pop()
-                var ext = Path.extname(file.filename)
-                var basename = Path.basename(file.filename,ext)
-                if(basename.match(duplicateNameExp))
-                  basename = basename.replace(
-                    duplicateNameExp,'(' + nameIterator + ')'
-                  )
-                else basename += ' (' + nameIterator + ')'
-                file.filename = basename + ext
-                currentPath.push(file.filename)
-                return false
-              },
-              function(err){
-                if(err) return next(err)
-                doc = new File()
-                doc.handle = file.importJob || shortid.generate()
-                doc.name = file.filename
-                doc.tmp = file.tmp
-                doc.sha1 = file.sha1
-                doc.size = file.size
-                doc.path = currentPath
-                doc.mimetype = file.mimetype
-                if(file.importJob){
-                  doc.shredder.handle = file.importJob
-                  doc.status = 'processing'
-                } else {
-                  doc.status = 'ok'
-                }
-                next()
-              }
-            )
-          },
-          //save doc
-          function(next){
-            doc.save(function(err){
-              if(err) return next(err.message)
-              next()
-            })
-          }
-        ],
-        function(err){
-          if(err) return file.promise.reject(err)
-          file.promise.resolve()
+    //setup a sniffer to capture the sha1 for integrity
+    var sniff = through2(
+      function(chunk,enc,next){
+        try {
+          file.size = file.size + chunk.length
+          shasum.update(chunk)
+          next(null,chunk)
+        } catch(err){
+          next(err)
         }
-      )
-    })
-    file.readable.pipe(sniff).pipe(writable)
+      }
+    )
+    //execute the pipe and save the file or error out the promise
+    promisePipe(file.readable,sniff,writable).then(
+      //successful pipe handling
+      function(){
+        file.sha1 = shasum.digest('hex')
+        debug(
+          file.filename,
+          'successfully stored to tmp file with sha1',
+          file.sha1
+        )
+        async.series(
+          [
+            //send to oose or shredder
+            function(next){
+              if(file.mimetype.match(/^(video|audio)\//i)){
+                debug(file.sha1,'sending to shredder as its audio/video')
+                sendToShredder(file,next)
+              } else {
+                debug(file.sha1,'sending directly to oose')
+                sendToOose(file,next)
+              }
+            },
+            //create parents
+            function(next){
+              debug(file.sha1,'ensuring parent folder exists in gump tree')
+              File.mkdirp(Object.create(path),next)
+            },
+            //create doc
+            function(next){
+              var currentPath = path.slice(0)
+              currentPath.push(file.filename)
+              //lets figure out if the path is already taken
+              var nameIterator = 0
+              var pathCount = 0
+              async.doUntil(
+                function(next){
+                  File.count(
+                    {path: File.encode(currentPath)},
+                    function(err,count){
+                      if(err) return next(err)
+                      pathCount = count
+                      next()
+                    }
+                  )
+                },
+                function(){
+                  if(0 === pathCount){
+                    debug(file.sha1,'file name unused, using it')
+                    return true
+                  }
+                  nameIterator++
+                  debug(
+                    file.sha1,
+                    'file name used, incrementing new name',
+                    nameIterator
+                  )
+                  currentPath.pop()
+                  var ext = Path.extname(file.filename)
+                  var basename = Path.basename(file.filename,ext)
+                  if(basename.match(duplicateNameExp))
+                    basename = basename.replace(
+                      duplicateNameExp,'(' + nameIterator + ')'
+                    )
+                  else basename += ' (' + nameIterator + ')'
+                  file.filename = basename + ext
+                  currentPath.push(file.filename)
+                  return false
+                },
+                function(err){
+                  if(err) return next(err)
+                  doc = new File()
+                  doc.handle = file.importJob || shortid.generate()
+                  doc.name = file.filename
+                  doc.tmp = file.tmp
+                  doc.sha1 = file.sha1
+                  doc.size = file.size
+                  doc.path = currentPath
+                  doc.mimetype = file.mimetype
+                  if(file.importJob){
+                    doc.shredder.handle = file.importJob
+                    doc.status = 'processing'
+                  } else {
+                    doc.status = 'ok'
+                  }
+                  next()
+                }
+              )
+            },
+            //save doc
+            function(next){
+              doc.save(function(err){
+                if(err) return next(err.message)
+                debug(file.sha1,'saved new gump entry')
+                next()
+              })
+            }
+          ],
+          function(err){
+            if(err) return file.promise.reject(err)
+            debug(file.sha1,'releasing promise')
+            file.promise.resolve()
+          }
+        )
+      },
+      //stream error handling
+      function(err){
+        file.promise.reject(
+          'Failed in stream ' + err.source + ': ' + err.message)
+      }
+    )
   }
   //busboy handling
   req.pipe(req.busboy)

@@ -4,6 +4,8 @@ var childProcess = require('child_process')
 var debug = require('debug')('oose:task:inventory')
 var os = require('os')
 var path = require('path')
+var promisePipe = require('promisepipe')
+var through2 = require('through2')
 
 var childOnce = require('../helpers/child').childOnce
 var file = require('../helpers/file')
@@ -130,6 +132,7 @@ childOnce(
       rate: 250
     }
     var buffer = ''
+    var exitCode = 0
     var windows = 'win32' === process.platform
     var cp
     if(windows){
@@ -151,23 +154,30 @@ childOnce(
       debug('error',err)
       done(err)
     })
-    cp.stdout.setEncoding('utf-8')
-    cp.stderr.setEncoding('utf-8')
-    cp.stdout.on('data',function(data){
-      cp.stdout.pause()
-      buffer = buffer + data
-      cp.stdout.resume()
+    var capture = through2(function(chunk,enc,next){
+      buffer = buffer + chunk.toString()
+      next(null,chunk)
     })
-    cp.stderr.on('data',function(data){
-      debug('stderr',data)
+    var err = through2(function(chunk,enc,next){
+      debug('stderr',chunk.toString())
+      next(null,chunk)
     })
+    cp.stderr.pipe(err)
     cp.on('close',function(code){
-      debug('done reading files',code)
-      processFiles(progress,buffer,function(err){
-        logger.info('Inventory complete, read ' +
-          (progress.fileCount ? progress.fileCount : 0) + ' files')
-        done(err,progress.fileCount)
-      })
+      exitCode = code
     })
+    promisePipe(cp.stdout,capture).then(
+      function(){
+        debug('done reading files',exitCode)
+        processFiles(progress,buffer,function(err){
+          logger.info('Inventory complete, read ' +
+            (progress.fileCount ? progress.fileCount : 0) + ' files')
+          done(err,progress.fileCount)
+        })
+      },
+      function(err){
+        done('Failed in stream ' + err.source + ': ' + err.message)
+      }
+    )
   }
 )

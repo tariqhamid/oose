@@ -53,7 +53,8 @@ config.$load({
     host: null,
     multicast: {
       address: '226.0.0.1'
-    }
+    },
+    timeout: 2000 //time to wait for locates to timeout (usually due to errors)
   },
   supervisor: {
     enabled: false,

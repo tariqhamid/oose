@@ -5,6 +5,8 @@ var debug = require('debug')('oose:helper:locate')
 var shortId = require('../helpers/shortid')
 var redis = require('../helpers/redis')
 
+var config = require('../config')
+
 
 
 /**
@@ -60,7 +62,7 @@ Locate.prototype.lookup = function(sha1,done){
               debug(that.sha1,'calling locate timeout')
               done()
             },
-            250
+            config.locate.timeout
           )
         }
         that.multicast.on(that.token,function(req,rinfo){
