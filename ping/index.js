@@ -35,6 +35,11 @@ var pingConnect = function(ip){
   }
   var sock = axon.socket('sub-emitter')
   sock.connect(config.ping.port,ip)
+  sock.on('disconnect',function(){
+    debug('got close event from server, cleaning up records')
+    delete pingHosts[ip]
+    delete servers[ip]
+  })
   sock.on('ping',function(req){
     if(!req || !req.token || !req.stamp){
       debug('got invalid ping request ignoring',req)
@@ -70,7 +75,6 @@ var pingConnect = function(ip){
 
 
 var pingSearch = function(){
-  debug('starting ping search')
   redis.hgetall('peer:ip',function(err,result){
     if(err){
       debug('redis error',err)
@@ -80,7 +84,6 @@ var pingSearch = function(){
       if(servers[ip]) return
       pingConnect(ip)
     })
-    debug('ping search complete')
   })
 }
 
@@ -151,6 +154,7 @@ if(require.main === module){
       done = done || function(){}
       if(emitter){
         debug('stopping emitter')
+        emitter.emit('disconnect')
         emitter.close()
       }
       if(intervalSearch){
