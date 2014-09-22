@@ -36,6 +36,7 @@ var pingSearch = function(){
           delete serverWait[ip]
         },config.ping.interval * 2)
         serverWait[ip] = true
+        delete pingHosts[ip]
         delete servers[client.ip]
       }
       //setup new ping client
