@@ -10,6 +10,8 @@ var redis = require('../helpers/redis')
 
 var config = require('../config')
 var emitter
+var highWaterMark = (+config.ping.max / +config.ping.interval) * 2
+var maxTimeout = config.ping.max * 2
 var pingHosts = {}
 var intervalPing
 var intervalSave
@@ -73,8 +75,8 @@ var pingConnect = function(ip){
   //mark that we are connecting to the server
   servers[ip] = {}
   var sock = axon.socket('sub-emitter')
-  sock.set('retry max timeout',config.ping.max)
-  sock.set('hwm',config.ping.hwm)
+  sock.sock.set('retry max timeout',maxTimeout)
+  sock.sock.set('hwm',highWaterMark)
   //handle errors
   sock.on('error',function(err){
     debug('failed to connect to ' + ip,err)
@@ -136,6 +138,8 @@ if(require.main === module){
           //start axon server
           function(next){
             emitter = axon.socket('pub-emitter')
+            emitter.sock.set('retry max timeout',maxTimeout)
+            emitter.sock.set('hwm',highWaterMark)
             emitter.bind(+config.ping.port,config.ping.host,function(err){
               debug('axon emitter setup and bound',err)
               next(err)
