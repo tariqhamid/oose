@@ -43,7 +43,8 @@ config.$load({
     port: 3010,
     host: null,
     interval: 1000,
-    max: 10000
+    max: 10000,
+    hwm: 10
   },
   locate: {
     enabled: true,

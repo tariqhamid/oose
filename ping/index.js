@@ -18,6 +18,43 @@ var servers = {}
 
 
 /**
+ * Handle a new ping request
+ * @param {string} ip
+ * @param {object} req
+ * @param {object} info
+ * @return {*}
+ */
+var pingHandler = function(ip,req,info){
+  //validate request
+  if(!ip || !req || !info || !req.token || !req.stamp){
+    debug('got invalid ping request ignoring',ip,req,info)
+    return
+  }
+  //push the newest record
+  var latency = req.stamp - info.last.stamp - config.ping.interval
+  //if the latency is outside of our max window ignore it
+  if(latency > config.ping.max){
+    debug('ignoring late or first ping',latency)
+    info.last.token = req.token
+    info.last.stamp = req.stamp
+    return
+  }
+  //store new latency record
+  info.latency.current = latency
+  info.latency.history.push(latency)
+  //trim any old records off the front
+  if(info.latency.history.length > 10)
+    info.latency.history.splice(0,info.latency.history.length - 10)
+  //keep info to compare with next events
+  info.last.token = req.token
+  info.last.stamp = req.stamp
+  //update the pingHosts tracking
+  pingHosts[ip] = latency
+  //debug('updated info record',info)
+}
+
+
+/**
  * Connect to a new server and setup handlers
  * @param {string} ip
  */
@@ -33,44 +70,32 @@ var pingConnect = function(ip){
       stamp: 0
     }
   }
+  //mark that we are connecting to the server
+  servers[ip] = {}
   var sock = axon.socket('sub-emitter')
-  sock.connect(config.ping.port,ip)
-  sock.on('disconnect',function(){
-    debug('got close event from server, cleaning up records')
-    delete pingHosts[ip]
-    delete servers[ip]
+  sock.set('retry max timeout',config.ping.max)
+  sock.set('hwm',config.ping.hwm)
+  //handle errors
+  sock.on('error',function(err){
+    debug('failed to connect to ' + ip,err)
+    if(pingHosts[ip]) delete pingHosts[ip]
+    if(servers[ip]) delete servers[ip]
   })
-  sock.on('ping',function(req){
-    if(!req || !req.token || !req.stamp){
-      debug('got invalid ping request ignoring',req)
-      return
+  sock.connect(config.ping.port,ip,function(){
+    sock.on('disconnect',function(){
+      debug('got close event from ' + ip + ', cleaning up records')
+      if(pingHosts[ip]) delete pingHosts[ip]
+      if(servers[ip]) delete servers[ip]
+    })
+    sock.on('ping',function(req){
+      pingHandler(ip,req,info)
+    })
+    servers[ip] = {
+      sock: sock,
+      info: info
     }
-    //push the newest record
-    var latency = req.stamp - info.last.stamp - config.ping.interval
-    //if the latency is outside of our max window ignore it
-    if(latency > config.ping.max){
-      debug('ignoring late or first ping',latency)
-      info.last.token = req.token
-      info.last.stamp = req.stamp
-      return
-    }
-    //store new latency record
-    info.latency.current = latency
-    info.latency.history.push(latency)
-    //trim any old records off the front
-    if(info.latency.history.length > 10)
-      info.latency.history.splice(0,info.latency.history.length - 10)
-    //keep info to compare with next events
-    info.last.token = req.token
-    info.last.stamp = req.stamp
-    //update the pingHosts tracking
-    pingHosts[ip] = latency
-    //debug('updated info record',info)
   })
-  servers[ip] = {
-    sock: sock,
-    info: info
-  }
+
 }
 
 
