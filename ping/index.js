@@ -5,100 +5,20 @@ var debug = require('debug')('oose:ping')
 
 var child = require('../helpers/child').child
 var logger = require('../helpers/logger').create('ping')
+var PingClient = require('../helpers/PingClient')
 var shortId = require('../helpers/shortid')
 var redis = require('../helpers/redis')
 
 var config = require('../config')
 var emitter
-var highWaterMark = (+config.ping.max / +config.ping.interval) * 2
-var maxTimeout = config.ping.max * 2
+
 var pingHosts = {}
 var intervalPing
 var intervalSave
 var intervalSearch
 var servers = {}
+var serverWait = {}
 
-
-/**
- * Handle a new ping request
- * @param {string} ip
- * @param {object} req
- * @param {object} info
- * @return {*}
- */
-var pingHandler = function(ip,req,info){
-  //validate request
-  if(!ip || !req || !info || !req.token || !req.stamp){
-    debug('got invalid ping request ignoring',ip,req,info)
-    return
-  }
-  //push the newest record
-  var latency = req.stamp - info.last.stamp - config.ping.interval
-  //if the latency is outside of our max window ignore it
-  if(latency > config.ping.max){
-    debug('ignoring late or first ping',latency)
-    info.last.token = req.token
-    info.last.stamp = req.stamp
-    return
-  }
-  //store new latency record
-  info.latency.current = latency
-  info.latency.history.push(latency)
-  //trim any old records off the front
-  if(info.latency.history.length > 10)
-    info.latency.history.splice(0,info.latency.history.length - 10)
-  //keep info to compare with next events
-  info.last.token = req.token
-  info.last.stamp = req.stamp
-  //update the pingHosts tracking
-  pingHosts[ip] = latency
-  //debug('updated info record',info)
-}
-
-
-/**
- * Connect to a new server and setup handlers
- * @param {string} ip
- */
-var pingConnect = function(ip){
-  debug('found server to connect to',ip)
-  var info = {
-    latency: {
-      current: 0,
-      history: []
-    },
-    last: {
-      token: '',
-      stamp: 0
-    }
-  }
-  //mark that we are connecting to the server
-  servers[ip] = {}
-  var sock = axon.socket('sub-emitter')
-  sock.sock.set('retry max timeout',maxTimeout)
-  sock.sock.set('hwm',highWaterMark)
-  //handle errors
-  sock.on('error',function(err){
-    debug('failed to connect to ' + ip,err)
-    if(pingHosts[ip]) delete pingHosts[ip]
-    if(servers[ip]) delete servers[ip]
-  })
-  sock.connect(config.ping.port,ip,function(){
-    sock.on('disconnect',function(){
-      debug('got close event from ' + ip + ', cleaning up records')
-      if(pingHosts[ip]) delete pingHosts[ip]
-      if(servers[ip]) delete servers[ip]
-    })
-    sock.on('ping',function(req){
-      pingHandler(ip,req,info)
-    })
-    servers[ip] = {
-      sock: sock,
-      info: info
-    }
-  })
-
-}
 
 
 var pingSearch = function(){
@@ -108,8 +28,47 @@ var pingSearch = function(){
       return
     }
     Object.keys(result).forEach(function(ip){
-      if(servers[ip]) return
-      pingConnect(ip)
+      if(servers[ip] || serverWait[ip]) return
+      //camp to prevent connection flooding
+      serverWait[ip] = true
+      var tearDown = function(){
+        setTimeout(function(){
+          delete serverWait[ip]
+        },config.ping.interval * 2)
+        serverWait[ip] = true
+        delete servers[client.ip]
+      }
+      //setup new ping client
+      var client = new PingClient(
+        config.ping.port,
+        ip,
+        config.ping.interval,
+        config.ping.max
+      )
+      //deal with errors
+      client.on('error',function(err){
+        debug(client.ip + ' has errored',err)
+        tearDown()
+      })
+      //deal with teardowns
+      client.on('stop',function(){
+        debug(client.ip + ' has stopped')
+        tearDown()
+      })
+      //handle new ping times
+      client.on('ping',function(latency){
+        pingHosts[client.ip] = latency
+      })
+      //connect to that client
+      client.connect(function(err){
+        if(err){
+          debug('failed to connect to ' + ip,err)
+          return
+        }
+        //add to server list
+        delete serverWait[ip]
+        servers[ip] = client
+      })
     })
   })
 }
@@ -138,8 +97,8 @@ if(require.main === module){
           //start axon server
           function(next){
             emitter = axon.socket('pub-emitter')
-            emitter.sock.set('retry max timeout',maxTimeout)
-            emitter.sock.set('hwm',highWaterMark)
+            emitter.sock.set('retry max timeout',(config.ping.max * 2))
+            emitter.sock.set('hwm',(config.ping.max / config.ping.interval * 2))
             emitter.bind(+config.ping.port,config.ping.host,function(err){
               debug('axon emitter setup and bound',err)
               next(err)
@@ -181,22 +140,31 @@ if(require.main === module){
     },
     function(done){
       done = done || function(){}
-      if(emitter){
-        debug('stopping emitter')
-        emitter.emit('disconnect')
-        emitter.close()
+      //stop pinging
+      if(intervalPing){
+        debug('stopping ping send')
+        clearInterval(intervalPing)
       }
+      //stop searching
       if(intervalSearch){
         debug('stopping ping search')
         clearInterval(intervalSearch)
       }
+      //stop saving
       if(intervalSave){
         debug('stopping ping save')
         clearInterval(intervalSave)
       }
-      if(intervalPing){
-        debug('stopping ping send')
-        clearInterval(intervalPing)
+      //stop clients
+      for(var i in servers){
+        if(!servers.hasOwnProperty(i)) continue
+        servers[i].stop()
+      }
+      //stop emitter
+      if(emitter){
+        debug('stopping emitter')
+        emitter.emit('disconnect')
+        emitter.close()
       }
       done()
     }
