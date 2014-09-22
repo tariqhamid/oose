@@ -42,10 +42,8 @@ config.$load({
     enabled: true,
     port: 3010,
     host: null,
-    multicast: {
-      address: '226.0.0.1'
-    },
-    interval: 1000
+    interval: 1000,
+    max: 10000
   },
   locate: {
     enabled: true,

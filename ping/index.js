@@ -1,81 +1,89 @@
 'use strict';
+var async = require('async')
+var axon = require('axon')
 var debug = require('debug')('oose:ping')
-var util = require('util')
 
 var child = require('../helpers/child').child
 var logger = require('../helpers/logger').create('ping')
-var Multicast = require('../helpers/multicast')
 var shortId = require('../helpers/shortid')
 var redis = require('../helpers/redis')
 
 var config = require('../config')
-var multicast
+var emitter
 var pingHosts = {}
-var pingInterval
-var pingSaveInterval
-var thisToken
+var intervalPing
+var intervalSave
+var intervalSearch
+var servers = {}
 
 
 /**
- * Ping server
- * @param {EventEmitter} multicast
- * @return {function}
+ * Connect to a new server and setup handlers
+ * @param {string} ip
  */
-var pingServer = function(multicast){
-  return function(req,rinfo){
-    req.rinfo = rinfo
-    multicast.send('pong',req)
+var pingConnect = function(ip){
+  debug('found server to connect to',ip)
+  var info = {
+    latency: {
+      current: 0,
+      history: []
+    },
+    last: {
+      token: '',
+      stamp: 0
+    }
   }
-}
-
-
-/**
- * Ping client
- * @param {object} res
- * @param {object} rinfo
- */
-var pingClient = function(res,rinfo){
-  if(res.token === thisToken){
-    pingHosts[rinfo.address] = +(new Date()) - +res.stamp
-  } else {
-    debug('[PING] Out of order ping ' +
-      'response detected and ignored from ' + rinfo.address + ':' + rinfo.port)
-  }
-}
-
-
-/**
- * Setup listeners for ping requests
- * @param {EventEmitter} multicast
- */
-var pingListen = function(multicast){
-  multicast.on('ping',pingServer(multicast)) //server
-  multicast.on('pong',pingClient) //client
-}
-
-
-/**
- * Remove listeners for ping requests
- * @param {EventEmitter} multicast
- */
-var pingStop = function(multicast){
-  multicast.removeListener('ping',pingServer)
-  multicast.removeListener('pong',pingClient)
-}
-
-
-/**
- * Send a ping request to multicast
- * @param {EventEmitter} multicast
- */
-var pingSend = function(multicast){
-  thisToken = shortId.generate()
-  multicast.send('ping',{
-    token: thisToken,
-    stamp: +(new Date())
+  var sock = axon.socket('sub-emitter')
+  sock.connect(config.ping.port,ip)
+  sock.on('ping',function(req){
+    if(!req || !req.token || !req.stamp){
+      debug('got invalid ping request ignoring',req)
+      return
+    }
+    //push the newest record
+    var latency = req.stamp - info.last.stamp - config.ping.interval
+    //if the latency is outside of our max window ignore it
+    if(latency > config.ping.max){
+      debug('ignoring late or first ping',latency)
+      info.last.token = req.token
+      info.last.stamp = req.stamp
+      return
+    }
+    //store new latency record
+    info.latency.current = latency
+    info.latency.history.push(latency)
+    //trim any old records off the front
+    if(info.latency.history.length > 10)
+      info.latency.history.splice(0,info.latency.history.length - 10)
+    //keep info to compare with next events
+    info.last.token = req.token
+    info.last.stamp = req.stamp
+    //update the pingHosts tracking
+    pingHosts[ip] = latency
+    //debug('updated info record',info)
   })
-  debug('hosts:' + util.inspect(pingHosts))
+  servers[ip] = {
+    sock: sock,
+    info: info
+  }
 }
+
+
+var pingSearch = function(){
+  debug('starting ping search')
+  redis.hgetall('peer:ip',function(err,result){
+    if(err){
+      debug('redis error',err)
+      return
+    }
+    Object.keys(result).forEach(function(ip){
+      if(servers[ip]) return
+      pingConnect(ip)
+    })
+    debug('ping search complete')
+  })
+}
+
 
 var pingSave = function(){
   if(!Object.keys(pingHosts).length){
@@ -94,30 +102,69 @@ if(require.main === module){
     'oose:ping',
     function(done){
       done = done || function(){}
-      //setup our multicast handler
-      if(!multicast){
-        multicast = new Multicast()
-        multicast.bind(
-          config.ping.port,
-          config.ping.host,
-          config.ping.multicast,
-          function(err){
-            if(err) return done(err)
-            pingListen(multicast)
-            pingInterval = setInterval(
-              function(){pingSend(multicast)},
-              config.ping.interval
+      debug('starting ping system')
+      async.series(
+        [
+          //start axon server
+          function(next){
+            emitter = axon.socket('pub-emitter')
+            emitter.bind(+config.ping.port,config.ping.host,function(err){
+              debug('axon emitter setup and bound',err)
+              next(err)
+            })
+          },
+          //start our emitter
+          function(next){
+            debug('starting ping send')
+            intervalPing = setInterval(
+              function(){
+                var req = {
+                  token: shortId.generate(),
+                  stamp: +(new Date())
+                }
+                emitter.emit('ping',req)
+              },
+              +config.ping.interval
             )
-            pingSaveInterval = setInterval(pingSave,config.ping.interval)
-            done()
+            next()
+          },
+          //setup save timer
+          function(next){
+            debug('starting ping save')
+            intervalSave = setInterval(pingSave,+config.ping.interval * 2)
+            next()
+          },
+          //setup searching for clients
+          function(next){
+            debug('starting ping search')
+            intervalSearch = setInterval(pingSearch,+config.ping.interval)
+            next()
           }
-        )
-      }
+        ],
+        function(err){
+          if(err) return done(err)
+          done()
+        }
+      )
     },
     function(done){
       done = done || function(){}
-      if(pingInterval) clearInterval(pingInterval)
-      pingStop(multicast)
+      if(emitter){
+        debug('stopping emitter')
+        emitter.close()
+      }
+      if(intervalSearch){
+        debug('stopping ping search')
+        clearInterval(intervalSearch)
+      }
+      if(intervalSave){
+        debug('stopping ping save')
+        clearInterval(intervalSave)
+      }
+      if(intervalPing){
+        debug('stopping ping send')
+        clearInterval(intervalPing)
+      }
       done()
     }
   )
