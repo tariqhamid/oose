@@ -1,17 +1,16 @@
 'use strict';
 var async = require('async')
-var cluster = require('cluster')
 var program = require('commander')
 var debug = require('debug')('oose:master')
 var fs = require('graceful-fs')
 var mkdirp = require('mkdirp')
-var os = require('os')
 
 var Child = require('./helpers/child')
 var lifecycle = new (require('./helpers/lifecycle'))()
 var Logger = require('./helpers/logger')
 var redis = require('./helpers/redis')
 var logger = Logger.create('main')
+var Workers = require('./helpers/workers')
 
 var child = Child.parent
 var once = Child.fork
@@ -26,8 +25,8 @@ var shredder = child('./shredder')
 var supervisor = child('./supervisor')
 
 var config = require('./config')
-var running = false
-var stopping = false
+
+var workers = new Workers(config.workers.count,'./worker.js')
 
 //parse cli
 program
@@ -44,23 +43,6 @@ program
 //set log verbosity
 debug('setting up console logging with level',+program.verbose)
 Logger.consoleFilter.setConfig({level: (+program.verbose || 0) + 4})
-
-
-/**
- * Restart failed workers
- * @param {cluster.worker} worker
- * @param {number} code
- * @param {string} signal
- */
-var workerRestart = function(worker,code,signal){
-  if(0 !== code && !stopping){
-    logger.warning(
-        'Worker ' + worker.id + ' died (' + (signal || code) + ') restarted'
-    )
-    //start the new worker
-    cluster.fork()
-  }
-}
 
 
 /**
@@ -203,57 +185,12 @@ if(config.supervisor.enabled){
 if(config.workers.enabled && require.main !== module){
   lifecycle.add(
     function(next){
-      //start workers
-      var workerCount = config.workers.count || os.cpus().length || 4
-      logger.info('Starting ' + workerCount + ' workers')
-      for(var i=1; i <= workerCount; i++) cluster.fork()
-      //worker online notification
-      var workerOnlineCount = 0
-      cluster.on('online',function(worker){
-        debug('Worker ' + worker.id + ' online')
-        workerOnlineCount++
-        if(workerOnlineCount >= workerCount && !running){
-          logger.info('Workers started')
-          next()
-        }
-      })
-      //worker recovery
-      cluster.on('exit',workerRestart)
+      logger.info('Starting workers')
+      workers.start(next)
     },
     function(next){
-      async.series(
-        [
-          //message workers to shutdown
-          function(next){
-            logger.info('Stopping all workers')
-            cluster.removeListener('exit',workerRestart)
-            for(var id in cluster.workers){
-              if(cluster.workers.hasOwnProperty(id))
-                cluster.workers[id].send('stop')
-            }
-            next()
-          },
-          //stop workers
-          function(next){
-            //wait for the workers to all die
-            var checkWorkerCount = function(){
-              if(!cluster.workers) return next()
-              if(Object.keys(cluster.workers).length){
-                logger.info(
-                  'Waiting on ' + Object.keys(cluster.workers).length +
-                  ' workers to exit'
-                )
-                setTimeout(checkWorkerCount,1000)
-              } else {
-                logger.info('Workers have stopped')
-                next()
-              }
-            }
-            checkWorkerCount()
-          }
-        ],
-        next
-      )
+      logger.info('Stopping workers')
+      workers.stop(next)
     }
   )
 } else {
@@ -325,7 +262,6 @@ exports.start = function(done){
         return
       }
       //go to ready state 3
-      running = true
       logger.info('Startup complete')
       done()
     }
@@ -338,7 +274,6 @@ exports.start = function(done){
  * @param {function} done
  */
 exports.stop = function(done){
-  stopping = true
   //register force kill for the second
   process.on('SIGTERM',process.exit)
   process.on('SIGINT',process.exit)
@@ -349,8 +284,6 @@ exports.stop = function(done){
       logger.error('Shutdown failed: ' + err)
       return done(err)
     } else {
-      running = false
-      stopping = false
       logger.info('Shutdown complete')
       done()
     }
