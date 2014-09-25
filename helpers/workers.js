@@ -1,7 +1,19 @@
 'use strict';
-var debug = require('debug')('oose:helper:workers')
+var debug = require('debug')('animegg:helper:workers')
 var EventEmitter = require('events').EventEmitter
 var Q = require('q')
+
+var workers = []
+
+
+/**
+ * Emergency shutdown handler
+ */
+process.on('exit',function(){
+  workers.forEach(function(worker){
+    worker.kill()
+  })
+})
 
 
 
@@ -18,12 +30,14 @@ var Workers = function(count,file,args,silent){
   this.count = count || 1
   this.running = false
   this.stopping = false
+  this.file = file || 'worker.js'
   this.cluster = require('cluster')
   this.cluster.setupMaster({
-    exec: file,
+    exec: this.file,
     args: args || [],
     silent: silent || false
   })
+  workers.push(this)
 }
 Workers.prototype = Object.create(EventEmitter.prototype)
 
@@ -140,6 +154,21 @@ Workers.prototype.stop = function(done){
     }
   }
   interval = setInterval(wait,1000)
+}
+
+
+/**
+ * Kill workers if they arent already dead
+ */
+Workers.prototype.kill = function(){
+  var that = this
+  var worker
+  for(var i in that.cluster.workers){
+    if(!that.cluster.workers.hasOwnProperty(i)) continue
+    worker = that.cluster.workers[i]
+    debug(that.file,'sending worker pid ' + worker.process.pid + ' kill')
+    worker.process.kill()
+  }
 }
 
 

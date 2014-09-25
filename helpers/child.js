@@ -1,7 +1,7 @@
 'use strict';
 var callsite = require('callsite')
 var childProcess = require('child_process')
-var debug = require('debug')('oose:child')
+var debug = require('debug')('animegg:child')
 var EventEmitter = require('events').EventEmitter
 var ObjectManage = require('object-manage')
 var path = require('path')
@@ -130,7 +130,7 @@ Child.prototype.start = function(done){
   //now that we have a pid, relabel the debugger
   that.debug = pidDebug(that.pid)
   that.debug(
-    'Spawned process with pid of ' + that.cp.pid + ' to execute ' + that.module)
+      'Spawned process with pid of ' + that.cp.pid + ' to execute ' + that.module)
   //store the exitCode if we get it, and pass the event upwards
   that.cp.on('exit',function(code){
     that.debug('Child exited with code',code)
@@ -231,7 +231,7 @@ Child.prototype.stop = function(timeout,done){
  * @return {bool}
  */
 Child.prototype.kill = function(){
-  if(this.cp){
+  if(this.cp && this.cp.connected){
     this.debug('sent kill')
     this.cp.kill()
     return true
@@ -243,7 +243,7 @@ Child.prototype.kill = function(){
 /**
  * Send process a message
  * @param {*} msg
- * @param {net.Socket} socket
+ * @param {object} socket
  * @return {Bool}
  */
 Child.prototype.send = function(msg,socket){
