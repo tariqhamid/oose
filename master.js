@@ -5,9 +5,9 @@ var debug = require('debug')('oose:master')
 var fs = require('graceful-fs')
 var Child = require('infant').Child
 var Cluster = require('infant').cluster.Cluster
+var lifecycle = new (require('infant').Lifecycle)()
 var mkdirp = require('mkdirp')
 
-var lifecycle = new (require('./helpers/lifecycle'))()
 var Logger = require('./helpers/logger')
 var redis = require('./helpers/redis')
 var logger = Logger.create('main')
