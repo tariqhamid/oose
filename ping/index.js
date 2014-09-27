@@ -2,8 +2,8 @@
 var async = require('async')
 var axon = require('axon')
 var debug = require('debug')('oose:ping')
+var child = require('infant').child
 
-var child = require('../helpers/child').child
 var logger = require('../helpers/logger').create('ping')
 var PingClient = require('../helpers/PingClient')
 var shortId = require('../helpers/shortid')

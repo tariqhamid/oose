@@ -1,7 +1,7 @@
 'use strict';
 var async = require('async')
+var Child = require('infant').Child
 
-var Child = require('../helpers/child')
 var Job = require('./helpers/job')
 var logger = require('../helpers/logger').create('shredder:worker')
 

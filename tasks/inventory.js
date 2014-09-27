@@ -2,11 +2,11 @@
 var async = require('async')
 var childProcess = require('child_process')
 var debug = require('debug')('oose:task:inventory')
+var childOnce = require('infant').childOnce
 var os = require('os')
 var path = require('path')
 var through2 = require('through2')
 
-var childOnce = require('../helpers/child').childOnce
 var file = require('../helpers/file')
 var logger = require('../helpers/logger').create('task:inventory')
 

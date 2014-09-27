@@ -1,8 +1,9 @@
 'use strict';
 var debug = require('debug')('oose:worker')
+var child = require('infant').child
 var mongoose = require('mongoose')
 
-var child = require('./helpers/child').child
+
 var lifecycle = new (require('./helpers/lifecycle'))()
 var logger = require('./helpers/logger').create('worker')
 

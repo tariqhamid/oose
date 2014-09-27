@@ -2,8 +2,8 @@
 var async = require('async')
 var axon = require('axon')
 var debug = require('debug')('oose:locate')
+var child = require('infant').child
 
-var child = require('../helpers/child').child
 var logger = require('../helpers/logger').create('locate')
 var Locate = require('../helpers/locate')
 var Multicast = require('../helpers/multicast')

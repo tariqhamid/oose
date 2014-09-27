@@ -1,5 +1,5 @@
 'use strict';
-var child = require('./helpers/child').child
+var child = require('infant').child
 var master = require('./master')
 
 if(require.main === module){

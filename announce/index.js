@@ -1,8 +1,8 @@
 'use strict';
 var async = require('async')
 var debug = require('debug')('oose:announce')
+var child = require('infant').child
 
-var child = require('../helpers/child').child
 var logger = require('../helpers/logger').create('announce')
 var Multicast = require('../helpers/multicast')
 var redis = require('../helpers/redis')

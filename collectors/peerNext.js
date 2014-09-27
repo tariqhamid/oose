@@ -1,7 +1,7 @@
 'use strict';
 var async = require('async')
+var child = require('infant').child
 
-var child = require('../helpers/child').child
 var Collector = require('../helpers/collector')
 var logger = require('../helpers/logger').create('collector:peerNext')
 var redis = require('../helpers/redis')

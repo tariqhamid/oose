@@ -3,14 +3,14 @@ var async = require('async')
 var program = require('commander')
 var debug = require('debug')('oose:master')
 var fs = require('graceful-fs')
+var Child = require('infant').Child
+var Cluster = require('infant').cluster.Cluster
 var mkdirp = require('mkdirp')
 
-var Child = require('./helpers/child')
 var lifecycle = new (require('./helpers/lifecycle'))()
 var Logger = require('./helpers/logger')
 var redis = require('./helpers/redis')
 var logger = Logger.create('main')
-var Workers = require('./helpers/workers')
 
 var child = Child.parent
 var once = Child.fork
@@ -26,7 +26,7 @@ var supervisor = child('./supervisor')
 
 var config = require('./config')
 
-var workers = new Workers(config.workers.count,'./worker.js')
+var cluster = new Cluster('./worker.js',{count: config.workers.count})
 
 //parse cli
 program
@@ -186,11 +186,11 @@ if(config.workers.enabled && require.main !== module){
   lifecycle.add(
     function(next){
       logger.info('Starting workers')
-      workers.start(next)
+      cluster.start(next)
     },
     function(next){
       logger.info('Stopping workers')
-      workers.stop(next)
+      cluster.stop(next)
     }
   )
 } else {

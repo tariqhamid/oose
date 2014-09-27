@@ -2,10 +2,10 @@
 var async = require('async')
 var debug = require('debug')('oose:peerStats')
 var dump = require('debug')('oose:peerStats:dump')
+var child = require('infant').child
 var path = require('path')
 var util = require('util')
 
-var child = require('../helpers/child').child
 var Collector = require('../helpers/collector')
 var logger = require('../helpers/logger').create('collector:peerStats')
 var redis = require('../helpers/redis')

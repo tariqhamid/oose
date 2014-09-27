@@ -4,12 +4,13 @@ var axon = require('axon')
 var crypto = require('crypto')
 var debug = require('debug')('oose:clone')
 var fs = require('graceful-fs')
+var child = require('infant').child
 var net = require('net')
 var prettyBytes = require('pretty-bytes')
 var promisePipe = require('promisepipe')
 var through2 = require('through2')
 
-var child = require('../helpers/child').child
+
 var file = require('../helpers/file')
 var logger = require('../helpers/logger').create('clone')
 var peer = require('../helpers/peer')

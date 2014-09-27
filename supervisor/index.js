@@ -1,5 +1,6 @@
 'use strict';
-var child = require('../helpers/child').child
+var child = require('infant').child
+
 var logger = require('../helpers/logger').create('supervisor')
 var redis = require('../helpers/redis')
 
