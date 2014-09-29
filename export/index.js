@@ -1,132 +1,100 @@
 'use strict';
-var async = require('async')
 var debug = require('debug')('oose:export')
-var dump = require('debug')('oose:export:dump')
 var express = require('express')
 var fs = require('graceful-fs')
 var promisePipe = require('promisepipe')
+var Q = require('q')
 var through2 = require('through2')
 
 var app = express()
 var server = require('http').createServer(app)
 
 var file = require('../helpers/file')
-var logger = require('../helpers/logger').create('export')
 var redis = require('../helpers/redis')
 
 var config = require('../config')
 
+var rangeExp = /(\d+)-(\d*)/
 var running = false
 
 app.get('/:sha1/:filename',function(req,res){
-  var sha1, filename, path, info, stat, range
-  var status = 200
-  //default headers
-  var headers = {
-    'Accept-Range': 'bytes',
-    //set some aggressive cache headers this content cant change, hence sha1
-    'Cache-Control': 'public, max-age=31536000',
-    'Pragma': 'public'
-  }
-  async.series(
-    [
-      //get sha1 and filename
-      function(next){
-        sha1 = req.params.sha1
-        debug(sha1,'--------NEW REQUEST--------')
-        filename = req.params.filename
-        debug(sha1,'got filename',filename)
-        if(!sha1) next('Invalid path')
-        if(!filename) filename = sha1
-        path = file.pathFromSha1(sha1)
-        debug(sha1,'got local path',path)
-        next()
-      },
-      //check if path exists
-      function(next){
-        fs.exists(path,function(exists){
-          if(!exists){
-            debug(sha1,'path does not exist, throwing 404')
-            status = 404
-            return next('file not found')
-          }
-          debug(sha1,'confirmed path exists')
-          next()
-        })
-      },
-      //get inventory for file
-      function(next){
-        redis.hgetall('inventory:' + sha1,function(err,result){
-          if(err){
-            debug(sha1,'could not get inventory',err)
-            return next(err)
-          }
-          if(!result){
-            debug(sha1,'no inventory found, throwing 404')
-            status = 404
-            return next('file not found')
-          }
-          dump(sha1,'got inventory record',result)
-          debug(sha1,'got inventory record')
-          info = result
-          next()
-        })
-      },
-      //convert stats to an object
-      function(next){
-        stat = JSON.parse(info.stat)
-        dump(sha1,'decoded stats',stat)
-        debug(sha1,'decoded stats')
-        next()
-      },
-      //update hits
-      function(next){
-        redis.hincrby('inventory:' + sha1,'hits',1,function(err){
-          if(err)
-            logger.warning('Failed to increment hits(' + sha1 + '): ' + err)
-          debug(sha1,'incremented hits')
-          next()
-        })
-      },
-      //set headers
-      function(next){
-        headers['Content-Type'] = info.mimeType
-        headers['Content-Length'] = stat.size
-        //add attachment for a download
-        if('string' === typeof req.query.download){
-          headers['Content-Disposition'] =
-            'attachment; filename=' + req.params.filename
-        }
-        //byte range support
-        range = {start: 0, end: (stat.size - 1 || 0)}
-        var rangeRaw = req.get('range')
-        if(rangeRaw){
-          var match = rangeRaw.match(/(\d+)-(\d*)/)
-          if(match[1]) range.start = +match[1]
-          if(match[2]) range.end = +match[2]
-          status = 206
-          headers['Content-Range'] =
-            'bytes ' +
-            range.start + '-' + range.end + '/' + stat.size
-          headers['Content-Length'] = (range.end - range.start) + 1
-        }
-        dump(sha1,'finished setting headers',headers)
-        debug(sha1,'finished setting headers')
-        next()
+  //first parse our req params and expand them
+  Q.fcall(function(){
+    var sha1 = req.params.sha1
+    debug(sha1,'--------NEW REQUEST--------')
+    var fileName = req.params.filename
+    debug(sha1,'got filename',fileName)
+    if(!sha1) throw {status: 404, message: 'invalid path'}
+    if(!fileName) fileName = sha1
+    var filePath = file.pathFromSha1(sha1)
+    var info = {sha1: sha1, filename: fileName, filePath: filePath}
+    debug(sha1,'parsed request',info)
+    return info
+  })
+    //resolve all needed async calls
+    .then(function(info){
+      return Q.all([
+        Q.fcall(function(){return info}),
+        Q.nfcall(redis.hgetall.bind(redis),'inventory:' + info.sha1),
+        Q.nfcall(redis.hincrby.bind(redis),'inventory:' + info.sha1,'hits',1)
+      ])
+    })
+    //parse out the async responses and map into the info object
+    .then(function(results){
+      var info = results[0]
+      if('object' !== typeof results[1])
+        throw {status: 404, message: 'file not found'}
+      info.file = results[1]
+      if(!info.file.stat)
+        throw {status: 404, message: 'file not found'}
+      info.file.stat = JSON.parse(info.file.stat)
+      return info
+    })
+    //setup the headers and range info if needed
+    .then(function(info){
+      //default headers
+      info.headers = {
+        'Accept-Range': 'bytes',
+        //set some aggressive cache headers this content cant change, hence sha1
+        'Cache-Control': 'public, max-age=31536000',
+        'Pragma': 'public'
       }
-    ],
-    function(err){
-      if(err){
-        if(!status) status = 500
-        debug(sha1,'Request failed',status,err)
-        res.status(status)
-        res.send(err)
+      info.headers['Content-Type'] = info.file.mimeType
+      info.headers['Content-Length'] = info.file.stat.size
+      //add attachment for a download
+      if('string' === typeof req.query.download){
+        info.headers['Content-Disposition'] = 'attachment; filename=' +
+          req.params.filename
+      }
+      //byte range support
+      info.range = {start: 0,end: (info.file.stat.size - 1 || 0)}
+      var rangeRaw = req.get('range')
+      if(rangeRaw){
+        var match = rangeRaw.match(rangeExp)
+        if(match[1]) info.range.start = +match[1]
+        if(match[2]) info.range.end = +match[2]
+        res.status(206)
+        info.headers['Content-Range'] = 'bytes ' + info.range.start + '-' +
+          info.range.end + '/' + info.file.stat.size
+        info.headers['Content-Length'] = (info.range.end - info.range.start) + 1
+      }
+      //validate range for sanity
+      if(info.range.end < info.range.start) info.range.end = info.range.start
+      return info
+    })
+    //setup to send the request
+    .then(function(info){
+      //if the file is 0 length just end now
+      if(0 === info.range.start && 0 === info.range.end){
+        res.status(200)
+        res.set('Content-Length',0)
+        res.end()
         return
       }
-      //set our status
-      res.status(status)
       //set our headers
-      res.set(headers)
+      res.set(info.headers)
+      //setup a deferred to handle this
+      var defer = Q.defer()
       //setup output sniffer to track bytes sent regardless of output medium
       var bytesSent = 0
       var sniff = through2(
@@ -135,39 +103,45 @@ app.get('/:sha1/:filename',function(req,res){
           next(null,chunk)
         }
       )
-      //validate range for sanity
-      if(range.end < range.start) range.end = range.start
-      //if the file is 0 length just end now
-      if(0 === range.start && 0 === range.end){
-        res.status(200)
-        res.set('Content-Length',0)
-        res.end()
-        return
-      }
       //setup read stream from the file
-      var rs = fs.createReadStream(path,range)
+      var rs = fs.createReadStream(info.filePath,info.range)
       //setup a close handler to deal with connection slams
       res.on('close',function(){
-        debug(sha1,'got res.close')
-        debug(sha1,'readable ended?',rs._readableState.ended)
+        debug(info.sha1,'got res.close')
+        debug(info.sha1,'readable ended?',rs._readableState.ended)
         if(!rs._readableState.ended){
-          debug(sha1,'manually closing readable to prevent leaks!')
+          debug(info.sha1,'manually closing readable to prevent leaks!')
           rs.close()
         }
-        debug(sha1,'increase byte counter by',bytesSent)
-        redis.hincrby('inventory:' + sha1,'sent',bytesSent)
-        debug(sha1,'request complete')
+        debug(info.sha1,'request complete')
+        defer.resolve({sha1: info.sha1, bytesSent: bytesSent})
       })
       //execute the pipe
       promisePipe(rs,sniff,res).then(
         function(){
-          debug(sha1,'increase byte counter by',bytesSent)
-          redis.hincrby('inventory:' + sha1,'sent',bytesSent)
-          debug(sha1,'request delivery finished')
-        }
+          debug(info.sha1,'request complete')
+          defer.resolve({sha1: info.sha1, bytesSent: bytesSent})
+        },
+        defer.reject
       )
-    }
-  )
+      return defer.promise
+    })
+    //teardown procedures
+    .then(function(info){
+      debug(info.sha1,'increase byte counter by',info.bytesSent)
+      debug(info.sha1,'request delivery finished')
+      return Q.nfcall(
+        redis.hincrby.bind(redis),
+        'inventory:' + info.sha1,
+        'sent',
+        info.bytesSent
+      )
+    })
+    //error handling
+    .catch(function(err){
+      res.status(err.status || 500)
+      res.send(err.message || err)
+    })
 })
 
 
