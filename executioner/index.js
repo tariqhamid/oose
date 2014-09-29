@@ -13,7 +13,8 @@ if(require.main === module){
         './worker',
         {
           enhanced: true,
-          count: config.executioner.workers
+          count: config.executioner.workers.count,
+          maxConnections: config.executioner.workers.maxConnections
         }
       )
       cluster.start(function(err){

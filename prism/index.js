@@ -13,7 +13,8 @@ if(require.main === module){
         './worker',
         {
           enhanced: true,
-          count: config.prism.workers
+          count: config.prism.workers.count,
+          maxConnections: config.prism.workers.maxConnections
         }
       )
       cluster.start(function(err){

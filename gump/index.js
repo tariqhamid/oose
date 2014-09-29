@@ -13,7 +13,8 @@ if(require.main === module){
         './worker',
         {
           enhanced: true,
-          count: config.gump.workers
+          count: config.gump.workers.count,
+          maxConnections: config.gump.workers.maxConnections
         }
       )
       cluster.start(function(err){

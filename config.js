@@ -78,7 +78,10 @@ config.$load({
     cache: {
       expire: 300
     },
-    workers: 1
+    workers: {
+      count: 1,
+      maxConnections: 1000
+    }
   },
   shredder: {
     enabled: false,
@@ -96,14 +99,20 @@ config.$load({
     url: 'http://localhost:3006',
     user: 'oose',
     password: null,
-    workers: 1
+    workers: {
+      count: 1,
+      maxConnections: 1000
+    }
   },
   executioner: {
     enabled: false,
     port: 3007,
     portPublic: null,
     host: null,
-    workers: 1,
+    workers: {
+      count: 1,
+      maxConnections: 1000
+    },
     url: 'http://localhost:3007',
     user: 'oose',
     password: null,
@@ -126,7 +135,10 @@ config.$load({
     port: 3004,
     portPublic: null,
     host: null,
-    workers: 1,
+    workers: {
+      count: 1,
+      maxConnections: 1000
+    },
     baseUrl: 'http://localhost:3004',
     embedBaseUrl: 'http://localhost:3004',
     tmpDir: __dirname + '/gump/public/tmp',
@@ -150,7 +162,10 @@ config.$load({
     port: 3005,
     portPublic: null,
     host: null,
-    workers: 1,
+    workers: {
+      count: 1,
+      maxConnections: 1000
+    },
     user: 'oose',
     password: 'oose',
     cookie: {
