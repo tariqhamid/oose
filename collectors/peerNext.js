@@ -20,7 +20,8 @@ var publicParams = [
   'services',
   'diskFree',
   'availableCapacity',
-  'hits'
+  'hits',
+  'importHits'
 ]
 
 var selectPeer = function(basket,done){

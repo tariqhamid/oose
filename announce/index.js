@@ -111,6 +111,7 @@ var announceCompose = function(done){
         message.netSpeed = peer.netSpeed || 0
         message.netInBps = peer.netInBps || 0
         message.netOutBps = peer.netOutBps || 0
+        message.importHits = peer.importHits || 0
         next()
       }
     ],
@@ -214,6 +215,7 @@ var announceParse = function(packet,rinfo){
         peer.netSpeed = packet.netSpeed || 0
         peer.netInBps = packet.netInBps || 0
         peer.netOutBps = packet.netOutBps || 0
+        peer.importHIts = packet.importHits || 0
         next()
       },
       //save to storeList

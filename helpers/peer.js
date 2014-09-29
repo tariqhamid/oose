@@ -29,7 +29,7 @@ exports.next = function(skip,next){
       peer = JSON.parse(results[i])
       //skip any hostnames we dont want
       if(skip.indexOf(peer.hostname) >= 0) continue
-      if(!winner || peer.availableCapacity > winner.availableCapacity)
+      if(!winner || peer.importHits < winner.importHits)
         winner = peer
     }
     next(null,winner)
