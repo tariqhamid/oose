@@ -48,53 +48,75 @@ program
 debug('setting up console logging with level',+program.verbose)
 Logger.consoleFilter.setConfig({level: (+program.verbose || 0) + 4})
 
+//setup lifecycle logging
+lifecycle.on('start',function(item){
+  logger.info('Starting ' + item.title)
+})
+lifecycle.on('stop',function(item){
+  logger.info('Stopping ' + item.title)
+})
+lifecycle.on('online',function(){
+  logger.info('Startup complete')
+})
+lifecycle.on('offline',function(){
+  logger.info('Shutdown complete')
+})
+
 
 /**
  * Touch root to ensure existence
  */
-lifecycle.add(function(next){
-  debug('ensure root folder exists')
-  var root = config.root
-  fs.exists(root,function(exists){
-    if(exists) return next()
-    debug('creating root folder')
-    mkdirp(root,next)
-  })
-})
+lifecycle.add(
+  'pre init',
+  function(next){
+    debug('ensure root folder exists')
+    var root = config.root
+    fs.exists(root,function(exists){
+      if(exists) return next()
+      debug('creating root folder')
+      mkdirp(root,next)
+    })
+  }
+)
 
 
 /**
  * Remove any existing keys from redis
  */
-lifecycle.add(function(next){
-  debug('starting to cleanup redis')
-  var removed = 0
-  var done = function(next){
-    return function(err,count){
-      removed = removed + count
-      next()
+lifecycle.add(
+  'redis cleanup',
+  function(next){
+    debug('starting to cleanup redis')
+    var removed = 0
+    var done = function(next){
+      return function(err,count){
+        removed = removed + count
+        next()
+      }
     }
+    async.series([
+      function(next){redis.removeKeysPattern('peer:*',done(next))},
+      function(next){redis.removeKeysPattern('prism:*',done(next))},
+      function(next){redis.removeKeysPattern('inventory*',done(next))}
+    ],function(err){
+      if(err) return next(err)
+      debug('finished clearing redis, removed ' + removed + ' keys')
+      next()
+    })
   }
-  async.series([
-    function(next){redis.removeKeysPattern('peer:*',done(next))},
-    function(next){redis.removeKeysPattern('prism:*',done(next))},
-    function(next){redis.removeKeysPattern('inventory*',done(next))}
-  ],function(err){
-    if(err) return next(err)
-    debug('finished clearing redis, removed ' + removed + ' keys')
-    next()
-  })
-})
+)
 
 
 /**
  * Inventory filesystem
  */
 if(config.store.enabled){
-  lifecycle.add(function(next){
-    debug('Executing inventory')
-    once('./tasks/inventory',next)
-  })
+  lifecycle.add(
+    'inventory build',
+    function(next){
+      once('./tasks/inventory',next)
+    }
+  )
 }
 
 
@@ -103,12 +125,11 @@ if(config.store.enabled){
  */
 if(config.announce.enabled){
   lifecycle.add(
+    'peer stats',
     function(next){
-      debug('Starting stats collection')
       peerStats.start(next)
     },
     function(next){
-      debug('Stopping stats collection')
       peerStats.stop(next)
     }
   )
@@ -120,12 +141,11 @@ if(config.announce.enabled){
  */
 if(config.ping.enabled){
   lifecycle.add(
+    'ping',
     function(next){
-      logger.info('Starting ping')
       ping.start(next)
     },
     function(next){
-      logger.info('Stopping ping')
       ping.stop(next)
     }
   )
@@ -137,12 +157,11 @@ if(config.ping.enabled){
  */
 if(config.announce.enabled){
   lifecycle.add(
+    'announce',
     function(next){
-      logger.info('Starting announce')
       announce.start(next)
     },
     function(next){
-      logger.info('Stopping announce')
       announce.stop(next)
     }
   )
@@ -154,12 +173,11 @@ if(config.announce.enabled){
  */
 if(config.announce.enabled){
   lifecycle.add(
+    'next peer selection',
     function(next){
-      logger.info('Starting next peer selection')
       peerNext.start(next)
     },
     function(next){
-      logger.info('Stopping next peer selection')
       peerNext.stop(next)
     }
   )
@@ -171,12 +189,11 @@ if(config.announce.enabled){
  */
 if(config.supervisor.enabled){
   lifecycle.add(
+    'supervisor',
     function(next){
-      logger.info('Starting supervisor')
       supervisor.start(next)
     },
     function(next){
-      logger.info('Stopping supervisor')
       supervisor.stop(next)
     }
   )
@@ -188,12 +205,11 @@ if(config.supervisor.enabled){
  */
 if(config.store.enabled){
   lifecycle.add(
+    'import',
     function(next){
-      logger.info('Starting import')
       storeImport.start(next)
     },
     function(next){
-      logger.info('Stopping import')
       storeImport.stop(next)
     }
   )
@@ -205,12 +221,11 @@ if(config.store.enabled){
  */
 if(config.store.enabled){
   lifecycle.add(
+    'export',
     function(next){
-      logger.info('Starting export')
       storeExport.start(next)
     },
     function(next){
-      logger.info('Stopping export')
       storeExport.stop(next)
     }
   )
@@ -222,12 +237,11 @@ if(config.store.enabled){
  */
 if(config.executioner.enabled){
   lifecycle.add(
+    'executioner',
     function(next){
-      logger.info('Starting executioner')
       executioner.start(next)
     },
     function(next){
-      logger.info('Stopping executioner')
       executioner.stop(next)
     }
   )
@@ -239,12 +253,11 @@ if(config.executioner.enabled){
  */
 if(config.gump.enabled){
   lifecycle.add(
+    'gump',
     function(next){
-      logger.info('Starting gump')
       gump.start(next)
     },
     function(next){
-      logger.info('Stopping gump')
       gump.stop(next)
     }
   )
@@ -256,12 +269,11 @@ if(config.gump.enabled){
  */
 if(config.hideout.enabled){
   lifecycle.add(
+    'hideout',
     function(next){
-      logger.info('Starting hideout')
       hideout.start(next)
     },
     function(next){
-      logger.info('Stopping hideout')
       hideout.stop(next)
     }
   )
@@ -273,12 +285,11 @@ if(config.hideout.enabled){
  */
 if(config.lg.enabled){
   lifecycle.add(
+    'lg',
     function(next){
-      logger.info('Starting lg')
       lg.start(next)
     },
     function(next){
-      logger.info('Stopping lg')
       lg.stop(next)
     }
   )
@@ -290,12 +301,11 @@ if(config.lg.enabled){
  */
 if(config.locate.enabled){
   lifecycle.add(
+    'locate',
     function(next){
-      logger.info('Starting locate')
       locate.start(next)
     },
     function(next){
-      logger.info('Stopping locate')
       locate.stop(next)
     }
   )
@@ -307,12 +317,11 @@ if(config.locate.enabled){
  */
 if(config.lg.enabled){
   lifecycle.add(
+    'prism',
     function(next){
-      logger.info('Starting prism')
       prism.start(next)
     },
     function(next){
-      logger.info('Stopping prism')
       prism.stop(next)
     }
   )
@@ -324,12 +333,11 @@ if(config.lg.enabled){
  */
 if(config.store.enabled){
   lifecycle.add(
+    'clone',
     function(next){
-      logger.info('Starting clone system')
       clone.start(next)
     },
     function(next){
-      logger.info('Stopping clone system')
       clone.stop(next)
     }
   )
@@ -341,12 +349,11 @@ if(config.store.enabled){
  */
 if(config.shredder.enabled){
   lifecycle.add(
+    'shredder',
     function(next){
-      logger.info('Starting shredder')
       shredder.start(next)
     },
     function(next){
-      logger.info('Stopping shredder')
       shredder.stop(next)
     }
   )
@@ -358,15 +365,10 @@ if(config.shredder.enabled){
  * @param {function} done
  */
 exports.start = function(done){
+  logger.info('Beginning startup')
   lifecycle.start(
     function(err){
-      if(err){
-        logger.error('Startup failed: ' + err)
-        done(err)
-        return
-      }
-      //go to ready state 3
-      logger.info('Startup complete')
+      if(err) throw err
       done()
     }
   )
@@ -378,19 +380,11 @@ exports.start = function(done){
  * @param {function} done
  */
 exports.stop = function(done){
-  //register force kill for the second
-  process.on('SIGTERM',process.exit)
-  process.on('SIGINT',process.exit)
   //start the shutdown process
   logger.info('Beginning shutdown')
   lifecycle.stop(function(err){
-    if(err){
-      logger.error('Shutdown failed: ' + err)
-      return done(err)
-    } else {
-      logger.info('Shutdown complete')
-      done()
-    }
+    if(err) throw err
+    done()
   })
 }
 
