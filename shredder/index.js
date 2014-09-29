@@ -8,7 +8,6 @@ var mkdirp = require('mkdirp')
 var moment = require('moment')
 var os = require('os')
 var path = require('path')
-var util = require('util')
 
 var Logger = require('../helpers/logger')
 var shortId = require('../helpers/shortid')
@@ -30,24 +29,20 @@ var server = axon.socket('rep')
  */
 var spawnWorker = function(opts,done){
   logger.info('Starting to spawn worker for job ' + opts.handle)
-  var worker = Child.parent('./worker',{respawn: false})
-  worker.start(function(err){
-    if(err) return done(err)
-    worker.cp.on('error',function(err){
-      done(util.inspect(err))
-    })
-    worker.cp.on('exit',function(code){
-      if(0 !== code)
-        return done('Worker failed, exited with code: ' + code)
+  var worker = Child.fork(
+    './worker',
+    {respawn: false, timeout: config.shredder.workerTimeout},
+    function(err){
+      if(err) return done(err)
       logger.info(
-        'Worker for job ' +
-        opts.handle + ' has finished and exited without error'
+          'Worker for job ' +
+          opts.handle + ' has finished and exited without error'
       )
       done()
-    })
-    //start the worker by sending it options
-    worker.send({options: opts})
-  })
+    }
+  )
+  //start the worker by sending it options
+  worker.send({options: opts})
 }
 
 

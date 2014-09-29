@@ -1,59 +1,30 @@
 'use strict';
-var debug = require('debug')('oose:import')
-var net = require('net')
+var child = require('infant').child
+var clusterSetup = require('infant').cluster
 
+var cluster
 var config = require('../config')
-var file = require('../helpers/file')
-var logger = require('../helpers/logger').create('import')
 
-var running = false
-
-//setup tcp server if enabled
-var server
-var listen = function(port,host,done){
-  server = net.createServer()
-  server.on('connection',function(socket){
-    var remoteAddress = socket.remoteAddress
-    var remotePort = socket.remotePort
-    var remoteSpec = [remoteAddress,remotePort].join(':')
-    debug('Received import connection from ' + remoteSpec)
-    socket.on('close',function(failed){
-      if(failed)
-        logger.warning('There was an error importing from ' + remoteSpec)
-      else debug('Closed import connection from ' + remoteSpec)
-    })
-    file.fromReadable(socket,function(err,sha1){
-      debug(sha1 + ' received on port ' + port)
-      if(err) logger.warning(err)
-      else debug(sha1 + ' imported successfully')
-    })
-  })
-  server.listen(port,host,done)
-}
-
-
-/**
- * Start import
- * @param {function} done
- */
-exports.start = function(done){
-  if('function' !== typeof done) done = function(){}
-  listen(config.store.import.port,config.store.import.host,function(err){
-    running = true
-    done(err)
-  })
-}
-
-
-/**
- * Stop import
- * @param {function} done
- */
-exports.stop = function(done){
-  if('function' !== typeof done) done = function(){}
-  if(server && running){
-    running = false
-    server.close()
-  }
-  done()
+if(require.main === module){
+  child(
+    'oose:import:master',
+    function(done){
+      cluster = clusterSetup(
+        './worker',
+        {
+          enhanced: true,
+          count: config.store.import.workers || 1
+        }
+      )
+      cluster.start(function(err){
+        done(err)
+      })
+    },
+    function(done){
+      if(!cluster) return done()
+      cluster.stop(function(err){
+        done(err)
+      })
+    }
+  )
 }

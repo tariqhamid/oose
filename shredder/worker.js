@@ -1,6 +1,6 @@
 'use strict';
 var async = require('async')
-var Child = require('infant').Child
+var Child = require('infant').ChildOnce
 
 var Job = require('./helpers/job')
 var logger = require('../helpers/logger').create('shredder:worker')
@@ -138,43 +138,35 @@ var runJob = function(job,done){
   )
 }
 
-//receive one message from master which should be the job description
-process.once('message',function(m){
-  if(!m.options){
-    logger.error('Received invalid message from master, exiting',m)
-    process.exit(1)
-    return
-  }
-  var opts = m.options
-  logger.info('Received description from master for job ' + opts.handle)
-  //adjust the process title
-  process.title = 'oose:shredder:' + opts.handle
-  //setup our job maintainer
-  logger.info('Starting to process job ' + opts.handle)
-  var job = new Job(opts.handle,opts.description)
-  runJob(job,function(err){
-    if(err){
-      job.logger.error('Job processing failed: ' + err)
-      //tell the master we failed
-      process.exit(1)
-    } else {
-      job.logger.info('Job processing successful')
-      //tell the master we finished successfully
-      process.exit(0)
-    }
-  })
-})
+
 
 if(require.main === module){
   child(
     'oose:shredder:worker',
     //startup
     function(done){
-      done()
-    },
-    //shutdown
-    function(done){
-      done()
+      //receive one message from master which should be the job description
+      process.once('message',function(m){
+        if(!m.options){
+          logger.error('Received invalid message from master, exiting',m)
+          process.exit(1)
+          return
+        }
+        var opts = m.options
+        logger.info('Received description from master for job ' + opts.handle)
+        //adjust the process title
+        process.title = 'oose:shredder:' + opts.handle
+        //setup our job maintainer
+        logger.info('Starting to process job ' + opts.handle)
+        var job = new Job(opts.handle,opts.description)
+        runJob(job,function(err){
+          if(err) return done(err)
+          else {
+            job.logger.info('Job processing successful')
+            done()
+          }
+        })
+      })
     }
   )
 }

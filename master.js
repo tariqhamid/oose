@@ -4,7 +4,6 @@ var program = require('commander')
 var debug = require('debug')('oose:master')
 var fs = require('graceful-fs')
 var Child = require('infant').Child
-var Cluster = require('infant').cluster.Cluster
 var lifecycle = new (require('infant').Lifecycle)()
 var mkdirp = require('mkdirp')
 
@@ -17,16 +16,21 @@ var once = Child.fork
 
 var announce = child('./announce')
 var clone = child('./clone')
+var executioner = child('./executioner')
+var storeExport = child('./export')
+var gump = child('./gump')
+var hideout = child('./hideout')
+var storeImport = child('./import')
+var lg = child('./lg')
 var locate = child('./locate')
 var peerNext = child('./collectors/peerNext')
 var peerStats = child('./collectors/peerStats')
 var ping = child('./ping')
+var prism = child('./prism')
 var shredder = child('./shredder')
 var supervisor = child('./supervisor')
 
 var config = require('./config')
-
-var cluster = new Cluster('./worker.js',{count: config.workers.count})
 
 //parse cli
 program
@@ -180,36 +184,102 @@ if(config.supervisor.enabled){
 
 
 /**
- * Workers
- */
-if(config.workers.enabled && require.main !== module){
-  lifecycle.add(
-    function(next){
-      logger.info('Starting workers')
-      cluster.start(next)
-    },
-    function(next){
-      logger.info('Stopping workers')
-      cluster.stop(next)
-    }
-  )
-} else {
-  logger.info('Workers disabled, maybe we are in standalone mode?')
-}
-
-
-/**
- * Clone receiver
+ * Import
  */
 if(config.store.enabled){
   lifecycle.add(
     function(next){
-      logger.info('Starting clone system')
-      clone.start(next)
+      logger.info('Starting import')
+      storeImport.start(next)
     },
     function(next){
-      logger.info('Stopping clone system')
-      clone.stop(next)
+      logger.info('Stopping import')
+      storeImport.stop(next)
+    }
+  )
+}
+
+
+/**
+ * Export
+ */
+if(config.store.enabled){
+  lifecycle.add(
+    function(next){
+      logger.info('Starting export')
+      storeExport.start(next)
+    },
+    function(next){
+      logger.info('Stopping export')
+      storeExport.stop(next)
+    }
+  )
+}
+
+
+/**
+ * Executioner
+ */
+if(config.executioner.enabled){
+  lifecycle.add(
+    function(next){
+      logger.info('Starting executioner')
+      executioner.start(next)
+    },
+    function(next){
+      logger.info('Stopping executioner')
+      executioner.stop(next)
+    }
+  )
+}
+
+
+/**
+ * Gump
+ */
+if(config.gump.enabled){
+  lifecycle.add(
+    function(next){
+      logger.info('Starting gump')
+      gump.start(next)
+    },
+    function(next){
+      logger.info('Stopping gump')
+      gump.stop(next)
+    }
+  )
+}
+
+
+/**
+ * Hideout
+ */
+if(config.hideout.enabled){
+  lifecycle.add(
+    function(next){
+      logger.info('Starting hideout')
+      hideout.start(next)
+    },
+    function(next){
+      logger.info('Stopping hideout')
+      hideout.stop(next)
+    }
+  )
+}
+
+
+/**
+ * LG
+ */
+if(config.lg.enabled){
+  lifecycle.add(
+    function(next){
+      logger.info('Starting lg')
+      lg.start(next)
+    },
+    function(next){
+      logger.info('Stopping lg')
+      lg.stop(next)
     }
   )
 }
@@ -227,6 +297,40 @@ if(config.locate.enabled){
     function(next){
       logger.info('Stopping locate')
       locate.stop(next)
+    }
+  )
+}
+
+
+/**
+ * Prism
+ */
+if(config.lg.enabled){
+  lifecycle.add(
+    function(next){
+      logger.info('Starting prism')
+      prism.start(next)
+    },
+    function(next){
+      logger.info('Stopping prism')
+      prism.stop(next)
+    }
+  )
+}
+
+
+/**
+ * Clone receiver
+ */
+if(config.store.enabled){
+  lifecycle.add(
+    function(next){
+      logger.info('Starting clone system')
+      clone.start(next)
+    },
+    function(next){
+      logger.info('Stopping clone system')
+      clone.stop(next)
     }
   )
 }

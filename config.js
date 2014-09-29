@@ -21,10 +21,6 @@ config.$load({
     },
     concurrency: os.cpus().length || 4
   },
-  workers: {
-    enabled: true,
-    count: os.cpus().length || 4
-  },
   shortid: {
     seed: '3123572'
   },
@@ -64,12 +60,14 @@ config.$load({
     import: {
       port: 3002,
       portPublic: null,
-      host: null
+      host: null,
+      workers: 1
     },
     export: {
       port: 3001,
       portPublic: null,
-      host: null
+      host: null,
+      workers: 1
     }
   },
   prism: {
@@ -79,14 +77,16 @@ config.$load({
     host: null,
     cache: {
       expire: 300
-    }
+    },
+    workers: 1
   },
   shredder: {
     enabled: false,
     port: 3008,
     host: null,
     concurrency: os.cpus().length || 1,
-    snapshot: __dirname + '/shredder/snapshot.json'
+    snapshot: __dirname + '/shredder/snapshot.json',
+    workerTimeout: 14400000 // 4 hours
   },
   hideout: {
     enabled: false,
@@ -95,13 +95,15 @@ config.$load({
     host: null,
     url: 'http://localhost:3006',
     user: 'oose',
-    password: null
+    password: null,
+    workers: 1
   },
   executioner: {
     enabled: false,
     port: 3007,
     portPublic: null,
     host: null,
+    workers: 1,
     url: 'http://localhost:3007',
     user: 'oose',
     password: null,
@@ -124,6 +126,7 @@ config.$load({
     port: 3004,
     portPublic: null,
     host: null,
+    workers: 1,
     baseUrl: 'http://localhost:3004',
     embedBaseUrl: 'http://localhost:3004',
     tmpDir: __dirname + '/gump/public/tmp',
@@ -147,6 +150,7 @@ config.$load({
     port: 3005,
     portPublic: null,
     host: null,
+    workers: 1,
     user: 'oose',
     password: 'oose',
     cookie: {
@@ -160,7 +164,6 @@ config.$load({
     options: {}
   },
   mongoose: {
-    enabled: false,
     dsn: 'mongodb://localhost/oose',
     options: {native_parser: true} //jshint ignore:line
   },
