@@ -39,8 +39,6 @@ var netInfo = {
   ip: false,
   netmask: false,
   gateway: false,
-  //list of listening ports on 127.0.0.1 (monitor own services)
-  localListeners: [],
   //link speed
   speedIndexes: [],
   speed: 0,
@@ -263,29 +261,6 @@ var snmpPrep = function(done){
           }
         )
       },
-/*
-      function(next){
-        snmp.sess.set(
-          {
-            oid: snmp.mib.nsCacheTimeout(snmp.mib.tcpConnectionTable()),
-            type: snmp.types.Integer,
-            value: snmpRefresh
-          },
-          //ignore errors, this may not exist (non Net-SNMP)
-          function(err,varbinds){
-            if(!err && varbinds && 1 === varbinds[0].value)
-              debug(
-                'tcpConnectionTable update rate set to ' +
-                snmpRefresh +
-                ' sec'
-              )
-            else
-              debug('tcpConnectionTable update rate setting unavailable')
-            next()
-          }
-        )
-      },
-*/
       function(next){
         debug('snmpPrep() calling addBulk()')
         //locate all CPUs
@@ -539,30 +514,6 @@ var snmpPoll = function(basket,done){
             complete()
           }
         )
-/*
-        //localhost listening TCP ports
-        snmp.addBulk(
-          snmp.mib.tcpConnectionState('127.0.0.1'),
-          function(result,complete){
-            dump('tcpConnectionState',result)
-            if('function' !== typeof complete) complete = nullFunc
-            netInfo.localListeners = []
-            if(!result || !result.length) return complete()
-            var connections = snmp.mib.tcpConnectionState('127.0.0.1')
-            var port
-            for(i=0; i < result.length; i++){
-              item = result[i]
-              if(-1 !== item.oid.indexOf(connections)){
-                if(2 === item.value){
-                  port = item.oid.split('.').slice(-8).shift()
-                  netInfo.localListeners.push(port)
-                }
-              }
-            }
-            complete()
-          }
-        )
-*/
         //speed from IF-MIB::ifSpeed.<ifIndex>
         snmp.addBulk(
           snmp.mib.ifSpeed(),
