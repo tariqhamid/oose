@@ -1,5 +1,5 @@
 'use strict';
-var async = require('async')
+var P = require('bluebird')
 var debug = require('debug')('oose:announce')
 var child = require('infant').child
 
@@ -7,12 +7,10 @@ var logger = require('../helpers/logger').create('announce')
 var Multicast = require('../helpers/multicast')
 var redis = require('../helpers/redis')
 
-var nullFunc = function(){}
-
 var announceInterval
 var config = require('../config')
 var booting = false
-var bootDone = nullFunc
+var bootDone = function(){}
 var bootTimeout
 var multicast
 
@@ -62,64 +60,47 @@ var announceLog = function(selfPeer,oldPeer,peer,packet){
 
 /**
  * Compose the announce message
- * @param {function} done
+ * @return {P}
  */
-var announceCompose = function(done){
+var announceCompose = function(){
   var peer = {}
   var message = {}
   var peerCount = 0
-  async.series(
-    [
-      //find ourselves
-      function(next){
-        redis.hgetall('peer:db:' + config.hostname,function(err,result){
-          if(err) return next(err)
-          if(!result) return next('Announce delayed, peer not ready')
-          peer = result
-          next()
-        })
-      },//find peerCount
-      function(next){
-        redis.zcount('peer:rank',0,100,function(err,result){
-          if(err) return next(err)
-          peerCount = result
-          next()
-        })
-      },//compose message
-      function(next){
-        message.sent = +(new Date())
-        message.hostname = config.hostname
-        message.readyState = peer.readyState || 0
-        message.peerCount = peerCount
-        message.diskFree = peer.diskFree
-        message.diskTotal = peer.diskTotal
-        message.cpuUsed = peer.cpuUsed
-        message.cpuCount = peer.cpuCount
-        message.memoryFree = peer.memoryFree
-        message.memoryTotal = peer.memoryTotal
-        message.availableCapacity = peer.availableCapacity
-        message.services = peer.services
-        message.portImport =
-          config.store.import.portPublic || peer.portImport || 0
-        message.portExport =
-          config.store.export.portPublic || peer.portExport || 0
-        message.portPrism = config.prism.portPublic || peer.portPrism || 0
-        message.portShredder =
-          config.shredder.portPublic || peer.portShredder || 0
-        message.portAnnounce = config.announce.port || 0
-        message.portPing = config.ping.port || 0
-        message.netSpeed = peer.netSpeed || 0
-        message.netInBps = peer.netInBps || 0
-        message.netOutBps = peer.netOutBps || 0
-        message.importHits = peer.importHits || 0
-        next()
-      }
-    ],
-    function(err){
-      if(err) return done(err)
-      done(null,message)
-    }
-  )
+  return redis.hgetallAsync('peer:db:' + config.hostname)
+    .then(function(result){
+      peer = result
+      if(!peer) peer = {}
+      return redis.zcountAsync('peer:rank',0,100)
+    })
+    .then(function(result){
+      peerCount = result
+      message.sent = +(new Date())
+      message.hostname = config.hostname
+      message.readyState = peer.readyState || 0
+      message.peerCount = peerCount
+      message.diskFree = peer.diskFree
+      message.diskTotal = peer.diskTotal
+      message.cpuUsed = peer.cpuUsed
+      message.cpuCount = peer.cpuCount
+      message.memoryFree = peer.memoryFree
+      message.memoryTotal = peer.memoryTotal
+      message.availableCapacity = peer.availableCapacity
+      message.services = peer.services
+      message.portImport =
+        config.store.import.portPublic || peer.portImport || 0
+      message.portExport =
+        config.store.export.portPublic || peer.portExport || 0
+      message.portPrism = config.prism.portPublic || peer.portPrism || 0
+      message.portShredder =
+        config.shredder.portPublic || peer.portShredder || 0
+      message.portAnnounce = config.announce.port || 0
+      message.portPing = config.ping.port || 0
+      message.netSpeed = peer.netSpeed || 0
+      message.netInBps = peer.netInBps || 0
+      message.netOutBps = peer.netOutBps || 0
+      message.importHits = peer.importHits || 0
+      return message
+    })
 }
 
 
@@ -128,155 +109,98 @@ var announceCompose = function(done){
  * @param {EventEmitter} multicast
  */
 var announceSend = function(multicast){
-  announceCompose(function(err,message){
-    if(err){
+  announceCompose()
+    .then(function(message){
+      multicast.send('announce',message)
+    })
+    .catch(function(err){
       logger.error(err)
-      return
-    }
-    multicast.send('announce',message)
-  })
+    })
 }
 
 
 /**
  * Parse an announce packet and stuff it in redis
  * @param {Buffer} packet
- * @param {dgram.rinfo} rinfo
+ * @param {object} rinfo
  */
 var announceParse = function(packet,rinfo){
   var ourself = {}
   var previousPeer = {}
   var peer = {}
-  async.series(
-    [
-      //grab ourselves
-      function(next){
-        redis.hgetall('peer:db:' + config.hostname,function(err,result){
-          if(err) return next(err)
-          ourself = result
-          next()
-        })
-      },
-      //check for duplicate hostname
-      function(next){
-        if(
-          ourself.ip &&
-          packet.hostname === ourself.hostname &&
-          rinfo.address !== ourself.ip
-          )
-        {
-          return next(
-              'Ignored announce from ' + rinfo.address +
-              ' claiming to have our hostname!!'
-          )
-        }
-        next()
-      },
-      //grab previous peer information
-      function(next){
-        redis.hgetall('peer:db:' + packet.hostname,function(err,result){
-          if(err) return next(err)
-          previousPeer = result
-          if(!previousPeer) previousPeer = {}
-          next()
-        })
-      },
-      //populate peer information to store
-      function(next){
-        //populate details
-        peer.latency =
-          packet.sent - (previousPeer.sent || 0) - config.announce.interval
-        if(peer.latency < 0) peer.latency = 0
-        peer.sent = packet.sent
-        peer.hostname = packet.hostname
-        peer.ip = rinfo.address
-        peer.readyState = packet.readyState
-        peer.peerCount = packet.peerCount
-        peer.diskFree = packet.diskFree
-        peer.diskTotal = packet.diskTotal
-        peer.cpuUsed = packet.cpuUsed
-        peer.cpuCount = packet.cpuCount
-        peer.memoryFree = packet.memoryFree
-        peer.memoryTotal = packet.memoryTotal
-        peer.availableCapacity = packet.availableCapacity || 0
-        peer.services = packet.services
-        if(packet.services.indexOf('store') >= 0){
-          peer.portImport = packet.portImport
-          peer.portExport = packet.portExport
-        }
-        if(packet.services.indexOf('prism') >= 0){
-          peer.portPrism = packet.portPrism
-        }
-        if(packet.services.indexOf('shredder') >= 0){
-          peer.portShredder = packet.portShredder
-        }
-        peer.portAnnounce = packet.portAnnounce
-        peer.portPing = packet.portPing
-        peer.netSpeed = packet.netSpeed || 0
-        peer.netInBps = packet.netInBps || 0
-        peer.netOutBps = packet.netOutBps || 0
-        peer.importHIts = packet.importHits || 0
-        next()
-      },
-      //save to storeList
-      function(next){
-        if(packet.services.indexOf('store') < 1) return next()
-        redis.sadd('peer:store',packet.hostname,function(err){
-          if(err) err = 'Could not add to store list: ' + err
-          next(err)
-        })
-      },
-      function(next){
-        if(0 === packet.services.indexOf('store') > 0) return next()
-        //issue #32 avail comes back infinity (this is a safeguard)
-        if('Infinity' === peer.availableCapacity)
-          peer.availableCapacity = 100
-        redis.zadd(
-          'peer:rank',
-          +peer.availableCapacity,
-          packet.hostname,
-          function(err){
-            if(err) err = 'Could not store peer rank: ' + err
-            next(err)
-          }
-        )
-      },
-      //save to prism list
-      function(next){
-        if(packet.services.indexOf('prism') < 1) return next()
-        redis.sadd('peer:prism',packet.hostname,function(err){
-          if(err) err = 'Could not store to prism list: ' + err
-          next(err)
-        })
-      },
-      //save to peer ip map
-      function(next){
-        redis.hset('peer:ip',peer.ip,peer.hostname,function(err){
-          if(err) err = 'Could not store to ip map: ' + err
-          next(err)
-        })
-      },
-      //save to peer list
-      function(next){
-        redis.sadd('peer:list',peer.hostname,function(err){
-          if(err) err = 'Could not store to peer list: ' + err
-          next(err)
-        })
-      },
-      //save to redis
-      function(next){
-        redis.hmset('peer:db:' + packet.hostname,peer,function(err){
-          if(err) err = 'Could not store peer: ' + err
-          next(err)
-        })
+  redis.hgetallAsync('peer:db:' + config.hostname)
+    .then(function(result){
+      ourself = result
+      if(
+        ourself.ip &&
+        packet.hostname === ourself.hostname &&
+        rinfo.address !== ourself.ip
+      )
+      {
+        throw new Error('Ignored announce from ' + rinfo.address +
+          ' claiming to have our hostname!!')
       }
-    ],
-    function(err){
-      if(err) return logger.error(err)
+      return redis.hgetallAsync('peer:db:' + packet.hostname)
+    })
+    .then(function(result){
+      previousPeer = result
+      if(!previousPeer) previousPeer = {}
+      //populate details
+      peer.latency =
+        packet.sent - (previousPeer.sent || 0) - config.announce.interval
+      if(peer.latency < 0) peer.latency = 0
+      peer.sent = packet.sent
+      peer.hostname = packet.hostname
+      peer.ip = rinfo.address
+      peer.readyState = packet.readyState
+      peer.peerCount = packet.peerCount
+      peer.diskFree = packet.diskFree
+      peer.diskTotal = packet.diskTotal
+      peer.cpuUsed = packet.cpuUsed
+      peer.cpuCount = packet.cpuCount
+      peer.memoryFree = packet.memoryFree
+      peer.memoryTotal = packet.memoryTotal
+      peer.availableCapacity = packet.availableCapacity || 0
+      peer.services = packet.services
+      if(packet.services.indexOf('store') >= 0){
+        peer.portImport = packet.portImport
+        peer.portExport = packet.portExport
+      }
+      if(packet.services.indexOf('prism') >= 0){
+        peer.portPrism = packet.portPrism
+      }
+      if(packet.services.indexOf('shredder') >= 0){
+        peer.portShredder = packet.portShredder
+      }
+      peer.portAnnounce = packet.portAnnounce
+      peer.portPing = packet.portPing
+      peer.netSpeed = packet.netSpeed || 0
+      peer.netInBps = packet.netInBps || 0
+      peer.netOutBps = packet.netOutBps || 0
+      peer.importHIts = packet.importHits || 0
+      if('Infinity' === peer.availableCapacity)
+        peer.availableCapacity = 100
+      var promises = []
+      if(packet.services.indexOf('store') > 0){
+        promises.push(redis.saddAsync('peer:store',packet.hostname))
+        promises.push(redis.zaddAsync(
+          'peer:rank',+peer.availableCapacity,packet.hostname))
+      }
+      if(packet.services.indexOf('prism') > 0){
+        promises.push(redis.saddAsync('peer:prism',packet.hostname))
+      }
+      promises.push(redis.hsetAsync('peer:ip',peer.ip,peer.hostname))
+      promises.push(redis.saddAsync('peer:list',peer.hostname))
+      promises.push(redis.hmsetAsync('peer:db:' + packet.hostname,peer))
+      return P.all(promises)
+    })
+    .then(function(){
       if(booting) bootReceive()
       announceLog(ourself,previousPeer,peer,packet)
-    }
-  )
+    })
+    .catch(function(err){
+      logger.error(err)
+    })
 }
 
 
@@ -302,7 +226,6 @@ if(require.main === module){
   child(
     'oose:announce',
     function(done){
-      if('function' !== typeof done) done = nullFunc
       //setup our multicast handler
       if(!multicast){
         multicast = new Multicast()
@@ -331,7 +254,6 @@ if(require.main === module){
       }
     },
     function(done){
-      if('function' !== typeof done) done = nullFunc
       if(announceInterval)
         clearInterval(announceInterval)
       done()
