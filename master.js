@@ -1,5 +1,5 @@
 'use strict';
-var async = require('async')
+var P = require('bluebird')
 var program = require('commander')
 var debug = require('debug')('oose:master')
 var fs = require('graceful-fs')
@@ -88,21 +88,18 @@ lifecycle.add(
   function(next){
     debug('starting to cleanup redis')
     var removed = 0
-    var done = function(next){
-      return function(err,count){
-        removed = removed + count
+    P.all([
+      redis.removeKeysPattern('peer:*'),
+      redis.removeKeysPattern('prism:*'),
+      redis.removeKeysPattern('inventory:*')
+    ])
+      .then(function(results){
+        for(var i = 0; i < results.length; i++)
+          removed += results[i]
+        debug('finished clearing redis, removed ' + removed + ' keys')
         next()
-      }
-    }
-    async.series([
-      function(next){redis.removeKeysPattern('peer:*',done(next))},
-      function(next){redis.removeKeysPattern('prism:*',done(next))},
-      function(next){redis.removeKeysPattern('inventory*',done(next))}
-    ],function(err){
-      if(err) return next(err)
-      debug('finished clearing redis, removed ' + removed + ' keys')
-      next()
-    })
+      })
+      .catch(next)
   }
 )
 
