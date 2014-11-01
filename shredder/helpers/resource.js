@@ -15,53 +15,33 @@ var resourceExp = /\{([^}]+)\}/ig
 var sha1Exp = /^[0-9a-f]{40}$/i
 var tmpDir = path.resolve(config.root + '/shredder/tmp')
 
-//remove any leftover resources on exit
+//remove any leftover resources on exit (important to stay sync here)
 process.on('exit',function(){
-  cleanup.forEach(function(resource){
+  var resource
+  for(var i = 0; i < cleanup.length; i++){
+    resource = cleanup[i]
     if(fs.existsSync(resource.$get('path')))
       fs.unlinkSync(resource.$get('path'))
-  })
+  }
 })
 
 
 /**
  * Save a resource to OOSE
- * @param {string} name
- * @param {object} info
- * @param {function} next
+ * @param {string} path
+ * @return {P}
  */
-var saveResource = function(name,info,next){
-  var peerNext, sha1
-  async.series(
-    [
-      //select next peer
-      function(next){
-        peer.next(function(err,result){
-          if(err) return next(err)
-          if(!result) return next('Could not select peer')
-          peerNext = result
-          next()
-        })
-      },
-      //setup connection to input
-      function(next){
-        peer.sendFromReadable(
-          peerNext,
-          fs.createReadStream(info.path),
-          function(err,result){
-            if(err) return next(err)
-            if(!sha1Exp.test(result)) return next('Invalid sha1 returned')
-            sha1 = result
-            next()
-          }
-        )
-      }
-    ],
-    function(err){
-      if(err) return next(err)
-      next(null,sha1)
-    }
-  )
+var saveResource = function(path){
+  return peer.next()
+    .then(function(peerNext){
+      if(!peerNext) throw new Error('Could not select peer')
+      return peer.sendFromReadable(peerNext,fs.createReadStream(path))
+    })
+    .then(function(sha1){
+      if(!sha1Exp.test(sha1))
+        throw new Error('Invalid sha1 returned on saveResource')
+      return sha1
+    })
 }
 
 
@@ -279,13 +259,14 @@ Resource.prototype.save = function(resources,next){
     function(name,next){
       var resource = that.resources[name]
       if(!resource) return next()
-      saveResource(name,resource,function(err,result){
-        if(err) return next(err)
-        if(!sha1Exp.test(result)) return next('Invalid sha1 returned')
-        //save the resource map
-        map[name] = result
-        next()
-      })
+      saveResource(resource.path)
+        .then(function(result){
+          if(!sha1Exp.test(result)) throw new Error('Invalid sha1 returned')
+          //save the resource map
+          map[name] = result
+          next()
+        })
+        .catch(next)
     },
     function(err){
       if(err) return next(err)

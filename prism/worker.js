@@ -150,12 +150,13 @@ app.post('/api/shredderJob',function(req,res){
     [
       //figure out next peer
       function(next){
-        peer.nextByHits(function(err,result){
-          if(err) return next(err)
-          peerNext = result
-          debug('selected peer for shredder job',peerNext.hostname)
-          next()
-        })
+        peer.nextByHits()
+          .then(function(result){
+            peerNext = result
+            debug('selected peer for shredder job',peerNext.hostname)
+            next()
+          })
+          .catch(next)
       },
       //send the request to that peer
       function(next){
