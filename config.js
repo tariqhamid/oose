@@ -31,7 +31,7 @@ config.$load({
   },
   //services
   announce: {
-    enabled: true,
+    enabled: false,
     port: 3000,
     multicast: {
       address: '226.0.0.1'
@@ -40,14 +40,14 @@ config.$load({
     bootTimeout: 250
   },
   ping: {
-    enabled: true,
+    enabled: false,
     port: 3010,
     host: null,
     interval: 1000,
     max: 10000
   },
   locate: {
-    enabled: true,
+    enabled: false,
     port: 3011,
     host: null,
     multicast: {
