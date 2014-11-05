@@ -54,7 +54,7 @@ var selectPeer = function(basket,done){
                 info[k] = result[k] || 'none'
               })
               info.ip = result.ip || result.netIp
-              info.domain = config.domain
+              info.domain = config.locale.domain
               peerInfo[hostname] = JSON.stringify(info)
               next()
             })

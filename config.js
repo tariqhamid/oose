@@ -8,8 +8,13 @@ var config = new ObjectManage()
 config.$load({
   //options
   version: module.exports.version,
-  hostname: os.hostname(),
-  domain: '',
+  locale: {
+    domain: 'localhost',
+    site: 'local1',
+    zone: 'local',
+    host: os.hostname(),
+    media: 'localmedia1'
+  },
   root: __dirname + '/data',
   clone: {
     port: 3009,
@@ -187,8 +192,14 @@ config.$load({
   }
 })
 
+//load global local overrides
 if(fs.existsSync('./config.local.js')){
   config.$load(require(__dirname + '/config.local.js'))
+}
+
+//load instance overrides
+if(process.env.OOSE_CONFIG){
+  config.$load(require(process.env.OOSE_CONFIG))
 }
 
 

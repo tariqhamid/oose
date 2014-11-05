@@ -101,8 +101,8 @@ var buildDestination = function(req,winner){
     return false
   }
   var destination = req.protocol + '://' + winner.hostname
-  if(config.domain){
-    destination += '.' + config.domain
+  if(config.locale.domain){
+    destination += '.' + config.locale.domain
     debug('buildDestination','adding domain',destination)
   }
   if(

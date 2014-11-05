@@ -503,6 +503,10 @@ Shredder exposes itself through an HTTP JSONP API.
 
 ## Changelog
 
+### 0.6.0
+* Environment level config
+*
+
 ### 0.5.6
  [Closed Issues](https://github.com/eSited/oose/issues?q=milestone%3A0.5.6+is%3Aclosed)
 * Fix inventory handling of stream for builds

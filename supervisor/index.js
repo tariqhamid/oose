@@ -33,7 +33,7 @@ var msg = {
 
 var supervisorTimeout
 var supervisorStartup = function(){
-  redis.hgetall('peer:db:' + config.hostname,function(err,peer){
+  redis.hgetall('peer:db:' + config.locale.host,function(err,peer){
     if(err) logger.error(err)
     else if(!peer){
       msg.starting()
@@ -44,7 +44,7 @@ var supervisorStartup = function(){
     } else {
       var message = {}
       message.sent = new Date().getTime()
-      message.hostname = config.hostname
+      message.hostname = config.locale.host
 /*
       cmdBus.emit('patrolReq',message)
       supervisorTimeout = setTimeout(

@@ -44,7 +44,7 @@ var clone = function(job){
       next(err)
     }
   })
-  return peer.next(config.hostname)
+  return peer.next(config.locale.host)
     .then(function(result){
       if(!result) throw new Error('No suitable peer found')
       winner = result

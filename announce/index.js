@@ -66,7 +66,7 @@ var announceCompose = function(){
   var peer = {}
   var message = {}
   var peerCount = 0
-  return redis.hgetallAsync('peer:db:' + config.hostname)
+  return redis.hgetallAsync('peer:db:' + config.locale.host)
     .then(function(result){
       peer = result
       if(!peer) peer = {}
@@ -75,7 +75,7 @@ var announceCompose = function(){
     .then(function(result){
       peerCount = result
       message.sent = +(new Date())
-      message.hostname = config.hostname
+      message.hostname = config.locale.host
       message.readyState = peer.readyState || 0
       message.peerCount = peerCount
       message.diskFree = peer.diskFree
@@ -128,7 +128,7 @@ var announceParse = function(packet,rinfo){
   var ourself = {}
   var previousPeer = {}
   var peer = {}
-  redis.hgetallAsync('peer:db:' + config.hostname)
+  redis.hgetallAsync('peer:db:' + config.locale.host)
     .then(function(result){
       ourself = result
       if(
