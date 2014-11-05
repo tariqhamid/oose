@@ -58,7 +58,7 @@ var supervisorStartup = function(){
 
 if(require.main === module){
   child(
-    'oose:supervisor',
+    'oose:' + config.locale.id + ':supervisor',
     function(done){
       /*
        redis.sscan('inventory',0,function(err,result){

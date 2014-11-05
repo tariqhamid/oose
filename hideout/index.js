@@ -7,7 +7,7 @@ var config = require('../config')
 
 if(require.main === module){
   child(
-    'oose:hideout:master',
+    'oose:' + config.locale.id + ':hideout:master',
     function(done){
       cluster = clusterSetup(
         './worker',

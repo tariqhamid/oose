@@ -95,7 +95,7 @@ var newJob = function(message,reply){
 
 if(require.main === module){
   child(
-    'oose:clone',
+    'oose:' + config.locale.id + ':clone',
     function(done){
       //start tcp
       server.bind(config.clone.port,config.clone.host)

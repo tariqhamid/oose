@@ -202,7 +202,7 @@ exports.stop = function(done){
 if(require.main === module){
   worker(
     server,
-    'oose:hideout:worker',
+    'oose:' + config.locale.id + ':hideout:worker',
     function(done){
       exports.start(done)
     },

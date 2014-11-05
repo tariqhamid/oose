@@ -224,7 +224,7 @@ var boot = function(multicast,done){
 
 if(require.main === module){
   child(
-    'oose:announce',
+    'oose:' + config.locale.id + ':announce',
     function(done){
       //setup our multicast handler
       if(!multicast){

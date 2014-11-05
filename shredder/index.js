@@ -232,7 +232,7 @@ var shutdown = function(done){
 
 if(require.main === module){
   child(
-    'oose:shredder',
+    'oose:' + config.locale.id + ':shredder',
     function(done){
       async.series(
         [

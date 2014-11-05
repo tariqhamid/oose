@@ -396,7 +396,7 @@ exports.stop = function(done){
 if(require.main === module){
   worker(
     server,
-    'oose:prism:worker',
+    'oose:' + config.locale.id + ':prism:worker',
     function(done){
       exports.start(done)
     },

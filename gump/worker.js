@@ -158,7 +158,7 @@ exports.stop = function(done){
 if(require.main === module){
   worker(
     server,
-    'oose:gump:worker',
+    'oose:' + config.locale.id + ':gump:worker',
     function(done){
       exports.start(done)
     },

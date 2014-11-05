@@ -7,7 +7,7 @@ var config = require('../config')
 
 if(require.main === module){
   child(
-    'oose:executioner:master',
+    'oose:' + config.locale.id + ':executioner:master',
     function(done){
       cluster = clusterSetup(
         './worker',

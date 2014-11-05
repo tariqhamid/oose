@@ -89,7 +89,7 @@ var pingSave = function(){
 
 if(require.main === module){
   child(
-    'oose:ping',
+    'oose:' + config.locale.id + ':ping',
     function(done){
       done = done || function(){}
       debug('starting ping system')

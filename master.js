@@ -388,7 +388,7 @@ exports.stop = function(done){
 if(require.main === module){
   var master = exports
   Child.child(
-    'oose:master',
+    'oose:' + config.locale.id + ':master',
     function(done){
       master.start(done)
     },

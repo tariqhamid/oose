@@ -13,7 +13,7 @@ config.$load({
     site: 'local1',
     zone: 'local',
     host: os.hostname(),
-    media: 'localmedia1'
+    id: 'localinstance1'
   },
   root: __dirname + '/data',
   clone: {
@@ -66,13 +66,19 @@ config.$load({
       port: 3002,
       portPublic: null,
       host: null,
-      workers: 1
+      workers: {
+        count: 1,
+        maxConnections: 10000
+      }
     },
     export: {
       port: 3001,
       portPublic: null,
       host: null,
-      workers: 1
+      workers: {
+        count: 1,
+        maxConnections: 10000
+      }
     }
   },
   prism: {
@@ -85,7 +91,7 @@ config.$load({
     },
     workers: {
       count: 1,
-      maxConnections: 1000
+      maxConnections: 10000
     }
   },
   shredder: {
@@ -106,7 +112,7 @@ config.$load({
     password: null,
     workers: {
       count: 1,
-      maxConnections: 1000
+      maxConnections: 10000
     }
   },
   executioner: {
@@ -116,7 +122,7 @@ config.$load({
     host: null,
     workers: {
       count: 1,
-      maxConnections: 1000
+      maxConnections: 10000
     },
     url: 'http://localhost:3007',
     user: 'oose',
@@ -142,7 +148,7 @@ config.$load({
     host: null,
     workers: {
       count: 1,
-      maxConnections: 1000
+      maxConnections: 10000
     },
     baseUrl: 'http://localhost:3004',
     embedBaseUrl: 'http://localhost:3004',
@@ -169,7 +175,7 @@ config.$load({
     host: null,
     workers: {
       count: 1,
-      maxConnections: 1000
+      maxConnections: 10000
     },
     user: 'oose',
     password: 'oose',

@@ -7,7 +7,7 @@ var config = require('../config')
 
 if(require.main === module){
   child(
-    'oose:gump:master',
+    'oose:' + config.locale.id + ':gump:master',
     function(done){
       cluster = clusterSetup(
         './worker',

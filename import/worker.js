@@ -61,7 +61,7 @@ exports.stop = function(done){
 if(require.main === module){
   worker(
     server,
-    'oose:import:worker',
+    'oose:' + config.locale.id + ':import:worker',
     function(done){
       exports.start(done)
     },

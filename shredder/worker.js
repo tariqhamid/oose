@@ -142,7 +142,7 @@ var runJob = function(job,done){
 
 if(require.main === module){
   child(
-    'oose:shredder:worker',
+    'oose:' + config.locale.id + ':shredder:worker',
     //startup
     function(done){
       //receive one message from master which should be the job description

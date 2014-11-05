@@ -7,7 +7,7 @@ var config = require('../config')
 
 if(require.main === module){
   child(
-    'oose:prism:master',
+    'oose:' + config.locale.id + ':prism:master',
     function(done){
       cluster = clusterSetup(
         './worker',

@@ -57,7 +57,7 @@ var tcpListen = function(server,multicast){
 
 if(require.main === module){
   child(
-    'oose:locate',
+    'oose:' + config.locale.id + ':locate',
     function(done){
       done = done || function(){}
       async.series(
