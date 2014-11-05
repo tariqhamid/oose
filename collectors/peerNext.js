@@ -92,7 +92,7 @@ peerNext.on('error',function(err){
 
 if(require.main === module){
   child(
-    'oose:peerNext',
+    'oose:' + config.locale.id + ':peerNext',
     function(done){
       peerNext.start(config.announce.interval,500,function(err){
         done(err)

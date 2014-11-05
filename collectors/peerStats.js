@@ -674,7 +674,7 @@ collector.save(save)
 
 if(require.main === module){
   child(
-    'oose:peerStats',
+    'oose:' + config.locale.id + ':peerStats',
     function(done){
       snmpPrep(function(err){
         if(err) return done(err)
