@@ -17,7 +17,7 @@ client.on('error',function(err){ logger.error(err) })
 //handle auth
 if(cfg.auth) client.auth(cfg.auth)
 //select db
-client.select(0)
+client.select(cfg.db || 0)
 
 
 /**
