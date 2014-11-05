@@ -6,7 +6,7 @@ var master = require('./master')
 
 if(require.main === module){
   child(
-    'oose:' + config.locale.id + ':app',
+    'oose:' + config.locale.id,
     function(done){
       master.start(done)
     },
