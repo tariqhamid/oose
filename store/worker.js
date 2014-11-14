@@ -3,9 +3,9 @@ var debug = require('debug')('oose:import')
 var worker = require('infant').worker
 var net = require('net')
 
-var config = require('../config')
-var file = require('../helpers/file')
-var logger = require('../helpers/logger').create('import')
+var config = require('../../config')
+var file = require('../../helpers/file')
+var logger = require('../../helpers/logger').create('import')
 
 var running = false
 
