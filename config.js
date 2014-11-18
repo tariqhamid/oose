@@ -59,19 +59,7 @@ config.$load({
     workers: {
       count: 1,
       maxConnections: 10000
-    },
-    hideout: {
-      user: 'oose',
-      password: null
     }
-  },
-  shredder: {
-    enabled: false,
-    port: 3008,
-    host: null,
-    concurrency: os.cpus().length || 1,
-    snapshot: __dirname + '/shredder/snapshot.json',
-    workerTimeout: 14400000 // 4 hours
   }
 })
 
