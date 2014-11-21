@@ -44,7 +44,8 @@ config.$load({
       count: 1,
       maxConnections: 10000
     },
-    prismList: []
+    username: 'oose',
+    password: 'oose'
   },
   //prism
   prism: {

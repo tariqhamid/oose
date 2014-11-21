@@ -6,15 +6,39 @@ var request = require('request')
 
 var config = require('../config')
 
-var baseUrl = 'http://' +
-  (config.master.host || 'localhost') +
-  ':' + config.master.port
-
 //make some promises
 P.promisifyAll(infant)
 P.promisifyAll(request)
 
+
+
+var baseUrl = 'http://' +
+  (config.master.host || 'localhost') +
+  ':' + config.master.port
+
+
+/**
+ * Make a request to the master
+ * @param {string} uri
+ * @param {object} data
+ * @return {P}
+ */
+var makeRequest = function(uri,data){
+  uri = baseUrl + (uri || '/')
+  return request.postAsync(
+    uri,
+    {
+      auth: {
+        username: config.master.username,
+        password: config.master.password
+      },
+      json: data || {}
+    }
+  )
+}
+
 describe('master',function(){
+  this.timeout(5000)
   var master = infant.parent('../master')
   before(function(){
     return master.startAsync()
@@ -23,7 +47,7 @@ describe('master',function(){
     return master.stopAsync()
   })
   it('should have a homepage',function(){
-    return request.getAsync(baseUrl,{json: true})
+    return makeRequest()
       .spread(function(res,body){
         return P.all([
           expect(res.statusCode).to.equal(200),
@@ -33,20 +57,15 @@ describe('master',function(){
       })
   })
   it('should allow creation of a prism',function(){
-    return request.postAsync(
-      baseUrl + '/prism/create',
-      {
-        json: {
-          name: 'localinstance',
-          domain: 'localdomain',
-          site: 'localsite',
-          zone: 'localzone',
-          host: 'localhost',
-          ip: '127.0.0.1',
-          port: 3002
-        }
-      }
-    )
+    return makeRequest('/prism/create',{
+      name: 'localinstance',
+      domain: 'localdomain',
+      site: 'localsite',
+      zone: 'localzone',
+      host: 'localhost',
+      ip: '127.0.0.1',
+      port: 3002
+    })
       .spread(function(res,body){
         if(body.error) throw new Error(body.error)
         return P.all([
@@ -56,7 +75,7 @@ describe('master',function(){
       })
   })
   it('should give a list of prisms',function(){
-    return request.postAsync(baseUrl + '/prism/list',{json: true})
+    return makeRequest('/prism/list')
       .spread(function(res,body){
         if(body.error) throw new Error(body.error)
         return P.all([
@@ -66,11 +85,7 @@ describe('master',function(){
       })
   })
   it('should allow deletion of a prism',function(){
-    return request.postAsync(baseUrl + '/prism/remove',{
-      json: {
-        name: 'localinstance'
-      }
-    })
+    return makeRequest('/prism/remove',{name: 'localinstance'})
       .spread(function(res,body){
         if(body.error) throw new Error(body.error)
         return P.all([

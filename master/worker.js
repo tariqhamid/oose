@@ -1,5 +1,6 @@
 'use strict';
 var P = require('bluebird')
+var basicAuth = require('basic-auth-connect')
 var bodyParser = require('body-parser')
 var compress = require('compression')
 var express = require('express')
@@ -32,6 +33,7 @@ app.set('trust proxy',true)
 
 //load middleware
 app.use(compress())
+app.use(basicAuth(config.master.username,config.master.password))
 app.use(bodyParser.json())
 app.use(express.static(__dirname + '/public'))
 
@@ -49,7 +51,7 @@ app.post('/prism/update',routes.prism.update)
 app.post('/prism/list',routes.prism.list)
 
 //home page
-app.get('/',routes.index)
+app.post('/',routes.index)
 
 
 /**
