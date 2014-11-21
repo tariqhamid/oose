@@ -19,13 +19,28 @@
     "node": ">=0.10.0"
   },
   "dependencies": {
-
+    "bluebird": "^2.3.11",
+    "body-parser": "^1.9.2",
+    "caterpillar": "^2.0.7",
+    "caterpillar-filter": "^2.0.3",
+    "caterpillar-human": "^2.1.2",
+    "compression": "^1.2.0",
+    "express": "^4.10.2",
+    "graceful-fs": "^3.0.4",
+    "infant": "^0.8.4",
+    "morgan": "^1.5.0",
+    "mysql": "^2.5.3",
+    "object-manage": "^0.8.0",
+    "sequelize": "^2.0.0-rc2",
+    "validator": "^3.22.1"
   },
   "scripts": {
     "start": "node app",
     "test": "node ./node_modules/mocha/bin/mocha"
   },
   "devDependencies": {
-
+    "chai": "^1.10.0",
+    "mocha": "^2.0.1",
+    "request": "^2.48.0"
   }
 }

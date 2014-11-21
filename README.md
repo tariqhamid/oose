@@ -21,8 +21,10 @@ module.exports = {
     enabled: true
   },
   prism: {
-    enabled: true,
-    master: true
+    enabled: true
+  },
+  master: {
+    enabled: true
   }
 }
 ```
