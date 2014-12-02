@@ -129,6 +129,7 @@ config.$load({
     baseUrl: 'http://localhost:3004',
     embedBaseUrl: 'http://localhost:3004',
     tmpDir: __dirname + '/gump/public/tmp',
+    maxUploadSize: 4294967296, //4G
     embed: {
       prismUrl: 'http://localhost:3003/',
       defaultPreviewImageUrl: '/images/defaultPreview.png'

@@ -43,7 +43,11 @@ app.set('views',__dirname + '/views')
 app.set('view engine','jade')
 
 app.use(express.static(__dirname + '/public'))
-app.use(busboy())
+app.use(busboy({
+  limits: {
+    fileSize: config.gump.maxUploadSize
+  }
+}))
 app.use(bodyParser.urlencoded({extended:true}))
 app.use(bodyParser.json())
 app.use(cookieParser(config.gump.cookie.secret))
