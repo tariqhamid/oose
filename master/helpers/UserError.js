@@ -1,9 +1,18 @@
 'use strict';
+var util = require('util')
 
-var UserError = function(){
-  Error.call(this)
+
+
+/**
+ * Userspace Error Object
+ * @param {string} message
+ * @constructor
+ */
+var UserError = function(message){
+  Error.apply(this,arguments)
+  this.message = '' + message
 }
-UserError.prototype = Object.create(Error)
+util.inherits(UserError,Error)
 
 
 /**

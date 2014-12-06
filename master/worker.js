@@ -37,18 +37,26 @@ app.use(basicAuth(config.master.username,config.master.password))
 app.use(bodyParser.json())
 app.use(express.static(__dirname + '/public'))
 
-//hideout
-app.post('/hideout/set',routes.hideout.set)
-app.post('/hideout/get',routes.hideout.get)
-app.post('/hideout/exists',routes.hideout.exists)
-app.post('/hideout/update',routes.hideout.update)
-app.post('/hideout/remove',routes.hideout.remove)
+//memory
+app.post('/memory/create',routes.memory.create)
+app.post('/memory/find',routes.memory.find)
+app.post('/memory/exists',routes.memory.exists)
+app.post('/memory/update',routes.memory.update)
+app.post('/memory/remove',routes.memory.remove)
 
 //prism
 app.post('/prism/create',routes.prism.create)
-app.post('/prism/remove',routes.prism.remove)
-app.post('/prism/update',routes.prism.update)
+app.post('/prism/find',routes.prism.find)
 app.post('/prism/list',routes.prism.list)
+app.post('/prism/update',routes.prism.update)
+app.post('/prism/remove',routes.prism.remove)
+
+//store
+app.post('/store/create',routes.store.create)
+app.post('/store/find',routes.store.find)
+app.post('/store/list',routes.store.list)
+app.post('/store/update',routes.store.update)
+app.post('/store/remove',routes.store.remove)
 
 //home page
 app.post('/',routes.index)
@@ -71,7 +79,7 @@ exports.start = function(done){
           domain: config.domain
         },
         defaults: {
-          name: config.name,
+          name: config.master.name,
           domain: config.domain,
           ip: config.master.host || '127.0.0.1',
           port: +config.master.port

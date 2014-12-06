@@ -2,10 +2,8 @@
 var sequelize = require('../helpers/sequelize')()
 var UserError = require('../helpers/UserError')
 
-var config = require('../../config')
-
-var Master = sequelize.models.Master
 var Prism = sequelize.models.Prism
+var Store = sequelize.models.Store
 
 
 /**
@@ -14,10 +12,18 @@ var Prism = sequelize.models.Prism
  * @param {object} res
  */
 exports.list = function(req,res){
-  Master.find({where: {domain: config.domain}, include: [Prism]})
-    .then(function(result){
-      res.json({prism: result.Prisms || []})
-    })
+  var data = req.body
+  if(!data.prism){
+    Store.findAll()
+      .then(function(results){
+        res.json({store: results || []})
+      })
+  } else {
+    Prism.find({where: {name: data.prism}, include: [Store]})
+      .then(function(result){
+        res.json({store: result.Stores || []})
+      })
+  }
 }
 
 
@@ -28,9 +34,9 @@ exports.list = function(req,res){
  */
 exports.find = function(req,res){
   var data = req.body
-  Prism.find({where: {name: data.name}})
+  Store.find({where: {name: data.name}})
     .then(function(result){
-      if(!result) throw new UserError('No prism instance found')
+      if(!result) throw new UserError('No store instance found')
       res.json(result.dataValues)
     })
     .catch(UserError,function(err){
@@ -46,16 +52,14 @@ exports.find = function(req,res){
  */
 exports.create = function(req,res){
   var data = req.body
-  Master.find({where: {domain: config.domain}})
+  Prism.find({where: {name: data.prism}})
     .then(function(result){
-      if(!result) throw new UserError('Could not find master record')
-      return Prism.create({
+      if(!result) throw new UserError('Could not find prism')
+      return Store.create({
         name: data.name,
-        site: data.site,
-        zone: data.zone,
         ip: data.ip,
         port: data.port,
-        MasterId: result.id
+        PrismId: result.id
       })
     })
     .then(function(result){
@@ -80,13 +84,11 @@ exports.create = function(req,res){
  */
 exports.update = function(req,res){
   var data = req.body
-  Prism.find({
+  Store.find({
     where: {name: data.name}
   })
     .then(function(result){
-      if(!result) throw new UserError('No prism instance found for update')
-      if(data.site) result.site = data.site
-      if(data.zone) result.zone = data.zone
+      if(!result) throw new UserError('No store instance found for update')
       if(data.ip) result.ip = data.ip
       if(data.port) result.port = data.port
       return result.save()
@@ -110,7 +112,7 @@ exports.update = function(req,res){
  */
 exports.remove = function(req,res){
   var data = req.body
-  Prism.destroy({where: {name: data.name}})
+  Store.destroy({where: {name: data.name}})
     .then(function(count){
       res.json({success: 'Store instance removed', count: count})
     })

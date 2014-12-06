@@ -9,7 +9,6 @@ config.$load({
   //options
   version: pkg.version,
   //locale
-  name: 'localinstance',
   domain: 'localhost',
   site: 'localsite',
   zone: 'localzone',
@@ -38,6 +37,7 @@ config.$load({
   //master
   master: {
     enabled: false,
+    name: 'localmaster',
     port: 3001,
     host: null,
     workers: {
@@ -50,6 +50,7 @@ config.$load({
   //prism
   prism: {
     enabled: false,
+    name: 'localprism',
     port: 3002,
     host: null,
     workers: {
@@ -60,6 +61,7 @@ config.$load({
   //storage system
   store: {
     enabled: false,
+    name: 'localstore',
     port: 3003,
     host: null,
     workers: {

@@ -8,8 +8,8 @@
  * @return {object}
  */
 module.exports = function(sequelize,DataTypes) {
-  return sequelize.define('Hideout',{
-      key: {
+  return sequelize.define('Memory',{
+      name: {
         type: DataTypes.STRING,
         allowNull: false
       },
@@ -20,10 +20,10 @@ module.exports = function(sequelize,DataTypes) {
     },{
       indexes: [
         {
-          name: 'key_unique',
+          name: 'name_unique',
           unique: true,
           method: 'BTREE',
-          fields: ['key']
+          fields: ['name']
         }
       ]
     }

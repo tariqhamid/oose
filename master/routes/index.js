@@ -20,7 +20,14 @@ exports.prism = require('./prism')
 
 
 /**
- * Hideout routes
+ * Store routes
  * @type {exports}
  */
-exports.hideout = require('./hideout')
+exports.store = require('./store')
+
+
+/**
+ * Memory routes
+ * @type {exports}
+ */
+exports.memory = require('./memory')

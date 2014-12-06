@@ -83,7 +83,7 @@ if(config.store.enabled){
 
 
 /**
- * Prism
+ * Store
  */
 if(config.lg.enabled){
   lifecycle.add(
