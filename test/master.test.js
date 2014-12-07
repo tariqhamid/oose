@@ -230,6 +230,128 @@ describe('master',function(){
         })
     })
   })
+  //users
+  describe('users',function(){
+    var password, session
+    var ip = '127.0.0.1'
+    it('should create',function(){
+      return makeRequest('/user/create',{
+        username: 'test'
+      })
+        .spread(function(res,body){
+          if(body.error) throw new Error(body.error)
+          password = body.password
+          return P.all([
+            expect(res.statusCode).to.equal(200),
+            expect(body.success).to.equal('User created'),
+            expect(body.id).to.be.greaterThan(0),
+            expect(body.password.length).to.equal(64)
+          ])
+        })
+    })
+    it('should reset password',function(){
+      return makeRequest('/user/password/reset',{username: 'test'})
+        .spread(function(res,body){
+          if(body.error) throw new Error(body.error)
+          password = body.password
+          return P.all([
+            expect(res.statusCode).to.equal(200),
+            expect(body.success).to.equal('User password reset'),
+            expect(body.password.length).to.equal(64)
+          ])
+        })
+    })
+    it('should login',function(){
+      return makeRequest('/user/login',{
+        username: 'test',
+        password: password,
+        ip: ip
+      })
+        .spread(function(res,body){
+          if(body.error) throw new Error(body.error)
+          session = body.session
+          return P.all([
+            expect(res.statusCode).to.equal(200),
+            expect(body.success).to.equal('User logged in'),
+            expect(body.session).to.be.an('Object'),
+            expect(body.session.token.length).to.equal(64)
+          ])
+        })
+    })
+    it('should find the session',function(){
+      return makeRequest('/user/session/find',{token: session.token, ip: ip})
+        .spread(function(res,body){
+          if(body.error) throw new Error(body.error)
+          return P.all([
+            expect(res.statusCode).to.equal(200),
+            expect(body.session).to.be.an('Object'),
+            expect(body.session.token.length).to.equal(64)
+          ])
+        })
+    })
+    it('should update the session',function(){
+      return makeRequest('/user/session/update',{
+        token: session.token,
+        ip: ip,
+        data: {foo: 'bar'}
+      })
+        .spread(function(res,body){
+          if(body.error) throw new Error(body.error)
+          return P.all([
+            expect(res.statusCode).to.equal(200),
+            expect(body.session).to.be.an('Object'),
+            expect(body.session.token.length).to.equal(64),
+            expect(JSON.parse(body.session.data).foo).to.equal('bar')
+          ])
+        })
+    })
+    it('should logout',function(){
+      return makeRequest('/user/logout',{token: session.token, ip: ip})
+        .spread(function(res,body){
+          if(body.error) throw new Error(body.error)
+          return P.all([
+            expect(res.statusCode).to.equal(200),
+            expect(body.success).to.be.equal('User logged out')
+          ])
+        })
+    })
+    it('should update',function(){
+      return makeRequest('/user/update',{
+        username: 'test',
+        active: false
+      })
+        .spread(function(res,body){
+          if(body.error) throw new Error(body.error)
+          return P.all([
+            expect(res.statusCode).to.equal(200),
+            expect(body.success).to.equal('User updated')
+          ])
+        })
+    })
+    it('should find',function(){
+      return makeRequest('/user/find',{username: 'test'})
+        .spread(function(res,body){
+          if(body.error) throw new Error(body.error)
+          return P.all([
+            expect(res.statusCode).to.equal(200),
+            expect(body.username).to.equal('test'),
+            expect(body.active).to.equal(false),
+            expect(body.password).to.be.undefined
+          ])
+        })
+    })
+    it('should remove',function(){
+      return makeRequest('/user/remove',{username: 'test'})
+        .spread(function(res,body){
+          if(body.error) throw new Error(body.error)
+          return P.all([
+            expect(res.statusCode).to.equal(200),
+            expect(body.success).to.equal('User removed'),
+            expect(body.count).to.equal(1)
+          ])
+        })
+    })
+  })
   //memory
   describe('memory',function(){
     it('should create',function(){

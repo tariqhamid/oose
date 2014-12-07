@@ -1,6 +1,6 @@
 'use strict';
 var sequelize = require('../helpers/sequelize')()
-var UserError = require('../helpers/UserError')
+var UserError = require('../../helpers/UserError')
 
 var config = require('../../config')
 

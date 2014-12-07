@@ -31,3 +31,10 @@ exports.store = require('./store')
  * @type {exports}
  */
 exports.memory = require('./memory')
+
+
+/**
+ * User routes
+ * @type {exports}
+ */
+exports.user = require('./user')

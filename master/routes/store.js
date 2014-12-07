@@ -1,6 +1,6 @@
 'use strict';
 var sequelize = require('../helpers/sequelize')()
-var UserError = require('../helpers/UserError')
+var UserError = require('../../helpers/UserError')
 
 var Prism = sequelize.models.Prism
 var Store = sequelize.models.Store

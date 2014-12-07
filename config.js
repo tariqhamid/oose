@@ -45,7 +45,10 @@ config.$load({
       maxConnections: 10000
     },
     username: 'oose',
-    password: 'oose'
+    password: 'oose',
+    user: {
+      sessionLife: 3600 //1hr
+    }
   },
   //prism
   prism: {

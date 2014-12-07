@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "basic-auth-connect": "^1.0.0",
+    "bcrypt": "^0.8.0",
     "bluebird": "^2.3.11",
     "body-parser": "^1.9.2",
     "caterpillar": "^2.0.7",
@@ -29,8 +30,10 @@
     "express": "^4.10.2",
     "graceful-fs": "^3.0.4",
     "infant": "^0.8.4",
+    "moment": "^2.8.4",
     "morgan": "^1.5.0",
     "mysql": "^2.5.3",
+    "node-password": "^1.0.2",
     "object-manage": "^0.8.0",
     "sequelize": "^2.0.0-rc2",
     "validator": "^3.22.1"

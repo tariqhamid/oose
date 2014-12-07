@@ -58,6 +58,17 @@ app.post('/store/list',routes.store.list)
 app.post('/store/update',routes.store.update)
 app.post('/store/remove',routes.store.remove)
 
+//user
+app.post('/user/create',routes.user.create)
+app.post('/user/find',routes.user.find)
+app.post('/user/update',routes.user.update)
+app.post('/user/login',routes.user.login)
+app.post('/user/logout',routes.user.logout)
+app.post('/user/remove',routes.user.remove)
+app.post('/user/password/reset',routes.user.passwordReset)
+app.post('/user/session/find',routes.user.sessionFind)
+app.post('/user/session/update',routes.user.sessionUpdate)
+
 //home page
 app.post('/',routes.index)
 
