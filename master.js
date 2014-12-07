@@ -12,7 +12,6 @@ var redis = require('./helpers/redis')
 var logger = Logger.create('main')
 
 var child = Child.parent
-var once = Child.fork
 
 var announce = child('./announce')
 var clone = child('./clone')
@@ -90,8 +89,7 @@ lifecycle.add(
     var removed = 0
     P.all([
       redis.removeKeysPattern('peer:*'),
-      redis.removeKeysPattern('prism:*'),
-      redis.removeKeysPattern('inventory:*')
+      redis.removeKeysPattern('prism:*')
     ])
       .then(function(results){
         for(var i = 0; i < results.length; i++)
@@ -102,19 +100,6 @@ lifecycle.add(
       .catch(next)
   }
 )
-
-
-/**
- * Inventory filesystem
- */
-if(config.store.enabled){
-  lifecycle.add(
-    'inventory build',
-    function(next){
-      once('./tasks/inventory',next)
-    }
-  )
-}
 
 
 /**
