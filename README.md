@@ -17,10 +17,25 @@ First, setup a local config file like so.
 ```js
 'use strict';
 module.exports = {
+  announce: {
+    enabled: true
+  },
+  ping: {
+    enabled: true
+  },
+  locate: {
+    enabled: true
+  },
   store: {
     enabled: true
   },
   supervisor: {
+    enabled: true
+  },
+  hideout: {
+    enabled: true
+  },
+  lg: {
     enabled: true
   },
   prism: {
@@ -30,7 +45,7 @@ module.exports = {
     enabled: true
   },
   gump: {
-    enabled: true,
+    enabled: true
   },
   shredder: {
     enabled: true
