@@ -1,11 +1,11 @@
 'use strict';
 var async = require('async')
-var Child = require('infant').ChildOnce
+var child = require('infant').childOnce
 
 var Job = require('./helpers/job')
 var logger = require('../helpers/logger').create('shredder:worker')
 
-var child = Child.child
+var config = require('../config')
 
 //inform that we are alive
 logger.info('Spawned and waiting for job description')

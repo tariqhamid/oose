@@ -57,8 +57,9 @@ var q = async.priorityQueue(
       !opts.handle
     ){
       done('ERROR: Job.handle not set')
+    } else {
+      spawnWorker(opts,done)
     }
-    spawnWorker(opts,done)
   },
   config.shredder.concurrency || os.cpus().length || 1
 )

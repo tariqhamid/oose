@@ -13,7 +13,7 @@ config.$load({
     site: 'local1',
     zone: 'local',
     host: os.hostname(),
-    id: 'localinstance1'
+    id: 'oose'
   },
   root: __dirname + '/data',
   clone: {

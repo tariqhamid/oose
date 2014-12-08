@@ -20,6 +20,7 @@ process.on('exit',function(){
   var resource
   for(var i = 0; i < cleanup.length; i++){
     resource = cleanup[i]
+    if(!(resource instanceof ObjectManage)) continue
     if(fs.existsSync(resource.$get('path')))
       fs.unlinkSync(resource.$get('path'))
   }
