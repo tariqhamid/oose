@@ -2,7 +2,6 @@
 var P = require('bluebird')
 var basicAuth = require('basic-auth-connect')
 var bodyParser = require('body-parser')
-var compress = require('compression')
 var express = require('express')
 var http = require('http')
 var worker = require('infant').worker
@@ -17,22 +16,10 @@ var routes = require('./routes')
 //make some promises
 P.promisifyAll(server)
 
-
-/**
- * Global template vars
- * @type {*}
- */
-app.locals = {
-  pretty: true,
-  version: config.version
-}
-
-
 //setup view enging
 app.set('trust proxy',true)
 
 //load middleware
-app.use(compress())
 app.use(basicAuth(config.master.username,config.master.password))
 app.use(bodyParser.json())
 app.use(express.static(__dirname + '/public'))
@@ -122,7 +109,7 @@ exports.stop = function(done){
 if(require.main === module){
   worker(
     server,
-    'oose:master:worker',
+    'oose:' + config.master.name + ':worker',
     function(done){
       exports.start(done)
     },
