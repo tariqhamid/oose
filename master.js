@@ -297,7 +297,7 @@ if(config.locate.enabled){
 /**
  * Prism
  */
-if(config.lg.enabled){
+if(config.prism.enabled){
   lifecycle.add(
     'prism',
     function(next){
