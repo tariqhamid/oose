@@ -46,6 +46,7 @@ var clone = function(job){
   })
   return peer.next(config.locale.host)
     .then(function(result){
+      if(!filePath) throw new Error('Invalid sha1 passed for path')
       if(!result) throw new Error('No suitable peer found')
       winner = result
       if(!fs.existsSync(filePath)) throw new Error('File to clone doesnt exist')

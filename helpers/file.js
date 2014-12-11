@@ -110,6 +110,7 @@ exports.sum = function(path,done){
  * @return {string}
  */
 exports.pathFromSha1 = function(sha1){
+  if(!sha1 || 40 !== sha1.length) return false
   var file = path.resolve(config.root) + '/'
   var parts = sha1.split('')
   for(var i = 1; i <= parts.length; i++){
@@ -140,6 +141,7 @@ exports.sha1FromPath = function(path){
  */
 exports.redisInsert = function(sha1,done){
   var destination = exports.pathFromSha1(sha1)
+  if(!destination) return done('Invalid sha1 pass for path')
   var magic = new mmm.Magic(mmm.MAGIC_MIME_TYPE)
   magic.detectFile(destination,function(err,mimeType){
     if(err) return done(err)
@@ -169,10 +171,12 @@ exports.redisInsert = function(sha1,done){
  * @param {string} source
  * @param {string} sha1
  * @param {function} done
+ * @return {*}
  */
 exports.write = function(source,sha1,done){
   if(!done) done = function(){}
   var destination = exports.pathFromSha1(sha1)
+  if(!destination) return done('Invalid sha1 passed for path')
   mkdirp.sync(path.dirname(destination))
   var rs = fs.createReadStream(source)
   rs.on('error',done)
@@ -235,6 +239,7 @@ exports.fromReadable = function(readable,done){
       //figure out our sha1 hash and setup paths
       function(next){
         destination = exports.pathFromSha1(sha1)
+        if(!destination) return next('Invalid sha1 passed for path')
         destinationFolder = path.dirname(destination)
         next()
       },
@@ -322,6 +327,7 @@ exports.fromPath = function(source,done){
     if(err) return done(err)
     redis.hexists('hashTable',sha1,function(err,exists){
       var destination = exports.pathFromSha1(sha1)
+      if(!destination) return done('Invalid sha1 passed for path')
       var fsExists = fs.existsSync(destination)
       if(err) return done(err)
       var fileWriteDone = function(err){

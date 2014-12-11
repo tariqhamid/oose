@@ -28,6 +28,7 @@ app.get('/:sha1/:filename',function(req,res){
     if(!sha1) throw {status: 404, message: 'invalid path'}
     if(!fileName) fileName = sha1
     var filePath = file.pathFromSha1(sha1)
+    if(!filePath) throw new Error('Invalid sha1 passed for path')
     var info = {sha1: sha1, filename: fileName, filePath: filePath}
     debug(sha1,'parsed request',info)
     return info
