@@ -22,7 +22,6 @@ exports.next = function(skip){
       var peer, winner
       for(var i = 0; i < rk.length; i++){
         peer = JSON.parse(results[rk[i]])
-        peer = JSON.parse(results[i])
         //skip any hostnames we dont want
         if(skip.indexOf(peer.hostname) >= 0) continue
         if(!winner || peer.importHits < winner.importHits)
