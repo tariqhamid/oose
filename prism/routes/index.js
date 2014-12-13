@@ -7,6 +7,7 @@ var temp = require('temp')
 
 var APIClient = require('../../helpers/APIClient')
 var SHA1Stream = require('../../helpers/SHA1Stream')
+var UserError = require('../../helpers/UserError')
 
 var config = require('../../config')
 
@@ -34,7 +35,7 @@ exports.index = function(req,res){
  */
 exports.upload = function(req,res){
   var data = {}
-  var files = []
+  var files = {}
   var filePromises = []
   var busboy = new Busboy({
     headers: req.headers,
@@ -63,14 +64,26 @@ exports.upload = function(req,res){
         files[key].sha1 = sniff.sha1
       }))
   })
-  promisePipe(req,busboy)
-    .then(function(){
-      return P.all(filePromises)
-    })
-    .then(function(){
-      //process files
-      res.json({success: 'File(s) uploaded', data: data, files: files})
-    })
+  busboy.on('finish',function(){
+    P.all(filePromises)
+      .then(function(){
+        if(!data.token) throw new UserError('No token provided')
+        return master.post('/user/session/validate',{
+            token: data.token,
+            ip: req.ip
+          })
+      })
+      .spread(function(response,body){
+        if('Session valid' !== body.success)
+          throw new UserError('Invalid session')
+        //process files
+        res.json({success: 'File(s) uploaded',data: data,files: files})
+      })
+      .catch(UserError,function(err){
+        res.json({error: err.message})
+      })
+  })
+  req.pipe(busboy)
 }
 
 

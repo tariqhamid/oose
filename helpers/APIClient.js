@@ -144,12 +144,15 @@ APIClient.prototype.post = function(path,data){
  * Upload a file
  * @param {string} path
  * @param {string} filepath
+ * @param {object} data
  * @return {P}
  */
-APIClient.prototype.upload = function(path,filepath){
+APIClient.prototype.upload = function(path,filepath,data){
   var that = this
   var url = that.baseURL + path
-  var options = {}
+  var options = {formData: data || {}}
+  //add session if enabled
+  if(that.session.token) options.formData.token = that.session.token
   //add basic auth if enabled
   if(that.basicAuth.username || that.basicAuth.password){
     options.auth = {
@@ -157,20 +160,12 @@ APIClient.prototype.upload = function(path,filepath){
       password: that.basicAuth.password
     }
   }
+  //add file
+  options.formData.file = fs.createReadStream(filepath)
   options.url = url
   //make the request
   debug('----> UPLOAD REQ',options)
-  return new P(function(resolve,reject){
-    var req = request.post(options,function(err,res,body){
-      if(err) reject(err)
-      else resolve([res,body])
-    })
-    var form = req.form()
-    //add session if enabled
-    if(that.session.token) form.append('token',that.session.token)
-    //add file
-    form.append('file',fs.createReadStream(filepath))
-  })
+  return request.postAsync(options)
     .spread(function(res,body){
       body = JSON.parse(body)
       debug('<---- UPLOAD RES',options,body)
