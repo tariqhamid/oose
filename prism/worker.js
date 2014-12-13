@@ -24,9 +24,11 @@ app.use(express.static(__dirname + '/public'))
 app.post('/',routes.index)
 
 //user functions
-app.post('/login',routes.login)
-app.post('/logout',routes.logout)
-app.post('/password/reset',routes.passwordReset)
+app.post('/user/login',routes.user.login)
+app.post('/user/logout',routes.user.logout)
+app.post('/user/password/reset',routes.user.passwordReset)
+app.post('/user/session/validate',routes.user.sessionValidate)
+app.post('/user/session/update',routes.user.sessionUpdate)
 
 //content functions
 app.post('/upload',routes.upload)

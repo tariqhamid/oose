@@ -17,12 +17,12 @@ var keyMapping = function(s){
   var Master = s.models.Master
   var Prism = s.models.Prism
   var Store = s.models.Store
-  var User = s.models.Store
+  var User = s.models.User
   var UserSession = s.models.UserSession
   //parents
-  Master.hasMany(Prism)
-  Prism.hasMany(Store)
-  User.hasMany(UserSession)
+  Master.hasMany(Prism,{onDelete: 'CASCADE', onUpdate: 'CASCADE'})
+  Prism.hasMany(Store,{onDelete: 'CASCADE', onUpdate: 'CASCADE'})
+  User.hasMany(UserSession,{onDelete: 'CASCADE', onUpdate: 'CASCADE'})
   //children
   Store.belongsTo(Prism,{onDelete: 'CASCADE', onUpdate: 'CASCADE'})
   Prism.belongsTo(Master,{onDelete: 'CASCADE', onUpdate: 'CASCADE'})

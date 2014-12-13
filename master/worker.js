@@ -54,6 +54,7 @@ app.post('/user/logout',routes.user.logout)
 app.post('/user/remove',routes.user.remove)
 app.post('/user/password/reset',routes.user.passwordReset)
 app.post('/user/session/find',routes.user.sessionFind)
+app.post('/user/session/validate',routes.user.sessionFind)
 app.post('/user/session/update',routes.user.sessionUpdate)
 
 //home page

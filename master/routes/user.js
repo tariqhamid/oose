@@ -171,13 +171,13 @@ exports.logout = function(req,res){
  */
 exports.sessionFind = function(req,res){
   var data = req.body
-  UserSession.find({where: {token: data.token, ip: data.ip}})
+  UserSession.find({where: {token: data.token, ip: data.ip}, include: [User]})
     .then(function(session){
       if(!session) throw new UserError('Session could not be found')
       if((+session.expires) < (+new Date())){
         throw new UserError('Session has expired')
       }
-      res.json({session: session.dataValues})
+      res.json({success: 'Session valid', session: session.dataValues})
     })
     .catch(UserError,function(err){
       res.json({error: err.message})
