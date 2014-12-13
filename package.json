@@ -27,6 +27,7 @@
     "caterpillar-filter": "^2.0.3",
     "caterpillar-human": "^2.1.2",
     "compression": "^1.2.0",
+    "connect-busboy": "0.0.2",
     "express": "^4.10.2",
     "graceful-fs": "^3.0.4",
     "infant": "^0.8.4",

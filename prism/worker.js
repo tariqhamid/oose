@@ -23,13 +23,25 @@ app.use(express.static(__dirname + '/public'))
 //home page
 app.post('/',routes.index)
 
+//user functions
+app.post('/login',routes.login)
+app.post('/logout',routes.logout)
+app.post('/password/reset',routes.passwordReset)
+
+//content functions
+app.post('/upload',routes.upload)
+app.post('/purchase',routes.purchase)
+
+//main content retrieval function
+app.get('/download/:sha1/:filename',routes.download)
+
 
 /**
 * Start oose master
 * @param {function} done
 */
 exports.start = function(done){
-  server.listenAsync(+config.master.port,config.master.host)
+  server.listenAsync(+config.prism.port,config.prism.host)
     .then(function(){
       done()
     })

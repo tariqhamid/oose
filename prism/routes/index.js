@@ -13,28 +13,60 @@ exports.index = function(req,res){
 
 
 /**
- * Prism routes
- * @type {exports}
+ * User Login
+ * @param {object} req
+ * @param {object} res
  */
-exports.prism = require('./prism')
+exports.login = function(req,res){
+
+}
 
 
 /**
- * Store routes
- * @type {exports}
+ * User Logout
+ * @param {object} req
+ * @param {object} res
  */
-exports.store = require('./store')
+exports.logout = function(req,res){
+
+}
 
 
 /**
- * Memory routes
- * @type {exports}
+ * Password reset
+ * @param {object} req
+ * @param {object} res
  */
-exports.memory = require('./memory')
+exports.passwordReset = function(req,res){
+
+}
 
 
 /**
- * User routes
- * @type {exports}
+ * Upload file
+ * @param {object} req
+ * @param {object} res
  */
-exports.user = require('./user')
+exports.upload = function(req,res){
+
+}
+
+
+/**
+ * Purchase content
+ * @param {object} req
+ * @param {object} res
+ */
+exports.purchase = function(req,res){
+
+}
+
+
+/**
+ * Download purchased content
+ * @param {object} req
+ * @param {object} res
+ */
+exports.download = function(req,res){
+
+}

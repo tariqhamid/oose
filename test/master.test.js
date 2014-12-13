@@ -92,8 +92,8 @@ describe('master',function(){
     it('should update',function(){
       return makeRequest('/prism/update',{
           name: 'test',
-          site: 'localsite2'}
-      )
+          site: 'localsite2'
+      })
         .spread(function(res,body){
           if(body.error) throw new Error(body.error)
           return P.all([
