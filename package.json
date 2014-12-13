@@ -28,6 +28,7 @@
     "caterpillar-filter": "^2.0.3",
     "caterpillar-human": "^2.1.2",
     "compression": "^1.2.0",
+    "connect-busboy": "0.0.2",
     "debug": "^2.1.0",
     "express": "^4.10.2",
     "graceful-fs": "^3.0.5",
@@ -40,6 +41,7 @@
     "promisepipe": "^1.0.1",
     "sequelize": "^2.0.0-rc2",
     "temp": "^0.8.1",
+    "through2": "^0.6.3",
     "validator": "^3.22.1"
   },
   "scripts": {

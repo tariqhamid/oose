@@ -2,11 +2,15 @@
 var basicAuth = require('basic-auth-connect')
 var P = require('bluebird')
 var bodyParser = require('body-parser')
+var Busboy = require('busboy')
 var expect = require('chai').expect
 var express = require('express')
 var http = require('http')
+var promisePipe = require('promisepipe')
+var temp = require('temp').track()
 
 var APIClient = require('../helpers/APIClient')
+var SHA1Stream = require('../helpers/SHA1Stream')
 var UserError = require('../helpers/UserError')
 
 var app = express()
@@ -25,8 +29,14 @@ var config = {
   }
 }
 
+var content = {
+  file: __dirname + '/assets/test.txt',
+  sha1: 'a03f181dc7dedcfb577511149b8844711efdb04f'
+}
+
 //make some promises
 P.promisifyAll(server)
+P.promisifyAll(temp)
 
 app.use(bodyParser.json())
 
@@ -50,6 +60,41 @@ app.get('/invalid/response',function(req,res){
 app.post('/invalid/response',function(req,res){
   res.status(500)
   res.json({success: 'Request completed'})
+})
+app.post('/upload',function(req,res){
+  var data = {}
+  var files = {}
+  var filePromises = []
+  var busboy = new Busboy({
+    highWaterMark: 65536,
+    headers: req.headers
+  })
+  busboy.on('field',function(key,value){
+    data[key] = value
+  })
+  busboy.on('file',function(key,file,name,encoding,mimetype){
+    var sniff = new SHA1Stream()
+    files[key] = {
+      key: key,
+      file: file,
+      name: name,
+      encoding: encoding,
+      mimetype: mimetype
+    }
+    filePromises.push(
+      promisePipe(file,sniff)
+        .then(function(){
+          files[key].sha1 = sniff.sha1
+        })
+    )
+  })
+  promisePipe(req,busboy)
+    .then(function(){
+      return P.all(filePromises)
+    })
+    .then(function(){
+      res.json({data: data, files: files})
+    })
 })
 
 //protected routes
@@ -85,8 +130,12 @@ describe('APIClient',function(){
     expect(client.baseURL).to.equal(protocol + '://' + host + ':' + port)
   })
   describe('APIClient:sessionless',function(){
+    var client
+    beforeEach(function(){
+      client = new APIClient(config.port,config.host)
+    })
     it('should send a get request',function(){
-      return new APIClient(config.port,config.host)
+      return client
         .get('/get',{foo: 'bar'})
         .spread(function(res,body){
           if(body.error) throw new Error(body.error)
@@ -97,7 +146,7 @@ describe('APIClient',function(){
         })
     })
     it('should send a post request',function(){
-      return new APIClient(config.port,config.host)
+      return client
         .post('/post',{foo: 'baz'})
         .spread(function(res,body){
           if(body.error) throw new Error(body.error)
@@ -108,7 +157,7 @@ describe('APIClient',function(){
         })
     })
     it('should bubble errors automatically',function(){
-      return new APIClient(config.port,config.host)
+      return client
         .post('/error')
         .spread(function(){
           throw new Error('Error was not thrown automatically')
@@ -118,7 +167,7 @@ describe('APIClient',function(){
         })
     })
     it('should bubble complex errors automatically',function(){
-      return new APIClient(config.port,config.host)
+      return client
         .post('/error/message')
         .spread(function(){
           throw new Error('Error was not thrown automatically')
@@ -128,7 +177,7 @@ describe('APIClient',function(){
         })
     })
     it('should throw on invalid response code GET',function(){
-      return new APIClient(config.port,config.host)
+      return client
         .get('/invalid/response')
         .spread(function(){
           throw new Error('Error was not thrown automatically')
@@ -140,7 +189,7 @@ describe('APIClient',function(){
         })
     })
     it('should throw on invalid response code POST',function(){
-      return new APIClient(config.port,config.host)
+      return client
         .post('/invalid/response')
         .spread(function(){
           throw new Error('Error was not thrown automatically')
@@ -149,6 +198,13 @@ describe('APIClient',function(){
           expect(err.message).to.equal(
             'Invalid response code (500) to POST ' +
             'http://127.0.0.1:3999/invalid/response')
+        })
+    })
+    it('should upload a file',function(){
+      return client
+        .upload('/upload',content.file)
+        .spread(function(req,body){
+          expect(body.files.file.sha1).to.equal(content.sha1)
         })
     })
   })

@@ -6,6 +6,7 @@ var promisePipe = require('promisepipe')
 var temp = require('temp')
 
 var APIClient = require('../../helpers/APIClient')
+var SHA1Stream = require('../../helpers/SHA1Stream')
 
 var config = require('../../config')
 
@@ -25,6 +26,7 @@ exports.index = function(req,res){
   res.json({message: 'Welcome to OOSE version ' + config.version})
 }
 
+
 /**
  * Upload file
  * @param {object} req
@@ -35,6 +37,7 @@ exports.upload = function(req,res){
   var files = []
   var filePromises = []
   var busboy = new Busboy({
+    headers: req.headers,
     highWaterMark: 65536, //64K
     limits: {
       fileSize: 2147483648000 //2TB
@@ -45,24 +48,29 @@ exports.upload = function(req,res){
   })
   busboy.on('file',function(key,file,name,encoding,mimetype){
     var tmpfile = temp.path({prefix: 'oose:' + config.prism.name})
+    var sniff = new SHA1Stream()
     var writeStream = fs.createWriteStream(tmpfile)
     files[key] = {
       key: key,
       tmpfile: tmpfile,
       name: name,
       encoding: encoding,
-      mimetype: mimetype
+      mimetype: mimetype,
+      sha1: null
     }
-    filePromises.push(promisePipe(file,writeStream))
-  })
-  busboy.on('finish',function(){
-    P.all(filePromises)
+    filePromises.push(promisePipe(file,sniff,writeStream)
       .then(function(){
-        //process files
-        res.json({success: 'File(s) uploaded'})
-      })
+        files[key].sha1 = sniff.sha1
+      }))
   })
-  req.pipe(busboy)
+  promisePipe(req,busboy)
+    .then(function(){
+      return P.all(filePromises)
+    })
+    .then(function(){
+      //process files
+      res.json({success: 'File(s) uploaded', data: data, files: files})
+    })
 }
 
 

@@ -16,11 +16,11 @@ P.promisifyAll(request)
 var master = new APIClient(config.master.port,config.master.host)
 master.setBasicAuth(config.master.username,config.master.password)
 
+var content = {
+  file: __dirname + '/assets/test.txt',
+  sha1: 'a03f181dc7dedcfb577511149b8844711efdb04f'
+}
 
-/**
- * Store user info for testing
- * @type {object}
- */
 var user = {
   session: {},
   username: 'test',
@@ -138,6 +138,13 @@ describe('prism',function(){
             expect(body.success).to.equal('User logged out')
           ])
         })
+    })
+  })
+  describe('prism:content',function(){
+    it('should upload content',function(){
+      client.setSession(user.session)
+      return client
+        .upload('/upload',content.file)
     })
   })
 })

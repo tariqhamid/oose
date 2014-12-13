@@ -1,6 +1,7 @@
 'use strict';
 var P = require('bluebird')
 var debug = require('debug')('APIClient')
+var fs = require('graceful-fs')
 var request = require('request')
 
 var UserError = require('./UserError')
@@ -59,6 +60,27 @@ APIClient.prototype.setBasicAuth = function(username,password){
 
 
 /**
+ * Validate API Response
+ * @param {string} verb
+ * @param {string} path
+ * @param {object} res
+ * @param {object} body
+ */
+APIClient.prototype.validateResponse = function(verb,path,res,body){
+  var that = this
+  if(200 !== res.statusCode){
+    throw new UserError(
+      'Invalid response code (' + res.statusCode + ')' +
+      ' to ' + verb + ' ' + that.baseURL + path)
+  }
+  if(body.error){
+    if(body.error.message) throw new UserError(body.error.message)
+    if(body.error) throw new UserError(body.error)
+  }
+}
+
+
+/**
  * Make a get request
  * @param {string} path
  * @param {object} data
@@ -66,6 +88,7 @@ APIClient.prototype.setBasicAuth = function(username,password){
  */
 APIClient.prototype.get = function(path,data){
   var that = this
+  var url = that.baseURL + path
   var options = {qs: data, json: true}
   //add session if we have one
   if(that.session.token) options.qs.token = that.session.token
@@ -76,19 +99,12 @@ APIClient.prototype.get = function(path,data){
       password: that.basicAuth.password
     }
   }
-  debug('GET ' + that.baseURL + path,options)
-  return request.getAsync(that.baseURL + path,options)
+  options.url = url
+  debug('----> GET REQ',options)
+  return request.getAsync(options)
     .spread(function(res,body){
-      debug('GET RESPONSE ' + that.baseURL + path,options,body)
-      if(200 !== res.statusCode){
-        throw new UserError(
-          'Invalid response code (' + res.statusCode + ')' +
-          ' to GET ' + that.baseURL + path)
-      }
-      if(body.error){
-        if(body.error.message) throw new UserError(body.error.message)
-        if(body.error) throw new UserError(body.error)
-      }
+      debug('<----GET RES',options,body)
+      that.validateResponse('GET',path,res,body)
       return [res,body]
     })
 }
@@ -102,6 +118,7 @@ APIClient.prototype.get = function(path,data){
  */
 APIClient.prototype.post = function(path,data){
   var that = this
+  var url = that.baseURL + path
   var options = {json: data || {}}
   //add session if enabled
   if(that.session.token) options.json.token = that.session.token
@@ -112,19 +129,52 @@ APIClient.prototype.post = function(path,data){
       password: that.basicAuth.password
     }
   }
-  debug('POST ' + that.baseURL + path,options)
-  return request.postAsync(that.baseURL + path,options)
+  options.url = url
+  debug('----> POST REQ',options)
+  return request.postAsync(options)
     .spread(function(res,body){
-      debug('POST RESPONSE ' + that.baseURL + path,options,body)
-      if(200 !== res.statusCode){
-        throw new UserError(
-          'Invalid response code (' + res.statusCode + ')' +
-          ' to POST ' + that.baseURL + path)
-      }
-      if(body.error){
-        if(body.error.message) throw new UserError(body.error.message)
-        if(body.error) throw new UserError(body.error)
-      }
+      debug('<---- POST RES ',options,body)
+      that.validateResponse('POST',path,res,body)
+      return [res,body]
+    })
+}
+
+
+/**
+ * Upload a file
+ * @param {string} path
+ * @param {string} filepath
+ * @return {P}
+ */
+APIClient.prototype.upload = function(path,filepath){
+  var that = this
+  var url = that.baseURL + path
+  var options = {}
+  //add basic auth if enabled
+  if(that.basicAuth.username || that.basicAuth.password){
+    options.auth = {
+      username: that.basicAuth.username,
+      password: that.basicAuth.password
+    }
+  }
+  options.url = url
+  //make the request
+  debug('----> UPLOAD REQ',options)
+  return new P(function(resolve,reject){
+    var req = request.post(options,function(err,res,body){
+      if(err) reject(err)
+      else resolve([res,body])
+    })
+    var form = req.form()
+    //add session if enabled
+    if(that.session.token) form.append('token',that.session.token)
+    //add file
+    form.append('file',fs.createReadStream(filepath))
+  })
+    .spread(function(res,body){
+      body = JSON.parse(body)
+      debug('<---- UPLOAD RES',options,body)
+      that.validateResponse('UPLOAD',path,res,body)
       return [res,body]
     })
 }
