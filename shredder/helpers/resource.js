@@ -169,9 +169,11 @@ Resource.prototype.get = function(name){
 Resource.prototype.load = function(name,info){
   if(this.resources[name] && this.resources[name] instanceof ObjectManage){
     this.resources[name].$load(info)
-    return true
+  } else {
+    this.resources[name] = new ObjectManage()
+    this.resources[name].$load(info)
   }
-  return false
+  return true
 }
 
 
