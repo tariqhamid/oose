@@ -36,6 +36,13 @@ describe('master',function(){
         ])
       })
   })
+  it('should ping',function(){
+    return client
+      .post('/ping')
+      .spread(function(res,body){
+        expect(body.pong).to.equal('pong')
+      })
+  })
   //prism registry
   describe('master:prism',function(){
     it('should create',function(){

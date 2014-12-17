@@ -23,6 +23,12 @@ app.set('trust proxy',true)
 app.use(basicAuth(config.master.username,config.master.password))
 app.use(bodyParser.json())
 
+//home page
+app.post('/',routes.index)
+
+//health test
+app.post('/ping',routes.ping)
+
 //memory
 app.post('/memory/create',routes.memory.create)
 app.post('/memory/find',routes.memory.find)
@@ -55,9 +61,6 @@ app.post('/user/password/reset',routes.user.passwordReset)
 app.post('/user/session/find',routes.user.sessionFind)
 app.post('/user/session/validate',routes.user.sessionFind)
 app.post('/user/session/update',routes.user.sessionUpdate)
-
-//home page
-app.post('/',routes.index)
 
 
 /**

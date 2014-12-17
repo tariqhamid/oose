@@ -11,6 +11,15 @@ exports.index = function(req,res){
   res.json({message: 'Welcome to OOSE version ' + config.version})
 }
 
+/**
+ * Ping pong for health checks
+ * @param {object} req
+ * @param {object} res
+ */
+exports.ping = function(req,res){
+  res.json({pong: 'pong'})
+}
+
 
 /**
  * Prism routes

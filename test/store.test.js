@@ -43,6 +43,13 @@ describe('store',function(){
         ])
       })
   })
+  it('should ping',function(){
+    return client
+      .post('/ping')
+      .spread(function(res,body){
+        expect(body.pong).to.equal('pong')
+      })
+  })
   //content
   describe('store:content',function(){
     it('should upload content',function(){

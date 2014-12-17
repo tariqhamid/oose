@@ -29,6 +29,16 @@ exports.index = function(req,res){
 
 
 /**
+ * Ping pong for health checks
+ * @param {object} req
+ * @param {object} res
+ */
+exports.ping = function(req,res){
+  res.json({pong: 'pong'})
+}
+
+
+/**
  * Upload file
  * @param {object} req
  * @param {object} res

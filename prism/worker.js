@@ -22,6 +22,9 @@ app.use(bodyParser.json())
 //home page
 app.post('/',routes.index)
 
+//health test
+app.post('/ping',routes.ping)
+
 //user functions
 app.post('/user/login',routes.user.login)
 app.post('/user/logout',routes.user.logout)

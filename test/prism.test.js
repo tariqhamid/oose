@@ -79,6 +79,13 @@ describe('prism',function(){
         ])
       })
   })
+  it('should ping',function(){
+    return client
+      .post('/ping')
+      .spread(function(res,body){
+        expect(body.pong).to.equal('pong')
+      })
+  })
   describe('prism:users',function(){
     it('should login',function(){
       return client
