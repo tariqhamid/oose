@@ -9,7 +9,7 @@ var promisePipe = require('promisepipe')
 var temp = require('temp')
 
 var NotFoundError = require('../../helpers/NotFoundError')
-var SHA1File = require('../../helpers/SHA1File')
+var sha1File = require('../../helpers/sha1FileNew')
 var SHA1Stream = require('../../helpers/SHA1Stream')
 var UserError = require('../../helpers/UserError')
 
@@ -54,7 +54,7 @@ exports.upload = function(req,res){
       promisePipe(file,sniff,writeStream)
         .then(function(){
           files[key].sha1 = sniff.sha1
-          files[key].file = SHA1File.toPath(
+          files[key].file = sha1FileNew.toPath(
             sniff.sha1,
             mime.extension(files[key].mimetype)
           )
@@ -97,7 +97,7 @@ exports.upload = function(req,res){
  * @param {object} res
  */
 exports.download = function(req,res){
-  SHA1File.find(req.body.sha1)
+  sha1FileNew.find(req.body.sha1)
     .then(function(file){
       if(!file) throw new NotFoundError('File not found')
       if(file instanceof Array) throw new UserError('SHA1 is ambiguous')
@@ -119,7 +119,7 @@ exports.download = function(req,res){
  * @param {object} res
  */
 exports.exists = function(req,res){
-  SHA1File.find(req.body.sha1)
+  sha1FileNew.find(req.body.sha1)
     .then(function(file){
       var exists = false
       if(file) exists = true
@@ -134,7 +134,7 @@ exports.exists = function(req,res){
  * @param {object} res
  */
 exports.remove = function(req,res){
-  SHA1File.find(req.body.sha1)
+  sha1FileNew.find(req.body.sha1)
     .then(function(file){
       if(!file) throw new NotFoundError('File not found')
       if(file instanceof Array) throw new UserError('SHA1 is ambiguous')

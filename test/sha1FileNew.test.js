@@ -6,7 +6,7 @@ var mkdirp = require('mkdirp-then')
 var path = require('path')
 
 var content = require('./helpers/content')
-var SHA1File = require('../helpers/SHA1File')
+var sha1File = require('../helpers/sha1FileNew')
 
 var config = require('../config')
 var destination = path.resolve(config.root + '/content/' + content.relativePath)
@@ -14,22 +14,22 @@ var destination = path.resolve(config.root + '/content/' + content.relativePath)
 //make some promises
 P.promisifyAll(fs)
 
-describe('SHA1File',function(){
+describe('sha1File',function(){
   it('produce a path from sha1',function(){
-    expect(SHA1File.toPath(content.sha1,content.ext)).to.equal(destination)
+    expect(sha1FileNew.toPath(content.sha1,content.ext)).to.equal(destination)
   })
   it('should produce a sha1 from path',function(){
-    expect(SHA1File.fromPath(destination)).to.equal(content.sha1)
+    expect(sha1FileNew.fromPath(destination)).to.equal(content.sha1)
   })
   it('should produce a short path without an extension',function(){
-    expect(SHA1File.toPath(content.sha1)).to.equal(
+    expect(sha1FileNew.toPath(content.sha1)).to.equal(
       destination.replace(/\.\w+$/,''))
   })
   it('should validate a sha1',function(){
-    expect(SHA1File.validate(content.sha1)).to.equal(true)
+    expect(sha1FileNew.validate(content.sha1)).to.equal(true)
   })
   it('should invalidate a sha1',function(){
-    expect(SHA1File.validate('brown')).to.equal(false)
+    expect(sha1FileNew.validate('brown')).to.equal(false)
   })
   it('should find a file by sha1',function(){
     return mkdirp(path.dirname(destination))
@@ -37,7 +37,7 @@ describe('SHA1File',function(){
         return fs.writeFileAsync(destination,content.data)
       })
       .then(function(){
-        return SHA1File.find(content.sha1)
+        return sha1FileNew.find(content.sha1)
       })
       .then(function(file){
         expect(file).to.equal(destination)
