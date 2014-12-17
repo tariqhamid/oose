@@ -6,6 +6,8 @@ var request = require('request')
 
 var APIClient = require('../helpers/APIClient')
 
+var content = require('./helpers/content')
+
 var config = require('../config')
 
 //make some promises
@@ -15,11 +17,6 @@ P.promisifyAll(request)
 //setup bridge to master
 var master = new APIClient(config.master.port,config.master.host)
 master.setBasicAuth(config.master.username,config.master.password)
-
-var content = {
-  file: __dirname + '/assets/test.txt',
-  sha1: 'a03f181dc7dedcfb577511149b8844711efdb04f'
-}
 
 var user = {
   session: {},
@@ -167,6 +164,9 @@ describe('prism',function(){
       client.setSession(user.session)
       return client
         .upload('/upload',content.file)
+        .spread(function(res,body){
+          expect(body.files.file.sha1).to.equal(content.sha1)
+        })
     })
   })
 })

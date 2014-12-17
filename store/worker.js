@@ -1,5 +1,6 @@
 'use strict';
 var P = require('bluebird')
+var basicAuth = require('basic-auth-connect')
 var bodyParser = require('body-parser')
 var express = require('express')
 var http = require('http')
@@ -17,32 +18,33 @@ P.promisifyAll(server)
 app.set('trust proxy',true)
 
 //load middleware
+app.use(basicAuth(config.store.username,config.store.password))
 app.use(bodyParser.json())
 
 //home page
 app.post('/',routes.index)
 
-//user functions
-app.post('/user/login',routes.user.login)
-app.post('/user/logout',routes.user.logout)
-app.post('/user/password/reset',routes.user.passwordReset)
-app.post('/user/session/validate',routes.user.sessionValidate)
-app.post('/user/session/update',routes.user.sessionUpdate)
+//health test
+app.post('/ping',routes.ping)
 
 //content functions
-app.post('/upload',routes.upload)
-app.post('/purchase',routes.purchase)
+app.post('/content/upload',routes.content.upload)
+app.post('/content/download',routes.content.download)
+app.post('/content/exists',routes.content.exists)
+app.post('/content/remove',routes.content.remove)
 
-//main content retrieval function
-app.get('/download/:sha1/:filename',routes.download)
+//content purchasing
+app.post('/purchase/create',routes.purchase.create)
+app.post('/purchase/update',routes.purchase.update)
+app.post('/purchase/remove',routes.purchase.remove)
 
 
 /**
-* Start oose prism
+* Start oose store
 * @param {function} done
 */
 exports.start = function(done){
-  server.listenAsync(+config.prism.port,config.prism.host)
+  server.listenAsync(+config.store.port,config.store.host)
     .then(function(){
       done()
     })
@@ -50,7 +52,7 @@ exports.start = function(done){
 
 
 /**
- * Stop oose prism
+ * Stop oose master
  * @param {function} done
  */
 exports.stop = function(done){
@@ -63,7 +65,7 @@ exports.stop = function(done){
 if(require.main === module){
   worker(
     server,
-    'oose:' + config.prism.name + ':worker',
+    'oose:' + config.store.name + ':worker',
     function(done){
       exports.start(done)
     },

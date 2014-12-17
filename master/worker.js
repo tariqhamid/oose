@@ -22,7 +22,6 @@ app.set('trust proxy',true)
 //load middleware
 app.use(basicAuth(config.master.username,config.master.password))
 app.use(bodyParser.json())
-app.use(express.static(__dirname + '/public'))
 
 //memory
 app.post('/memory/create',routes.memory.create)

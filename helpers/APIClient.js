@@ -4,6 +4,7 @@ var debug = require('debug')('APIClient')
 var fs = require('graceful-fs')
 var request = require('request')
 
+var SHA1Stream = require('./SHA1Stream')
 var UserError = require('./UserError')
 
 //make some promises
@@ -172,6 +173,42 @@ APIClient.prototype.upload = function(path,filepath,data){
       that.validateResponse('UPLOAD',path,res,body)
       return [res,body]
     })
+}
+
+
+/**
+ * Download content and respond with a stream
+ * @param {string} path
+ * @param {object} data
+ * @return {P}
+ */
+APIClient.prototype.download = function(path,data){
+  var that = this
+  var options = {url: that.baseURL + path, json: data}
+  //add session if enabled
+  if(that.session.token) options.json.token = that.session.token
+  //add basic auth if enabled
+  if(that.basicAuth.username || that.basicAuth.password){
+    options.auth = {
+      username: that.basicAuth.username,
+      password: that.basicAuth.password
+    }
+  }
+  var sniff = new SHA1Stream()
+  return new P(function(resolve,reject){
+    request.post(options)
+      .on('error',function(e){
+        reject(e)
+      })
+      .on('response',function(res){
+        if(200 !== res.statusCode)
+          reject('Invalid response code (' + res.statusCode + ')')
+        else
+          resolve(sniff)
+      })
+      .pipe(sniff)
+  })
+
 }
 
 

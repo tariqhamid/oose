@@ -5,6 +5,7 @@ var bodyParser = require('body-parser')
 var Busboy = require('busboy')
 var expect = require('chai').expect
 var express = require('express')
+var fs = require('graceful-fs')
 var http = require('http')
 var promisePipe = require('promisepipe')
 var temp = require('temp').track()
@@ -12,6 +13,8 @@ var temp = require('temp').track()
 var APIClient = require('../helpers/APIClient')
 var SHA1Stream = require('../helpers/SHA1Stream')
 var UserError = require('../helpers/UserError')
+
+var content = require('./helpers/content')
 
 var app = express()
 var server = http.createServer(app)
@@ -27,11 +30,6 @@ var config = {
     username: 'foo',
     password: 'bas'
   }
-}
-
-var content = {
-  file: __dirname + '/assets/test.txt',
-  sha1: 'a03f181dc7dedcfb577511149b8844711efdb04f'
 }
 
 //make some promises
@@ -95,6 +93,9 @@ app.post('/upload',function(req,res){
     .then(function(){
       res.json({data: data, files: files})
     })
+})
+app.post('/download',function(req,res){
+  fs.createReadStream(content.file).pipe(res)
 })
 
 //protected routes
@@ -205,6 +206,20 @@ describe('APIClient',function(){
         .upload('/upload',content.file)
         .spread(function(req,body){
           expect(body.files.file.sha1).to.equal(content.sha1)
+        })
+    })
+    it('should download a file',function(){
+      var sniff = new SHA1Stream()
+      var stream
+      return client
+        .download('/download')
+        .then(function(result){
+          stream = result
+          return promisePipe(stream,sniff)
+        })
+        .then(function(){
+          expect(sniff.sha1).to.equal(stream.sha1)
+          expect(sniff.sha1).to.equal(content.sha1)
         })
     })
   })

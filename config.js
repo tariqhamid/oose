@@ -14,7 +14,7 @@ config.$load({
   zone: 'localzone',
   host: os.hostname(),
   //storage
-  root: __dirname + '/root',
+  root: __dirname + '/data',
   //id generation
   shortid: {
     seed: '3123572'
@@ -67,6 +67,8 @@ config.$load({
     name: 'localstore',
     port: 3003,
     host: null,
+    username: 'oose',
+    password: 'oose',
     workers: {
       count: 1,
       maxConnections: 10000
