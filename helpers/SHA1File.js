@@ -18,7 +18,7 @@ glob = P.promisify(glob)
  * @param {string} ext  File extension
  * @return {string}
  */
-exports.from = function(sha1,ext){
+exports.toPath = function(sha1,ext){
   var file = basePath + '/'
   var parts = sha1.split('')
   for(var i = 1; i <= parts.length; i++){
@@ -40,7 +40,7 @@ exports.from = function(sha1,ext){
  * @param {string} file
  * @return {string}
  */
-exports.to = function(file){
+exports.fromPath = function(file){
   //remove root
   file = file.replace(basePath,'')
   //strip extension
@@ -67,7 +67,7 @@ exports.validate = function(sha1){
  */
 exports.find = function(sha1){
   if(!exports.validate(sha1)) return false
-  return glob(exports.from(sha1) + '.*')
+  return glob(exports.toPath(sha1) + '.*')
     .then(function(files){
       if(!files || !files.length) return false
       if(files.length > 1){

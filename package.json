@@ -42,6 +42,7 @@
     "node-password": "^1.0.2",
     "object-manage": "^0.8.0",
     "promisepipe": "^1.0.1",
+    "redis": "^0.12.1",
     "sequelize": "^2.0.0-rc2",
     "temp": "^0.8.1",
     "through2": "^0.6.3",

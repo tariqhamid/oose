@@ -54,7 +54,7 @@ exports.upload = function(req,res){
       promisePipe(file,sniff,writeStream)
         .then(function(){
           files[key].sha1 = sniff.sha1
-          files[key].file = SHA1File.from(
+          files[key].file = SHA1File.toPath(
             sniff.sha1,
             mime.extension(files[key].mimetype)
           )

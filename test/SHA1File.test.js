@@ -16,13 +16,13 @@ P.promisifyAll(fs)
 
 describe('SHA1File',function(){
   it('produce a path from sha1',function(){
-    expect(SHA1File.from(content.sha1,content.ext)).to.equal(destination)
+    expect(SHA1File.toPath(content.sha1,content.ext)).to.equal(destination)
   })
   it('should produce a sha1 from path',function(){
-    expect(SHA1File.to(destination)).to.equal(content.sha1)
+    expect(SHA1File.fromPath(destination)).to.equal(content.sha1)
   })
   it('should produce a short path without an extension',function(){
-    expect(SHA1File.from(content.sha1)).to.equal(
+    expect(SHA1File.toPath(content.sha1)).to.equal(
       destination.replace(/\.\w+$/,''))
   })
   it('should validate a sha1',function(){

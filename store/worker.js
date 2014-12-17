@@ -35,6 +35,7 @@ app.post('/content/remove',routes.content.remove)
 
 //content purchasing
 app.post('/purchase/create',routes.purchase.create)
+app.post('/purchase/find',routes.purchase.find)
 app.post('/purchase/update',routes.purchase.update)
 app.post('/purchase/remove',routes.purchase.remove)
 

@@ -85,4 +85,67 @@ describe('store',function(){
         })
     })
   })
+  describe('store:purchase',function(){
+    before(function(){
+      return client
+        .upload('/content/upload',content.file)
+        .spread(function(res,body){
+          expect(body.files.file.sha1).to.equal(content.sha1)
+        })
+    })
+    after(function(){
+      return client
+        .post('/content/remove',{sha1: content.sha1})
+        .spread(function(res,body){
+          expect(body.success).to.equal('File removed')
+        })
+    })
+    var purchase
+    it('should allow purchase of content',function(){
+      return client
+        .post('/purchase/create',{sha1: content.sha1})
+        .spread(function(res,body){
+          expect(body.success).to.equal('Purchase created')
+          expect(body.token.length).to.equal(64)
+          expect(body.path).to.be.a('string')
+          expect(body.ext).to.equal(content.ext)
+          expect(body.life).to.equal(21600)
+          purchase = {
+            token: body.token,
+            path: body.path,
+            ext: body.ext
+          }
+        })
+    })
+    it('should find a purchase',function(){
+      return client
+        .post('/purchase/find',{token: purchase.token})
+        .spread(function(res,body){
+          expect(body.token.length).to.equal(64)
+          expect(body.path).to.be.a('string')
+          expect(body.ext).to.equal(content.ext)
+          expect(+body.life).to.equal(21600)
+        })
+    })
+    it('should update a purchase',function(){
+      return client
+        .post('/purchase/update',{token: purchase.token, ext: 'mp3'})
+        .spread(function(req,body){
+          expect(body.token.length).to.equal(64)
+          expect(body.path).to.be.a('string')
+          expect(body.ext).to.equal('mp3')
+          expect(+body.life).to.equal(21600)
+        })
+    })
+    it('should remove a purchase',function(){
+      return client
+        .post('/purchase/update',{token: purchase.token, ext: content.ext})
+        .spread(function(){
+          return client.post('/purchase/remove',{token: purchase.token})
+        })
+        .spread(function(req,body){
+          expect(body.success).to.equal('Purchase removed')
+        })
+    })
+  })
 })
