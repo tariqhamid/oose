@@ -6,8 +6,8 @@ var mkdirp = require('mkdirp-then')
 var path = require('path')
 
 var content = require('./helpers/content')
-var purchasePath = require('../helpers/purchasePathNew')
-var sha1File = require('../helpers/sha1FileNew')
+var purchasePath = require('../helpers/purchasePath')
+var sha1File = require('../helpers/sha1File')
 
 var config = require('../config')
 
@@ -20,7 +20,7 @@ var testDest = path.resolve(config.root + '/purchased/' + testToken + '.mp4')
 P.promisifyAll(fs)
 
 describe('purchasePath',function(){
-  var filePath = sha1FileNew.toPath(content.sha1,content.ext)
+  var filePath = sha1File.toPath(content.sha1,content.ext)
   before(function(){
     return mkdirp(path.dirname(filePath))
       .then(function(){
@@ -31,22 +31,22 @@ describe('purchasePath',function(){
     return fs.unlinkAsync(filePath)
   })
   it('should generate a token',function(){
-    expect(purchasePathNew.generateToken().length).to.equal(64)
+    expect(purchasePath.generateToken().length).to.equal(64)
   })
   it('should produce a path from a token',function(){
-    expect(purchasePathNew.toPath(testToken,'mp4')).equal(testDest)
+    expect(purchasePath.toPath(testToken,'mp4')).equal(testDest)
   })
   it('should produce a token from a path',function(){
-    expect(purchasePathNew.fromPath(testDest)).to.equal(testToken)
+    expect(purchasePath.fromPath(testDest)).to.equal(testToken)
   })
   it('should fail to exist for non existent token',function(){
-    return purchasePathNew.exists(testToken,content.ext)
+    return purchasePath.exists(testToken,content.ext)
       .then(function(result){
         expect(result).to.equal(false)
       })
   })
   it('should create a purchase',function(){
-    return purchasePathNew.create(filePath)
+    return purchasePath.create(filePath)
       .then(function(result){
         purchase = result
         expect(purchase.token.length).to.equal(64)
@@ -55,22 +55,22 @@ describe('purchasePath',function(){
       })
   })
   it('should exist now',function(){
-    return purchasePathNew.exists(purchase.token,purchase.ext)
+    return purchasePath.exists(purchase.token,purchase.ext)
       .then(function(result){
         expect(result).to.equal(true)
       })
   })
   it('should remove a purchase',function(){
-    return purchasePathNew.remove(purchase.token,purchase.ext)
+    return purchasePath.remove(purchase.token,purchase.ext)
   })
   it('should no longer exist',function(){
-    return purchasePathNew.exists(purchase.token,purchase.ext)
+    return purchasePath.exists(purchase.token,purchase.ext)
       .then(function(result){
         expect(result).to.equal(false)
       })
   })
   it('should create a redis key',function(){
-    expect(purchasePathNew.redisKey(purchase.token)).to.equal(
+    expect(purchasePath.redisKey(purchase.token)).to.equal(
       'purchase:' + purchase.token)
   })
 })

@@ -3,9 +3,9 @@ var P = require('bluebird')
 var fs = require('graceful-fs')
 
 var NotFoundError = require('../../helpers/NotFoundError')
-var purchasePath = require('../../helpers/purchasePathNew')
+var purchasePath = require('../../helpers/purchasePath')
 var redis = require('../../helpers/redis')
-var sha1File = require('../../helpers/sha1FileNew')
+var sha1File = require('../../helpers/sha1File')
 var UserError = require('../../helpers/UserError')
 
 //make some promises
@@ -21,19 +21,19 @@ exports.create = function(req,res){
   var purchase
   var life = req.body.life || 21600 //6 hours
   //first check for the real file
-  sha1FileNew.find(req.body.sha1)
+  sha1File.find(req.body.sha1)
     .then(function(file){
       if(!file) throw new NotFoundError('File not found')
       if(file instanceof Array) throw new UserError('SHA1 is ambiguous')
-      return purchasePathNew.create(file)
+      return purchasePath.create(file)
     })
     .then(function(result){
       purchase = result
       purchase.life = life
-      return redis.hmsetAsync(purchasePathNew.redisKey(purchase.token),purchase)
+      return redis.hmsetAsync(purchasePath.redisKey(purchase.token),purchase)
     })
     .then(function(){
-      return redis.expire(purchasePathNew.redisKey(purchase.token),purchase.life)
+      return redis.expire(purchasePath.redisKey(purchase.token),purchase.life)
     })
     .then(function(){
       purchase.success = 'Purchase created'
@@ -56,7 +56,7 @@ exports.create = function(req,res){
  */
 exports.find = function(req,res){
   var token = req.body.token
-  redis.hgetallAsync(purchasePathNew.redisKey(token))
+  redis.hgetallAsync(purchasePath.redisKey(token))
     .then(function(result){
       if(!result) throw new UserError('Purchase not found')
       res.json(result)
@@ -74,7 +74,7 @@ exports.find = function(req,res){
  */
 exports.update = function(req,res){
   var token = req.body.token
-  var key = purchasePathNew.redisKey(token)
+  var key = purchasePath.redisKey(token)
   var purchase
   redis.hgetallAsync(key)
     .then(function(result){
@@ -103,13 +103,13 @@ exports.update = function(req,res){
  */
 exports.remove = function(req,res){
   var token = req.body.token
-  var key = purchasePathNew.redisKey(token)
+  var key = purchasePath.redisKey(token)
   var purchase
   redis.hgetallAsync(key)
     .then(function(result){
       if(!result) throw new UserError('Purchase not found')
       purchase = result
-      return purchasePathNew.remove(purchase.token,purchase.ext)
+      return purchasePath.remove(purchase.token,purchase.ext)
     })
     .then(function(){
       return redis.delAsync(key)
