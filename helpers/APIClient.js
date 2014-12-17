@@ -2,6 +2,7 @@
 var P = require('bluebird')
 var debug = require('debug')('APIClient')
 var fs = require('graceful-fs')
+var promisePipe = require('promisepipe')
 var request = require('request')
 
 var SHA1Stream = require('./SHA1Stream')
@@ -208,7 +209,34 @@ APIClient.prototype.download = function(path,data){
       })
       .pipe(sniff)
   })
+}
 
+
+/**
+ * Should put a readable stream
+ * @param {string} path
+ * @param {stream.Readable} readStream
+ * @return {P}
+ */
+APIClient.prototype.put = function(path,readStream){
+  var that = this
+  var options = {url: that.baseURL + path}
+  //add session if enabled
+  if(that.session.token) options.qs.token = that.session.token
+  //add basic auth if enabled
+  if(that.basicAuth.username || that.basicAuth.password){
+    options.auth = {
+      username: that.basicAuth.username,
+      password: that.basicAuth.password
+    }
+  }
+  return new P(function(resolve){
+    var sniff = new SHA1Stream()
+    promisePipe(readStream,sniff,request.put(options))
+      .then(function(){
+        resolve({sha1: sniff.sha1})
+      })
+  })
 }
 
 

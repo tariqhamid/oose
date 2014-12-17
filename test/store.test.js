@@ -1,6 +1,7 @@
 'use strict';
 var P = require('bluebird')
 var expect = require('chai').expect
+var fs = require('graceful-fs')
 var infant = require('infant')
 var promisePipe = require('promisepipe')
 var request = require('request')
@@ -13,6 +14,7 @@ var content = require('./helpers/content')
 var config = require('../config')
 
 //make some promises
+P.promisifyAll(fs)
 P.promisifyAll(infant)
 P.promisifyAll(request)
 
@@ -54,9 +56,12 @@ describe('store',function(){
   describe('store:content',function(){
     it('should upload content',function(){
       return client
-        .upload('/content/upload',content.file)
-        .spread(function(res,body){
-          expect(body.files.file.sha1).to.equal(content.sha1)
+        .put(
+          '/content/upload/' + content.sha1 + '.' + content.ext,
+          fs.createReadStream(content.file)
+        )
+        .then(function(result){
+          expect(result.sha1).to.equal(content.sha1)
         })
     })
     it('should download content',function(){
@@ -95,9 +100,12 @@ describe('store',function(){
   describe('store:purchase',function(){
     before(function(){
       return client
-        .upload('/content/upload',content.file)
-        .spread(function(res,body){
-          expect(body.files.file.sha1).to.equal(content.sha1)
+        .put(
+          '/content/upload/' + content.sha1 + '.' + content.ext,
+          fs.createReadStream(content.file)
+        )
+        .then(function(result){
+          expect(result.sha1).to.equal(content.sha1)
         })
     })
     after(function(){

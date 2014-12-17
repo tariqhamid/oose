@@ -1,7 +1,10 @@
 'use strict';
 var P = require('bluebird')
+var fs = require('graceful-fs')
 var glob = require('glob')
 var path = require('path')
+
+var UserError = require('../helpers/UserError')
 
 var config = require('../config')
 
@@ -79,4 +82,45 @@ exports.find = function(sha1){
       if(1 === files.length) return path.resolve(files[0])
       return false
     })
+}
+
+
+/**
+ * Get details from a filename with extension
+ * @param {file} file
+ * @return {P}
+ */
+exports.details = function(file){
+  var details
+  return P.try(function(){
+    var match = file.match(/^([a-f0-9]{40})\.(\w+)$/i)
+    if(3 !== match.length) throw new UserError('Failed to parse file name')
+    details = {
+      sha1: match[1],
+      ext: match[2]
+    }
+    if(!exports.validate(details.sha1))
+      throw new UserError('Invalid sha1 passed')
+    details.path = exports.toPath(details.sha1,details.ext)
+    return fs.statAsync(details.path)
+      .then(function(stat){
+        return stat
+      })
+      .catch(function(){
+        return false
+      })
+  })
+    .then(
+      function(result){
+        if(!result){
+          details.stat = {}
+          details.exists = false
+        }
+        else{
+          details.stat = result
+          details.exists = true
+        }
+        return details
+      }
+    )
 }

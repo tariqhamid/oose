@@ -97,6 +97,13 @@ app.post('/upload',function(req,res){
 app.post('/download',function(req,res){
   fs.createReadStream(content.file).pipe(res)
 })
+app.put('/put',function(req,res){
+  var sniff = new SHA1Stream()
+  promisePipe(req,sniff)
+    .then(function(){
+      res.json({sha1: sniff.sha1})
+    })
+})
 
 //protected routes
 app.use(basicAuth(config.basicAuth.username,config.basicAuth.password))
@@ -220,6 +227,14 @@ describe('APIClient',function(){
         .then(function(){
           expect(sniff.sha1).to.equal(stream.sha1)
           expect(sniff.sha1).to.equal(content.sha1)
+        })
+    })
+    it('should put a file',function(){
+      var readStream = fs.createReadStream(content.file)
+      return client
+        .put('/put',readStream)
+        .then(function(result){
+          expect(result.sha1).to.equal(content.sha1)
         })
     })
   })
