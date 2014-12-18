@@ -1,5 +1,6 @@
 'use strict';
 var P = require('bluebird')
+var basicAuth = require('basic-auth-connect')
 var bodyParser = require('body-parser')
 var express = require('express')
 var http = require('http')
@@ -33,11 +34,14 @@ app.post('/user/session/validate',routes.user.sessionValidate)
 app.post('/user/session/update',routes.user.sessionUpdate)
 
 //content functions
-app.post('/upload',routes.upload)
-app.post('/purchase',routes.purchase)
+app.post('/content/upload',routes.content.upload)
+app.post('/content/purchase',routes.content.purchase)
 
-//main content retrieval function
-app.get('/download/:sha1/:filename',routes.download)
+//protected routes
+app.use(basicAuth(config.prism.username,config.prism.password))
+
+//content
+app.post('/content/exists',routes.content.exists)
 
 
 /**

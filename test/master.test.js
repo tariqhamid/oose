@@ -58,7 +58,7 @@ describe('master',function(){
         })
         .spread(function(res,body){
           return P.all([
-            expect(body.success).to.equal('Store instance created'),
+            expect(body.success).to.equal('Prism instance created'),
             expect(body.id).to.be.greaterThan(0)
           ])
         })
@@ -81,7 +81,7 @@ describe('master',function(){
         })
         .spread(function(res,body){
           return P.all([
-            expect(body.success).to.equal('Store instance updated')
+            expect(body.success).to.equal('Prism instance updated')
           ])
         })
     })
@@ -100,7 +100,7 @@ describe('master',function(){
         .post('/prism/remove',{name: 'test'})
         .spread(function(res,body){
           return P.all([
-            expect(body.success).to.equal('Store instance removed'),
+            expect(body.success).to.equal('Prism instance removed'),
             expect(body.count).to.equal(1)
           ])
         })
@@ -121,7 +121,7 @@ describe('master',function(){
         })
         .spread(function(res,body){
           return P.all([
-            expect(body.success).to.equal('Store instance created'),
+            expect(body.success).to.equal('Prism instance created'),
             expect(body.id).to.be.greaterThan(0)
           ])
         })
@@ -131,7 +131,7 @@ describe('master',function(){
         .post('/prism/remove',{name: 'test'})
         .spread(function(res,body){
           return P.all([
-            expect(body.success).to.equal('Store instance removed')
+            expect(body.success).to.equal('Prism instance removed')
           ])
         })
     })

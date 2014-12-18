@@ -42,10 +42,12 @@ var APIClient = function(port,host,protocol){
 /**
  * Set session token
  * @param {object} session
+ * @return {APIClient}
  */
 APIClient.prototype.setSession = function(session){
   debug('setting session',session)
   this.session = session
+  return this
 }
 
 
@@ -53,11 +55,13 @@ APIClient.prototype.setSession = function(session){
  * Set basic auth
  * @param {string} username
  * @param {string} password
+ * @return {APIClient}
  */
 APIClient.prototype.setBasicAuth = function(username,password){
   debug('setting basic auth',username,password)
   this.basicAuth.username = username
   this.basicAuth.password = password
+  return this
 }
 
 

@@ -87,7 +87,7 @@ exports.start = function(done){
         }
       })
     })
-    .then(function(){
+    .spread(function(){
       done()
     })
     .catch(function(err){

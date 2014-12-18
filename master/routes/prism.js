@@ -9,7 +9,7 @@ var Prism = sequelize.models.Prism
 
 
 /**
- * Store list
+ * Prism list
  * @param {object} req
  * @param {object} res
  */
@@ -22,7 +22,7 @@ exports.list = function(req,res){
 
 
 /**
- * Store find
+ * Prism find
  * @param {object} req
  * @param {object} res
  */
@@ -40,7 +40,7 @@ exports.find = function(req,res){
 
 
 /**
- * Create Store
+ * Create Prism
  * @param {object} req
  * @param {object} res
  */
@@ -59,13 +59,13 @@ exports.create = function(req,res){
       })
     })
     .then(function(result){
-      res.json({success: 'Store instance created', id: result.id})
+      res.json({success: 'Prism instance created', id: result.id})
     })
     .catch(sequelize.ValidationError,function(err){
       res.json({error: sequelize.validationErrorToString(err)})
     })
     .catch(sequelize.UniqueConstraintError,function(){
-      res.json({error: 'Store instance already exists'})
+      res.json({error: 'Prism instance already exists'})
     })
     .catch(UserError,function(err){
       res.json({error: err.message})
@@ -92,7 +92,7 @@ exports.update = function(req,res){
       return result.save()
     })
     .then(function(){
-      res.json({success: 'Store instance updated'})
+      res.json({success: 'Prism instance updated'})
     })
     .catch(sequelize.ValidationError,function(err){
       res.json({error: sequelize.validationErrorToString(err)})
@@ -112,7 +112,7 @@ exports.remove = function(req,res){
   var data = req.body
   Prism.destroy({where: {name: data.name}})
     .then(function(count){
-      res.json({success: 'Store instance removed', count: count})
+      res.json({success: 'Prism instance removed', count: count})
     })
     .catch(UserError,function(err){
       res.json({error: err.message})

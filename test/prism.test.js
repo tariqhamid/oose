@@ -170,9 +170,17 @@ describe('prism',function(){
     it('should upload content',function(){
       client.setSession(user.session)
       return client
-        .upload('/upload',content.file)
+        .upload('/content/upload',content.file)
         .spread(function(res,body){
           expect(body.files.file.sha1).to.equal(content.sha1)
+        })
+    })
+    it.skip('should purchase content',function(){
+      client.setSession(user)
+      return client
+        .post('/content/purchase',{sha1: content.sha1})
+        .spread(function(res,body){
+          console.log(body)
         })
     })
   })
