@@ -10,6 +10,8 @@ var sha1File = require('../../helpers/sha1File')
 var SHA1Stream = require('../../helpers/SHA1Stream')
 var UserError = require('../../helpers/UserError')
 
+var config = require('../../config')
+
 //make some promises
 P.promisifyAll(fs)
 

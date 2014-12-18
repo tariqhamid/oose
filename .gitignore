@@ -2,13 +2,8 @@ node_modules
 .idea
 .nodemonignore
 supervise
-*.log
-log/*
-embed/views/*
-embed/public/*
 npm-debug.log
 tmp
 *.local.*
 /data
-/ssh
-/ssl
+/test/assets/data

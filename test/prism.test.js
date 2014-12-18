@@ -144,44 +144,4 @@ describe('prism',function(){
         })
     })
   })
-  describe('prism:content',function(){
-    beforeEach(function(){
-      return client
-        .post('/user/login',{username: user.username, password: user.password})
-        .spread(function(res,body){
-          if(!body.session) throw new Error('No session created')
-          user.session = body.session
-          return P.all([
-            expect(body.success).to.equal('User logged in'),
-            expect(body.session).to.be.an('Object')
-          ])
-        })
-    })
-    afterEach(function(){
-      client.setSession(user.session)
-      return client
-        .post('/user/logout')
-        .spread(function(res,body){
-          return P.all([
-            expect(body.success).to.equal('User logged out')
-          ])
-        })
-    })
-    it('should upload content',function(){
-      client.setSession(user.session)
-      return client
-        .upload('/content/upload',content.file)
-        .spread(function(res,body){
-          expect(body.files.file.sha1).to.equal(content.sha1)
-        })
-    })
-    it.skip('should purchase content',function(){
-      client.setSession(user)
-      return client
-        .post('/content/purchase',{sha1: content.sha1})
-        .spread(function(res,body){
-          console.log(body)
-        })
-    })
-  })
 })

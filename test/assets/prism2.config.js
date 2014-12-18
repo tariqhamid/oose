@@ -9,7 +9,7 @@ module.exports = {
   domain: 'oose-test',
   site: 'site1',
   zone: 'zone2',
-  root: '/data/test/prism2',
+  root: __dirname + '/data/test/prism2',
   store: {
     enabled: false,
     username: 'oose-store',

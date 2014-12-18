@@ -42,6 +42,9 @@ app.use(basicAuth(config.prism.username,config.prism.password))
 
 //content
 app.post('/content/exists',routes.content.exists)
+app.post('/content/existsLocal',routes.content.existsLocal)
+app.post('/content/download',routes.content.download)
+app.put('/content/put/:file',routes.content.put)
 
 
 /**

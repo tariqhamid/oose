@@ -55,22 +55,17 @@ describe('store',function(){
   //content
   describe('store:content',function(){
     it('should upload content',function(){
-      return client
-        .put(
-          '/content/upload/' + content.sha1 + '.' + content.ext,
-          fs.createReadStream(content.file)
-        )
-        .then(function(result){
-          expect(result.sha1).to.equal(content.sha1)
-        })
+      return promisePipe(
+        fs.createReadStream(content.file),
+        client.put('/content/upload/' + content.sha1 + '.' + content.ext)
+      )
     })
     it('should download content',function(){
       var sniff = new SHA1Stream()
-      return client
-        .download('/content/download',{sha1: content.sha1})
-        .then(function(stream){
-          return promisePipe(stream,sniff)
-        })
+      return promisePipe(
+        client.download('/content/download',{sha1: content.sha1}),
+        sniff
+      )
         .then(function(){
           expect(sniff.sha1).to.equal(content.sha1)
         })
@@ -99,14 +94,10 @@ describe('store',function(){
   })
   describe('store:purchase',function(){
     before(function(){
-      return client
-        .put(
-          '/content/upload/' + content.sha1 + '.' + content.ext,
-          fs.createReadStream(content.file)
-        )
-        .then(function(result){
-          expect(result.sha1).to.equal(content.sha1)
-        })
+      return promisePipe(
+        fs.createReadStream(content.file),
+        client.put('/content/upload/' + content.sha1 + '.' + content.ext)
+      )
     })
     after(function(){
       return client

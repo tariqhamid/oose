@@ -1,6 +1,6 @@
 'use strict';
 var P = require('bluebird')
-P.longStackTraces()
+//P.longStackTraces() //turn of for easier debugging
 var expect = require('chai').expect
 var infant = require('infant')
 var ObjectManage = require('object-manage')
@@ -9,14 +9,6 @@ var api = require('../helpers/api')
 var APIClient = require('../helpers/APIClient')
 var config = require('../config')
 var content = require('./helpers/content')
-
-
-/**
- * Override master
- * @type {APIClient}
- */
-api.master = new APIClient(config.master.port,'127.0.2.1')
-api.master.setBasicAuth('oose','fuckyou')
 
 var user = {
   session: {},
@@ -69,6 +61,15 @@ var clconf = {
   store4: getConfig(__dirname + '/assets/store4.config.js')
 }
 
+
+/**
+ * Override master
+ * @type {APIClient}
+ */
+api.master = new APIClient(clconf.master.master.port,clconf.master.master.host)
+api.master.setBasicAuth(
+  clconf.master.master.username,
+  clconf.master.master.password)
 
 //setup our mock cluster
 var masterServer = infant.parent('../master',{
@@ -276,9 +277,28 @@ describe('e2e',function(){
           expect(body.files.file.sha1).to.equal(content.sha1)
         })
     })
-    it('should show the content exists')
-    it('should have replicated the content at least once')
-    it('should allow API download of the content')
+    it('should show the content exists in 2 places',function(){
+      return api.prism(clconf.prism2.prism)
+        .post('/content/exists',{sha1: content.sha1})
+        .spread(function(res,body){
+          expect(body.sha1).to.equal(content.sha1)
+          expect(body.exists).to.equal(true)
+          expect(body.count).to.equal(2)
+          expect(body.map.prism1).to.be.an('object')
+          expect(body.map.prism1.exists).to.equal(true)
+          expect(Object.keys(body.map.prism1).length).to.equal(3)
+          expect(body.map.prism2).to.be.an('object')
+          expect(body.map.prism2.exists).to.equal(true)
+          expect(Object.keys(body.map.prism1).length).to.equal(3)
+        })
+    })
+    it('should allow API download of the content',function(){
+      return api.prism(clconf.prism1.prism)
+        .post('/content/download',{sha1: content.sha1})
+        .spread(function(res,body){
+          expect(body).to.equal(content.data)
+        })
+    })
     it('should allow purchase of the content')
     it('should accept a purchased URL on each prism and redirect to a store')
     it('should load balance between stores')

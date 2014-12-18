@@ -42,6 +42,7 @@ app.post('/prism/find',routes.prism.find)
 app.post('/prism/list',routes.prism.list)
 app.post('/prism/update',routes.prism.update)
 app.post('/prism/remove',routes.prism.remove)
+app.post('/prism/increment-hits',routes.prism.incrementHits)
 
 //store
 app.post('/store/create',routes.store.create)
@@ -49,6 +50,7 @@ app.post('/store/find',routes.store.find)
 app.post('/store/list',routes.store.list)
 app.post('/store/update',routes.store.update)
 app.post('/store/remove',routes.store.remove)
+app.post('/store/increment-hits',routes.store.incrementHits)
 
 //user
 app.post('/user/create',routes.user.create)

@@ -2,7 +2,6 @@
 var P = require('bluebird')
 var debug = require('debug')('APIClient')
 var fs = require('graceful-fs')
-var promisePipe = require('promisepipe')
 var request = require('request')
 
 var SHA1Stream = require('./SHA1Stream')
@@ -185,7 +184,7 @@ APIClient.prototype.upload = function(path,filepath,data){
  * Download content and respond with a stream
  * @param {string} path
  * @param {object} data
- * @return {P}
+ * @return {request}
  */
 APIClient.prototype.download = function(path,data){
   var that = this
@@ -199,30 +198,16 @@ APIClient.prototype.download = function(path,data){
       password: that.basicAuth.password
     }
   }
-  var sniff = new SHA1Stream()
-  return new P(function(resolve,reject){
-    request.post(options)
-      .on('error',function(e){
-        reject(e)
-      })
-      .on('response',function(res){
-        if(200 !== res.statusCode)
-          reject('Invalid response code (' + res.statusCode + ')')
-        else
-          resolve(sniff)
-      })
-      .pipe(sniff)
-  })
+  return request.post(options)
 }
 
 
 /**
  * Should put a readable stream
  * @param {string} path
- * @param {stream.Readable} readStream
- * @return {P}
+ * @return {request}
  */
-APIClient.prototype.put = function(path,readStream){
+APIClient.prototype.put = function(path){
   var that = this
   var options = {url: that.baseURL + path}
   //add session if enabled
@@ -234,13 +219,7 @@ APIClient.prototype.put = function(path,readStream){
       password: that.basicAuth.password
     }
   }
-  return new P(function(resolve){
-    var sniff = new SHA1Stream()
-    promisePipe(readStream,sniff,request.put(options))
-      .then(function(){
-        resolve({sha1: sniff.sha1})
-      })
-  })
+  return request.put(options)
 }
 
 

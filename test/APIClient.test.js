@@ -217,25 +217,13 @@ describe('APIClient',function(){
     })
     it('should download a file',function(){
       var sniff = new SHA1Stream()
-      var stream
-      return client
-        .download('/download')
-        .then(function(result){
-          stream = result
-          return promisePipe(stream,sniff)
-        })
+      return promisePipe(client.download('/download'),sniff)
         .then(function(){
-          expect(sniff.sha1).to.equal(stream.sha1)
           expect(sniff.sha1).to.equal(content.sha1)
         })
     })
     it('should put a file',function(){
-      var readStream = fs.createReadStream(content.file)
-      return client
-        .put('/put',readStream)
-        .then(function(result){
-          expect(result.sha1).to.equal(content.sha1)
-        })
+      return promisePipe(fs.createReadStream(content.file),client.put('/put'))
     })
   })
   describe('APIClient:sessions',function(){

@@ -9,7 +9,7 @@ module.exports = {
   domain: 'oose-test',
   site: 'site1',
   zone: 'zone1',
-  root: '/data/test/store1',
+  root: __dirname + '/data/test/store1',
   store: {
     enabled: true,
     host: '127.0.2.4',
