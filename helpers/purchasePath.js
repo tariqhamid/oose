@@ -65,18 +65,13 @@ exports.exists = function(token,ext){
 
 /**
  * Create a purchase path
+ * @param {string} token
  * @param {string} target
  * @return {P}
  */
-exports.create = function(target){
-  var token, tokenPath
+exports.create = function(token,target){
   var ext = path.extname(target).replace('.','')
-  var exists = true
-  while(exists){
-    token = exports.generateToken()
-    tokenPath = exports.toPath(token,ext)
-    exists = fs.existsSync()
-  }
+  var tokenPath = exports.toPath(token,ext)
   return mkdirp(path.dirname(tokenPath))
     .then(function(){
       return fs.symlinkAsync(target,tokenPath)

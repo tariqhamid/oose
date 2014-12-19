@@ -4,11 +4,14 @@ var P = require('bluebird')
 var expect = require('chai').expect
 var infant = require('infant')
 var ObjectManage = require('object-manage')
+var request = require('request')
+var url = require('url')
 
 var api = require('../helpers/api')
 var APIClient = require('../helpers/APIClient')
 var config = require('../config')
 var content = require('./helpers/content')
+var purchase
 
 var user = {
   session: {},
@@ -19,6 +22,7 @@ var user = {
 
 //make some promises
 P.promisifyAll(infant)
+P.promisifyAll(request)
 
 
 /**
@@ -299,10 +303,74 @@ describe('e2e',function(){
           expect(body).to.equal(content.data)
         })
     })
-    it('should allow purchase of the content')
-    it('should accept a purchased URL on each prism and redirect to a store')
-    it('should load balance between stores')
-    it('should expire purchases')
-    it('should allow removal of content')
+    it('should allow purchase of the content',function(){
+      return api.prism(clconf.prism2.prism)
+        .post('/content/purchase',{sha1: content.sha1, ip: '127.0.0.1'})
+        .spread(function(res,body){
+          expect(body.token.length).to.equal(64)
+          expect(body.ext).to.equal('txt')
+          expect(body.life).to.equal(21600)
+          expect(body.sha1).to.equal(content.sha1)
+          purchase = body
+        })
+    })
+    it('should accept a purchased URL and deliver content on prism1',function(){
+      var prism = clconf.prism1.prism
+      var options = {
+        url: 'http://' + prism.host + ':' + prism.port +
+          '/' + purchase.token + '/' + content.filename,
+        followRedirect: false
+      }
+      return request.getAsync(options)
+        .spread(function(res){
+          var uri = url.parse(res.headers.location)
+          var host = uri.host.split('.')
+          expect(host[0]).to.match(/^store\d{1}$/)
+          expect(host[1]).to.equal(clconf.prism1.domain)
+          expect(uri.pathname).to.equal(
+            '/' + purchase.token + '/' + content.filename)
+        })
+    })
+    it('should accept a purchased URL and deliver content on prism2',function(){
+      var prism = clconf.prism2.prism
+      var options = {
+        url: 'http://' + prism.host + ':' + prism.port +
+        '/' + purchase.token + '/' + content.filename,
+        followRedirect: false
+      }
+      return request.getAsync(options)
+        .spread(function(res){
+          var uri = url.parse(res.headers.location)
+          var host = uri.host.split('.')
+          expect(host[0]).to.match(/^store\d{1}$/)
+          expect(host[1]).to.equal(clconf.prism2.domain)
+          expect(uri.pathname).to.equal(
+            '/' + purchase.token + '/' + content.filename)
+        })
+    })
+    it('should deny a request from a bad ip',function(){
+      var prism = clconf.prism2.prism
+      var options = {
+        url: 'http://' + prism.host + ':' + prism.port +
+        '/' + purchase.token + '/' + content.filename,
+        followRedirect: false,
+        localAddress: '127.0.0.2'
+      }
+      return request.getAsync(options)
+        .spread(function(res,body){
+          body = JSON.parse(body)
+          expect(res.statusCode).to.equal(500)
+          expect(body.error).to.equal('Invalid IP')
+        })
+    })
+    it('should allow removal of purchases',function(){
+      return api.prism(clconf.prism2.prism)
+        .post('/content/remove',{token: purchase.token})
+        .spread(function(res,body){
+          expect(body.token).to.equal(purchase.token)
+          expect(body.count).to.equal(1)
+          expect(body.success).to.equal('Purchase removed')
+        })
+    })
   })
 })

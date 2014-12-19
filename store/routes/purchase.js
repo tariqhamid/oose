@@ -19,13 +19,15 @@ P.promisifyAll(fs)
  */
 exports.create = function(req,res){
   var purchase
+  var token = req.body.token || purchasePath.generateToken()
+  var sha1 = req.body.sha1
   var life = req.body.life || 21600 //6 hours
   //first check for the real file
-  sha1File.find(req.body.sha1)
+  sha1File.find(sha1)
     .then(function(file){
       if(!file) throw new NotFoundError('File not found')
       if(file instanceof Array) throw new UserError('SHA1 is ambiguous')
-      return purchasePath.create(file)
+      return purchasePath.create(token,file)
     })
     .then(function(result){
       purchase = result
@@ -107,7 +109,7 @@ exports.remove = function(req,res){
   var purchase
   redis.hgetallAsync(key)
     .then(function(result){
-      if(!result) throw new UserError('Purchase not found')
+      if(!result) return
       purchase = result
       return purchasePath.remove(purchase.token,purchase.ext)
     })

@@ -7,6 +7,7 @@
  */
 module.exports = {
   file: __dirname + '/../assets/test.txt',
+  filename: 'test.txt',
   data: 'The fox is brown',
   type: 'text/plain',
   ext: 'txt',

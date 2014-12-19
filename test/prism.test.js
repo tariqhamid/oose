@@ -7,6 +7,7 @@ var request = require('request')
 var APIClient = require('../helpers/APIClient')
 
 var content = require('./helpers/content')
+var purchase = require('./helpers/purchase')
 
 var config = require('../config')
 
@@ -67,6 +68,7 @@ describe('prism',function(){
   var client
   beforeEach(function(){
     client = new APIClient(config.prism.port,config.prism.host)
+    client.setBasicAuth(config.prism.username,config.prism.password)
   })
   //home page
   it('should have a homepage',function(){
@@ -141,6 +143,55 @@ describe('prism',function(){
           return P.all([
             expect(body.success).to.equal('User logged out')
           ])
+        })
+    })
+  })
+  describe('prism:purchase',function(){
+    it('should create a purchase',function(){
+      return client
+        .post('/purchase/create',{purchase: purchase})
+        .spread(function(res,body){
+          expect(body.token).to.equal(purchase.token)
+          expect(body.sha1).to.equal(purchase.sha1)
+          expect(body.ext).to.equal(purchase.ext)
+          expect(body.life).to.equal(purchase.life)
+          expect(body.created).to.be.a('number')
+          expect(body.map).to.be.an('object')
+        })
+    })
+    it('should find a purchase',function(){
+      return client
+        .post('/purchase/find',{token: purchase.token})
+        .spread(function(res,body){
+          expect(body.token).to.equal(purchase.token)
+          expect(body.sha1).to.equal(purchase.sha1)
+          expect(body.ext).to.equal(purchase.ext)
+          expect(body.life).to.equal(purchase.life)
+          expect(body.created).to.be.a('number')
+          expect(body.updated).to.be.a('number')
+          expect(body.map).to.be.an('object')
+        })
+    })
+    it('should update a purchase',function(){
+      return client
+        .post('/purchase/update',{token: purchase.token, life: 300})
+        .spread(function(res,body){
+          expect(body.token).to.equal(purchase.token)
+          expect(body.sha1).to.equal(purchase.sha1)
+          expect(body.ext).to.equal(purchase.ext)
+          expect(body.life).to.equal(300)
+          expect(body.created).to.be.a('number')
+          expect(body.updated).to.be.greaterThan(body.created)
+          expect(body.map).to.be.an('object')
+        })
+    })
+    it('should remove a purchase',function(){
+      return client
+        .post('/purchase/remove',{token: purchase.token})
+        .spread(function(res,body){
+          expect(body.token).to.equal(purchase.token)
+          expect(body.count).to.equal(1)
+          expect(body.success).to.equal('Purchase removed')
         })
     })
   })

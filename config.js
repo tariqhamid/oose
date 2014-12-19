@@ -56,6 +56,8 @@ config.$load({
     name: 'localprism',
     port: 3002,
     host: null,
+    username: 'oose',
+    password: 'oose',
     workers: {
       count: 1,
       maxConnections: 10000

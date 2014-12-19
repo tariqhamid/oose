@@ -10,6 +10,9 @@ module.exports = {
   site: 'site1',
   zone: 'zone2',
   root: __dirname + '/data/test/prism2',
+  redis: {
+    db: 1
+  },
   store: {
     enabled: false,
     username: 'oose-store',

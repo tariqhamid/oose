@@ -4,7 +4,6 @@ var debug = require('debug')('APIClient')
 var fs = require('graceful-fs')
 var request = require('request')
 
-var SHA1Stream = require('./SHA1Stream')
 var UserError = require('./UserError')
 
 //make some promises

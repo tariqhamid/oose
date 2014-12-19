@@ -46,10 +46,11 @@ describe('purchasePath',function(){
       })
   })
   it('should create a purchase',function(){
-    return purchasePath.create(filePath)
+    var token = purchasePath.generateToken()
+    return purchasePath.create(token,filePath)
       .then(function(result){
         purchase = result
-        expect(purchase.token.length).to.equal(64)
+        expect(purchase.token).to.equal(token)
         expect(purchase.path).to.be.a('string')
         expect(purchase.ext).to.equal(content.ext)
       })

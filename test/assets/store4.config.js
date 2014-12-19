@@ -10,6 +10,9 @@ module.exports = {
   site: 'site1',
   zone: 'zone2',
   root: __dirname + '/data/test/store4',
+  redis: {
+    db: 5
+  },
   store: {
     enabled: true,
     host: '127.0.2.7',

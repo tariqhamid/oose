@@ -1,4 +1,4 @@
 'use strict';
-var validate = require('validator')
+var purchasePath = require('./helpers/purchasePath')
 
-console.log(validate.isIP('127.0.0.1'))
+console.log(purchasePath.generateToken())

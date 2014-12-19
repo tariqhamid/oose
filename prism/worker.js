@@ -16,9 +16,12 @@ P.promisifyAll(server)
 
 //setup view enging
 app.set('trust proxy',true)
-
-//load middleware
 app.use(bodyParser.json())
+
+
+//--------------------
+//public routes
+//--------------------
 
 //home page
 app.post('/',routes.index)
@@ -36,15 +39,28 @@ app.post('/user/session/update',routes.user.sessionUpdate)
 //content functions
 app.post('/content/upload',routes.content.upload)
 app.post('/content/purchase',routes.content.purchase)
+app.post('/content/remove',routes.content.remove)
 
+//--------------------
 //protected routes
-app.use(basicAuth(config.prism.username,config.prism.password))
+//--------------------
+var auth = basicAuth(config.prism.username,config.prism.password)
 
 //content
-app.post('/content/exists',routes.content.exists)
-app.post('/content/existsLocal',routes.content.existsLocal)
-app.post('/content/download',routes.content.download)
-app.put('/content/put/:file',routes.content.put)
+app.post('/content/exists',auth,routes.content.exists)
+app.post('/content/existsLocal',auth,routes.content.existsLocal)
+app.post('/content/download',auth,routes.content.download)
+app.put('/content/put/:file',auth,routes.content.put)
+
+//purchases
+app.post('/purchase/create',auth,routes.purchase.create)
+app.post('/purchase/find',auth,routes.purchase.find)
+app.post('/purchase/update',auth,routes.purchase.update)
+app.post('/purchase/remove',auth,routes.purchase.remove)
+
+
+//main content retrieval route
+app.get('/:token/:filename',routes.content.deliver)
 
 
 /**

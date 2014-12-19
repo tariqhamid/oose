@@ -9,6 +9,9 @@ var temp = require('temp')
 var api = require('../../helpers/api')
 var NotFoundError = require('../../helpers/NotFoundError')
 var prismBalance = require('../../helpers/prismBalance')
+var promiseWhile = require('../../helpers/promiseWhile')
+var purchasePath = require('../../helpers/purchasePath')
+var redis = require('../../helpers/redis')
 var sha1File = require('../../helpers/sha1File')
 var SHA1Stream = require('../../helpers/SHA1Stream')
 var storeBalance = require('../../helpers/storeBalance')
@@ -142,46 +145,6 @@ exports.put = function(req,res){
 
 
 /**
- * Purchase content
- * @param {object} req
- * @param {object} res
- */
-exports.purchase = function(req,res){
-  P.try(function(){
-    var sha1 = req.body.sha1
-    if(!sha1File.validate(sha1))
-      throw new UserError('Invalid SHA1 passed for purchase')
-  })
-  res.json({error: 'Not implemented'})
-}
-
-
-/**
- * Download purchased content
- * @param {object} req
- * @param {object} res
- */
-exports.download = function(req,res){
-  var sha1 = req.body.sha1
-  api.prism(config.prism).post('/content/exists',{sha1: sha1})
-    .spread(function(res,body){
-      if(!body.exists) throw new NotFoundError('File not found')
-      return storeBalance.winnerFromExists(body)
-    })
-    .then(function(result){
-      api.store(result).download('/content/download',{sha1: sha1}).pipe(res)
-    })
-    .catch(NotFoundError,function(err){
-      res.status(404)
-      res.json({error: err.message})
-    })
-    .catch(UserError,function(err){
-      res.json({error: err.message})
-    })
-}
-
-
-/**
  * Check for existence across the platform
  * @param {object} req
  * @param {object} res
@@ -273,5 +236,229 @@ exports.existsLocal = function(req,res){
         map[row.store] = row.exists
       }
       res.json({exists: exists, count: count, map: map})
+    })
+}
+
+
+/**
+ * Download purchased content
+ * @param {object} req
+ * @param {object} res
+ */
+exports.download = function(req,res){
+  var sha1 = req.body.sha1
+  api.prism(config.prism).post('/content/exists',{sha1: sha1})
+    .spread(function(res,body){
+      if(!body.exists) throw new NotFoundError('File not found')
+      return storeBalance.winnerFromExists(body)
+    })
+    .then(function(result){
+      api.store(result).download('/content/download',{sha1: sha1}).pipe(res)
+    })
+    .catch(NotFoundError,function(err){
+      res.status(404)
+      res.json({error: err.message})
+    })
+    .catch(UserError,function(err){
+      res.json({error: err.message})
+    })
+}
+
+
+/**
+ * Purchase content
+ * @param {object} req
+ * @param {object} res
+ */
+exports.purchase = function(req,res){
+  var ip = req.body.ip || req.ip || '127.0.0.1'
+  var sha1 = req.body.sha1
+  var life = req.body.life || 21600 //6hrs
+  var token, map, purchase
+  P.try(function(){
+    if(!sha1File.validate(sha1))
+      throw new UserError('Invalid SHA1 passed for purchase')
+    return api.prism(config.prism).post('/content/exists',{sha1: sha1})
+  })
+    .spread(function(res,body){
+      map = body
+      if(!map.exists) throw new NotFoundError('File not found')
+      //really right here we need to generate a unique token (unique meaning
+      //not already in the redis registry for purchases since we already have
+      //a token then we should just try
+      var tokenExists = true
+      return promiseWhile(
+        function(){
+          return !!tokenExists
+        },
+        function(){
+          token = purchasePath.generateToken()
+          return redis.existsAsync(purchasePath.redisKey(token))
+            .then(function(result){
+              tokenExists = result
+            })
+        }
+      )
+    })
+    .then(function(){
+      //now we know our token so register it on the store instances
+      //this means iterating the existence map
+      return storeBalance.populateStores(storeBalance.existsToArray(map))
+    })
+    .then(function(stores){
+      var createPurchase = function(store){
+        var client = api.store(store)
+        return client
+          .post('/purchase/remove',{token: token})
+          .spread(function(){
+            return client.post('/purchase/create',{
+              sha1: sha1,
+              token: token,
+              life: life
+            })
+          })
+      }
+      var promises = []
+      for(var i = 0; i < stores.length; i++){
+        promises.push(createPurchase(stores[i]))
+      }
+      return P.all(promises)
+        .then(function(results){
+          var ext
+          for(var i = 0; i < results.length; i++){
+            if(!ext && results[i][1] && results[i][1].ext){
+              ext = results[i][1].ext
+              break
+            }
+          }
+          return ext
+        })
+    })
+    .then(function(ext){
+      //now create our purchase object
+      purchase = {
+        sha1: sha1,
+        life: life,
+        token: token,
+        map: map,
+        ext: ext,
+        ip: ip
+      }
+      //okay so the purchase is registered on all our stores, time to register
+      //it to all the prisms
+      return api.master.post('/prism/list')
+    })
+    .spread(function(res,body){
+      var createPurchase = function(prism){
+        var client = api.prism(prism)
+        return client
+          .post('/purchase/remove',{token: token})
+          .spread(function(){
+            return client.post('/purchase/create',{purchase: purchase})
+          })
+      }
+      var prismList = body.prism
+      var promises = []
+      for(var i = 0; i < prismList.length; i++){
+        promises.push(createPurchase(prismList[i]))
+      }
+      return P.all(promises)
+    })
+    .then(function(){
+      res.json(purchase)
+    })
+    .catch(NotFoundError,function(err){
+      res.status(404)
+      res.json({error: err})
+    })
+    .catch(UserError,function(err){
+      res.json({error: err})
+    })
+}
+
+
+/**
+ * Content delivery
+ * @param {object} req
+ * @param {object} res
+ */
+exports.deliver = function(req,res){
+  var token = req.params.token
+  var filename = req.params.filename
+  var redisKey = purchasePath.redisKey(token)
+  var purchase
+  redis.getAsync(redisKey)
+    .then(function(result){
+      if(!result) throw new NotFoundError('Purchase not found')
+      purchase = JSON.parse(result)
+      if(purchase.ip !== req.ip) throw new UserError('Invalid IP')
+      //we have a purchase so now... we need to pick a store....
+      return storeBalance.winnerFromExists(purchase.map)
+    })
+    .then(function(result){
+      var url = 'http://' + result.name + '.' + config.domain +
+        '/' + token + '/' + filename
+      res.redirect(302,url)
+    })
+    .catch(SyntaxError,function(err){
+      res.status(500)
+      res.json({error: 'Failed to parse purchase: ' + err.message})
+    })
+    .catch(NotFoundError,function(err){
+      res.status(404)
+      res.json({error: err.message})
+    })
+    .catch(UserError,function(err){
+      res.status(500)
+      res.json({error: err.message})
+    })
+}
+
+
+/**
+ * Remove purchase cluster wide
+ * @param {object} req
+ * @param {object} res
+ */
+exports.remove = function(req,res){
+  var token = req.body.token
+  var redisKey = purchasePath.redisKey(token)
+  var prismList
+  var purchase
+  redis.getAsync(redisKey)
+    .then(function(result){
+      if(!result){
+        res.json({token: token, count: 0, succes: 'Purchase removed'})
+      } else {
+        purchase = JSON.parse(result)
+        return storeBalance.populateStores(
+          storeBalance.existsToArray(purchase.map)
+        )
+      }
+    })
+    .then(function(stores){
+      var promises = []
+      for(var i = 0; i < stores.length; i++){
+        promises.push(
+          api.store(stores[i]).post('/purchase/remove',{token: token})
+        )
+      }
+      return P.all(promises)
+    })
+    .then(function(){
+      return api.master.post('/prism/list')
+    })
+    .spread(function(res,body){
+      prismList = body.prism
+      var promises = []
+      for(var i = 0; i < prismList.length; i++){
+        promises.push(
+          api.prism(prismList[i]).post('/purchase/remove',{token: token})
+        )
+      }
+      return P.all(promises)
+    })
+    .then(function(){
+      res.json({token: token, count: 1, success: 'Purchase removed'})
     })
 }

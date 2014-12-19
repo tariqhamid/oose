@@ -38,35 +38,69 @@ exports.winner = function(storeList,skip){
 
 
 /**
- * Take the result of an existence check and pick a winner
+ * Take an existence map and turn it into an array of store instances
  * @param {object} exists
  * @param {Array} skip
- * @return {P}
+ * @return {Array}
  */
-exports.winnerFromExists = function(exists,skip){
+exports.existsToArray = function(exists,skip){
   if(!(skip instanceof Array)) skip = []
   var i, k
-  var candidates = []
-  var promises = []
-  var prism, store, sk, winner
+  var stores = []
+  var prism, store, sk
   var pk = Object.keys(exists.map)
   for(i = 0; i < pk.length; i++){
     prism = exists.map[pk[i]]
     sk = Object.keys(prism.map)
     for(k = 0; k < sk.length; k++){
       store = prism.map[sk[k]]
-      if(store && -1 === skip.indexOf(sk[k])) candidates.push(sk[k])
+      if(store && -1 === skip.indexOf(sk[k])) stores.push(sk[k])
     }
   }
-  if(!candidates.length) throw new NotFoundError('No store candidates found')
-  for(i = 0; i < candidates.length; i++){
-    promises.push(api.master.post('/store/find',{name: candidates[i]}))
+  return stores
+}
+
+
+/**
+ * Populate stores from array of names
+ * @param {Array} stores
+ * @return {P}
+ */
+exports.populateStores = function(stores){
+  var result = []
+  var populate = function(res,body){
+    result.push(body)
+  }
+  var promises = []
+  var store
+  for(var i = 0; i < stores.length; i++){
+    store = stores[i]
+    promises.push(
+      api.master.post('/store/find',{name: store}).spread(populate)
+    )
   }
   return P.all(promises)
+    .then(function(){
+      return result
+    })
+}
+
+
+/**
+ * Take the result of an existence check and pick a winner
+ * @param {object} exists
+ * @param {Array} skip
+ * @return {P}
+ */
+exports.winnerFromExists = function(exists,skip){
+  var candidates = exports.existsToArray(exists,skip)
+  var winner
+  if(!candidates.length) throw new NotFoundError('No store candidates found')
+  return exports.populateStores(candidates)
     .then(function(results){
       var store
       for(var i = 0; i < results.length; i++){
-        store = results[i][1]
+        store = results[i]
         if(!winner){
           winner = store
           continue
