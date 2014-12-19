@@ -1,20 +1,19 @@
 'use strict';
 var program = require('commander')
-var debug = require('debug')('oose:master')
+var debug = require('debug')('oose:main')
 var fs = require('graceful-fs')
 var Child = require('infant').Child
 var lifecycle = new (require('infant').Lifecycle)()
-var mkdirp = require('mkdirp')
+var mkdirp = require('mkdirp-then')
 
 var Logger = require('./helpers/logger')
 var logger = Logger.create('main')
 
 var child = Child.parent
 
-var clone = child('./clone')
-var ooseImport = child('./import')
+var master = child('./master')
 var prism = child('./prism')
-var shredder = child('./shredder')
+var store = child('./store')
 
 var config = require('./config')
 
@@ -32,7 +31,7 @@ program
 
 //set log verbosity
 debug('setting up console logging with level',+program.verbose)
-Logger.consoleFilter.setConfig({level: (+program.verbose || 0) + 4})
+Logger.consoleFilter.setConfig({level: (+program.verbose || 2) + 4})
 
 //setup lifecycle logging
 lifecycle.on('start',function(item){
@@ -60,32 +59,32 @@ lifecycle.add(
     fs.exists(root,function(exists){
       if(exists) return next()
       debug('creating root folder')
-      mkdirp(root,next)
+      mkdirp(root).then(function(){next()},next)
     })
   }
 )
 
 
 /**
- * Import
+ * Master
  */
-if(config.store.enabled){
+if(config.master.enabled){
   lifecycle.add(
-    'import',
+    'master',
     function(next){
-      ooseImport.start(next)
+      master.start(next)
     },
     function(next){
-      ooseImport.stop(next)
+      master.stop(next)
     }
   )
 }
 
 
 /**
- * Store
+ * Prism
  */
-if(config.lg.enabled){
+if(config.prism.enabled){
   lifecycle.add(
     'prism',
     function(next){
@@ -99,39 +98,23 @@ if(config.lg.enabled){
 
 
 /**
- * Clone receiver
+ * Store
  */
 if(config.store.enabled){
   lifecycle.add(
-    'clone',
+    'store',
     function(next){
-      clone.start(next)
+      store.start(next)
     },
     function(next){
-      clone.stop(next)
+      store.stop(next)
     }
   )
 }
 
 
 /**
- * Shredder
- */
-if(config.shredder.enabled){
-  lifecycle.add(
-    'shredder',
-    function(next){
-      shredder.start(next)
-    },
-    function(next){
-      shredder.stop(next)
-    }
-  )
-}
-
-
-/**
- * Start master
+ * Start main
  * @param {function} done
  */
 exports.start = function(done){
@@ -159,14 +142,13 @@ exports.stop = function(done){
 }
 
 if(require.main === module){
-  var master = exports
   Child.child(
-    'oose:' + config.locale.id + ':master',
+    'oose:' + config.host + ':main',
     function(done){
-      master.start(done)
+      exports.start(done)
     },
     function(done){
-      master.stop(done)
+      exports.stop(done)
     }
   )
 }
