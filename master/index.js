@@ -7,14 +7,14 @@ var config = require('../config')
 
 if(require.main === module){
   child(
-    'oose:' + config.prism.name + ':master',
+    'oose:' + config.master.name + ':master',
     function(done){
       cluster = clusterSetup(
         './worker',
         {
           enhanced: true,
-          count: config.prism.workers.count,
-          maxConnections: config.prism.workers.maxConnections
+          count: config.master.workers.count,
+          maxConnections: config.master.workers.maxConnections
         }
       )
       cluster.start(function(err){

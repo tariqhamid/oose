@@ -1,23 +1,13 @@
 'use strict';
-var fs = require('graceful-fs')
-var mkdirp = require('mkdirp')
 var util = require('util')
-
-//make sure the log folder exists
-if(!fs.existsSync('./log')) mkdirp.sync('./log')
 
 //setup logger
 var logger = require('caterpillar').createLogger({lineOffset: 2})
-var fileFilter = require('caterpillar-filter').createFilter({level: 5})
 var consoleFilter = require('caterpillar-filter').createFilter({level: 6})
-var fileLog = fs.createWriteStream(__dirname + '/../log/oose.log')
 var human = require('caterpillar-human').createHuman({colors: {7: 'magenta'}})
 
 //log to console
 logger.pipe(consoleFilter).pipe(human).pipe(process.stdout)
-
-//log to file
-logger.pipe(fileFilter).pipe(fileLog)
 
 //add item to beginning of arguments object and convert to array
 var unshift = function(args,value){
@@ -144,13 +134,7 @@ Logger.consoleFilter = consoleFilter
 
 
 /**
- * File Filter
- */
-Logger.fileFilter = fileFilter
-
-
-/**
  * Export module
- * @type {exports.Logger}
+ * @type {object}
  */
 module.exports = Logger

@@ -1,5 +1,0 @@
-#!/bin/sh
-BASE=`pwd`
-cd /opt/oose
-exec 2>&1
-exec envuidgid node envdir ${BASE}/env node app -vv
