@@ -319,10 +319,12 @@ describe('e2e',function(){
       var options = {
         url: 'http://' + prism.host + ':' + prism.port +
           '/' + purchase.token + '/' + content.filename,
-        followRedirect: false
+        followRedirect: false,
+        localAddress: '127.0.0.1'
       }
       return request.getAsync(options)
         .spread(function(res){
+          expect(res.statusCode).to.equal(302)
           var uri = url.parse(res.headers.location)
           var host = uri.host.split('.')
           expect(host[0]).to.match(/^store\d{1}$/)
@@ -336,10 +338,12 @@ describe('e2e',function(){
       var options = {
         url: 'http://' + prism.host + ':' + prism.port +
         '/' + purchase.token + '/' + content.filename,
-        followRedirect: false
+        followRedirect: false,
+        localAddress: '127.0.0.1'
       }
       return request.getAsync(options)
         .spread(function(res){
+          expect(res.statusCode).to.equal(302)
           var uri = url.parse(res.headers.location)
           var host = uri.host.split('.')
           expect(host[0]).to.match(/^store\d{1}$/)
