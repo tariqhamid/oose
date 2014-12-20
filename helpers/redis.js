@@ -3,6 +3,7 @@ var P = require('bluebird')
 var redis = require('redis')
 
 var logger = require('../helpers/logger').create('redis')
+var RedisSchema = require('../helpers/RedisSchema')
 
 var config = require('../config')
 
@@ -45,6 +46,13 @@ client.removeKeysPattern = function(pattern){
       return removed
     })
 }
+
+
+/**
+ * Add schema to helper
+ * @type {RedisSchema}
+ */
+client.schema = new RedisSchema(config.redis.prefix)
 
 
 /**

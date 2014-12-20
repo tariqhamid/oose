@@ -4,6 +4,7 @@ var debug = require('debug')('APIClient')
 var fs = require('graceful-fs')
 var request = require('request')
 
+var NetworkError = require('./NetworkError')
 var UserError = require('./UserError')
 
 //make some promises
@@ -111,6 +112,11 @@ APIClient.prototype.get = function(path,data){
       that.validateResponse('GET',path,res,body)
       return [res,body]
     })
+    .catch(Error,function(err){
+      if(err.message.match('connect'))
+        throw new NetworkError(err.message)
+      else throw err
+    })
 }
 
 
@@ -140,6 +146,11 @@ APIClient.prototype.post = function(path,data){
       debug('<---- POST RES ',options,body)
       that.validateResponse('POST',path,res,body)
       return [res,body]
+    })
+    .catch(Error,function(err){
+      if(err.message.match('connect'))
+        throw new NetworkError(err.message)
+      else throw err
     })
 }
 
@@ -178,6 +189,11 @@ APIClient.prototype.upload = function(path,filepath,data){
       debug('<---- UPLOAD RES',options,body)
       that.validateResponse('UPLOAD',path,res,body)
       return [res,body]
+    })
+    .catch(Error,function(err){
+      if(err.message.match('connect'))
+        throw new NetworkError(err.message)
+      else throw err
     })
 }
 

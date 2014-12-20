@@ -41,7 +41,7 @@ module.exports = function(req,res,next){
             throw new UserError('Invalid session')
           cache[token] = {
             session: body.session,
-            expires: +new Date() + (config.prism.userSessionCache * 1000)
+            expires: +new Date() + (config.prism.cache.userSession * 1000)
           }
           return cache[token].session
         })

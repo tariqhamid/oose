@@ -7,32 +7,36 @@ var redis = require('../helpers/redis')
 
 var config = require('../config')
 
-var cache = {}
-
 
 /**
  * Get list of prisms and cache the result
  * @return {P}
  */
 exports.prismList = function(){
-  if(cache.expires >= +new Date()){
-    debug('cache hit','prism list')
-    return new P(function(resolve){
-      process.nextTick(function(){
-        resolve(cache.prism)
-      })
+  var prismList
+  return redis.getAsync(redis.schema.prismList())
+    .then(function(result){
+      if(!result){
+        debug('cache miss',redis.schema.prismList())
+        return api.master.post('/prism/list')
+          .spread(function(res,body){
+            prismList = body.prism
+            return redis.setAsync(
+              redis.schema.prismList(),JSON.stringify(prismList))
+          })
+          .then(function(){
+            return redis.expireAsync(
+              redis.schema.prismList(),config.prism.cache.prismList)
+          })
+          .then(function(){
+            return prismList
+          })
+      } else {
+        debug('cache hit',redis.schema.prismList())
+        prismList = JSON.parse(result)
+        return prismList
+      }
     })
-  } else {
-    debug('cache miss','prism list')
-    return api.master.post('/prism/list')
-      .spread(function(res,body){
-        cache = {
-          prism: body.prism,
-          expires: +new Date() + (config.prism.prismCache * 1000)
-        }
-        return cache.prism
-      })
-  }
 }
 
 
@@ -43,19 +47,15 @@ exports.prismList = function(){
  * @return {Array}
  */
 exports.populateHits = function(token,prismList){
-  var populate = function(prism){
-    return function(hits){
-      prism.hits = +hits
-    }
-  }
   var promises = []
-  var prism
-  for(var i = 0; i < prismList.length; i++){
-    prism = prismList[i]
+  prismList.forEach(function(prism){
     promises.push(
-      redis.getAsync('hits:' + token + ':prism:' + prism.name)
-        .then(populate(prism)))
-  }
+      redis.getAsync(redis.schema.prismHits(token,prism.name))
+        .then(function(hits){
+          prism.hits = +hits
+        })
+    )
+  })
   return P.all(promises)
     .then(function(){
       return prismList
@@ -88,9 +88,42 @@ exports.winner = function(token,prismList,skip){
           winner = prism
         }
       }
-      return redis.incrAsync('hits:' + token + ':prism:' + winner.name)
+      return redis.incrAsync(redis.schema.prismHits(token,prism.name))
     })
     .then(function(){
       return winner
+    })
+}
+
+
+/**
+ * Check existenced of a SHA1 (cached)
+ * @param {string} sha1
+ * @return {P}
+ */
+exports.contentExists = function(sha1){
+  var contentExists
+  return redis.getAsync(redis.schema.contentExists(sha1))
+    .then(function(result){
+      if(!result){
+        debug('cache miss, contentExists',sha1)
+        return api.prism(config.prism).post('/content/exists',{sha1: sha1})
+          .spread(function(res,body){
+            contentExists = body
+            return redis.setAsync(
+              redis.schema.contentExists(sha1),JSON.stringify(contentExists))
+          })
+          .then(function(){
+            return redis.expireAsync(
+              redis.schema.contentExists(sha1),config.prism.contentExistsCache)
+          })
+          .then(function(){
+            return contentExists
+          })
+      } else {
+        debug('cache  hit, contentExists',sha1)
+        contentExists = JSON.parse(result)
+        return contentExists
+      }
     })
 }

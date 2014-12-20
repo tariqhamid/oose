@@ -10,6 +10,7 @@ var url = require('url')
 var api = require('../helpers/api')
 var APIClient = require('../helpers/APIClient')
 var content = require('./helpers/content')
+var NetworkError = require('../helpers/NetworkError')
 var UserError = require('../helpers/UserError')
 
 var config = require('../config')
@@ -101,12 +102,100 @@ var storeServer4 = infant.parent('../store',{
   fork: { env: makeEnv(__dirname + '/assets/store4.config.js') }
 })
 
+//lets make sure these processes are killed
+process.on('exit',function(){
+  masterServer.kill()
+  prismServer1.kill()
+  prismServer2.kill()
+  storeServer1.kill()
+  storeServer2.kill()
+  storeServer3.kill()
+  storeServer4.kill()
+})
+
+//reusable tests
+var uploadContent = function(prism){
+  return function(){
+    return api.prism(prism.prism).setSession(user.session)
+      .upload('/content/upload',content.file)
+      .spread(function(res,body){
+        expect(body.files.file.sha1).to.equal(content.sha1)
+      })
+  }
+}
+
+var contentExists = function(prism){
+  return function(){
+    return api.prism(prism.prism).setSession(user.session)
+      .post('/content/exists',{sha1: content.sha1})
+      .spread(function(res,body){
+        expect(body.sha1).to.equal(content.sha1)
+        expect(body.exists).to.equal(true)
+        expect(body.count).to.equal(2)
+        expect(body.map.prism1).to.be.an('object')
+        expect(body.map.prism1.exists).to.equal(true)
+        expect(Object.keys(body.map.prism1).length).to.equal(3)
+        expect(body.map.prism2).to.be.an('object')
+        expect(body.map.prism2.exists).to.equal(true)
+        expect(Object.keys(body.map.prism1).length).to.equal(3)
+      })
+  }
+}
+
+var purchaseContent = function(prism){
+  return function(){
+    return api.prism(prism.prism).setSession(user.session)
+      .post('/content/purchase',{sha1: content.sha1, ip: '127.0.0.1'})
+      .spread(function(res,body){
+        expect(body.token.length).to.equal(64)
+        expect(body.ext).to.equal('txt')
+        expect(body.life).to.equal(21600)
+        expect(body.sha1).to.equal(content.sha1)
+        purchase = body
+      })
+  }
+}
+
+var deliverContent = function(prism){
+  return function(){
+    var options = {
+      url: 'http://' + prism.prism.host + ':' + prism.prism.port +
+      '/' + purchase.token + '/' + content.filename,
+      followRedirect: false,
+      localAddress: '127.0.0.1'
+    }
+    return request.getAsync(options)
+      .spread(function(res){
+        expect(res.statusCode).to.equal(302)
+        var uri = url.parse(res.headers.location)
+        var host = uri.host.split('.')
+        expect(host[0]).to.match(/^store\d{1}$/)
+        expect(host[1]).to.equal(prism.domain)
+        expect(uri.pathname).to.equal(
+          '/' + purchase.token + '/' + content.filename)
+      })
+  }
+}
+
+var downloadContent = function(prism){
+  return function(){
+    return api.prism(prism.prism).setSession(user.session)
+      .post('/content/download',{sha1: content.sha1})
+      .spread(function(res,body){
+        expect(body).to.equal(content.data)
+      })
+  }
+}
+
+
+
 describe('e2e',function(){
   describe('e2e:prism',function(){
     //spin up an entire cluster here
     this.timeout(10000)
     //start servers and create a user
     before(function(){
+      console.log('Starting mock cluster....')
       return P.all([
         masterServer.startAsync(),
         prismServer1.startAsync(),
@@ -165,6 +254,9 @@ describe('e2e',function(){
               }
               return P.all(promises)
             })
+            .then(function(){
+              console.log('Mock cluster started!')
+            })
             .catch(function(err){
               console.trace(err)
             })
@@ -172,6 +264,7 @@ describe('e2e',function(){
     })
     //remove user and stop services
     after(function(){
+      console.log('Stopping mock cluster...')
       return P.try(function(){
         //remove stores
         var promises = []
@@ -210,6 +303,9 @@ describe('e2e',function(){
             prismServer1.stopAsync(),
             masterServer.stopAsync()
           ])
+        })
+        .then(function(){
+          console.log('Mock cluster stopped!')
         })
         .catch(function(err){
           console.trace(err)
@@ -271,7 +367,8 @@ describe('e2e',function(){
           expect(body.pong).to.equal('pong')
           return client.post('/user/login')
         })
-        .spread(function(){
+        .spread(function(res,body){
+          console.log(body)
           throw new Error('Should have thrown an error for no username')
         })
         .catch(UserError,function(err){
@@ -331,84 +428,24 @@ describe('e2e',function(){
           expect(body.success).to.equal('User logged out')
         })
     })
-    it('should upload content',function(){
-      return api.prism(clconf.prism1.prism).setSession(user.session)
-        .upload('/content/upload',content.file)
-        .spread(function(res,body){
-          expect(body.files.file.sha1).to.equal(content.sha1)
-        })
-    })
-    it('should show the content exists in 2 places',function(){
-      return api.prism(clconf.prism2.prism).setSession(user.session)
-        .post('/content/exists',{sha1: content.sha1})
-        .spread(function(res,body){
-          expect(body.sha1).to.equal(content.sha1)
-          expect(body.exists).to.equal(true)
-          expect(body.count).to.equal(2)
-          expect(body.map.prism1).to.be.an('object')
-          expect(body.map.prism1.exists).to.equal(true)
-          expect(Object.keys(body.map.prism1).length).to.equal(3)
-          expect(body.map.prism2).to.be.an('object')
-          expect(body.map.prism2.exists).to.equal(true)
-          expect(Object.keys(body.map.prism1).length).to.equal(3)
-        })
-    })
-    it('should allow API download of the content',function(){
-      return api.prism(clconf.prism1.prism).setSession(user.session)
-        .post('/content/download',{sha1: content.sha1})
-        .spread(function(res,body){
-          expect(body).to.equal(content.data)
-        })
-    })
-    it('should allow purchase of the content',function(){
-      return api.prism(clconf.prism2.prism).setSession(user.session)
-        .post('/content/purchase',{sha1: content.sha1, ip: '127.0.0.1'})
-        .spread(function(res,body){
-          expect(body.token.length).to.equal(64)
-          expect(body.ext).to.equal('txt')
-          expect(body.life).to.equal(21600)
-          expect(body.sha1).to.equal(content.sha1)
-          purchase = body
-        })
-    })
-    it('should accept a purchased URL and deliver content on prism1',function(){
-      var prism = clconf.prism1.prism
-      var options = {
-        url: 'http://' + prism.host + ':' + prism.port +
-          '/' + purchase.token + '/' + content.filename,
-        followRedirect: false,
-        localAddress: '127.0.0.1'
-      }
-      return request.getAsync(options)
-        .spread(function(res){
-          expect(res.statusCode).to.equal(302)
-          var uri = url.parse(res.headers.location)
-          var host = uri.host.split('.')
-          expect(host[0]).to.match(/^store\d{1}$/)
-          expect(host[1]).to.equal(clconf.prism1.domain)
-          expect(uri.pathname).to.equal(
-            '/' + purchase.token + '/' + content.filename)
-        })
-    })
-    it('should accept a purchased URL and deliver content on prism2',function(){
-      var prism = clconf.prism2.prism
-      var options = {
-        url: 'http://' + prism.host + ':' + prism.port +
-        '/' + purchase.token + '/' + content.filename,
-        followRedirect: false,
-        localAddress: '127.0.0.1'
-      }
-      return request.getAsync(options)
-        .spread(function(res){
-          expect(res.statusCode).to.equal(302)
-          var uri = url.parse(res.headers.location)
-          var host = uri.host.split('.')
-          expect(host[0]).to.match(/^store\d{1}$/)
-          expect(host[1]).to.equal(clconf.prism2.domain)
-          expect(uri.pathname).to.equal(
-            '/' + purchase.token + '/' + content.filename)
-        })
-    })
+
+    it('should upload content',uploadContent(clconf.prism1))
+
+    it('should show the content exists in 2 places',
+      contentExists(clconf.prism1))
+
+    it('should allow API download of the content',
+      downloadContent(clconf.prism1))
+
+    it('should allow purchase of the content',
+      purchaseContent(clconf.prism1))
+
+    it('should accept a purchased URL and deliver content on prism1',
+      deliverContent(clconf.prism1))
+
+    it('should accept a purchased URL and deliver content on prism2',
+      deliverContent(clconf.prism2))
+
     it('should deny a request from a bad ip',function(){
       var prism = clconf.prism2.prism
       var options = {
@@ -432,6 +469,75 @@ describe('e2e',function(){
           expect(body.count).to.equal(1)
           expect(body.success).to.equal('Purchase removed')
         })
+    })
+    describe('master down',function(){
+      before(function(){
+        return uploadContent(clconf.prism1)()
+          .then(function(){
+            return masterServer.stopAsync()
+          })
+      })
+      after(function(){
+        return masterServer.startAsync()
+          .then(function(){
+          })
+      })
+      it('master should be down',function(){
+        return api.master.post('/ping')
+          .then(function(){
+            throw new Error('Master not down')
+          })
+          .catch(NetworkError,function(err){
+            expect(err.message).to.equal('connect ECONNREFUSED')
+          })
+      })
+      it('should still purchase content',purchaseContent(clconf.prism1))
+      it('should still deliver content',deliverContent(clconf.prism1))
+      it('should still download content',downloadContent(clconf.prism1))
+    })
+    describe.skip('prism2 down',function(){
+      before(function(){
+        return prismServer2.stopAsync()
+      })
+      after(function(){
+        return prismServer2.startAsync()
+      })
+      it('should still purchase content',purchaseContent(clconf.prism1))
+      it('should still deliver content',deliverContent(clconf.prism1))
+      it('should still download content',downloadContent(clconf.prism1))
+    })
+    describe.skip('prism1 down',function(){
+      before(function(){
+        return prismServer1.stopAsync()
+      })
+      after(function(){
+        return prismServer1.startAsync()
+      })
+      it('should still purchase content',purchaseContent(clconf.prism2))
+      it('should still deliver content',deliverContent(clconf.prism2))
+      it('should still download content',downloadContent(clconf.prism2))
+    })
+    describe.skip('store1 and store3 down',function(){
+      before(function(){
+        return storeServer1.stopAsync()
+      })
+      after(function(){
+        return storeServer3.startAsync()
+      })
+      it('should still purchase content',purchaseContent(clconf.prism1))
+      it('should still deliver content',deliverContent(clconf.prism1))
+      it('should still download content',downloadContent(clconf.prism1))
+    })
+    describe.skip('store2 and store4 down',function(){
+      before(function(){
+        return storeServer2.stopAsync()
+      })
+      after(function(){
+        return storeServer4.startAsync()
+      })
+      it('should still purchase content',purchaseContent(clconf.prism1))
+      it('should still deliver content',deliverContent(clconf.prism1))
+      it('should still download content',downloadContent(clconf.prism1))
     })
   })
 

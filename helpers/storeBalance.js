@@ -8,8 +8,6 @@ var redis = require('../helpers/redis')
 
 var config = require('../config')
 
-var cache = {}
-
 
 /**
  * Take an existence map and turn it into an array of store instances
@@ -41,38 +39,38 @@ exports.existsToArray = function(exists,skip){
  * @return {P}
  */
 exports.populateStores = function(stores){
-  var result = []
-  var populate = function(res,body){
-    cache[body.name] = {
-      store: body,
-      expires: +new Date() + (config.prism.storeCache * 1000)
-    }
-    result.push(cache[body.name].store)
-  }
-  var populateFromCache = function(store){
-    return new P(function(resolve){
-      process.nextTick(function(){
-        result.push(cache[store].store)
-        resolve()
-      })
-    })
-  }
   var promises = []
-  var store
-  for(var i = 0; i < stores.length; i++){
-    store = stores[i]
-    if(cache[store] && cache[store].expires >= +new Date()){
-      debug('cache hit',store)
-      promises.push(populateFromCache(store))
-    } else{
-      debug('cache miss',store)
-      promises.push(
-        api.master.post('/store/find',{name: store}).spread(populate))
-    }
-  }
+  var results = []
+  stores.forEach(function(store){
+    var storeDetails
+    promises.push(
+      redis.getAsync(redis.schema.storeEntry(store))
+        .then(function(result){
+          if(!result){
+            debug('cache miss',store)
+            return api.master.post('/store/find',{name: store})
+              .spread(function(res,body){
+                storeDetails = body
+                return redis.setAsync(
+                  redis.schema.storeEntry(store),JSON.stringify(storeDetails))
+              })
+              .then(function(){
+                return redis.expireAsync(
+                  redis.schema.storeEntry(store),config.prism.cache.storeEntry)
+              })
+              .then(function(){
+                results.push(storeDetails)
+              })
+          } else {
+            storeDetails = JSON.parse(result)
+            results.push(storeDetails)
+          }
+        })
+    )
+  })
   return P.all(promises)
     .then(function(){
-      return result
+      return results
     })
 }
 
@@ -84,18 +82,15 @@ exports.populateStores = function(stores){
  * @return {Array}
  */
 exports.populateHits = function(token,stores){
-  var populate = function(store){
-    return function(hits){
-      store.hits = +hits
-    }
-  }
   var promises = []
-  var store
-  for(var i = 0; i < stores.length; i++){
-    store = stores[i]
+  stores.forEach(function(store){
     promises.push(
-      redis.getAsync('hits:' + token + ':' + store.name).then(populate(store)))
-  }
+      redis.getAsync(redis.schema.storeHits(token,store.name))
+        .then(function(hits){
+          store.hits = +hits
+        })
+    )
+  })
   return P.all(promises)
     .then(function(){
       return stores

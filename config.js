@@ -24,6 +24,7 @@ config.$load({
     host: '127.0.0.1',
     port: 6379,
     db: 0,
+    prefix: 'oose',
     options: {}
   },
   mysql: {
@@ -62,9 +63,12 @@ config.$load({
       count: 1,
       maxConnections: 10000
     },
-    userSessionCache: 300, // 5 minutes
-    storeCache: 300, // 5 minutes
-    prismCache: 300 // 5 minutes
+    cache: {
+      userSession: 300, //5 minutes
+      storeEntry: 300, //5 minutes
+      prismList: 300, //5 minutes
+      contentExists: 300 //5 minutes
+    }
   },
   //storage system
   store: {

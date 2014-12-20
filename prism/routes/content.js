@@ -61,36 +61,38 @@ exports.upload = function(req,res){
       promisePipe(file,sniff,writeStream)
         .then(function(){
           files[key].sha1 = sniff.sha1
-          //here the file needs to be replicate to at least two prisms
-          return prismBalance.prismList()
-        })
-        //pick first winner
-        .then(function(result){
-          prismList = result
-          return prismBalance.winner('newFile',prismList)
-        })
-        //pick second winner
-        .then(function(result){
-          if(!result)
-            throw new UserError('Failed to find a prism instance to upload to')
-          winners.push(result)
-          return prismBalance.winner('newFile',prismList,[result.name])
-        })
-        //stream the file to winners
-        .then(function(result){
-          if(result) winners.push(result)
-          var readStream = fs.createReadStream(tmpfile)
-          var winner
-          var promises = []
-          for(var i = 0; i < winners.length; i++){
-            winner = winners[i]
-            promises.push(promisePipe(
-              readStream,
-              api.prism(winner)
-                .put('/content/put/' + files[key].sha1 + '.' + files[key].ext)
-            ))
+          //do a content lookup and see if this exists yet
+          return prismBalance.contentExists(sniff.sha1)
+        }).then(function(result){
+          if(!result.exists && 0 === result.count){
+            //actually stream the file to new peers
+            return prismBalance.prismList()//pick first winner
+              .then(function(result){
+                prismList = result
+                return prismBalance.winner('newFile',prismList)
+              })//pick second winner
+              .then(function(result){
+                if(!result){
+                  throw new UserError('Failed to find a prism ' +
+                    'instance to upload to')
+                }
+                winners.push(result)
+                return prismBalance.winner('newFile',prismList,[result.name])
+              })//stream the file to winners
+              .then(function(result){
+                if(result) winners.push(result)
+                var readStream = fs.createReadStream(tmpfile)
+                var promises = []
+                winners.forEach(function(winner){
+                  promises.push(promisePipe(readStream,api.prism(winner)
+                    .put('/content/put/' + files[key].sha1 +
+                    '.' + files[key].ext)))
+                })
+                return P.all(promises)
+              })
+          } else {
+            //file already exists on cluster so we are done
           }
-          return P.all(promises)
         })
     )
   })
@@ -238,10 +240,11 @@ exports.existsLocal = function(req,res){
  */
 exports.download = function(req,res){
   var sha1 = req.body.sha1
-  api.prism(config.prism).post('/content/exists',{sha1: sha1})
-    .spread(function(res,body){
-      if(!body.exists) throw new NotFoundError('File not found')
-      return storeBalance.winnerFromExists(sha1,body)
+  prismBalance.contentExists(sha1)
+    .then(function(exists){
+      if(!exists && !exists.exists)
+        throw new NotFoundError('File not found')
+      return storeBalance.winnerFromExists(sha1,exists)
     })
     .then(function(result){
       api.store(result).download('/content/download',{sha1: sha1}).pipe(res)
@@ -269,10 +272,10 @@ exports.purchase = function(req,res){
   P.try(function(){
     if(!sha1File.validate(sha1))
       throw new UserError('Invalid SHA1 passed for purchase')
-    return api.prism(config.prism).post('/content/exists',{sha1: sha1})
+    return prismBalance.contentExists(sha1)
   })
-    .spread(function(res,body){
-      map = body
+    .then(function(result){
+      map = result
       if(!map.exists) throw new NotFoundError('File not found')
       //really right here we need to generate a unique token (unique meaning
       //not already in the redis registry for purchases since we already have
