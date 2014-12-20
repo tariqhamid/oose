@@ -46,30 +46,6 @@ exports.find = function(req,res){
 
 
 /**
- * Store increment hits
- * @param {object} req
- * @param {object} res
- */
-exports.incrementHits = function(req,res){
-  var data = req.body
-  Store.find({where: {name: data.name}})
-    .then(function(result){
-      if(!result) throw new UserError('No store instance found')
-      return result.increment({hits: 1})
-    })
-    .then(function(result){
-      return result.reload()
-    })
-    .then(function(result){
-      res.json(result)
-    })
-    .catch(UserError,function(err){
-      res.json({error: err.message})
-    })
-}
-
-
-/**
  * Create Store
  * @param {object} req
  * @param {object} res

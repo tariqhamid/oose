@@ -240,7 +240,7 @@ describe('APIClient',function(){
           return P.all([
             expect(res.statusCode).to.equal(200),
             expect(body.foo).to.equal('bar'),
-            expect(body.token).to.equal(config.session.token)
+            expect(body.$sessionToken).to.equal(config.session.token)
           ])
         })
     })
@@ -252,7 +252,7 @@ describe('APIClient',function(){
           return P.all([
             expect(res.statusCode).to.equal(200),
             expect(body.foo).to.equal('baz'),
-            expect(body.token).to.equal(config.session.token)
+            expect(body.$sessionToken).to.equal(config.session.token)
           ])
         })
     })

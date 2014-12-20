@@ -6,6 +6,8 @@ var express = require('express')
 var http = require('http')
 var worker = require('infant').worker
 
+var userSessionValidate = require('../helpers/userSessionValidate')
+
 var app = express()
 var config = require('../config')
 var server = http.createServer(app)
@@ -29,20 +31,25 @@ app.post('/',routes.index)
 //health test
 app.post('/ping',routes.ping)
 
-//user functions
-app.post('/user/login',routes.user.login)
-app.post('/user/logout',routes.user.logout)
-app.post('/user/password/reset',routes.user.passwordReset)
-app.post('/user/session/validate',routes.user.sessionValidate)
-app.post('/user/session/update',routes.user.sessionUpdate)
-
-//content functions
-app.post('/content/upload',routes.content.upload)
-app.post('/content/purchase',routes.content.purchase)
-app.post('/content/remove',routes.content.remove)
-
 //--------------------
 //protected routes
+//--------------------
+
+//user functions
+app.post('/user/login',routes.user.login)
+app.post('/user/logout',userSessionValidate,routes.user.logout)
+app.post('/user/password/reset',userSessionValidate,routes.user.passwordReset)
+app.post(
+  '/user/session/validate',userSessionValidate,routes.user.sessionValidate)
+app.post('/user/session/update',userSessionValidate,routes.user.sessionUpdate)
+
+//content functions
+app.post('/content/upload',userSessionValidate,routes.content.upload)
+app.post('/content/purchase',userSessionValidate,routes.content.purchase)
+app.post('/content/remove',userSessionValidate,routes.content.remove)
+
+//--------------------
+//private routes
 //--------------------
 var auth = basicAuth(config.prism.username,config.prism.password)
 

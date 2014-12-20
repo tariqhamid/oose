@@ -62,19 +62,19 @@ exports.upload = function(req,res){
         .then(function(){
           files[key].sha1 = sniff.sha1
           //here the file needs to be replicate to at least two prisms
-          return api.master.post('/prism/list')
+          return prismBalance.prismList()
         })
         //pick first winner
-        .spread(function(res,body){
-          prismList = body.prism
-          return prismBalance.winner(prismList)
+        .then(function(result){
+          prismList = result
+          return prismBalance.winner('newFile',prismList)
         })
         //pick second winner
         .then(function(result){
           if(!result)
             throw new UserError('Failed to find a prism instance to upload to')
           winners.push(result)
-          return prismBalance.winner(prismList,[result.name])
+          return prismBalance.winner('newFile',prismList,[result.name])
         })
         //stream the file to winners
         .then(function(result){
@@ -97,15 +97,6 @@ exports.upload = function(req,res){
   busboy.on('finish',function(){
     P.all(filePromises)
       .then(function(){
-        if(!data.token) throw new UserError('No token provided')
-        return api.master.post('/user/session/validate',{
-          token: data.token,
-          ip: req.ip
-        })
-      })
-      .spread(function(response,body){
-        if('Session valid' !== body.success)
-          throw new UserError('Invalid session')
         res.json({success: 'File(s) uploaded',data: data,files: files})
       })
       .catch(UserError,function(err){
@@ -156,10 +147,10 @@ exports.exists = function(req,res){
     if(!sha1File.validate(sha1))
       throw new UserError('Invalid SHA1 passed for existence check')
     //get a list of store instances we own
-    return api.master.post('/prism/list')
+    return prismBalance.prismList()
   })
-    .spread(function(res,body){
-      prismList = body.prism
+    .then(function(result){
+      prismList = result
       var promises = []
       var prism
       var checkExistence = function(prism){
@@ -250,7 +241,7 @@ exports.download = function(req,res){
   api.prism(config.prism).post('/content/exists',{sha1: sha1})
     .spread(function(res,body){
       if(!body.exists) throw new NotFoundError('File not found')
-      return storeBalance.winnerFromExists(body)
+      return storeBalance.winnerFromExists(sha1,body)
     })
     .then(function(result){
       api.store(result).download('/content/download',{sha1: sha1}).pipe(res)
@@ -346,9 +337,9 @@ exports.purchase = function(req,res){
       }
       //okay so the purchase is registered on all our stores, time to register
       //it to all the prisms
-      return api.master.post('/prism/list')
+      return prismBalance.prismList()
     })
-    .spread(function(res,body){
+    .then(function(result){
       var createPurchase = function(prism){
         var client = api.prism(prism)
         return client
@@ -357,7 +348,7 @@ exports.purchase = function(req,res){
             return client.post('/purchase/create',{purchase: purchase})
           })
       }
-      var prismList = body.prism
+      var prismList = result
       var promises = []
       for(var i = 0; i < prismList.length; i++){
         promises.push(createPurchase(prismList[i]))
@@ -393,7 +384,7 @@ exports.deliver = function(req,res){
       purchase = JSON.parse(result)
       if(purchase.ip !== req.ip) throw new UserError('Invalid IP')
       //we have a purchase so now... we need to pick a store....
-      return storeBalance.winnerFromExists(purchase.map)
+      return storeBalance.winnerFromExists(token,purchase.map)
     })
     .then(function(result){
       var url = 'http://' + result.name + '.' + config.domain +
@@ -428,7 +419,7 @@ exports.remove = function(req,res){
   redis.getAsync(redisKey)
     .then(function(result){
       if(!result){
-        res.json({token: token, count: 0, succes: 'Purchase removed'})
+        res.json({token: token, count: 0, success: 'Purchase removed'})
       } else {
         purchase = JSON.parse(result)
         return storeBalance.populateStores(
@@ -446,10 +437,10 @@ exports.remove = function(req,res){
       return P.all(promises)
     })
     .then(function(){
-      return api.master.post('/prism/list')
+      return prismBalance.prismList()
     })
-    .spread(function(res,body){
-      prismList = body.prism
+    .then(function(result){
+      prismList = result
       var promises = []
       for(var i = 0; i < prismList.length; i++){
         promises.push(

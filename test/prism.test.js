@@ -75,10 +75,8 @@ describe('prism',function(){
     return client
       .post('/')
       .spread(function(res,body){
-        return P.all([
-          expect(body.message).to.equal('Welcome to OOSE version ' +
-          config.version)
-        ])
+        expect(body.message).to.equal(
+          'Welcome to OOSE version ' + config.version)
       })
   })
   it('should ping',function(){

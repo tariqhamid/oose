@@ -31,11 +31,6 @@ module.exports = function(sequelize,DataTypes) {
         validate: {
           isNumeric: true
         }
-      },
-      hits: {
-        type: DataTypes.INTEGER(11).UNSIGNED,
-        allowNull: false,
-        defaultValue: 0
       }
     },
     {
@@ -45,12 +40,6 @@ module.exports = function(sequelize,DataTypes) {
           unique: true,
           method: 'BTREE',
           fields: ['name']
-        },
-        {
-          name: 'hits_index',
-          unique: false,
-          method: 'BTREE',
-          fields: ['hits']
         }
       ]
     }

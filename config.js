@@ -62,6 +62,9 @@ config.$load({
       count: 1,
       maxConnections: 10000
     },
+    userSessionCache: 300, // 5 minutes
+    storeCache: 300, // 5 minutes
+    prismCache: 300 // 5 minutes
   },
   //storage system
   store: {

@@ -77,34 +77,6 @@ describe('master',function(){
           expect(body.success).to.equal('Prism instance updated')
         })
     })
-    it('should increment hits',function(){
-      return client
-        .post('/prism/increment-hits',{name: 'test'})
-        .spread(function(res,body){
-          expect(body.hits).to.equal(1)
-        })
-    })
-    it('should increment hits 100x',function(){
-      var promises = []
-      var incHits = function(){
-        return client
-          .post('/prism/increment-hits',{name: 'test'})
-          .spread(function(res,body){
-            expect(body.hits).to.be.a('number')
-            return body
-          })
-      }
-      for(var i = 0; i < 100; i++){
-        promises.push(incHits())
-      }
-      return P.all(promises)
-        .then(function(){
-          return incHits()
-        })
-        .then(function(result){
-          expect(result.hits).to.equal(102)
-        })
-    })
     it('should find',function(){
       return client
         .post('/prism/find',{name: 'test'})
@@ -210,34 +182,6 @@ describe('master',function(){
             expect(body.name).to.equal('test'),
             expect(body.port).to.equal(3004)
           ])
-        })
-    })
-    it('should increment hits',function(){
-      return client
-        .post('/store/increment-hits',{name: 'test'})
-        .spread(function(res,body){
-          expect(body.hits).to.equal(1)
-        })
-    })
-    it('should increment hits 100x',function(){
-      var promises = []
-      var incHits = function(){
-        return client
-          .post('/store/increment-hits',{name: 'test'})
-          .spread(function(res,body){
-            expect(body.hits).to.be.a('number')
-            return body
-          })
-      }
-      for(var i = 0; i < 100; i++){
-        promises.push(incHits())
-      }
-      return P.all(promises)
-        .then(function(){
-          return incHits()
-        })
-        .then(function(result){
-          expect(result.hits).to.equal(102)
         })
     })
     it('should remove',function(){

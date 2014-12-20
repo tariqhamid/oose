@@ -9,8 +9,10 @@ var url = require('url')
 
 var api = require('../helpers/api')
 var APIClient = require('../helpers/APIClient')
-var config = require('../config')
 var content = require('./helpers/content')
+var UserError = require('../helpers/UserError')
+
+var config = require('../config')
 var purchase
 
 var user = {
@@ -77,20 +79,27 @@ api.master.setBasicAuth(
 
 //setup our mock cluster
 var masterServer = infant.parent('../master',{
-  fork: { env: makeEnv(__dirname + '/assets/master.config.js') } })
+  fork: { env: makeEnv(__dirname + '/assets/master.config.js') }
+})
 //var prismServer1 = infant.parent('../prism')
 var prismServer1 = infant.parent('../prism',{
-  fork: { env: makeEnv(__dirname + '/assets/prism1.config.js') } })
+  fork: { env: makeEnv(__dirname + '/assets/prism1.config.js') }
+})
 var prismServer2 = infant.parent('../prism',{
-  fork: { env: makeEnv(__dirname + '/assets/prism2.config.js') } })
+  fork: { env: makeEnv(__dirname + '/assets/prism2.config.js') }
+})
 var storeServer1 = infant.parent('../store',{
-  fork: { env: makeEnv(__dirname + '/assets/store1.config.js') } })
+  fork: { env: makeEnv(__dirname + '/assets/store1.config.js') }
+})
 var storeServer2 = infant.parent('../store',{
-  fork: { env: makeEnv(__dirname + '/assets/store2.config.js') } })
+  fork: { env: makeEnv(__dirname + '/assets/store2.config.js') }
+})
 var storeServer3 = infant.parent('../store',{
-  fork: { env: makeEnv(__dirname + '/assets/store3.config.js') } })
+  fork: { env: makeEnv(__dirname + '/assets/store3.config.js') }
+})
 var storeServer4 = infant.parent('../store',{
-  fork: { env: makeEnv(__dirname + '/assets/store4.config.js') } })
+  fork: { env: makeEnv(__dirname + '/assets/store4.config.js') }
+})
 
 describe('e2e',function(){
   describe('e2e:prism',function(){
@@ -248,6 +257,54 @@ describe('e2e',function(){
           expect(body.pong).to.equal('pong')
         })
     })
+    it('should not require authentication for public functions',function(){
+      var prism = clconf.prism1.prism
+      var client = new APIClient(prism.port,prism.host)
+      return client
+        .post('/')
+        .spread(function(res,body){
+          expect(body.message).to.equal(
+            'Welcome to OOSE version ' + config.version)
+          return client.post('/ping')
+        })
+        .spread(function(res,body){
+          expect(body.pong).to.equal('pong')
+          return client.post('/user/login')
+        })
+        .spread(function(){
+          throw new Error('Should have thrown an error for no username')
+        })
+        .catch(UserError,function(err){
+          expect(err.message).to.equal('No user found')
+        })
+    })
+    it('should require a session for all protected prism functions',function(){
+      var client = api.prism(clconf.prism1.prism)
+      return client.post('/user/logout')
+        .catch(UserError,function(err){
+          expect(err.message).to.match(/Invalid response code \(401\) to POST/)
+          return client.post('/user/password/reset')
+        })
+        .catch(UserError,function(err){
+          expect(err.message).to.match(/Invalid response code \(401\) to POST/)
+          return client.post('/user/session/validate')
+        })
+        .catch(UserError,function(err){
+          expect(err.message).to.match(/Invalid response code \(401\) to POST/)
+          return client.post('/content/upload')
+        })
+        .catch(UserError,function(err){
+          expect(err.message).to.match(/Invalid response code \(401\) to POST/)
+          return client.post('/content/purchase')
+        })
+        .catch(UserError,function(err){
+          expect(err.message).to.match(/Invalid response code \(401\) to POST/)
+          return client.post('/content/remove')
+        })
+        .catch(UserError,function(err){
+          expect(err.message).to.match(/Invalid response code \(401\) to POST/)
+        })
+    })
     it('should login to prism1',function(){
       return api.prism(clconf.prism1.prism).post('/user/login',{
         username: user.username,
@@ -282,7 +339,7 @@ describe('e2e',function(){
         })
     })
     it('should show the content exists in 2 places',function(){
-      return api.prism(clconf.prism2.prism)
+      return api.prism(clconf.prism2.prism).setSession(user.session)
         .post('/content/exists',{sha1: content.sha1})
         .spread(function(res,body){
           expect(body.sha1).to.equal(content.sha1)
@@ -297,14 +354,14 @@ describe('e2e',function(){
         })
     })
     it('should allow API download of the content',function(){
-      return api.prism(clconf.prism1.prism)
+      return api.prism(clconf.prism1.prism).setSession(user.session)
         .post('/content/download',{sha1: content.sha1})
         .spread(function(res,body){
           expect(body).to.equal(content.data)
         })
     })
     it('should allow purchase of the content',function(){
-      return api.prism(clconf.prism2.prism)
+      return api.prism(clconf.prism2.prism).setSession(user.session)
         .post('/content/purchase',{sha1: content.sha1, ip: '127.0.0.1'})
         .spread(function(res,body){
           expect(body.token.length).to.equal(64)
@@ -368,7 +425,7 @@ describe('e2e',function(){
         })
     })
     it('should allow removal of purchases',function(){
-      return api.prism(clconf.prism2.prism)
+      return api.prism(clconf.prism2.prism).setSession(user.session)
         .post('/content/remove',{token: purchase.token})
         .spread(function(res,body){
           expect(body.token).to.equal(purchase.token)
@@ -377,4 +434,5 @@ describe('e2e',function(){
         })
     })
   })
+
 })

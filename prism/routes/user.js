@@ -18,7 +18,7 @@ master.setBasicAuth(config.master.username,config.master.password)
 exports.login = function(req,res){
   var data = req.body
   P.try(function(){
-    if(data.token) throw new UserError('Already logged in')
+    if(data.$sessionToken) throw new UserError('Already logged in')
     return master.post('/user/login',{
       username: req.body.username,
       password: req.body.password,
@@ -46,8 +46,8 @@ exports.login = function(req,res){
 exports.logout = function(req,res){
   var data = req.body
   P.try(function(){
-    if(!data.token) throw new UserError('No token provided')
-    return master.post('/user/logout',{token: data.token, ip: req.ip})
+    if(!data.$sessionToken) throw new UserError('No token provided')
+    return master.post('/user/logout',{token: data.$sessionToken, ip: req.ip})
   })
     .spread(function(response,body){
       res.json(body)
@@ -64,21 +64,7 @@ exports.logout = function(req,res){
  * @param {object} res
  */
 exports.passwordReset = function(req,res){
-  var data = req.body
-  P.try(function(){
-    if(!data.token) throw new UserError('No token provided')
-    return master.post(
-      '/user/session/validate',
-      {token: data.token, ip: req.ip}
-    )
-  })
-    .spread(function(response,body){
-      if('Session valid' !== body.success)
-        throw new UserError('Invalid session')
-      return master.post('/user/password/reset',{
-        username: body.session.User.username
-      })
-    })
+  master.post('/user/password/reset',{username: req.session.User.username})
     .spread(function(response,body){
       res.json(body)
     })
@@ -94,20 +80,8 @@ exports.passwordReset = function(req,res){
  * @param {object} res
  */
 exports.sessionValidate = function(req,res){
-  var data = req.body
-  P.try(function(){
-    if(!data.token) throw new UserError('No token provided')
-    return master.post(
-      '/user/session/validate',
-      {token: data.token, ip: req.ip}
-    )
-  })
-    .spread(function(response,body){
-      res.json(body)
-    })
-    .catch(UserError,function(err){
-      res.json({error: err.message})
-    })
+  //the middleware will have already validated us
+  res.json({success: 'Session valid'})
 }
 
 
@@ -118,22 +92,11 @@ exports.sessionValidate = function(req,res){
  */
 exports.sessionUpdate = function(req,res){
   var data = req.body
-  P.try(function(){
-    if(!data.token) throw new UserError('No token provided')
-    return master.post(
-      '/user/session/validate',
-      {token: data.token, ip: req.ip}
-    )
+  master.post('/user/session/update',{
+    token: req.session.token,
+    ip: req.ip,
+    data: data.data
   })
-    .spread(function(response,body){
-      if('Session valid' !== body.success)
-        throw new UserError('Invalid session')
-      return master.post('/user/session/update',{
-        token: data.token,
-        ip: req.ip,
-        data: data.data
-      })
-    })
     .spread(function(response,body){
       res.json(body)
     })

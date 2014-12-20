@@ -40,30 +40,6 @@ exports.find = function(req,res){
 
 
 /**
- * Prism increment hits
- * @param {object} req
- * @param {object} res
- */
-exports.incrementHits = function(req,res){
-  var data = req.body
-  Prism.find({where: {name: data.name}})
-    .then(function(result){
-      if(!result) throw new UserError('No prism instance found')
-      return result.increment({hits: 1})
-    })
-    .then(function(result){
-      return result.reload()
-    })
-    .then(function(result){
-      res.json(result)
-    })
-    .catch(UserError,function(err){
-      res.json({error: err.message})
-    })
-}
-
-
-/**
  * Create Prism
  * @param {object} req
  * @param {object} res

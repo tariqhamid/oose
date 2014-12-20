@@ -95,7 +95,7 @@ APIClient.prototype.get = function(path,data){
   var url = that.baseURL + path
   var options = {qs: data, json: true}
   //add session if we have one
-  if(that.session.token) options.qs.token = that.session.token
+  if(that.session.token) options.qs.$sessionToken = that.session.token
   //add basic auth if enabled
   if(that.basicAuth.username || that.basicAuth.password){
     options.auth = {
@@ -125,7 +125,7 @@ APIClient.prototype.post = function(path,data){
   var url = that.baseURL + path
   var options = {json: data || {}}
   //add session if enabled
-  if(that.session.token) options.json.token = that.session.token
+  if(that.session.token) options.json.$sessionToken = that.session.token
   //add basic auth if enabled
   if(that.basicAuth.username || that.basicAuth.password){
     options.auth = {
@@ -156,7 +156,10 @@ APIClient.prototype.upload = function(path,filepath,data){
   var url = that.baseURL + path
   var options = {formData: data || {}}
   //add session if enabled
-  if(that.session.token) options.formData.token = that.session.token
+  if(that.session.token){
+    options.formData.$sessionToken = that.session.token
+    options.qs = {$sessionToken: that.session.token}
+  }
   //add basic auth if enabled
   if(that.basicAuth.username || that.basicAuth.password){
     options.auth = {
@@ -189,7 +192,7 @@ APIClient.prototype.download = function(path,data){
   var that = this
   var options = {url: that.baseURL + path, json: data}
   //add session if enabled
-  if(that.session.token) options.json.token = that.session.token
+  if(that.session.token) options.json.$sessionToken = that.session.token
   //add basic auth if enabled
   if(that.basicAuth.username || that.basicAuth.password){
     options.auth = {
@@ -210,7 +213,7 @@ APIClient.prototype.put = function(path){
   var that = this
   var options = {url: that.baseURL + path}
   //add session if enabled
-  if(that.session.token) options.qs.token = that.session.token
+  if(that.session.token) options.qs.$sessionToken = that.session.token
   //add basic auth if enabled
   if(that.basicAuth.username || that.basicAuth.password){
     options.auth = {
