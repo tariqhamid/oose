@@ -1,12 +1,8 @@
 'use strict';
 var P = require('bluebird')
-var debug = require('debug')('oose:storeBalance')
 
-var api = require('../helpers/api')
 var NotFoundError = require('../helpers/NotFoundError')
 var redis = require('../helpers/redis')
-
-var config = require('../config')
 
 
 /**
@@ -41,33 +37,19 @@ exports.existsToArray = function(exists,skip){
 exports.populateStores = function(stores){
   var promises = []
   var results = []
-  stores.forEach(function(store){
-    var storeDetails
+  var populate = function(){
+    return function(result){
+      results.push(JSON.parse(result))
+    }
+  }
+  var store
+  for(var i = 0; i < stores.length; i++){
+    store = stores[i]
     promises.push(
       redis.getAsync(redis.schema.storeEntry(store))
-        .then(function(result){
-          if(!result){
-            debug('cache miss',store)
-            return api.master.post('/store/find',{name: store})
-              .spread(function(res,body){
-                storeDetails = body
-                return redis.setAsync(
-                  redis.schema.storeEntry(store),JSON.stringify(storeDetails))
-              })
-              .then(function(){
-                return redis.expireAsync(
-                  redis.schema.storeEntry(store),config.prism.cache.storeEntry)
-              })
-              .then(function(){
-                results.push(storeDetails)
-              })
-          } else {
-            storeDetails = JSON.parse(result)
-            results.push(storeDetails)
-          }
-        })
+        .then(populate(store))
     )
-  })
+  }
   return P.all(promises)
     .then(function(){
       return results
@@ -82,15 +64,20 @@ exports.populateStores = function(stores){
  * @return {Array}
  */
 exports.populateHits = function(token,stores){
+  var populate = function(store){
+    return function(hits){
+      store.hits = +hits
+    }
+  }
   var promises = []
-  stores.forEach(function(store){
+  var store
+  for(var i = 0; i < stores.length; i++){
+    store = stores[i]
     promises.push(
       redis.getAsync(redis.schema.storeHits(token,store.name))
-        .then(function(hits){
-          store.hits = +hits
-        })
+        .then(populate(store))
     )
-  })
+  }
   return P.all(promises)
     .then(function(){
       return stores

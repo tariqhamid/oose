@@ -63,12 +63,8 @@ config.$load({
       count: 1,
       maxConnections: 10000
     },
-    cache: {
-      userSession: 300, //5 minutes
-      storeEntry: 300, //5 minutes
-      prismList: 300, //5 minutes
-      contentExists: 300 //5 minutes
-    }
+    contentExistsCache: 300, //5 minutes
+    guardFrequency: 60000 //1 minute
   },
   //storage system
   store: {

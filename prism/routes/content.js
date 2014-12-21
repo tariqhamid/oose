@@ -7,6 +7,7 @@ var promisePipe = require('promisepipe')
 var temp = require('temp')
 
 var api = require('../../helpers/api')
+var NetworkError = require('../../helpers/NetworkError')
 var NotFoundError = require('../../helpers/NotFoundError')
 var prismBalance = require('../../helpers/prismBalance')
 var promiseWhile = require('../../helpers/promiseWhile')
@@ -83,11 +84,11 @@ exports.upload = function(req,res){
                 if(result) winners.push(result)
                 var readStream = fs.createReadStream(tmpfile)
                 var promises = []
-                winners.forEach(function(winner){
-                  promises.push(promisePipe(readStream,api.prism(winner)
+                for(var i = 0; i < winners.length; i++){
+                  promises.push(promisePipe(readStream,api.prism(winners[i])
                     .put('/content/put/' + files[key].sha1 +
                     '.' + files[key].ext)))
-                })
+                }
                 return P.all(promises)
               })
           } else {
@@ -160,6 +161,16 @@ exports.exists = function(req,res){
           .spread(function(res,body){
             return {prism: prism.name, exists: body}
           })
+          .catch(NetworkError,function(){
+            return {
+              prism: prism.name,
+              exists: {
+                exists: false,
+                count: 0,
+                map: {}
+              }
+            }
+          })
       }
       for(var i = 0; i < prismList.length; i++){
         prism = prismList[i]
@@ -197,16 +208,19 @@ exports.existsLocal = function(req,res){
     if(!sha1File.validate(sha1))
       throw new UserError('Invalid SHA1 passed for existence check')
     //get a list of store instances we own
-    return api.master.post('/store/list',{prism: config.prism.name})
+    return prismBalance.storeListByPrism(config.prism.name)
   })
-    .spread(function(res,body){
-      storeList = body.store
+    .then(function(result){
+      storeList = result
       var promises = []
       var store
       var checkExistence = function(store){
         return api.store(store).post('/content/exists',{sha1: sha1})
           .spread(function(res,body){
             return {store: store.name, exists: body.exists}
+          })
+          .catch(NetworkError,function(){
+            return {store: store.name, exists: false}
           })
       }
       for(var i = 0; i < storeList.length; i++){
@@ -240,14 +254,32 @@ exports.existsLocal = function(req,res){
  */
 exports.download = function(req,res){
   var sha1 = req.body.sha1
+  var winner, exists
   prismBalance.contentExists(sha1)
-    .then(function(exists){
+    .then(function(result){
+      exists = result
       if(!exists && !exists.exists)
         throw new NotFoundError('File not found')
       return storeBalance.winnerFromExists(sha1,exists)
     })
     .then(function(result){
-      api.store(result).download('/content/download',{sha1: sha1}).pipe(res)
+      winner = result
+      var store = api.store(winner)
+      return store.post('/ping')
+        .then(function(){
+          store.download('/content/download',{sha1: sha1}).pipe(res)
+        })
+    })
+    .catch(NetworkError,function(){
+      return storeBalance.winnerFromExists(sha1,exists,[winner.name])
+        .then(function(result){
+          winner = result
+          var store = api.store(winner)
+          return store.post('/ping')
+            .then(function(){
+              store.download('/content/download',{sha1: sha1}).pipe(res)
+            })
+        })
     })
     .catch(NotFoundError,function(err){
       res.status(404)
@@ -311,6 +343,9 @@ exports.purchase = function(req,res){
               life: life
             })
           })
+          .catch(NetworkError,function(){
+            //nothing we can do
+          })
       }
       var promises = []
       for(var i = 0; i < stores.length; i++){
@@ -320,7 +355,7 @@ exports.purchase = function(req,res){
         .then(function(results){
           var ext
           for(var i = 0; i < results.length; i++){
-            if(!ext && results[i][1] && results[i][1].ext){
+            if(!ext && results[i] && results[i][1] && results[i][1].ext){
               ext = results[i][1].ext
               break
             }
@@ -349,6 +384,9 @@ exports.purchase = function(req,res){
           .post('/purchase/remove',{token: token})
           .spread(function(){
             return client.post('/purchase/create',{purchase: purchase})
+          })
+          .catch(NetworkError,function(){
+            //nothing we can do
           })
       }
       var prismList = result

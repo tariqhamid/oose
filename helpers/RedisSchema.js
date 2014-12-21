@@ -33,6 +33,15 @@ RedisSchema.prototype.prismList = function(){
 
 
 /**
+ * Store list Key
+ * @return {string}
+ */
+RedisSchema.prototype.storeList = function(){
+  return this.applyPrefix('storeList')
+}
+
+
+/**
  * Prism hits (for load balancing)
  * @param {string} token
  * @param {string} prism
@@ -71,6 +80,25 @@ RedisSchema.prototype.storeEntry = function(store){
  */
 RedisSchema.prototype.contentExists = function(sha1){
   return this.applyPrefix('contentExists:' + sha1)
+}
+
+
+/**
+ * Check if the master is up
+ * @return {string}
+ */
+RedisSchema.prototype.masterUp = function(){
+  return this.applyPrefix('masterUp')
+}
+
+
+/**
+ * Look up a user session by token
+ * @param {string} token
+ * @return {string}
+ */
+RedisSchema.prototype.userSession = function(token){
+  return this.applyPrefix('userSession:' + token)
 }
 
 

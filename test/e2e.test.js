@@ -124,20 +124,32 @@ var uploadContent = function(prism){
   }
 }
 
-var contentExists = function(prism){
+var contentExists = function(prism,options){
+  if('object' !== typeof options) options = {}
+  if(!options.hasOwnProperty('count')) options.count = 2
+  if(!options.hasOwnProperty('checkExists')) options.checkExists = true
+  if(!options.hasOwnProperty('deepChecks'))
+    options.deepChecks = ['prism1','prism2']
   return function(){
     return api.prism(prism.prism).setSession(user.session)
       .post('/content/exists',{sha1: content.sha1})
       .spread(function(res,body){
         expect(body.sha1).to.equal(content.sha1)
-        expect(body.exists).to.equal(true)
-        expect(body.count).to.equal(2)
-        expect(body.map.prism1).to.be.an('object')
-        expect(body.map.prism1.exists).to.equal(true)
-        expect(Object.keys(body.map.prism1).length).to.equal(3)
-        expect(body.map.prism2).to.be.an('object')
-        expect(body.map.prism2.exists).to.equal(true)
-        expect(Object.keys(body.map.prism1).length).to.equal(3)
+        if(options.checkExists) expect(body.exists).to.equal(true)
+        if(options.countGreaterEqual)
+          expect(body.count).to.be.least(options.count)
+        else if(options.checkExists)
+          expect(body.count).to.equal(options.count)
+        if(options.deepChecks.indexOf('prism1') !== -1){
+          expect(body.map.prism1).to.be.an('object')
+          expect(body.map.prism1.exists).to.equal(true)
+          expect(Object.keys(body.map.prism1).length).to.equal(3)
+        }
+        if(options.deepChecks.indexOf('prism2') !== -1){
+          expect(body.map.prism2).to.be.an('object')
+          expect(body.map.prism2.exists).to.equal(true)
+          expect(Object.keys(body.map.prism1).length).to.equal(3)
+        }
       })
   }
 }
@@ -196,70 +208,73 @@ describe('e2e',function(){
     //start servers and create a user
     before(function(){
       console.log('Starting mock cluster....')
-      return P.all([
-        masterServer.startAsync(),
-        prismServer1.startAsync(),
-        prismServer2.startAsync(),
-        storeServer1.startAsync(),
-        storeServer2.startAsync(),
-        storeServer3.startAsync(),
-        storeServer4.startAsync()
-      ])
+      return masterServer.startAsync()
         .then(function(){
           //create user
           return P.try(function(){
             return api.master.post('/user/create',{username: user.username})
           })
-            .spread(function(res,body){
-              user.password = body.password
-              return P.all([
-                expect(body.success).to.equal('User created'),
-                expect(body.id).to.be.greaterThan(0),
-                expect(body.password.length).to.equal(64)
-              ])
-            }).then(function(){
-              //create prisms
-              var promises = []
-              var prisms = ['prism1','prism2']
-              var prism
-              for(var i = 0; i < prisms.length; i++){
-                prism = clconf[prisms[i]]
-                promises.push(
-                  api.master.post('/prism/create',{
-                    name: prism.prism.name,
-                    domain: prism.domain,
-                    site: prism.site,
-                    zone: prism.zone,
-                    host: prism.host,
-                    ip: prism.prism.host,
-                    port: prism.prism.port
-                  }))
-              }
-              return P.all(promises)
-            })
-            .then(function(){
-              //create stores
-              var promises = []
-              var stores = ['store1','store2','store3','store4']
-              var store
-              for(var i = 0; i < stores.length; i++){
-                store = clconf[stores[i]]
-                promises.push(
-                  api.master.post('/store/create',{
-                    prism: store.prism.name,
-                    name: store.store.name,
-                    ip: store.store.host,
-                    port: store.store.port
-                  }))
-              }
-              return P.all(promises)
-            })
-            .then(function(){
-              console.log('Mock cluster started!')
-            })
-            .catch(function(err){
-              console.trace(err)
-            })
+        })
+        .spread(function(res,body){
+          user.password = body.password
+          return P.all([
+            expect(body.success).to.equal('User created'),
+            expect(body.id).to.be.greaterThan(0),
+            expect(body.password.length).to.equal(64)
+          ])
+        })
+        .then(function(){
+          //create prisms
+          var promises = []
+          var prisms = ['prism1','prism2']
+          var prism
+          for(var i = 0; i < prisms.length; i++){
+            prism = clconf[prisms[i]]
+            promises.push(
+              api.master.post('/prism/create',{
+                name: prism.prism.name,
+                domain: prism.domain,
+                site: prism.site,
+                zone: prism.zone,
+                host: prism.host,
+                ip: prism.prism.host,
+                port: prism.prism.port
+              }))
+          }
+          return P.all(promises)
+        })
+        .then(function(){
+          //create stores
+          var promises = []
+          var stores = ['store1','store2','store3','store4']
+          var store
+          for(var i = 0; i < stores.length; i++){
+            store = clconf[stores[i]]
+            promises.push(
+              api.master.post('/store/create',{
+                prism: store.prism.name,
+                name: store.store.name,
+                ip: store.store.host,
+                port: store.store.port
+              }))
+          }
+          return P.all(promises)
+        })
+        .then(function(){
+          return P.all([
+            prismServer1.startAsync(),
+            prismServer2.startAsync(),
+            storeServer1.startAsync(),
+            storeServer2.startAsync(),
+            storeServer3.startAsync(),
+            storeServer4.startAsync()
+          ])
+        })
+        .then(function(){
+          console.log('Mock cluster started!')
+        })
+        .catch(function(err){
+          console.trace(err)
         })
     })
     //remove user and stop services
@@ -491,54 +506,91 @@ describe('e2e',function(){
             expect(err.message).to.equal('connect ECONNREFUSED')
           })
       })
+      it('should still upload content',uploadContent(clconf.prism1))
+      it('should still show existence',contentExists(clconf.prism1))
       it('should still purchase content',purchaseContent(clconf.prism1))
       it('should still deliver content',deliverContent(clconf.prism1))
       it('should still download content',downloadContent(clconf.prism1))
     })
-    describe.skip('prism2 down',function(){
+    describe('prism2 down',function(){
       before(function(){
         return prismServer2.stopAsync()
       })
       after(function(){
         return prismServer2.startAsync()
       })
+      it('should still upload content',uploadContent(clconf.prism1))
+      it('should still show existence',
+        contentExists(clconf.prism1,{count: 1, deepChecks: ['prism1']}))
       it('should still purchase content',purchaseContent(clconf.prism1))
       it('should still deliver content',deliverContent(clconf.prism1))
       it('should still download content',downloadContent(clconf.prism1))
     })
-    describe.skip('prism1 down',function(){
+    describe('prism1 down',function(){
       before(function(){
         return prismServer1.stopAsync()
       })
       after(function(){
         return prismServer1.startAsync()
       })
+      it('should still upload content',uploadContent(clconf.prism2))
+      it('should still show existence',
+        contentExists(clconf.prism2,{count: 1, deepChecks: ['prism2']}))
       it('should still purchase content',purchaseContent(clconf.prism2))
       it('should still deliver content',deliverContent(clconf.prism2))
       it('should still download content',downloadContent(clconf.prism2))
     })
-    describe.skip('store1 and store3 down',function(){
+    describe('store1 and store2 down',function(){
       before(function(){
-        return storeServer1.stopAsync()
+        return P.all([
+          storeServer1.stopAsync(),
+          storeServer2.stopAsync()
+        ])
       })
       after(function(){
-        return storeServer3.startAsync()
+        return P.all([
+          storeServer1.startAsync(),
+          storeServer2.startAsync()
+        ])
       })
+      it('should still upload content',uploadContent(clconf.prism1))
+      it('should still show existence',
+        contentExists(clconf.prism1,{
+          checkExists: true,
+          count: 1,
+          countGreaterEqual: true,
+          deepChecks: ['prism2']
+        })
+      )
       it('should still purchase content',purchaseContent(clconf.prism1))
       it('should still deliver content',deliverContent(clconf.prism1))
       it('should still download content',downloadContent(clconf.prism1))
     })
-    describe.skip('store2 and store4 down',function(){
+    describe('store3 and store4 down',function(){
       before(function(){
-        return storeServer2.stopAsync()
+        return P.all([
+          storeServer3.stopAsync(),
+          storeServer4.stopAsync()
+        ])
       })
       after(function(){
-        return storeServer4.startAsync()
+        return P.all([
+          storeServer3.startAsync(),
+          storeServer4.startAsync()
+        ])
       })
-      it('should still purchase content',purchaseContent(clconf.prism1))
-      it('should still deliver content',deliverContent(clconf.prism1))
-      it('should still download content',downloadContent(clconf.prism1))
+      it('should still upload content',uploadContent(clconf.prism2))
+      it('should still show existence',
+        contentExists(clconf.prism1,{
+          checkExists: true,
+          count: 1,
+          countGreaterEqual: true,
+          deepChecks: ['prism1']
+        })
+      )
+      it('should still purchase content',purchaseContent(clconf.prism2))
+      it('should still deliver content',deliverContent(clconf.prism2))
+      it('should still download content',downloadContent(clconf.prism2))
     })
   })
-
 })

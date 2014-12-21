@@ -1,13 +1,9 @@
 'use strict';
-var P = require('bluebird')
 var debug = require('debug')('oose:userSessionValidate')
 
 var api = require('../helpers/api')
+var redis = require('../helpers/redis')
 var UserError = require('../helpers/UserError')
-
-var config = require('../config')
-
-var cache = {}
 
 
 /**
@@ -18,38 +14,43 @@ var cache = {}
  */
 module.exports = function(req,res,next){
   var token = req.body.$sessionToken || req.query.$sessionToken || ''
-  P.try(function(){
-    if('string' !== typeof token || 64 !== token.length)
-      throw new UserError('Invalid session token passed')
-    if(cache[token] && cache[token].expires >= +new Date()){
-      debug('cache hit',token)
-      return new P(function(resolve){
-        process.nextTick(function(){
-          resolve(cache[token].session)
+  var session
+  redis.getAsync(redis.schema.userSession(token))
+    .then(function(result){
+      if('string' !== typeof token || 64 !== token.length)
+        throw new UserError('Invalid session token passed')
+      if(!result){
+        debug('cache miss',token)
+        return api.master.post('/user/session/validate',{
+          token: token,
+          ip: req.ip
         })
-      })
-    } else {
-      debug('cache miss',token)
-      return api.master.post('/user/session/validate',{
-        token: token,
-        ip: req.ip
-      })
-        .spread(function(res,body){
-          if(!body)
-            throw new UserError('Session doesnt exist')
-          if('Session valid' !== body.success)
-            throw new UserError('Invalid session')
-          cache[token] = {
-            session: body.session,
-            expires: +new Date() + (config.prism.cache.userSession * 1000)
-          }
-          return cache[token].session
-        })
-    }
-  })
+          .spread(function(res,body){
+            if(!body)
+              throw new UserError('Session doesnt exist')
+            if('Session valid' !== body.success)
+              throw new UserError('Invalid session')
+            session = body.session
+            return redis.setAsync(
+              redis.schema.userSession(token),JSON.stringify(body.session))
+          })
+          .then(function(){
+            return session
+          })
+      } else {
+        debug('cache hit',token)
+        session = JSON.parse(result)
+        return session
+      }
+    })
     .then(function(session){
       req.session = session
       next()
+    })
+    .catch(SyntaxError,function(err){
+      res.status(401)
+      res.json({err: 'Failed to parse session record from redis: ' +
+        err.message})
     })
     .catch(UserError,function(err){
       res.status(401)

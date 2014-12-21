@@ -1,15 +1,20 @@
 'use strict';
-var child = require('infant').child
-var clusterSetup = require('infant').cluster
+var P = require('bluebird')
+var infant = require('infant')
 
 var cluster
 var config = require('../config')
+var guard
+
+//make some promises
+P.promisifyAll(infant)
 
 if(require.main === module){
-  child(
+  guard = infant.parent('./guard')
+  infant.child(
     'oose:' + config.prism.name + ':master',
     function(done){
-      cluster = clusterSetup(
+      cluster = infant.cluster(
         './worker',
         {
           enhanced: true,
@@ -17,15 +22,24 @@ if(require.main === module){
           maxConnections: config.prism.workers.maxConnections
         }
       )
-      cluster.start(function(err){
-        done(err)
-      })
+      guard.startAsync()
+        .then(function(){
+          return cluster.startAsync()
+        })
+        .then(function(){
+          done()
+        })
+        .catch(done)
     },
     function(done){
-      if(!cluster) return done()
-      cluster.stop(function(err){
-        done(err)
-      })
+      cluster.stopAsync()
+        .then(function(){
+          guard.stopAsync()
+        })
+        .then(function(){
+          done()
+        })
+        .catch(done)
     }
   )
 }

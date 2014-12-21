@@ -1,6 +1,6 @@
 'use strict';
 var P = require('bluebird')
-var debug = require('debug')('oose:prismBalance')
+var debug = require('debug')('oose:prism:balance')
 
 var api = require('../helpers/api')
 var redis = require('../helpers/redis')
@@ -16,26 +16,8 @@ exports.prismList = function(){
   var prismList
   return redis.getAsync(redis.schema.prismList())
     .then(function(result){
-      if(!result){
-        debug('cache miss',redis.schema.prismList())
-        return api.master.post('/prism/list')
-          .spread(function(res,body){
-            prismList = body.prism
-            return redis.setAsync(
-              redis.schema.prismList(),JSON.stringify(prismList))
-          })
-          .then(function(){
-            return redis.expireAsync(
-              redis.schema.prismList(),config.prism.cache.prismList)
-          })
-          .then(function(){
-            return prismList
-          })
-      } else {
-        debug('cache hit',redis.schema.prismList())
-        prismList = JSON.parse(result)
-        return prismList
-      }
+      prismList = JSON.parse(result)
+      return prismList
     })
 }
 
@@ -47,15 +29,20 @@ exports.prismList = function(){
  * @return {Array}
  */
 exports.populateHits = function(token,prismList){
+  var populate = function(prism){
+    return function(hits){
+      prism.hits = +hits
+    }
+  }
   var promises = []
-  prismList.forEach(function(prism){
+  var prism
+  for(var i = 0; i < prismList.length; i++){
+    prism = prismList[i]
     promises.push(
       redis.getAsync(redis.schema.prismHits(token,prism.name))
-        .then(function(hits){
-          prism.hits = +hits
-        })
+        .then(populate(prism))
     )
-  })
+  }
   return P.all(promises)
     .then(function(){
       return prismList
@@ -97,7 +84,7 @@ exports.winner = function(token,prismList,skip){
 
 
 /**
- * Check existenced of a SHA1 (cached)
+ * Check existence of a SHA1 (cached)
  * @param {string} sha1
  * @return {P}
  */
@@ -125,5 +112,26 @@ exports.contentExists = function(sha1){
         contentExists = JSON.parse(result)
         return contentExists
       }
+    })
+}
+
+
+/**
+ * Store list by prism
+ * @param {string} prism
+ * @return {P}
+ */
+exports.storeListByPrism = function(prism){
+  var storeList = []
+  return redis.getAsync(redis.schema.storeList())
+    .then(function(result){
+      result = JSON.parse(result)
+      for(var i = 0; i < result.length; i++){
+        if(prism === result[i].Prism.name) storeList.push(result[i])
+      }
+      return storeList
+    })
+    .catch(SyntaxError,function(){
+      return []
     })
 }

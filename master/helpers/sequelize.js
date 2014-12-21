@@ -47,10 +47,11 @@ var createInst = function(){
     }
   )
   //load models automatically from the fs
-  fs.readdirSync(modelPath).forEach(function(file){
-    if('.' === file || '.' === file) return
-    inst.import(modelPath + '/' + file)
-  })
+  var files = fs.readdirSync(modelPath)
+  for(var i = 0; i < files.length; i++){
+    if('.' === files[i] || '.' === files[i]) continue
+    inst.import(modelPath + '/' + files[i])
+  }
   //setup relationship mapping
   keyMapping(inst)
   inst.doConnect = function(){

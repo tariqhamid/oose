@@ -20,10 +20,10 @@ var unshift = function(args,value){
 
 //normalize logged args
 var stringify = function(args){
-  args.forEach(function(item,i,o){
-    if('string' !== typeof item)
-      o[i] = util.inspect(item)
-  })
+  for(var i = 0; i < args.length; i++){
+    if('string' !== typeof args[i])
+      args[i] = util.inspect(args[i])
+  }
   return args
 }
 

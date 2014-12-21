@@ -14,7 +14,7 @@ var Store = sequelize.models.Store
 exports.list = function(req,res){
   var data = req.body
   if(!data.prism){
-    Store.findAll()
+    Store.findAll({include: [Prism]})
       .then(function(results){
         res.json({store: results || []})
       })
