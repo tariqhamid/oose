@@ -131,7 +131,7 @@ describe('APIClient',function(){
     var host = 'google.com'
     var port = '443'
     var protocol = 'https'
-    var client = new APIClient(port,host,protocol)
+    var client = new APIClient(port,host,{protocol: protocol})
     expect(client.host).to.equal(host)
     expect(client.port).to.equal(port)
     expect(client.protocol).to.equal(protocol)
