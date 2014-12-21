@@ -44,11 +44,13 @@ module.exports = function(req,res,next){
       next()
     })
     .catch(SyntaxError,function(err){
-      res.status(401)
+      console.log(err)
+      res.status(500)
       res.json({err: 'Failed to parse session record from redis: ' +
         err.message})
     })
     .catch(UserError,function(err){
+      console.log(err)
       res.status(401)
       res.json({err: err.message})
     })
