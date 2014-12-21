@@ -115,6 +115,16 @@ exports.contentExists = function(sha1){
     })
 }
 
+/**
+ * Invalidate cache for an existence record
+ * @param {string} sha1
+ * @return {P}
+ */
+exports.invalidateContentExists = function(sha1){
+  return api.prism(config.prism).post('/content/exists/invalidate',{sha1: sha1})
+}
+
+
 
 /**
  * Store list by prism

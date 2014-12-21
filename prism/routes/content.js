@@ -91,6 +91,10 @@ exports.upload = function(req,res){
                 }
                 return P.all(promises)
               })
+              .then(function(){
+                //kill the content existence cache
+                return prismBalance.invalidateContentExists(files[key].sha1)
+              })
           } else {
             //file already exists on cluster so we are done
           }
@@ -157,7 +161,7 @@ exports.exists = function(req,res){
       var promises = []
       var prism
       var checkExistence = function(prism){
-        return api.prism(prism).post('/content/existsLocal',{sha1: sha1})
+        return api.prism(prism).post('/content/exists/local',{sha1: sha1})
           .spread(function(res,body){
             return {prism: prism.name, exists: body}
           })
@@ -191,7 +195,9 @@ exports.exists = function(req,res){
         }
         map[row.prism] = row.exists
       }
-      res.json({sha1: sha1, exists: exists, count: count, map: map})
+      var result = {sha1: sha1, exists: exists, count: count, map: map}
+      //console.log(result)
+      res.json(result)
     })
 }
 
@@ -243,6 +249,45 @@ exports.existsLocal = function(req,res){
         map[row.store] = row.exists
       }
       res.json({exists: exists, count: count, map: map})
+    })
+}
+
+/**
+ * Invalidate existence cache cluster wide
+ * @param {object} req
+ * @param {object} res
+ */
+exports.existsInvalidate = function(req,res){
+  var sha1 = req.body.sha1
+  prismBalance.prismList()
+    .then(function(result){
+      var promises = []
+      for(var i = 0; i < result.length; i++){
+        promises.push(
+          api.prism(result[i]).post('/content/exists/invalidate/local',{sha1: sha1})
+            .catch(NetworkError,function(){
+              //ignore these
+            })
+        )
+      }
+      return P.all(promises)
+    })
+    .then(function(){
+      res.json({success: 'Existence cache cleared', sha1: sha1})
+    })
+}
+
+
+/**
+ * Invalidate existence cache locally
+ * @param {object} req
+ * @param {object} res
+ */
+exports.existsInvalidateLocal = function(req,res){
+  var sha1 = req.body.sha1
+  redis.delAsync(redis.schema.contentExists(sha1))
+    .then(function(){
+      res.json({success: 'Existence cache cleared locally', sha1: sha1})
     })
 }
 

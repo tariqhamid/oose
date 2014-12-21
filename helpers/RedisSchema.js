@@ -24,6 +24,15 @@ RedisSchema.prototype.applyPrefix = function(key){
 
 
 /**
+ * Key used to flush db on prism start
+ * @return {string}
+ */
+RedisSchema.prototype.flushKeys = function(){
+  return this.applyPrefix('*')
+}
+
+
+/**
  * Prism list Key
  * @return {string}
  */

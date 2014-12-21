@@ -155,6 +155,17 @@ var contentExists = function(prism,options){
   }
 }
 
+var contentExistsInvalidate = function(prism){
+  return function(){
+    return api.prism(prism.prism)
+      .post('/content/exists/invalidate',{sha1: content.sha1})
+      .spread(function(res,body){
+        expect(body.success).to.equal('Existence cache cleared')
+        expect(body.sha1).to.equal(content.sha1)
+      })
+  }
+}
+
 var purchaseContent = function(prism){
   return function(){
     return api.prism(prism.prism).setLocalAddress('127.0.0.1').setSession(user.session)
@@ -453,6 +464,9 @@ describe('e2e',function(){
     it('should show the content exists in 2 places',
       contentExists(clconf.prism1))
 
+    it('should invalidate the content existence',
+      contentExistsInvalidate(clconf.prism1))
+
     it('should allow API download of the content',
       downloadContent(clconf.prism1))
 
@@ -512,6 +526,7 @@ describe('e2e',function(){
       })
       it('should still upload content',uploadContent(clconf.prism1))
       it('should still show existence',contentExists(clconf.prism1))
+      it('should invalidate the content existence',contentExistsInvalidate(clconf.prism1))
       it('should still purchase content',purchaseContent(clconf.prism1))
       it('should still deliver content',deliverContent(clconf.prism1))
       it('should still download content',downloadContent(clconf.prism1))
@@ -526,6 +541,7 @@ describe('e2e',function(){
       it('should still upload content',uploadContent(clconf.prism1))
       it('should still show existence',
         contentExists(clconf.prism1,{count: 1, deepChecks: ['prism1']}))
+      it('should invalidate the content existence',contentExistsInvalidate(clconf.prism1))
       it('should still purchase content',purchaseContent(clconf.prism1))
       it('should still deliver content',deliverContent(clconf.prism1))
       it('should still download content',downloadContent(clconf.prism1))
@@ -540,6 +556,7 @@ describe('e2e',function(){
       it('should still upload content',uploadContent(clconf.prism2))
       it('should still show existence',
         contentExists(clconf.prism2,{count: 1, deepChecks: ['prism2']}))
+      it('should invalidate the content existence',contentExistsInvalidate(clconf.prism2))
       it('should still purchase content',purchaseContent(clconf.prism2))
       it('should still deliver content',deliverContent(clconf.prism2))
       it('should still download content',downloadContent(clconf.prism2))
@@ -566,6 +583,7 @@ describe('e2e',function(){
           deepChecks: ['prism2']
         })
       )
+      it('should invalidate the content existence',contentExistsInvalidate(clconf.prism1))
       it('should still purchase content',purchaseContent(clconf.prism1))
       it('should still deliver content',deliverContent(clconf.prism1))
       it('should still download content',downloadContent(clconf.prism1))
@@ -592,9 +610,68 @@ describe('e2e',function(){
           deepChecks: ['prism1']
         })
       )
+      it('should invalidate the content existence',contentExistsInvalidate(clconf.prism1))
       it('should still purchase content',purchaseContent(clconf.prism2))
       it('should still deliver content',deliverContent(clconf.prism2))
       it('should still download content',downloadContent(clconf.prism2))
+    })
+    describe('prism1, store1 and store2 down',function(){
+      before(function(){
+        return P.all([
+          prismServer1.stopAsync(),
+          storeServer1.stopAsync(),
+          storeServer2.stopAsync()
+        ])
+      })
+      after(function(){
+        return P.all([
+          storeServer1.startAsync(),
+          storeServer2.startAsync(),
+          prismServer1.startAsync()
+        ])
+      })
+      it('should still upload content',uploadContent(clconf.prism2))
+      it('should still show existence',
+        contentExists(clconf.prism2,{
+          checkExists: true,
+          count: 1,
+          countGreaterEqual: true,
+          deepChecks: ['prism2']
+        })
+      )
+      it('should invalidate the content existence',contentExistsInvalidate(clconf.prism2))
+      it('should still purchase content',purchaseContent(clconf.prism2))
+      it('should still deliver content',deliverContent(clconf.prism2))
+      it('should still download content',downloadContent(clconf.prism2))
+    })
+    describe('prism2, store3 and store4 down',function(){
+      before(function(){
+        return P.all([
+          prismServer2.stopAsync(),
+          storeServer3.stopAsync(),
+          storeServer4.stopAsync()
+        ])
+      })
+      after(function(){
+        return P.all([
+          storeServer3.startAsync(),
+          storeServer4.startAsync(),
+          prismServer2.startAsync()
+        ])
+      })
+      it('should still upload content',uploadContent(clconf.prism1))
+      it('should still show existence',
+        contentExists(clconf.prism1,{
+          checkExists: true,
+          count: 1,
+          countGreaterEqual: true,
+          deepChecks: ['prism1']
+        })
+      )
+      it('should invalidate the content existence',contentExistsInvalidate(clconf.prism1))
+      it('should still purchase content',purchaseContent(clconf.prism1))
+      it('should still deliver content',deliverContent(clconf.prism1))
+      it('should still download content',downloadContent(clconf.prism1))
     })
   })
 })
