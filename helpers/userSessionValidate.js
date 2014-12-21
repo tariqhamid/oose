@@ -32,18 +32,14 @@ module.exports = function(req,res,next){
               throw new UserError('Invalid session')
             session = body.session
             return redis.setAsync(
-              redis.schema.userSession(token),JSON.stringify(body.session))
-          })
-          .then(function(){
-            return session
+              redis.schema.userSession(token),JSON.stringify(session))
           })
       } else {
         debug('cache hit',token)
         session = JSON.parse(result)
-        return session
       }
     })
-    .then(function(session){
+    .then(function(){
       req.session = session
       next()
     })
