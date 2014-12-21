@@ -16,10 +16,11 @@ P.promisifyAll(request)
  * Constructor
  * @param {number} port
  * @param {string} host
- * @param {string} protocol
+ * @param {object} options
  * @constructor
  */
-var APIClient = function(port,host,protocol){
+var APIClient = function(port,host,options){
+  if('object' !== typeof options) options = {}
   //defaults
   this.host = '127.0.0.1'
   this.port = 80
@@ -27,7 +28,8 @@ var APIClient = function(port,host,protocol){
   //overrides
   if(host) this.host = host
   if(port) this.port = port
-  if(protocol) this.protocol = protocol
+  if(options.protocol) this.protocol = options.protocol
+  if(options.localAddress) this.localAddress = options.localAddress
   //set the token to an empty object for now
   this.session = {}
   //set basicAuth to disabled
@@ -60,6 +62,18 @@ APIClient.prototype.setBasicAuth = function(username,password){
   debug('setting basic auth',username,password)
   this.basicAuth.username = username
   this.basicAuth.password = password
+  return this
+}
+
+
+/**
+ * Set local address
+ * @param {string} address
+ * @return {APIClient}
+ */
+APIClient.prototype.setLocalAddress = function(address){
+  debug('setting loccal address',address)
+  this.localAddress = address
   return this
 }
 
@@ -104,6 +118,7 @@ APIClient.prototype.get = function(path,data){
       password: that.basicAuth.password
     }
   }
+  if(this.localAddress) options.localAddress = this.localAddress
   options.url = url
   debug('----> GET REQ',options)
   return request.getAsync(options)
@@ -139,6 +154,7 @@ APIClient.prototype.post = function(path,data){
       password: that.basicAuth.password
     }
   }
+  if(this.localAddress) options.localAddress = this.localAddress
   options.url = url
   debug('----> POST REQ',options)
   return request.postAsync(options)
@@ -180,6 +196,7 @@ APIClient.prototype.upload = function(path,filepath,data){
   }
   //add file
   options.formData.file = fs.createReadStream(filepath)
+  if(this.localAddress) options.localAddress = this.localAddress
   options.url = url
   //make the request
   debug('----> UPLOAD REQ',options)
@@ -216,6 +233,7 @@ APIClient.prototype.download = function(path,data){
       password: that.basicAuth.password
     }
   }
+  if(this.localAddress) options.localAddress = this.localAddress
   return request.post(options)
 }
 
@@ -237,6 +255,7 @@ APIClient.prototype.put = function(path){
       password: that.basicAuth.password
     }
   }
+  if(this.localAddress) options.localAddress = this.localAddress
   return request.put(options)
 }
 

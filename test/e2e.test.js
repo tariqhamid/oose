@@ -74,6 +74,7 @@ var clconf = {
  * @type {APIClient}
  */
 api.master = new APIClient(clconf.master.master.port,clconf.master.master.host)
+api.master.setLocalAddress('127.0.0.1')
 api.master.setBasicAuth(
   clconf.master.master.username,
   clconf.master.master.password)
@@ -116,7 +117,7 @@ process.on('exit',function(){
 //reusable tests
 var uploadContent = function(prism){
   return function(){
-    return api.prism(prism.prism).setSession(user.session)
+    return api.prism(prism.prism).setLocalAddress('127.0.0.1').setSession(user.session)
       .upload('/content/upload',content.file)
       .spread(function(res,body){
         expect(body.files.file.sha1).to.equal(content.sha1)
@@ -131,7 +132,7 @@ var contentExists = function(prism,options){
   if(!options.hasOwnProperty('deepChecks'))
     options.deepChecks = ['prism1','prism2']
   return function(){
-    return api.prism(prism.prism).setSession(user.session)
+    return api.prism(prism.prism).setLocalAddress('127.0.0.1').setSession(user.session)
       .post('/content/exists',{sha1: content.sha1})
       .spread(function(res,body){
         expect(body.sha1).to.equal(content.sha1)
@@ -156,7 +157,7 @@ var contentExists = function(prism,options){
 
 var purchaseContent = function(prism){
   return function(){
-    return api.prism(prism.prism).setSession(user.session)
+    return api.prism(prism.prism).setLocalAddress('127.0.0.1').setSession(user.session)
       .post('/content/purchase',{sha1: content.sha1, ip: '127.0.0.1'})
       .spread(function(res,body){
         expect(body.token.length).to.equal(64)
@@ -191,7 +192,7 @@ var deliverContent = function(prism){
 
 var downloadContent = function(prism){
   return function(){
-    return api.prism(prism.prism).setSession(user.session)
+    return api.prism(prism.prism).setLocalAddress('127.0.0.1').setSession(user.session)
       .post('/content/download',{sha1: content.sha1})
       .spread(function(res,body){
         expect(body).to.equal(content.data)
@@ -418,10 +419,12 @@ describe('e2e',function(){
         })
     })
     it('should login to prism1',function(){
-      return api.prism(clconf.prism1.prism).post('/user/login',{
-        username: user.username,
-        password: user.password
-      })
+      return api.prism(clconf.prism1.prism)
+        .setLocalAddress('127.0.0.1')
+        .post('/user/login',{
+          username: user.username,
+          password: user.password
+        })
         .spread(function(res,body){
           expect(body.session).to.be.an('object')
           user.session = body.session
@@ -430,6 +433,7 @@ describe('e2e',function(){
     it('should login to prism2',function(){
       var prism = api.prism(clconf.prism1.prism)
       return prism
+        .setLocalAddress('127.0.0.1')
         .post('/user/login',{
           username: user.username,
           password: user.password
@@ -477,7 +481,7 @@ describe('e2e',function(){
         })
     })
     it('should allow removal of purchases',function(){
-      return api.prism(clconf.prism2.prism).setSession(user.session)
+      return api.prism(clconf.prism2.prism).setLocalAddress('127.0.0.1').setSession(user.session)
         .post('/content/remove',{token: purchase.token})
         .spread(function(res,body){
           expect(body.token).to.equal(purchase.token)
