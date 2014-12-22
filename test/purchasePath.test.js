@@ -70,8 +70,4 @@ describe('purchasePath',function(){
         expect(result).to.equal(false)
       })
   })
-  it('should create a redis key',function(){
-    expect(purchasePath.redisKey(purchase.token)).to.equal(
-      'purchase:' + purchase.token)
-  })
 })

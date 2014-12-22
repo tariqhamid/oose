@@ -6,7 +6,6 @@ var request = require('request')
 
 var APIClient = require('../helpers/APIClient')
 
-var content = require('./helpers/content')
 var purchase = require('./helpers/purchase')
 
 var config = require('../config')

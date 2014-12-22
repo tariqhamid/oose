@@ -17,7 +17,7 @@ exports.create = function(req,res){
   P.try(function(){
     if(64 !== purchase.token.length)
       throw new UserError('Invalid purchase token')
-    redisKey = purchasePath.redisKey(purchase.token)
+    redisKey = redis.schema.purchase(purchase.token)
     return redis.existsAsync(redisKey)
   })
     .then(function(result){
@@ -45,7 +45,7 @@ exports.create = function(req,res){
  */
 exports.find = function(req,res){
   var token = req.body.token
-  var redisKey = purchasePath.redisKey(token)
+  var redisKey = redis.schema.purchase(token)
   redis.getAsync(redisKey)
     .then(function(result){
       if(!result) throw new UserError('Purchase not found')
@@ -69,7 +69,7 @@ exports.update = function(req,res){
   var data = req.body
   var token = data.token
   var purchase
-  var redisKey = purchasePath.redisKey(token)
+  var redisKey = redis.schema.purchase(token)
   redis.getAsync(redisKey)
     .then(function(result){
       if(!result) throw new UserError('Purchase not found')
@@ -101,7 +101,7 @@ exports.update = function(req,res){
  */
 exports.remove = function(req,res){
   var token = req.body.token
-  var redisKey = purchasePath.redisKey(token)
+  var redisKey = redis.schema.purchase(token)
   redis.delAsync(redisKey)
     .then(function(){
       res.json({

@@ -115,9 +115,10 @@ process.on('exit',function(){
 })
 
 //reusable tests
-var uploadContent = function(prism){
+var contentUpload = function(prism){
   return function(){
-    return api.prism(prism.prism).setLocalAddress('127.0.0.1').setSession(user.session)
+    return api.prism(prism.prism)
+      .setLocalAddress('127.0.0.1').setSession(user.session)
       .upload('/content/upload',content.file)
       .spread(function(res,body){
         expect(body.files.file.sha1).to.equal(content.sha1)
@@ -132,7 +133,8 @@ var contentExists = function(prism,options){
   if(!options.hasOwnProperty('deepChecks'))
     options.deepChecks = ['prism1','prism2']
   return function(){
-    return api.prism(prism.prism).setLocalAddress('127.0.0.1').setSession(user.session)
+    return api.prism(prism.prism)
+      .setLocalAddress('127.0.0.1').setSession(user.session)
       .post('/content/exists',{sha1: content.sha1})
       .spread(function(res,body){
         expect(body.sha1).to.equal(content.sha1)
@@ -166,25 +168,35 @@ var contentExistsInvalidate = function(prism){
   }
 }
 
-var purchaseContent = function(prism){
+var contentPurchase = function(prism){
   return function(){
-    return api.prism(prism.prism).setLocalAddress('127.0.0.1').setSession(user.session)
-      .post('/content/purchase',{sha1: content.sha1, ip: '127.0.0.1'})
+    return api.prism(prism.prism)
+      .setLocalAddress('127.0.0.1').setSession(user.session)
+      .post('/content/purchase',{
+        sha1: content.sha1,
+        ip: '127.0.0.1',
+        referrer: ['localhost']
+      })
       .spread(function(res,body){
         expect(body.token.length).to.equal(64)
         expect(body.ext).to.equal('txt')
         expect(body.life).to.equal(21600)
         expect(body.sha1).to.equal(content.sha1)
+        expect(body.referrer).to.be.an('array')
+        expect(body.referrer[0]).to.equal('localhost')
         purchase = body
       })
   }
 }
 
-var deliverContent = function(prism){
+var contentDeliver = function(prism){
   return function(){
     var options = {
       url: 'http://' + prism.prism.host + ':' + prism.prism.port +
       '/' + purchase.token + '/' + content.filename,
+      headers: {
+        'Referer': 'localhost'
+      },
       followRedirect: false,
       localAddress: '127.0.0.1'
     }
@@ -201,9 +213,10 @@ var deliverContent = function(prism){
   }
 }
 
-var downloadContent = function(prism){
+var contentDownload = function(prism){
   return function(){
-    return api.prism(prism.prism).setLocalAddress('127.0.0.1').setSession(user.session)
+    return api.prism(prism.prism)
+      .setLocalAddress('127.0.0.1').setSession(user.session)
       .post('/content/download',{sha1: content.sha1})
       .spread(function(res,body){
         expect(body).to.equal(content.data)
@@ -459,7 +472,7 @@ describe('e2e',function(){
         })
     })
 
-    it('should upload content',uploadContent(clconf.prism1))
+    it('should upload content',contentUpload(clconf.prism1))
 
     it('should show the content exists in 2 places',
       contentExists(clconf.prism1))
@@ -468,16 +481,16 @@ describe('e2e',function(){
       contentExistsInvalidate(clconf.prism1))
 
     it('should allow API download of the content',
-      downloadContent(clconf.prism1))
+      contentDownload(clconf.prism1))
 
     it('should allow purchase of the content',
-      purchaseContent(clconf.prism1))
+      contentPurchase(clconf.prism1))
 
     it('should accept a purchased URL and deliver content on prism1',
-      deliverContent(clconf.prism1))
+      contentDeliver(clconf.prism1))
 
     it('should accept a purchased URL and deliver content on prism2',
-      deliverContent(clconf.prism2))
+      contentDeliver(clconf.prism2))
 
     it('should deny a request from a bad ip',function(){
       var prism = clconf.prism2.prism
@@ -491,11 +504,30 @@ describe('e2e',function(){
         .spread(function(res,body){
           body = JSON.parse(body)
           expect(res.statusCode).to.equal(500)
-          expect(body.error).to.equal('Invalid IP')
+          expect(body.error).to.equal('Invalid request')
+        })
+    })
+    it('should deny a request from a bad referrer',function(){
+      var prism = clconf.prism2.prism
+      var options = {
+        url: 'http://' + prism.host + ':' + prism.port +
+        '/' + purchase.token + '/' + content.filename,
+        headers: {
+          Referer: 'foo'
+        },
+        followRedirect: false,
+        localAddress: '127.0.0.1'
+      }
+      return request.getAsync(options)
+        .spread(function(res,body){
+          body = JSON.parse(body)
+          expect(res.statusCode).to.equal(500)
+          expect(body.error).to.equal('Invalid request')
         })
     })
     it('should allow removal of purchases',function(){
-      return api.prism(clconf.prism2.prism).setLocalAddress('127.0.0.1').setSession(user.session)
+      return api.prism(clconf.prism2.prism)
+        .setLocalAddress('127.0.0.1').setSession(user.session)
         .post('/content/remove',{token: purchase.token})
         .spread(function(res,body){
           expect(body.token).to.equal(purchase.token)
@@ -505,15 +537,13 @@ describe('e2e',function(){
     })
     describe('master down',function(){
       before(function(){
-        return uploadContent(clconf.prism1)()
+        return contentUpload(clconf.prism1)()
           .then(function(){
             return masterServer.stopAsync()
           })
       })
       after(function(){
         return masterServer.startAsync()
-          .then(function(){
-          })
       })
       it('master should be down',function(){
         return api.master.post('/ping')
@@ -524,12 +554,13 @@ describe('e2e',function(){
             expect(err.message).to.equal('connect ECONNREFUSED')
           })
       })
-      it('should still upload content',uploadContent(clconf.prism1))
+      it('should still upload content',contentUpload(clconf.prism1))
       it('should still show existence',contentExists(clconf.prism1))
-      it('should invalidate the content existence',contentExistsInvalidate(clconf.prism1))
-      it('should still purchase content',purchaseContent(clconf.prism1))
-      it('should still deliver content',deliverContent(clconf.prism1))
-      it('should still download content',downloadContent(clconf.prism1))
+      it('should invalidate the content existence',
+        contentExistsInvalidate(clconf.prism1))
+      it('should still purchase content',contentPurchase(clconf.prism1))
+      it('should still deliver content',contentDeliver(clconf.prism1))
+      it('should still download content',contentDownload(clconf.prism1))
     })
     describe('prism2 down',function(){
       before(function(){
@@ -538,13 +569,14 @@ describe('e2e',function(){
       after(function(){
         return prismServer2.startAsync()
       })
-      it('should still upload content',uploadContent(clconf.prism1))
+      it('should still upload content',contentUpload(clconf.prism1))
       it('should still show existence',
         contentExists(clconf.prism1,{count: 1, deepChecks: ['prism1']}))
-      it('should invalidate the content existence',contentExistsInvalidate(clconf.prism1))
-      it('should still purchase content',purchaseContent(clconf.prism1))
-      it('should still deliver content',deliverContent(clconf.prism1))
-      it('should still download content',downloadContent(clconf.prism1))
+      it('should invalidate the content existence',
+        contentExistsInvalidate(clconf.prism1))
+      it('should still purchase content',contentPurchase(clconf.prism1))
+      it('should still deliver content',contentDeliver(clconf.prism1))
+      it('should still download content',contentDownload(clconf.prism1))
     })
     describe('prism1 down',function(){
       before(function(){
@@ -553,13 +585,14 @@ describe('e2e',function(){
       after(function(){
         return prismServer1.startAsync()
       })
-      it('should still upload content',uploadContent(clconf.prism2))
+      it('should still upload content',contentUpload(clconf.prism2))
       it('should still show existence',
         contentExists(clconf.prism2,{count: 1, deepChecks: ['prism2']}))
-      it('should invalidate the content existence',contentExistsInvalidate(clconf.prism2))
-      it('should still purchase content',purchaseContent(clconf.prism2))
-      it('should still deliver content',deliverContent(clconf.prism2))
-      it('should still download content',downloadContent(clconf.prism2))
+      it('should invalidate the content existence',
+        contentExistsInvalidate(clconf.prism2))
+      it('should still purchase content',contentPurchase(clconf.prism2))
+      it('should still deliver content',contentDeliver(clconf.prism2))
+      it('should still download content',contentDownload(clconf.prism2))
     })
     describe('store1 and store2 down',function(){
       before(function(){
@@ -574,7 +607,7 @@ describe('e2e',function(){
           storeServer2.startAsync()
         ])
       })
-      it('should still upload content',uploadContent(clconf.prism1))
+      it('should still upload content',contentUpload(clconf.prism1))
       it('should still show existence',
         contentExists(clconf.prism1,{
           checkExists: true,
@@ -583,10 +616,11 @@ describe('e2e',function(){
           deepChecks: ['prism2']
         })
       )
-      it('should invalidate the content existence',contentExistsInvalidate(clconf.prism1))
-      it('should still purchase content',purchaseContent(clconf.prism1))
-      it('should still deliver content',deliverContent(clconf.prism1))
-      it('should still download content',downloadContent(clconf.prism1))
+      it('should invalidate the content existence',
+        contentExistsInvalidate(clconf.prism1))
+      it('should still purchase content',contentPurchase(clconf.prism1))
+      it('should still deliver content',contentDeliver(clconf.prism1))
+      it('should still download content',contentDownload(clconf.prism1))
     })
     describe('store3 and store4 down',function(){
       before(function(){
@@ -601,7 +635,7 @@ describe('e2e',function(){
           storeServer4.startAsync()
         ])
       })
-      it('should still upload content',uploadContent(clconf.prism2))
+      it('should still upload content',contentUpload(clconf.prism2))
       it('should still show existence',
         contentExists(clconf.prism1,{
           checkExists: true,
@@ -610,10 +644,11 @@ describe('e2e',function(){
           deepChecks: ['prism1']
         })
       )
-      it('should invalidate the content existence',contentExistsInvalidate(clconf.prism1))
-      it('should still purchase content',purchaseContent(clconf.prism2))
-      it('should still deliver content',deliverContent(clconf.prism2))
-      it('should still download content',downloadContent(clconf.prism2))
+      it('should invalidate the content existence',
+        contentExistsInvalidate(clconf.prism1))
+      it('should still purchase content',contentPurchase(clconf.prism2))
+      it('should still deliver content',contentDeliver(clconf.prism2))
+      it('should still download content',contentDownload(clconf.prism2))
     })
     describe('prism1, store1 and store2 down',function(){
       before(function(){
@@ -630,7 +665,7 @@ describe('e2e',function(){
           prismServer1.startAsync()
         ])
       })
-      it('should still upload content',uploadContent(clconf.prism2))
+      it('should still upload content',contentUpload(clconf.prism2))
       it('should still show existence',
         contentExists(clconf.prism2,{
           checkExists: true,
@@ -639,10 +674,11 @@ describe('e2e',function(){
           deepChecks: ['prism2']
         })
       )
-      it('should invalidate the content existence',contentExistsInvalidate(clconf.prism2))
-      it('should still purchase content',purchaseContent(clconf.prism2))
-      it('should still deliver content',deliverContent(clconf.prism2))
-      it('should still download content',downloadContent(clconf.prism2))
+      it('should invalidate the content existence',
+        contentExistsInvalidate(clconf.prism2))
+      it('should still purchase content',contentPurchase(clconf.prism2))
+      it('should still deliver content',contentDeliver(clconf.prism2))
+      it('should still download content',contentDownload(clconf.prism2))
     })
     describe('prism2, store3 and store4 down',function(){
       before(function(){
@@ -659,7 +695,7 @@ describe('e2e',function(){
           prismServer2.startAsync()
         ])
       })
-      it('should still upload content',uploadContent(clconf.prism1))
+      it('should still upload content',contentUpload(clconf.prism1))
       it('should still show existence',
         contentExists(clconf.prism1,{
           checkExists: true,
@@ -668,10 +704,11 @@ describe('e2e',function(){
           deepChecks: ['prism1']
         })
       )
-      it('should invalidate the content existence',contentExistsInvalidate(clconf.prism1))
-      it('should still purchase content',purchaseContent(clconf.prism1))
-      it('should still deliver content',deliverContent(clconf.prism1))
-      it('should still download content',downloadContent(clconf.prism1))
+      it('should invalidate the content existence',
+        contentExistsInvalidate(clconf.prism1))
+      it('should still purchase content',contentPurchase(clconf.prism1))
+      it('should still deliver content',contentDeliver(clconf.prism1))
+      it('should still download content',contentDownload(clconf.prism1))
     })
   })
 })

@@ -93,13 +93,3 @@ exports.remove = function(token,ext){
   if(!fs.existsSync(tokenPath)) return false
   return fs.unlinkAsync(tokenPath)
 }
-
-
-/**
- * Create a redis key from token
- * @param {string} token
- * @return {string}
- */
-exports.redisKey = function(token){
-  return 'purchase:' + token
-}

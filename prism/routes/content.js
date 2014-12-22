@@ -23,6 +23,8 @@ var config = require('../../config')
 //make some promises
 P.promisifyAll(temp)
 
+var nullFunction = function(){}
+
 
 /**
  * Upload file
@@ -252,6 +254,7 @@ exports.existsLocal = function(req,res){
     })
 }
 
+
 /**
  * Invalidate existence cache cluster wide
  * @param {object} req
@@ -264,10 +267,9 @@ exports.existsInvalidate = function(req,res){
       var promises = []
       for(var i = 0; i < result.length; i++){
         promises.push(
-          api.prism(result[i]).post('/content/exists/invalidate/local',{sha1: sha1})
-            .catch(NetworkError,function(){
-              //ignore these
-            })
+          api.prism(result[i])
+            .post('/content/exists/invalidate/local',{sha1: sha1})
+            .catch(NetworkError,nullFunction)
         )
       }
       return P.all(promises)
@@ -344,6 +346,7 @@ exports.download = function(req,res){
 exports.purchase = function(req,res){
   var ip = req.body.ip || req.ip || '127.0.0.1'
   var sha1 = req.body.sha1
+  var referrer = req.body.referrer
   var life = req.body.life || 21600 //6hrs
   var token, map, purchase
   P.try(function(){
@@ -364,7 +367,7 @@ exports.purchase = function(req,res){
         },
         function(){
           token = purchasePath.generateToken()
-          return redis.existsAsync(purchasePath.redisKey(token))
+          return redis.existsAsync(redis.schema.purchase(token))
             .then(function(result){
               tokenExists = result
             })
@@ -388,9 +391,7 @@ exports.purchase = function(req,res){
               life: life
             })
           })
-          .catch(NetworkError,function(){
-            //nothing we can do
-          })
+          .catch(NetworkError,nullFunction)
       }
       var promises = []
       for(var i = 0; i < stores.length; i++){
@@ -416,7 +417,8 @@ exports.purchase = function(req,res){
         token: token,
         map: map,
         ext: ext,
-        ip: ip
+        ip: ip,
+        referrer: referrer
       }
       //okay so the purchase is registered on all our stores, time to register
       //it to all the prisms
@@ -430,9 +432,7 @@ exports.purchase = function(req,res){
           .spread(function(){
             return client.post('/purchase/create',{purchase: purchase})
           })
-          .catch(NetworkError,function(){
-            //nothing we can do
-          })
+          .catch(NetworkError,nullFunction)
       }
       var prismList = result
       var promises = []
@@ -462,13 +462,19 @@ exports.purchase = function(req,res){
 exports.deliver = function(req,res){
   var token = req.params.token
   var filename = req.params.filename
-  var redisKey = purchasePath.redisKey(token)
+  var redisKey = redis.schema.purchase(token)
   var purchase
   redis.getAsync(redisKey)
     .then(function(result){
       if(!result) throw new NotFoundError('Purchase not found')
       purchase = JSON.parse(result)
-      if(purchase.ip !== req.ip) throw new UserError('Invalid IP')
+      if(purchase.ip !== req.ip) throw new UserError('Invalid request')
+      var validReferrer = false
+      var referrer = req.get('Referrer')
+      for(var i = 0; i < purchase.referrer.length; i++){
+        if(referrer.match(purchase.referrer[i])) validReferrer = true
+      }
+      if(!validReferrer) throw new UserError('Invalid request')
       //we have a purchase so now... we need to pick a store....
       return storeBalance.winnerFromExists(token,purchase.map)
     })
@@ -499,7 +505,7 @@ exports.deliver = function(req,res){
  */
 exports.remove = function(req,res){
   var token = req.body.token
-  var redisKey = purchasePath.redisKey(token)
+  var redisKey = redis.schema.purchase(token)
   var prismList
   var purchase
   redis.getAsync(redisKey)

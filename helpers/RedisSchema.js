@@ -112,6 +112,16 @@ RedisSchema.prototype.userSession = function(token){
 
 
 /**
+ * Look up a purchase
+ * @param {string} token
+ * @return {string}
+ */
+RedisSchema.prototype.purchase = function(token){
+  return this.applyPrefix('purchase:' + token)
+}
+
+
+/**
  * Export Object
  * @type {RedisSchema}
  */

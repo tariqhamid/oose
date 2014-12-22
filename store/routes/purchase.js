@@ -32,10 +32,10 @@ exports.create = function(req,res){
     .then(function(result){
       purchase = result
       purchase.life = life
-      return redis.hmsetAsync(purchasePath.redisKey(purchase.token),purchase)
+      return redis.hmsetAsync(redis.schema.purchase(purchase.token),purchase)
     })
     .then(function(){
-      return redis.expire(purchasePath.redisKey(purchase.token),purchase.life)
+      return redis.expire(redis.schema.purchase(purchase.token),purchase.life)
     })
     .then(function(){
       purchase.success = 'Purchase created'
@@ -58,7 +58,7 @@ exports.create = function(req,res){
  */
 exports.find = function(req,res){
   var token = req.body.token
-  redis.hgetallAsync(purchasePath.redisKey(token))
+  redis.hgetallAsync(redis.schema.purchase(token))
     .then(function(result){
       if(!result) throw new UserError('Purchase not found')
       res.json(result)
@@ -76,7 +76,7 @@ exports.find = function(req,res){
  */
 exports.update = function(req,res){
   var token = req.body.token
-  var key = purchasePath.redisKey(token)
+  var key = redis.schema.purchase(token)
   var purchase
   redis.hgetallAsync(key)
     .then(function(result){
@@ -105,7 +105,7 @@ exports.update = function(req,res){
  */
 exports.remove = function(req,res){
   var token = req.body.token
-  var key = purchasePath.redisKey(token)
+  var key = redis.schema.purchase(token)
   var purchase
   redis.hgetallAsync(key)
     .then(function(result){
