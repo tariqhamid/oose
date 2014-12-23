@@ -70,8 +70,8 @@ describe('master',function(){
     it('should update',function(){
       return client
         .post('/prism/update',{
-            name: 'test',
-            site: 'localsite2'
+          name: 'test',
+          site: 'localsite2'
         })
         .spread(function(res,body){
           expect(body.success).to.equal('Prism instance updated')

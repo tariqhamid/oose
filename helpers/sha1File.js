@@ -59,6 +59,7 @@ exports.fromPath = function(file){
  * @return {boolean}
  */
 exports.validate = function(sha1){
+  if(!sha1) return false
   return !!sha1.match(SHA1Exp)
 }
 
@@ -69,7 +70,8 @@ exports.validate = function(sha1){
  * @return {P}
  */
 exports.find = function(sha1){
-  if(!exports.validate(sha1)) return false
+  if(!exports.validate(sha1))
+    throw new UserError('Invalid SHA1 passed')
   return glob(exports.toPath(sha1) + '.*')
     .then(function(files){
       if(!files || !files.length) return false

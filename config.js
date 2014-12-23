@@ -35,6 +35,10 @@ config.$load({
     password: '',
     logging: false
   },
+  ssl: {
+    key: __dirname + '/test/assets/ssl/oose_test.key',
+    cert: __dirname + '/test/assets/ssl/oose_test.crt'
+  },
   //master
   master: {
     enabled: false,

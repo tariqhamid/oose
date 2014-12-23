@@ -24,12 +24,14 @@ var APIClient = function(port,host,options){
   //defaults
   this.host = '127.0.0.1'
   this.port = 80
-  this.protocol = 'http'
+  this.protocol = 'https'
   //overrides
   if(host) this.host = host
   if(port) this.port = port
   if(options.protocol) this.protocol = options.protocol
   if(options.localAddress) this.localAddress = options.localAddress
+  //turn on json if we can
+  this.json = true
   //set the token to an empty object for now
   this.session = {}
   //set basicAuth to disabled
@@ -72,9 +74,54 @@ APIClient.prototype.setBasicAuth = function(username,password){
  * @return {APIClient}
  */
 APIClient.prototype.setLocalAddress = function(address){
-  debug('setting loccal address',address)
+  debug('setting local address',address)
   this.localAddress = address
   return this
+}
+
+
+/**
+ * Set JSON parsing of response
+ * @param {boolean} json
+ * @return {APIClient}
+ */
+APIClient.prototype.setJSON = function(json){
+  this.json = !!json
+  return this
+}
+
+
+/**
+ * Build Options
+ * @param {string} dataKey The key to add the session token/data to
+ * @param {object} data
+ * @param {string} url
+ * @return {object}
+ */
+APIClient.prototype.buildOptions = function(dataKey,data,url){
+  var options = {}
+  //add ssl options
+  options.rejectUnauthorized = false
+  //set the data
+  if(data) options[dataKey] = data
+  else options[dataKey] = {}
+  //add session if we have one
+  if(this.session.token) options[dataKey].$sessionToken = this.session.token
+  //add basic auth if enabled
+  if(this.basicAuth.username || this.basicAuth.password){
+    options.auth = {
+      username: this.basicAuth.username,
+      password: this.basicAuth.password
+    }
+  }
+  //set the local address if we have one
+  if(this.localAddress) options.localAddress = this.localAddress
+  //turn on json
+  if(this.json && 'json' !== dataKey) options.json = true
+  //set the url
+  if(url) options.url = url
+  debug('built options',options)
+  return options
 }
 
 
@@ -87,6 +134,7 @@ APIClient.prototype.setLocalAddress = function(address){
  */
 APIClient.prototype.validateResponse = function(verb,path,res,body){
   var that = this
+  if('object' !== typeof body && this.json) body = JSON.parse(body)
   if(200 !== res.statusCode){
     throw new UserError(
       'Invalid response code (' + res.statusCode + ')' +
@@ -108,22 +156,11 @@ APIClient.prototype.validateResponse = function(verb,path,res,body){
 APIClient.prototype.get = function(path,data){
   var that = this
   var url = that.baseURL + path
-  var options = {qs: data, json: true}
-  //add session if we have one
-  if(that.session.token) options.qs.$sessionToken = that.session.token
-  //add basic auth if enabled
-  if(that.basicAuth.username || that.basicAuth.password){
-    options.auth = {
-      username: that.basicAuth.username,
-      password: that.basicAuth.password
-    }
-  }
-  if(this.localAddress) options.localAddress = this.localAddress
-  options.url = url
-  debug('----> GET REQ',options)
+  var options = that.buildOptions('qs',data,url)
+  debug('----> GET REQ',options.url)
   return request.getAsync(options)
     .spread(function(res,body){
-      debug('<----GET RES',options,body)
+      debug('<----GET RES',options.url,body)
       that.validateResponse('GET',path,res,body)
       return [res,body]
     })
@@ -144,22 +181,11 @@ APIClient.prototype.get = function(path,data){
 APIClient.prototype.post = function(path,data){
   var that = this
   var url = that.baseURL + path
-  var options = {json: data || {}}
-  //add session if enabled
-  if(that.session.token) options.json.$sessionToken = that.session.token
-  //add basic auth if enabled
-  if(that.basicAuth.username || that.basicAuth.password){
-    options.auth = {
-      username: that.basicAuth.username,
-      password: that.basicAuth.password
-    }
-  }
-  if(this.localAddress) options.localAddress = this.localAddress
-  options.url = url
-  debug('----> POST REQ',options)
+  var options = that.buildOptions('json',data,url)
+  debug('----> POST REQ',options.url)
   return request.postAsync(options)
     .spread(function(res,body){
-      debug('<---- POST RES ',options,body)
+      debug('<---- POST RES ',options.url,body)
       that.validateResponse('POST',path,res,body)
       return [res,body]
     })
@@ -181,29 +207,15 @@ APIClient.prototype.post = function(path,data){
 APIClient.prototype.upload = function(path,filepath,data){
   var that = this
   var url = that.baseURL + path
-  var options = {formData: data || {}}
-  //add session if enabled
-  if(that.session.token){
-    options.formData.$sessionToken = that.session.token
-    options.qs = {$sessionToken: that.session.token}
-  }
-  //add basic auth if enabled
-  if(that.basicAuth.username || that.basicAuth.password){
-    options.auth = {
-      username: that.basicAuth.username,
-      password: that.basicAuth.password
-    }
-  }
+  var options = that.buildOptions('qs',{},url)
   //add file
+  options.formData = data || {}
   options.formData.file = fs.createReadStream(filepath)
-  if(this.localAddress) options.localAddress = this.localAddress
-  options.url = url
   //make the request
-  debug('----> UPLOAD REQ',options)
+  debug('----> UPLOAD REQ',options.url)
   return request.postAsync(options)
     .spread(function(res,body){
-      body = JSON.parse(body)
-      debug('<---- UPLOAD RES',options,body)
+      debug('<---- UPLOAD RES',options.url,body)
       that.validateResponse('UPLOAD',path,res,body)
       return [res,body]
     })
@@ -223,17 +235,8 @@ APIClient.prototype.upload = function(path,filepath,data){
  */
 APIClient.prototype.download = function(path,data){
   var that = this
-  var options = {url: that.baseURL + path, json: data}
-  //add session if enabled
-  if(that.session.token) options.json.$sessionToken = that.session.token
-  //add basic auth if enabled
-  if(that.basicAuth.username || that.basicAuth.password){
-    options.auth = {
-      username: that.basicAuth.username,
-      password: that.basicAuth.password
-    }
-  }
-  if(this.localAddress) options.localAddress = this.localAddress
+  var url = that.baseURL + path
+  var options = that.buildOptions('json',data,url)
   return request.post(options)
 }
 
@@ -245,17 +248,8 @@ APIClient.prototype.download = function(path,data){
  */
 APIClient.prototype.put = function(path){
   var that = this
-  var options = {url: that.baseURL + path}
-  //add session if enabled
-  if(that.session.token) options.qs.$sessionToken = that.session.token
-  //add basic auth if enabled
-  if(that.basicAuth.username || that.basicAuth.password){
-    options.auth = {
-      username: that.basicAuth.username,
-      password: that.basicAuth.password
-    }
-  }
-  if(this.localAddress) options.localAddress = this.localAddress
+  var url = that.baseURL + path
+  var options = that.buildOptions('qs',{},url)
   return request.put(options)
 }
 

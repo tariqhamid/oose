@@ -6,7 +6,7 @@ var Busboy = require('busboy')
 var expect = require('chai').expect
 var express = require('express')
 var fs = require('graceful-fs')
-var http = require('http')
+var https = require('https')
 var promisePipe = require('promisepipe')
 var temp = require('temp').track()
 
@@ -14,12 +14,16 @@ var APIClient = require('../helpers/APIClient')
 var SHA1Stream = require('../helpers/SHA1Stream')
 var UserError = require('../helpers/UserError')
 
+var config = require('../config')
 var content = require('./helpers/content')
 
 var app = express()
-var server = http.createServer(app)
+var server = https.createServer({
+  key: fs.readFileSync(config.ssl.key),
+  cert: fs.readFileSync(config.ssl.cert)
+},app)
 
-var config = {
+var webServerConfig = {
   host: null,
   port: 3999,
   session: {
@@ -106,7 +110,10 @@ app.put('/put',function(req,res){
 })
 
 //protected routes
-app.use(basicAuth(config.basicAuth.username,config.basicAuth.password))
+app.use(basicAuth(
+  webServerConfig.basicAuth.username,
+  webServerConfig.basicAuth.password
+))
 app.post('/protected/post',function(req,res){
   res.json(req.body)
 })
@@ -116,7 +123,7 @@ app.get('/protected/get',function(req,res){
 
 describe('APIClient',function(){
   before(function(){
-    return server.listenAsync(config.port,config.host)
+    return server.listenAsync(webServerConfig.port,webServerConfig.host)
   })
   after(function(){
     return server.closeAsync()
@@ -125,7 +132,7 @@ describe('APIClient',function(){
     var client = new APIClient()
     expect(client.host).to.equal('127.0.0.1')
     expect(client.port).to.equal(80)
-    expect(client.protocol).to.equal('http')
+    expect(client.protocol).to.equal('https')
   })
   it('should accept instantiation options',function(){
     var host = 'google.com'
@@ -140,7 +147,7 @@ describe('APIClient',function(){
   describe('APIClient:sessionless',function(){
     var client
     beforeEach(function(){
-      client = new APIClient(config.port,config.host)
+      client = new APIClient(webServerConfig.port,webServerConfig.host)
     })
     it('should send a get request',function(){
       return client
@@ -193,7 +200,7 @@ describe('APIClient',function(){
         .catch(UserError,function(err){
           expect(err.message).to.equal(
             'Invalid response code (500) to GET ' +
-            'http://127.0.0.1:3999/invalid/response')
+            'https://127.0.0.1:3999/invalid/response')
         })
     })
     it('should throw on invalid response code POST',function(){
@@ -205,7 +212,7 @@ describe('APIClient',function(){
         .catch(UserError,function(err){
           expect(err.message).to.equal(
             'Invalid response code (500) to POST ' +
-            'http://127.0.0.1:3999/invalid/response')
+            'https://127.0.0.1:3999/invalid/response')
         })
     })
     it('should upload a file',function(){
@@ -229,8 +236,8 @@ describe('APIClient',function(){
   describe('APIClient:sessions',function(){
     var client
     beforeEach(function(){
-      client = new APIClient(config.port,config.host)
-      client.setSession(config.session)
+      client = new APIClient(webServerConfig.port,webServerConfig.host)
+      client.setSession(webServerConfig.session)
     })
     it('should send a get request',function(){
       return client
@@ -240,7 +247,7 @@ describe('APIClient',function(){
           return P.all([
             expect(res.statusCode).to.equal(200),
             expect(body.foo).to.equal('bar'),
-            expect(body.$sessionToken).to.equal(config.session.token)
+            expect(body.$sessionToken).to.equal(webServerConfig.session.token)
           ])
         })
     })
@@ -252,7 +259,7 @@ describe('APIClient',function(){
           return P.all([
             expect(res.statusCode).to.equal(200),
             expect(body.foo).to.equal('baz'),
-            expect(body.$sessionToken).to.equal(config.session.token)
+            expect(body.$sessionToken).to.equal(webServerConfig.session.token)
           ])
         })
     })
@@ -260,8 +267,9 @@ describe('APIClient',function(){
   describe('APIClient:basic auth',function(){
     var client
     beforeEach(function(){
-      client = new APIClient(config.port,config.host)
-      client.setBasicAuth(config.basicAuth.username,config.basicAuth.password)
+      client = new APIClient(webServerConfig.port,webServerConfig.host)
+      client.setBasicAuth(
+        webServerConfig.basicAuth.username,webServerConfig.basicAuth.password)
     })
     it('should send a get request',function(){
       return client

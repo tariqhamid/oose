@@ -3,14 +3,19 @@ var P = require('bluebird')
 var basicAuth = require('basic-auth-connect')
 var bodyParser = require('body-parser')
 var express = require('express')
-var http = require('http')
+var fs = require('graceful-fs')
+var https = require('https')
 var worker = require('infant').worker
 
 var userSessionValidate = require('../helpers/userSessionValidate')
 
 var app = express()
 var config = require('../config')
-var server = http.createServer(app)
+var sslOptions = {
+  key: fs.readFileSync(config.ssl.key),
+  cert: fs.readFileSync(config.ssl.cert)
+}
+var server = https.createServer(sslOptions,app)
 var routes = require('./routes')
 
 //make some promises

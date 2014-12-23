@@ -118,7 +118,8 @@ process.on('exit',function(){
 var contentUpload = function(prism){
   return function(){
     return api.prism(prism.prism)
-      .setLocalAddress('127.0.0.1').setSession(user.session)
+      .setLocalAddress('127.0.0.1')
+      .setSession(user.session)
       .upload('/content/upload',content.file)
       .spread(function(res,body){
         expect(body.files.file.sha1).to.equal(content.sha1)
@@ -134,7 +135,8 @@ var contentExists = function(prism,options){
     options.deepChecks = ['prism1','prism2']
   return function(){
     return api.prism(prism.prism)
-      .setLocalAddress('127.0.0.1').setSession(user.session)
+      .setLocalAddress('127.0.0.1')
+      .setSession(user.session)
       .post('/content/exists',{sha1: content.sha1})
       .spread(function(res,body){
         expect(body.sha1).to.equal(content.sha1)
@@ -171,7 +173,8 @@ var contentExistsInvalidate = function(prism){
 var contentPurchase = function(prism){
   return function(){
     return api.prism(prism.prism)
-      .setLocalAddress('127.0.0.1').setSession(user.session)
+      .setLocalAddress('127.0.0.1')
+      .setSession(user.session)
       .post('/content/purchase',{
         sha1: content.sha1,
         ip: '127.0.0.1',
@@ -192,11 +195,12 @@ var contentPurchase = function(prism){
 var contentDeliver = function(prism){
   return function(){
     var options = {
-      url: 'http://' + prism.prism.host + ':' + prism.prism.port +
+      url: 'https://' + prism.prism.host + ':' + prism.prism.port +
       '/' + purchase.token + '/' + content.filename,
       headers: {
         'Referer': 'localhost'
       },
+      rejectUnauthorized: false,
       followRedirect: false,
       localAddress: '127.0.0.1'
     }
@@ -216,7 +220,9 @@ var contentDeliver = function(prism){
 var contentDownload = function(prism){
   return function(){
     return api.prism(prism.prism)
-      .setLocalAddress('127.0.0.1').setSession(user.session)
+      .setLocalAddress('127.0.0.1')
+      .setSession(user.session)
+      .setJSON(false)
       .post('/content/download',{sha1: content.sha1})
       .spread(function(res,body){
         expect(body).to.equal(content.data)
@@ -495,9 +501,10 @@ describe('e2e',function(){
     it('should deny a request from a bad ip',function(){
       var prism = clconf.prism2.prism
       var options = {
-        url: 'http://' + prism.host + ':' + prism.port +
+        url: 'https://' + prism.host + ':' + prism.port +
         '/' + purchase.token + '/' + content.filename,
         followRedirect: false,
+        rejectUnauthorized: false,
         localAddress: '127.0.0.2'
       }
       return request.getAsync(options)
@@ -510,12 +517,13 @@ describe('e2e',function(){
     it('should deny a request from a bad referrer',function(){
       var prism = clconf.prism2.prism
       var options = {
-        url: 'http://' + prism.host + ':' + prism.port +
+        url: 'https://' + prism.host + ':' + prism.port +
         '/' + purchase.token + '/' + content.filename,
         headers: {
           Referer: 'foo'
         },
         followRedirect: false,
+        rejectUnauthorized: false,
         localAddress: '127.0.0.1'
       }
       return request.getAsync(options)

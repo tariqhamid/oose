@@ -1,13 +1,8 @@
 'use strict';
 var P = require('bluebird')
 
-var APIClient = require('../../helpers/APIClient')
+var api = require('../../helpers/api')
 var UserError = require('../../helpers/UserError')
-
-var config = require('../../config')
-
-var master = new APIClient(config.master.port,config.master.host)
-master.setBasicAuth(config.master.username,config.master.password)
 
 
 /**
@@ -19,7 +14,7 @@ exports.login = function(req,res){
   var data = req.body
   P.try(function(){
     if(data.$sessionToken) throw new UserError('Already logged in')
-    return master.post('/user/login',{
+    return api.master.post('/user/login',{
       username: req.body.username,
       password: req.body.password,
       ip: req.ip
@@ -47,7 +42,8 @@ exports.logout = function(req,res){
   var data = req.body
   P.try(function(){
     if(!data.$sessionToken) throw new UserError('No token provided')
-    return master.post('/user/logout',{token: data.$sessionToken, ip: req.ip})
+    return api.master.post('/user/logout',
+      {token: data.$sessionToken, ip: req.ip})
   })
     .spread(function(response,body){
       res.json(body)
@@ -64,7 +60,7 @@ exports.logout = function(req,res){
  * @param {object} res
  */
 exports.passwordReset = function(req,res){
-  master.post('/user/password/reset',{username: req.session.User.username})
+  api.master.post('/user/password/reset',{username: req.session.User.username})
     .spread(function(response,body){
       res.json(body)
     })
@@ -92,7 +88,7 @@ exports.sessionValidate = function(req,res){
  */
 exports.sessionUpdate = function(req,res){
   var data = req.body
-  master.post('/user/session/update',{
+  api.master.post('/user/session/update',{
     token: req.session.token,
     ip: req.ip,
     data: data.data
