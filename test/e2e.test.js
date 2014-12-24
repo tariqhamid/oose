@@ -488,6 +488,7 @@ describe('e2e',function(){
         .spread(function(res,body){
           expect(body.session).to.be.an('object')
           user.session = body.session
+          console.log(user.session)
         })
     })
     it('should login to prism2',function(){
