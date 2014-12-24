@@ -48,6 +48,7 @@ config.$load({
     username: 'oose',
     password: 'oose',
     user: {
+      sessionTokenName: 'X-OOSE-Token',
       sessionLife: 3600 //1hr
     }
   },

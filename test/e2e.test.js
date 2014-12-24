@@ -2,6 +2,7 @@
 var P = require('bluebird')
 //P.longStackTraces() //turn of for easier debugging
 var expect = require('chai').expect
+var fs = require('graceful-fs')
 var infant = require('infant')
 var ObjectManage = require('object-manage')
 var request = require('request')
@@ -110,12 +111,26 @@ process.on('exit',function(){
 })
 
 //reusable tests
+var checkPing = function(client){
+  return function(){
+    return client.postAsync(client.url('/ping'))
+      .spread(function(res,body){
+        expect(body.pong).to.equal('pong')
+      })
+  }
+}
+
 var contentUpload = function(prism){
   return function(){
-    return api.prism(prism.prism)
-      .setLocalAddress('127.0.0.1')
-      .setSession(user.session)
-      .upload('/content/upload',content.file)
+    var client = api.setSession(user.session,api.prism(prism))
+    return client
+      .postAsync({
+        url: client.url('/content/upload'),
+        formData: {
+          file: fs.createReadStream(content.file)
+        },
+        localAddress: '127.0.0.1'
+      })
       .spread(function(res,body){
         expect(body.files.file.sha1).to.equal(content.sha1)
       })
@@ -129,10 +144,13 @@ var contentExists = function(prism,options){
   if(!options.hasOwnProperty('deepChecks'))
     options.deepChecks = ['prism1','prism2']
   return function(){
-    return api.prism(prism.prism)
-      .setLocalAddress('127.0.0.1')
-      .setSession(user.session)
-      .post('/content/exists',{sha1: content.sha1})
+    var client = api.prism(prism)
+    return client
+      .postAsync({
+        url: client.url('/content/exists'),
+        json: {sha1: content.sha1},
+        localAddress: '127.0.0.1'
+      })
       .spread(function(res,body){
         expect(body.sha1).to.equal(content.sha1)
         if(options.checkExists) expect(body.exists).to.equal(true)
@@ -156,8 +174,11 @@ var contentExists = function(prism,options){
 
 var contentExistsInvalidate = function(prism){
   return function(){
-    return api.prism(prism.prism)
-      .post('/content/exists/invalidate',{sha1: content.sha1})
+    var client = api.prism(prism.prism)
+    return client.postAsync({
+      url: client.url('/content/exists/invalidate'),
+      json: {sha1: content.sha1}
+    })
       .spread(function(res,body){
         expect(body.success).to.equal('Existence cache cleared')
         expect(body.sha1).to.equal(content.sha1)
@@ -167,13 +188,15 @@ var contentExistsInvalidate = function(prism){
 
 var contentPurchase = function(prism){
   return function(){
-    return api.prism(prism.prism)
-      .setLocalAddress('127.0.0.1')
-      .setSession(user.session)
-      .post('/content/purchase',{
-        sha1: content.sha1,
-        ip: '127.0.0.1',
-        referrer: ['localhost']
+    var client = api.setSession(user.session,api.prism(prism.prism))
+    return client
+      .postAsync({
+        url: client.url('/content/purchase'),
+        json: {
+          sha1: content.sha1,
+          ip: '127.0.0.1',
+          referrer: ['localhost']
+        }
       })
       .spread(function(res,body){
         expect(body.token.length).to.equal(64)
@@ -189,6 +212,7 @@ var contentPurchase = function(prism){
 
 var contentDeliver = function(prism){
   return function(){
+    var client = api.prism(prism)
     var options = {
       url: 'https://' + prism.prism.host + ':' + prism.prism.port +
       '/' + purchase.token + '/' + content.filename,
@@ -199,7 +223,7 @@ var contentDeliver = function(prism){
       followRedirect: false,
       localAddress: '127.0.0.1'
     }
-    return request.getAsync(options)
+    return client.getAsync(options)
       .spread(function(res){
         expect(res.statusCode).to.equal(302)
         var uri = url.parse(res.headers.location)
@@ -214,11 +238,11 @@ var contentDeliver = function(prism){
 
 var contentDownload = function(prism){
   return function(){
-    return api.prism(prism.prism)
-      .setLocalAddress('127.0.0.1')
-      .setSession(user.session)
-      .setJSON(false)
-      .post('/content/download',{sha1: content.sha1})
+    var client = api.setSession(user.session,api.prism(prism.prism))
+    return client.postAsync({
+      url: client.url('/content/download'),
+      json: {sha1: content.sha1}
+    })
       .spread(function(res,body){
         expect(body).to.equal(content.data)
       })
@@ -237,20 +261,16 @@ describe('e2e',function(){
       return masterServer.startAsync()
         .then(function(){
           //create user
-          return P.try(function(){
-            return master.post(
-              master.url('/user/create'),{username: user.username})
+          return master.postAsync({
+            url: master.url('/user/create'),
+            json: {username: user.username}
           })
         })
         .spread(function(res,body){
           user.password = body.password
-          return P.all([
-            expect(body.success).to.equal('User created'),
-            expect(body.id).to.be.greaterThan(0),
-            expect(body.password.length).to.equal(64)
-          ])
-        })
-        .then(function(){
+          expect(body.success).to.equal('User created')
+          expect(body.id).to.be.greaterThan(0)
+          expect(body.password.length).to.equal(64)
           //create prisms
           var promises = []
           var prisms = ['prism1','prism2']
@@ -258,15 +278,19 @@ describe('e2e',function(){
           for(var i = 0; i < prisms.length; i++){
             prism = clconf[prisms[i]]
             promises.push(
-              master.post(master.url('/prism/create'),{
-                name: prism.prism.name,
-                domain: prism.domain,
-                site: prism.site,
-                zone: prism.zone,
-                host: prism.host,
-                ip: prism.prism.host,
-                port: prism.prism.port
-              }))
+              master.postAsync({
+                url: master.url('/prism/create'),
+                json: {
+                  name: prism.prism.name,
+                  domain: prism.domain,
+                  site: prism.site,
+                  zone: prism.zone,
+                  host: prism.host,
+                  ip: prism.prism.host,
+                  port: prism.prism.port
+                }
+              })
+            )
           }
           return P.all(promises)
         })
@@ -277,13 +301,15 @@ describe('e2e',function(){
           var store
           for(var i = 0; i < stores.length; i++){
             store = clconf[stores[i]]
-            promises.push(
-              master.post(master.url('/store/create'),{
+            promises.push(master.postAsync({
+              url: master.url('/store/create'),
+              json: {
                 prism: store.prism.name,
                 name: store.store.name,
                 ip: store.store.host,
                 port: store.store.port
-              }))
+              }
+            }))
           }
           return P.all(promises)
         })
@@ -313,7 +339,11 @@ describe('e2e',function(){
         var stores = ['store1','store2','store3','store4']
         for(var i = 0; i < stores.length; i++){
           promises.push(
-            master.post(master.url('/store/remove'),{name: stores[i]}))
+            master.postAsync({
+              url: master.url('/store/remove'),
+              json: {name: stores[i]}
+            })
+          )
         }
         return P.all(promises)
       })
@@ -323,14 +353,20 @@ describe('e2e',function(){
           var prisms = ['prism1','prism2']
           for(var i = 0; i < prisms.length; i++){
             promises.push(
-              master.post(master.url('/prism/remove'),{name: prisms[i]}))
+              master.postAsync({
+                url: master.url('/prism/remove'),
+                json: {name: prisms[i]}
+              })
+            )
           }
           return P.all(promises)
         })
         .then(function(){
           //remove user
-          return master.post(
-            master.url('/user/remove'),{username: user.username})
+          return master.postAsync({
+            url: master.url('/user/remove'),
+            json: {username: user.username}
+          })
         })
         .spread(function(res,body){
           return P.all([
@@ -356,61 +392,26 @@ describe('e2e',function(){
           console.trace(err)
         })
     })
-    it('master should be up',function(){
-      return master.post(master.url('/ping'))
-        .spread(function(res,body){
-          expect(body.pong).to.equal('pong')
-        })
-    })
-    it('prism1 should be up',function(){
-      return api.prism(clconf.prism1.prism).post('/ping')
-        .spread(function(res,body){
-          expect(body.pong).to.equal('pong')
-        })
-    })
-    it('prism2 should be up',function(){
-      return api.prism(clconf.prism2.prism).post('/ping')
-        .spread(function(res,body){
-          expect(body.pong).to.equal('pong')
-        })
-    })
-    it('store1 should be up',function(){
-      return api.store(clconf.store1.store).post('/ping')
-        .spread(function(res,body){
-          expect(body.pong).to.equal('pong')
-        })
-    })
-    it('store2 should be up',function(){
-      return api.store(clconf.store2.store).post('/ping')
-        .spread(function(res,body){
-          expect(body.pong).to.equal('pong')
-        })
-    })
-    it('store3 should be up',function(){
-      return api.store(clconf.store3.store).post('/ping')
-        .spread(function(res,body){
-          expect(body.pong).to.equal('pong')
-        })
-    })
-    it('store4 should be up',function(){
-      return api.store(clconf.store4.store).post('/ping')
-        .spread(function(res,body){
-          expect(body.pong).to.equal('pong')
-        })
-    })
+    it('master should be up',checkPing(master))
+    it('prism1 should be up',checkPing(api.prism(clconf.prism1.prism)))
+    it('prism2 should be up',checkPing(api.prism(clconf.prism2.prism)))
+    it('store1 should be up',checkPing(api.store(clconf.store1.store)))
+    it('store2 should be up',checkPing(api.store(clconf.store2.store)))
+    it('store3 should be up',checkPing(api.store(clconf.store3.store)))
+    it('store4 should be up',checkPing(api.store(clconf.store4.store)))
     it('should not require authentication for public functions',function(){
       var prism = clconf.prism1.prism
-      var client = new APIClient(prism.port,prism.host)
+      var client = api.prism(prism)
       return client
-        .post('/')
+        .postAsync(client.url('/'))
         .spread(function(res,body){
           expect(body.message).to.equal(
             'Welcome to OOSE version ' + config.version)
-          return client.post('/ping')
+          return client.postAsync(client.url('/ping'))
         })
         .spread(function(res,body){
           expect(body.pong).to.equal('pong')
-          return client.post('/user/login')
+          return client.postAsync(client.url('/user/login'))
         })
         .spread(function(res,body){
           console.log(body)
@@ -422,55 +423,58 @@ describe('e2e',function(){
     })
     it('should require a session for all protected prism functions',function(){
       var client = api.prism(clconf.prism1.prism)
-      return client.post('/user/logout')
+      return client.postAsync(client.url('/user/logout'))
         .catch(UserError,function(err){
           expect(err.message).to.match(/Invalid response code \(401\) to POST/)
-          return client.post('/user/password/reset')
+          return client.postAsync(client.url('/user/password/reset'))
         })
         .catch(UserError,function(err){
           expect(err.message).to.match(/Invalid response code \(401\) to POST/)
-          return client.post('/user/session/validate')
+          return client.postAsync(client.url('/user/session/validate'))
         })
         .catch(UserError,function(err){
           expect(err.message).to.match(/Invalid response code \(401\) to POST/)
-          return client.post('/content/upload')
+          return client.postAsync(client.url('/content/upload'))
         })
         .catch(UserError,function(err){
           expect(err.message).to.match(/Invalid response code \(401\) to POST/)
-          return client.post('/content/purchase')
+          return client.postAsync(client.url('/content/purchase'))
         })
         .catch(UserError,function(err){
           expect(err.message).to.match(/Invalid response code \(401\) to POST/)
-          return client.post('/content/remove')
+          return client.postAsync(client.url('/content/remove'))
         })
         .catch(UserError,function(err){
           expect(err.message).to.match(/Invalid response code \(401\) to POST/)
         })
     })
     it('should login to prism1',function(){
-      return api.prism(clconf.prism1.prism)
-        .setLocalAddress('127.0.0.1')
-        .post('/user/login',{
+      var client = api.prism(clconf.prism1.prism)
+      return client.postAsync({
+        url: client.url('/user/login'),
+        json: {
           username: user.username,
           password: user.password
-        })
+        }
+      })
         .spread(function(res,body){
           expect(body.session).to.be.an('object')
           user.session = body.session
         })
     })
     it('should login to prism2',function(){
-      var prism = api.prism(clconf.prism1.prism)
-      return prism
-        .setLocalAddress('127.0.0.1')
-        .post('/user/login',{
+      var client = api.prism(clconf.prism1.prism)
+      return client.postAsync({
+        url: client.url('/user/login'),
+        json: {
           username: user.username,
           password: user.password
-        })
+        }
+      })
         .spread(function(res,body){
           expect(body.session).to.be.an('object')
-          prism.setSession(body.session)
-          return prism.post('/user/logout')
+          client = api.setSession(body.session,client)
+          return client.postAsync(client.url('/user/logout'))
         })
         .spread(function(res,body){
           expect(body.success).to.equal('User logged out')
@@ -498,15 +502,13 @@ describe('e2e',function(){
       contentDeliver(clconf.prism2))
 
     it('should deny a request from a bad ip',function(){
-      var prism = clconf.prism2.prism
+      var client = api.prism(clconf.prism2.prism)
       var options = {
-        url: 'https://' + prism.host + ':' + prism.port +
-        '/' + purchase.token + '/' + content.filename,
+        url: client.url('/' + purchase.token + '/' + content.filename),
         followRedirect: false,
-        rejectUnauthorized: false,
         localAddress: '127.0.0.2'
       }
-      return request.getAsync(options)
+      return client.getAsync(options)
         .spread(function(res,body){
           body = JSON.parse(body)
           expect(res.statusCode).to.equal(500)
@@ -514,18 +516,16 @@ describe('e2e',function(){
         })
     })
     it('should deny a request from a bad referrer',function(){
-      var prism = clconf.prism2.prism
+      var client = api.prism(clconf.prism2.prism)
       var options = {
-        url: 'https://' + prism.host + ':' + prism.port +
-        '/' + purchase.token + '/' + content.filename,
+        url: client.url('/' + purchase.token + '/' + content.filename),
         headers: {
           Referer: 'foo'
         },
         followRedirect: false,
-        rejectUnauthorized: false,
         localAddress: '127.0.0.1'
       }
-      return request.getAsync(options)
+      return client.getAsync(options)
         .spread(function(res,body){
           body = JSON.parse(body)
           expect(res.statusCode).to.equal(500)
@@ -533,9 +533,11 @@ describe('e2e',function(){
         })
     })
     it('should allow removal of purchases',function(){
-      return api.prism(clconf.prism2.prism)
-        .setLocalAddress('127.0.0.1').setSession(user.session)
-        .post('/content/remove',{token: purchase.token})
+      var client = api.setSession(user.session,api.prism(clconf.prism2.prism))
+      return client.postAsync({
+        url: client.url('/content/remove'),
+        json: {token: purchase.token}
+      })
         .spread(function(res,body){
           expect(body.token).to.equal(purchase.token)
           expect(body.count).to.equal(1)
@@ -553,7 +555,7 @@ describe('e2e',function(){
         return masterServer.startAsync()
       })
       it('master should be down',function(){
-        return master.post(master.url('/ping'))
+        return master.post({url: master.url('/ping')})
           .then(function(){
             throw new Error('Master not down')
           })

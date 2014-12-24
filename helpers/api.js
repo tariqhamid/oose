@@ -1,7 +1,40 @@
 'use strict';
+var P = require('bluebird')
 var request = require('request')
 
 var config = require('../config')
+
+
+/**
+ * Make an API URL
+ * @param {object} options
+ * @return {function}
+ */
+var makeURL = function(options){
+  return function(uri){
+    return 'https://' + (options.host || '127.0.0.1') + ':' + options.port + uri
+  }
+}
+
+
+/**
+ * Setup a new request object
+ * @param {object} options
+ * @return {request}
+ */
+var setupRequest = function(options){
+  var req = request.defaults({
+    rejectUnauthorized: false,
+    json: true,
+    auth: {
+      username: options.username || config.master.username,
+      password: options.password || config.master.password
+    }
+  })
+  req.url = makeURL(options)
+  P.promisifyAll(req)
+  return req
+}
 
 
 /**
@@ -11,16 +44,7 @@ var config = require('../config')
  */
 exports.master = function(options){
   if(!options) options = config.master
-  var master = request.defaults({
-    auth: {
-      username: options.username || config.master.username,
-      password: options.password || config.master.password
-    }
-  })
-  master.url = function(uri){
-    return 'https://' + options.host + ':' + options.port + uri
-  }
-  return master
+  return setupRequest(options)
 }
 
 
@@ -31,16 +55,7 @@ exports.master = function(options){
  */
 exports.prism = function(options){
   if(!options) options = config.prism
-  var prism = request.defaults({
-    auth: {
-      username: options.username || config.prism.username,
-      password: options.password || config.prism.password
-    }
-  })
-  prism.url = function(uri){
-    return 'https://' + options.host + ':' + options.port + uri
-  }
-  return prism
+  return setupRequest(options)
 }
 
 
@@ -50,17 +65,8 @@ exports.prism = function(options){
  * @return {request}
  */
 exports.store = function(options){
-  if(!options) options = config.store
-  var store = request.defaults({
-    auth: {
-      username: options.username || config.store.username,
-      password: options.password || config.store.password
-    }
-  })
-  store.url = function(uri){
-    return 'https://' + options.host + ':' + options.port + uri
-  }
-  return store
+  if(!options) options = config.prism
+  return setupRequest(options)
 }
 
 
@@ -71,9 +77,9 @@ exports.store = function(options){
  * @return {request}
  */
 exports.setSession = function(session,request){
-  return request.defaults({
-    headers: {
-      'X-OOSE-Token': session.token
-    }
-  })
+  var options = {headers: {}}
+  options.headers[config.master.user.sessionTokenName] = session.token
+  var req = request.defaults(options)
+  P.promisifyAll(req)
+  return req
 }

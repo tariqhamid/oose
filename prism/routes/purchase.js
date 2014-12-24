@@ -44,7 +44,7 @@ exports.create = function(req,res){
  * @param {object} res
  */
 exports.find = function(req,res){
-  var token = req.body.token
+  var token = req.body.purchase.token
   var redisKey = redis.schema.purchase(token)
   redis.getAsync(redisKey)
     .then(function(result){

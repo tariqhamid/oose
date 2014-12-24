@@ -15,7 +15,8 @@ var config = require('../config')
  * @param {function} next
  */
 module.exports = function(req,res,next){
-  var token = req.get('X-OOSE-Token') || ''
+  var token = req.get(config.master.user.sessionTokenName) || ''
+  debug('got token',token)
   var session
   redis.getAsync(redis.schema.userSession(token))
     .then(function(result){
@@ -24,9 +25,12 @@ module.exports = function(req,res,next){
       if(!result){
         debug('cache miss',token)
         var client = api.master()
-        return client.post(client.url('/user/session/validate'),{
-          token: token,
-          ip: req.ip
+        return client.postAsync({
+          url: client.url('/user/session/validate'),
+          json: {
+            token: token,
+            ip: req.ip
+          }
         })
           .spread(function(res,body){
             if(!body)

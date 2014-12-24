@@ -4,6 +4,8 @@ var P = require('bluebird')
 var api = require('../../helpers/api')
 var UserError = require('../../helpers/UserError')
 
+var config = require('../../config')
+
 var master = api.master()
 
 
@@ -13,13 +15,16 @@ var master = api.master()
  * @param {object} res
  */
 exports.login = function(req,res){
-  var data = req.body
   P.try(function(){
-    if(data.$sessionToken) throw new UserError('Already logged in')
-    return master.post(master.url('/user/login'),{
-      username: req.body.username,
-      password: req.body.password,
-      ip: req.ip
+    if(req.get(config.master.user.sessionTokenName))
+      throw new UserError('Already logged in')
+    return master.postAsync({
+      url: master.url('/user/login'),
+      json: {
+        username: req.body.username,
+        password: req.body.password,
+        ip: req.ip
+      }
     })
   })
     .spread(function(response,body){
@@ -41,11 +46,12 @@ exports.login = function(req,res){
  * @param {object} res
  */
 exports.logout = function(req,res){
-  var data = req.body
-  P.try(function(){
-    if(!data.$sessionToken) throw new UserError('No token provided')
-    return master.post(master.url('/user/logout'),
-      {token: data.$sessionToken, ip: req.ip})
+  master.postAsync({
+    url: master.url('/user/logout'),
+    json: {
+      token: req.session.token,
+      ip: req.ip
+    }
   })
     .spread(function(response,body){
       res.json(body)
@@ -62,10 +68,10 @@ exports.logout = function(req,res){
  * @param {object} res
  */
 exports.passwordReset = function(req,res){
-  master.post(
-    master.url('/user/password/reset'),
-    {username: req.session.User.username}
-  )
+  master.postAsync({
+    url: master.url('/user/password/reset'),
+    json: {username: req.session.User.username}
+  })
     .spread(function(response,body){
       res.json(body)
     })
@@ -93,10 +99,12 @@ exports.sessionValidate = function(req,res){
  */
 exports.sessionUpdate = function(req,res){
   var data = req.body
-  master.post(master.url('/user/session/update'),{
-    token: req.session.token,
-    ip: req.ip,
-    data: data.data
+  master.postAsync({
+    url: master.url('/user/session/update'),json: {
+      token: req.session.token,
+      ip: req.ip,
+      data: data.data
+    }
   })
     .spread(function(response,body){
       res.json(body)

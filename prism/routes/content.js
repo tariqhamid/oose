@@ -125,7 +125,10 @@ exports.upload = function(req,res){
 exports.put = function(req,res){
   var file = req.params.file
   var storeList
-  master.post(master.url('/store/list'),{prism: config.prism.name})
+  master.post({
+    url: master.url('/store/list'),
+    json: {prism: config.prism.name}
+  })
     .spread(function(res,body){
       storeList = body.store
       return storeBalance.winner(storeList)

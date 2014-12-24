@@ -14,7 +14,7 @@ var masterUp = false
 var master = api.master()
 
 var checkMaster = function(){
-  return master.post(master.url('/ping'))
+  return master.postAsync(master.url('/ping'))
     .spread(function(res,body){
       masterUp = (body && body.pong && 'pong' === body.pong)
       return redis.setAsync(redis.schema.masterUp(),masterUp ? 1 : 0)
@@ -26,7 +26,7 @@ var checkMaster = function(){
 }
 
 var collectPrismList = function(){
-  return master.post(master.url('/prism/list'))
+  return master.postAsync({url: master.url('/prism/list')})
     .spread(function(res,body){
       debug('got prism list, record count?',body.prism.length)
       return redis.setAsync(redis.schema.prismList(),JSON.stringify(body.prism))
@@ -35,7 +35,7 @@ var collectPrismList = function(){
 
 var collectStoreList = function(){
   var storeList
-  return master.post(master.url('/store/list'))
+  return master.postAsync({url: master.url('/store/list')})
     .spread(function(res,body){
       debug('got store list, record count?',body.store.length)
       storeList = body.store
