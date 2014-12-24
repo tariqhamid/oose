@@ -57,7 +57,7 @@ exports.create = function(req,res){
       if(!result) throw new UserError('Could not find prism')
       return Store.create({
         name: data.name,
-        ip: data.ip,
+        host: data.host,
         port: data.port,
         PrismId: result.id
       })
@@ -89,7 +89,7 @@ exports.update = function(req,res){
   })
     .then(function(result){
       if(!result) throw new UserError('No store instance found for update')
-      if(data.ip) result.ip = data.ip
+      if(data.host) result.host = data.host
       if(data.port) result.port = data.port
       return result.save()
     })

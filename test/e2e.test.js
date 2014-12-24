@@ -1,6 +1,16 @@
 'use strict';
+//load promises separately here
 var P = require('bluebird')
 //P.longStackTraces() //turn of for easier debugging
+
+
+/**
+ * API Timeout for outage testing
+ * @type {number}
+ */
+process.env.REQUEST_TIMEOUT = 10000
+
+//regular deps
 var expect = require('chai').expect
 var fs = require('graceful-fs')
 var infant = require('infant')
@@ -112,7 +122,7 @@ process.on('exit',function(){
 })
 
 //reusable tests
-var checkPing = function(client){
+var checkUp = function(client){
   return function(){
     return client.postAsync(client.url('/ping'))
       .spread(function(res,body){
@@ -121,9 +131,22 @@ var checkPing = function(client){
   }
 }
 
+var checkDown = function(client){
+  return function(){
+    return client.postAsync(client.url('/ping'))
+      .then(function(){
+        throw new Error('Server not down')
+      })
+      .catch(Error,client.handleNetworkError)
+      .catch(NetworkError,function(err){
+        expect(err.message).to.match(/ECONNREFUSED|ETIMEDOUT/)
+      })
+  }
+}
+
 var contentUpload = function(prism){
   return function(){
-    var client = api.setSession(user.session,api.prism(prism))
+    var client = api.setSession(user.session,api.prism(prism.prism))
     return client
       .postAsync({
         url: client.url('/content/upload'),
@@ -145,7 +168,7 @@ var contentExists = function(prism,options){
   if(!options.hasOwnProperty('deepChecks'))
     options.deepChecks = ['prism1','prism2']
   return function(){
-    var client = api.prism(prism)
+    var client = api.prism(prism.prism)
     return client
       .postAsync({
         url: client.url('/content/exists'),
@@ -213,7 +236,7 @@ var contentPurchase = function(prism){
 
 var contentDeliver = function(prism){
   return function(){
-    var client = api.prism(prism)
+    var client = api.prism(prism.prism)
     var options = {
       url: client.url('/' + purchase.token + '/' + content.filename),
       headers: {
@@ -286,8 +309,7 @@ describe('e2e',function(){
                   domain: prism.domain,
                   site: prism.site,
                   zone: prism.zone,
-                  host: prism.host,
-                  ip: prism.prism.host,
+                  host: prism.prism.host,
                   port: prism.prism.port
                 }
               })
@@ -307,7 +329,7 @@ describe('e2e',function(){
               json: {
                 prism: store.prism.name,
                 name: store.store.name,
-                ip: store.store.host,
+                host: store.store.host,
                 port: store.store.port
               }
             }))
@@ -393,13 +415,13 @@ describe('e2e',function(){
           console.trace(err)
         })
     })
-    it('master should be up',checkPing(master))
-    it('prism1 should be up',checkPing(api.prism(clconf.prism1.prism)))
-    it('prism2 should be up',checkPing(api.prism(clconf.prism2.prism)))
-    it('store1 should be up',checkPing(api.store(clconf.store1.store)))
-    it('store2 should be up',checkPing(api.store(clconf.store2.store)))
-    it('store3 should be up',checkPing(api.store(clconf.store3.store)))
-    it('store4 should be up',checkPing(api.store(clconf.store4.store)))
+    it('master should be up',checkUp(master))
+    it('prism1 should be up',checkUp(api.prism(clconf.prism1.prism)))
+    it('prism2 should be up',checkUp(api.prism(clconf.prism2.prism)))
+    it('store1 should be up',checkUp(api.store(clconf.store1.store)))
+    it('store2 should be up',checkUp(api.store(clconf.store2.store)))
+    it('store3 should be up',checkUp(api.store(clconf.store3.store)))
+    it('store4 should be up',checkUp(api.store(clconf.store4.store)))
     it('should not require authentication for public functions',function(){
       var prism = clconf.prism1.prism
       var client = api.prism(prism)
@@ -467,7 +489,7 @@ describe('e2e',function(){
         })
     })
     it('should login to prism2',function(){
-      var client = api.prism(clconf.prism1.prism)
+      var client = api.prism(clconf.prism2.prism)
       return client.postAsync({
         url: client.url('/user/login'),
         json: {
@@ -514,7 +536,6 @@ describe('e2e',function(){
       }
       return client.getAsync(options)
         .spread(function(res,body){
-          body = JSON.parse(body)
           expect(res.statusCode).to.equal(500)
           expect(body.error).to.equal('Invalid request')
         })
@@ -531,7 +552,6 @@ describe('e2e',function(){
       }
       return client.getAsync(options)
         .spread(function(res,body){
-          body = JSON.parse(body)
           expect(res.statusCode).to.equal(500)
           expect(body.error).to.equal('Invalid request')
         })
@@ -548,7 +568,7 @@ describe('e2e',function(){
           expect(body.success).to.equal('Purchase removed')
         })
     })
-    describe.skip('outage tests',function(){
+    describe('outage tests',function(){
       describe('master down',function(){
         before(function(){
           return contentUpload(clconf.prism1)()
@@ -559,15 +579,7 @@ describe('e2e',function(){
         after(function(){
           return masterServer.startAsync()
         })
-        it('master should be down',function(){
-          return master.post({url: master.url('/ping')})
-            .then(function(){
-              throw new Error('Master not down')
-            })
-            .catch(NetworkError,function(err){
-              expect(err.message).to.equal('connect ECONNREFUSED')
-            })
-        })
+        it('master should be down',checkDown(master))
         it('should still upload content',contentUpload(clconf.prism1))
         it('should still show existence',contentExists(clconf.prism1))
         it('should invalidate the content existence',
@@ -583,6 +595,7 @@ describe('e2e',function(){
         after(function(){
           return prismServer2.startAsync()
         })
+        it('prism2 should be down',checkDown(api.prism(clconf.prism2.prism)))
         it('should still upload content',contentUpload(clconf.prism1))
         it('should still show existence',
           contentExists(clconf.prism1,{count: 1,deepChecks: ['prism1']}))
@@ -599,6 +612,7 @@ describe('e2e',function(){
         after(function(){
           return prismServer1.startAsync()
         })
+        it('prism1 should be down',checkDown(api.prism(clconf.prism1.prism)))
         it('should still upload content',contentUpload(clconf.prism2))
         it('should still show existence',
           contentExists(clconf.prism2,{count: 1,deepChecks: ['prism2']}))
@@ -621,6 +635,8 @@ describe('e2e',function(){
             storeServer2.startAsync()
           ])
         })
+        it('store1 should be down',checkDown(api.store(clconf.store1.store)))
+        it('store2 should be down',checkDown(api.store(clconf.store2.store)))
         it('should still upload content',contentUpload(clconf.prism1))
         it('should still show existence',
           contentExists(clconf.prism1,{
@@ -649,6 +665,8 @@ describe('e2e',function(){
             storeServer4.startAsync()
           ])
         })
+        it('store3 should be down',checkDown(api.store(clconf.store3.store)))
+        it('store4 should be down',checkDown(api.store(clconf.store4.store)))
         it('should still upload content',contentUpload(clconf.prism2))
         it('should still show existence',
           contentExists(clconf.prism1,{
@@ -673,12 +691,17 @@ describe('e2e',function(){
           ])
         })
         after(function(){
+          var that = this
+          that.timeout(5000)
           return P.all([
             storeServer1.startAsync(),
             storeServer2.startAsync(),
             prismServer1.startAsync()
           ])
         })
+        it('prism1 should be down',checkDown(api.prism(clconf.prism1.prism)))
+        it('store1 should be down',checkDown(api.store(clconf.store1.store)))
+        it('store2 should be down',checkDown(api.store(clconf.store2.store)))
         it('should still upload content',contentUpload(clconf.prism2))
         it('should still show existence',
           contentExists(clconf.prism2,{
@@ -703,12 +726,17 @@ describe('e2e',function(){
           ])
         })
         after(function(){
+          var that = this
+          that.timeout(5000)
           return P.all([
             storeServer3.startAsync(),
             storeServer4.startAsync(),
             prismServer2.startAsync()
           ])
         })
+        it('prism2 should be down',checkDown(api.prism(clconf.prism2.prism)))
+        it('store3 should be down',checkDown(api.store(clconf.store3.store)))
+        it('store4 should be down',checkDown(api.store(clconf.store4.store)))
         it('should still upload content',contentUpload(clconf.prism1))
         it('should still show existence',
           contentExists(clconf.prism1,{

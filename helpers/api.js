@@ -1,7 +1,9 @@
 'use strict';
 var P = require('bluebird')
+var http = require('http')
 var request = require('request')
 
+var NetworkError = require('../helpers/NetworkError')
 var UserError = require('../helpers/UserError')
 
 var config = require('../config')
@@ -41,23 +43,57 @@ var validateResponse = function(){
 
 
 /**
- * Setup a new request object
+ * Handle network errors
+ * @param {Error} err
+ */
+var handleNetworkError = function(err){
+  if(err && err.message && err.message.match(/connect|ETIMEDOUT/))
+    throw new NetworkError(err.message)
+  else
+    throw new Error(err.message)
+}
+
+
+/**
+ * Extend request
+ * @param {request} req
  * @param {object} options
  * @return {request}
  */
-var setupRequest = function(options){
+var extendRequest = function(req,options){
+  req.options = options
+  req.url = makeURL(options)
+  req.validateResponse = validateResponse
+  req.handleNetworkError = handleNetworkError
+  P.promisifyAll(req)
+  return req
+}
+
+
+/**
+ * Setup a new request object
+ * @param {string} type
+ * @param {object} options
+ * @return {request}
+ */
+var setupRequest = function(type,options){
+  var pool = new http.Agent()
+  pool.maxSockets = options.maxSockets || config[type].maxSockets || 128
   var req = request.defaults({
     rejectUnauthorized: false,
     json: true,
+    timeout:
+      process.env.REQUEST_TIMEOUT ||
+      options.timeout ||
+      config[type].timeout ||
+      null,
+    pool: pool,
     auth: {
-      username: options.username || config.master.username,
-      password: options.password || config.master.password
+      username: options.username || config[type].username,
+      password: options.password || config[type].password
     }
   })
-  req.url = makeURL(options)
-  req.validateResponse = validateResponse
-  P.promisifyAll(req)
-  return req
+  return extendRequest(req,options)
 }
 
 
@@ -68,7 +104,7 @@ var setupRequest = function(options){
  */
 exports.master = function(options){
   if(!options) options = config.master
-  return setupRequest(options)
+  return setupRequest('master',options)
 }
 
 
@@ -79,7 +115,7 @@ exports.master = function(options){
  */
 exports.prism = function(options){
   if(!options) options = config.prism
-  return setupRequest(options)
+  return setupRequest('prism',options)
 }
 
 
@@ -90,7 +126,7 @@ exports.prism = function(options){
  */
 exports.store = function(options){
   if(!options) options = config.prism
-  return setupRequest(options)
+  return setupRequest('store',options)
 }
 
 
@@ -101,9 +137,8 @@ exports.store = function(options){
  * @return {request}
  */
 exports.setSession = function(session,request){
-  var options = {headers: {}}
-  options.headers[config.master.user.sessionTokenName] = session.token
-  var req = request.defaults(options)
-  P.promisifyAll(req)
-  return req
+  var newOptions = {headers: {}}
+  newOptions.headers[config.master.user.sessionTokenName] = session.token
+  var req = request.defaults(newOptions)
+  return extendRequest(req,request.options)
 }

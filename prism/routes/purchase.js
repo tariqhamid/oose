@@ -1,7 +1,6 @@
 'use strict';
 var P = require('bluebird')
 
-var purchasePath = require('../../helpers/purchasePath')
 var redis = require('../../helpers/redis')
 var UserError = require('../../helpers/UserError')
 

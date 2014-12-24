@@ -87,7 +87,7 @@ exports.start = function(done){
         defaults: {
           name: config.master.name,
           domain: config.domain,
-          ip: config.master.host || '127.0.0.1',
+          host: config.master.host || '127.0.0.1',
           port: +config.master.port
         }
       })

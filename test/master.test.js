@@ -49,8 +49,7 @@ describe('master',function(){
             domain: 'localdomain',
             site: 'localsite',
             zone: 'localzone',
-            host: 'localhost',
-            ip: '127.0.0.1',
+            host: '127.0.0.1',
             port: 3002
           }
         })
@@ -108,8 +107,7 @@ describe('master',function(){
             domain: 'localdomain',
             site: 'localsite',
             zone: 'localzone',
-            host: 'localhost',
-            ip: '127.0.0.1',
+            host: '127.0.0.1',
             port: 3002
           }
         })
@@ -132,7 +130,7 @@ describe('master',function(){
           json: {
             prism: 'test',
             name: 'test',
-            ip: '127.0.0.1',
+            host: '127.0.0.1',
             port: 3003
           }
         })

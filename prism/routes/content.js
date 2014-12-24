@@ -87,10 +87,16 @@ exports.upload = function(req,res){
                 if(result) winners.push(result)
                 var readStream = fs.createReadStream(tmpfile)
                 var promises = []
+                var client
                 for(var i = 0; i < winners.length; i++){
-                  promises.push(promisePipe(readStream,api.prism(winners[i])
-                    .put('/content/put/' + files[key].sha1 +
-                    '.' + files[key].ext)))
+                  client = api.prism(winners[i])
+                  promises.push(promisePipe(
+                    readStream,
+                    client.put(
+                      client.url('/content/put/' + files[key].sha1 +
+                        '.' + files[key].ext)
+                    )
+                  ))
                 }
                 return P.all(promises)
               })
@@ -135,7 +141,9 @@ exports.put = function(req,res){
     })
     .then(function(result){
       if(!result) throw new UserError('No suitable store instance found')
-      return promisePipe(req,api.store(result).put('/content/upload/' + file))
+      var client = api.store(result)
+      var dest = client.put(client.url('/content/upload/' + file))
+      return promisePipe(req,dest)
     })
     .then(function(){
       res.status(201)
@@ -167,10 +175,15 @@ exports.exists = function(req,res){
       var promises = []
       var prism
       var checkExistence = function(prism){
-        return api.prism(prism).post('/content/exists/local',{sha1: sha1})
+        var client = api.prism(prism)
+        return client.postAsync({
+          url: client.url('/content/exists/local'),
+          json: {sha1: sha1}
+        })
           .spread(function(res,body){
             return {prism: prism.name, exists: body}
           })
+          .catch(Error,client.handleNetworkError)
           .catch(NetworkError,function(){
             return {
               prism: prism.name,
@@ -227,10 +240,15 @@ exports.existsLocal = function(req,res){
       var promises = []
       var store
       var checkExistence = function(store){
-        return api.store(store).post('/content/exists',{sha1: sha1})
+        var client = api.store(store)
+        return client.postAsync({
+          url: client.url('/content/exists'),
+          json: {sha1: sha1}
+        })
           .spread(function(res,body){
             return {store: store.name, exists: body.exists}
           })
+          .catch(Error,client.handleNetworkError)
           .catch(NetworkError,function(){
             return {store: store.name, exists: false}
           })
@@ -277,6 +295,7 @@ exports.existsInvalidate = function(req,res){
             url: client.url('/content/exists/invalidate/local'),
             json: {sha1: sha1}
           })
+            .catch(Error,client.handleNetworkError)
             .catch(NetworkError,nullFunction)
         )
       }
@@ -320,9 +339,14 @@ exports.download = function(req,res){
     .then(function(result){
       winner = result
       var store = api.store(winner)
-      return store.post('/ping')
+      return store.postAsync(store.url('/ping'))
         .then(function(){
-          store.download('/content/download',{sha1: sha1}).pipe(res)
+          var req = store.post({
+            url: store.url('/content/download'),
+            json: {sha1: sha1}
+          })
+          req.on('error',store.handleNetworkError)
+          req.pipe(res)
         })
     })
     .catch(NetworkError,function(){
@@ -330,9 +354,12 @@ exports.download = function(req,res){
         .then(function(result){
           winner = result
           var store = api.store(winner)
-          return store.post('/ping')
+          return store.postAsync(store.url('/ping'))
             .then(function(){
-              store.download('/content/download',{sha1: sha1}).pipe(res)
+              store.post({
+                url: store.url('/content/download'),
+                json: {sha1: sha1}
+              }).pipe(res)
             })
         })
     })
@@ -391,14 +418,21 @@ exports.purchase = function(req,res){
       var createPurchase = function(store){
         var client = api.store(store)
         return client
-          .post('/purchase/remove',{token: token})
+          .postAsync({
+            url: client.url('/purchase/remove'),
+            json: {token: token}
+          })
           .spread(function(){
-            return client.post('/purchase/create',{
-              sha1: sha1,
-              token: token,
-              life: life
+            return client.postAsync({
+              url: client.url('/purchase/create'),
+              json: {
+                sha1: sha1,
+                token: token,
+                life: life
+              }
             })
           })
+          .catch(Error,client.handleNetworkError)
           .catch(NetworkError,nullFunction)
       }
       var promises = []
@@ -436,10 +470,17 @@ exports.purchase = function(req,res){
       var createPurchase = function(prism){
         var client = api.prism(prism)
         return client
-          .post('/purchase/remove',{token: token})
-          .spread(function(){
-            return client.post('/purchase/create',{purchase: purchase})
+          .postAsync({
+            url: client.url('/purchase/remove'),
+            json: {token: token}
           })
+          .spread(function(){
+            return client.postAsync({
+              url: client.url('/purchase/create'),
+              json: {purchase: purchase}
+            })
+          })
+          .catch(Error,client.handleNetworkError)
           .catch(NetworkError,nullFunction)
       }
       var prismList = result
@@ -529,9 +570,14 @@ exports.remove = function(req,res){
     })
     .then(function(stores){
       var promises = []
+      var client
       for(var i = 0; i < stores.length; i++){
+        client = api.store(stores[i])
         promises.push(
-          api.store(stores[i]).post('/purchase/remove',{token: token})
+          client.postAsync({
+            url: client.url('/purchase/remove'),
+            json: {token: token}
+          })
         )
       }
       return P.all(promises)
@@ -542,9 +588,14 @@ exports.remove = function(req,res){
     .then(function(result){
       prismList = result
       var promises = []
+      var client
       for(var i = 0; i < prismList.length; i++){
+        client = api.prism(prismList[i])
         promises.push(
-          api.prism(prismList[i]).post('/purchase/remove',{token: token})
+          client.postAsync({
+            url: client.url('/purchase/remove'),
+            json: {token: token}
+          })
         )
       }
       return P.all(promises)

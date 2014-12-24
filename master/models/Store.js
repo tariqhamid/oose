@@ -18,12 +18,9 @@ module.exports = function(sequelize,DataTypes) {
           max: 32
         }
       },
-      ip: {
+      host: {
         type: DataTypes.STRING,
-        allowNull: false,
-        validate: {
-          isIPv4: true
-        }
+        allowNull: false
       },
       port: {
         type: DataTypes.INTEGER(5).UNSIGNED,

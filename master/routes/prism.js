@@ -53,7 +53,7 @@ exports.create = function(req,res){
         name: data.name,
         site: data.site,
         zone: data.zone,
-        ip: data.ip,
+        host: data.host,
         port: data.port,
         MasterId: result.id
       })
@@ -87,7 +87,7 @@ exports.update = function(req,res){
       if(!result) throw new UserError('No prism instance found for update')
       if(data.site) result.site = data.site
       if(data.zone) result.zone = data.zone
-      if(data.ip) result.ip = data.ip
+      if(data.host) result.host = data.host
       if(data.port) result.port = data.port
       return result.save()
     })

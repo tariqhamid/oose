@@ -19,6 +19,7 @@ var checkMaster = function(){
       masterUp = (body && body.pong && 'pong' === body.pong)
       return redis.setAsync(redis.schema.masterUp(),masterUp ? 1 : 0)
     })
+    .catch(Error,master.handleNetworkError)
     .catch(NetworkError,function(){
       masterUp = false
       return redis.setAsync(redis.schema.masterUp(),0)
@@ -26,16 +27,17 @@ var checkMaster = function(){
 }
 
 var collectPrismList = function(){
-  return master.postAsync({url: master.url('/prism/list')})
+  return master.postAsync(master.url('/prism/list'))
     .spread(function(res,body){
       debug('got prism list, record count?',body.prism.length)
       return redis.setAsync(redis.schema.prismList(),JSON.stringify(body.prism))
     })
+    .catch(Error,master.handleNetworkError)
 }
 
 var collectStoreList = function(){
   var storeList
-  return master.postAsync({url: master.url('/store/list')})
+  return master.postAsync(master.url('/store/list'))
     .spread(function(res,body){
       debug('got store list, record count?',body.store.length)
       storeList = body.store
@@ -53,6 +55,7 @@ var collectStoreList = function(){
       }
       return P.all(promises)
     })
+    .catch(Error,master.handleNetworkError)
 }
 
 var collect = function(){
