@@ -146,7 +146,6 @@ var checkDown = function(client){
 
 var contentUpload = function(prism){
   return function(){
-    console.log(user.session)
     var client = api.setSession(user.session,api.prism(prism.prism))
     return client
       .postAsync({
@@ -157,7 +156,6 @@ var contentUpload = function(prism){
         localAddress: '127.0.0.1'
       })
       .spread(function(res,body){
-        console.log(body)
         expect(body.files.file.sha1).to.equal(content.sha1)
       })
   }
@@ -222,7 +220,8 @@ var contentPurchase = function(prism){
           sha1: content.sha1,
           ip: '127.0.0.1',
           referrer: ['localhost']
-        }
+        },
+        localAddress: '127.0.0.1'
       })
       .spread(function(res,body){
         expect(body.token.length).to.equal(64)
@@ -265,7 +264,8 @@ var contentDownload = function(prism){
     var client = api.setSession(user.session,api.prism(prism.prism))
     return client.postAsync({
       url: client.url('/content/download'),
-      json: {sha1: content.sha1}
+      json: {sha1: content.sha1},
+      localAddress: '127.0.0.1'
     })
       .spread(function(res,body){
         expect(body).to.equal(content.data)
@@ -483,12 +483,12 @@ describe('e2e',function(){
         json: {
           username: user.username,
           password: user.password
-        }
+        },
+        localAddress: '127.0.0.1'
       })
         .spread(function(res,body){
           expect(body.session).to.be.an('object')
           user.session = body.session
-          console.log(user.session)
         })
     })
     it('should login to prism2',function(){
@@ -498,12 +498,16 @@ describe('e2e',function(){
         json: {
           username: user.username,
           password: user.password
-        }
+        },
+        localAddress: '127.0.0.1'
       })
         .spread(function(res,body){
           expect(body.session).to.be.an('object')
           client = api.setSession(body.session,client)
-          return client.postAsync(client.url('/user/logout'))
+          return client.postAsync({
+            url: client.url('/user/logout'),
+            localAddress: '127.0.0.1'
+          })
         })
         .spread(function(res,body){
           expect(body.success).to.equal('User logged out')
@@ -563,7 +567,8 @@ describe('e2e',function(){
       var client = api.setSession(user.session,api.prism(clconf.prism2.prism))
       return client.postAsync({
         url: client.url('/content/remove'),
-        json: {token: purchase.token}
+        json: {token: purchase.token},
+        localAddress: '127.0.0.1',
       })
         .spread(function(res,body){
           expect(body.token).to.equal(purchase.token)
