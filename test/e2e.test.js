@@ -156,6 +156,7 @@ var contentUpload = function(prism){
         localAddress: '127.0.0.1'
       })
       .spread(function(res,body){
+        console.log(body)
         expect(body.files.file.sha1).to.equal(content.sha1)
       })
   }

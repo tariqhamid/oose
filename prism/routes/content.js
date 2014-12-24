@@ -113,6 +113,7 @@ exports.upload = function(req,res){
   busboy.on('finish',function(){
     P.all(filePromises)
       .then(function(){
+        console.log('upload response',data,files)
         res.json({success: 'File(s) uploaded',data: data,files: files})
       })
       .catch(UserError,function(err){
