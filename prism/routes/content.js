@@ -132,7 +132,7 @@ exports.upload = function(req,res){
 exports.put = function(req,res){
   var file = req.params.file
   var storeList
-  master.post({
+  master.postAsync({
     url: master.url('/store/list'),
     json: {prism: config.prism.name}
   })

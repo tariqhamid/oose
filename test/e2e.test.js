@@ -146,6 +146,7 @@ var checkDown = function(client){
 
 var contentUpload = function(prism){
   return function(){
+    console.log(user.session)
     var client = api.setSession(user.session,api.prism(prism.prism))
     return client
       .postAsync({
