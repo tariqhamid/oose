@@ -269,10 +269,14 @@ exports.existsInvalidate = function(req,res){
   prismBalance.prismList()
     .then(function(result){
       var promises = []
+      var client
       for(var i = 0; i < result.length; i++){
+        client = api.prism(result[i])
         promises.push(
-          api.prism(result[i])
-            .post('/content/exists/invalidate/local',{sha1: sha1})
+          client.postAsync({
+            url: client.url('/content/exists/invalidate/local'),
+            json: {sha1: sha1}
+          })
             .catch(NetworkError,nullFunction)
         )
       }

@@ -2,6 +2,8 @@
 var P = require('bluebird')
 var request = require('request')
 
+var UserError = require('../helpers/UserError')
+
 var config = require('../config')
 
 
@@ -13,6 +15,27 @@ var config = require('../config')
 var makeURL = function(options){
   return function(uri){
     return 'https://' + (options.host || '127.0.0.1') + ':' + options.port + uri
+  }
+}
+
+
+/**
+ * Validate a response (implicit error handling)
+ * @return {function}
+ */
+var validateResponse = function(){
+  return function(res,body){
+    if('object' !== typeof body) body = JSON.parse(body)
+    if(200 !== res.statusCode){
+      throw new UserError(
+        'Invalid response code (' + res.statusCode + ')' +
+        ' to ' + res.method + ': ' + res.url)
+    }
+    if(body.error){
+      if(body.error.message) throw new UserError(body.error.message)
+      if(body.error) throw new UserError(body.error)
+    }
+    return [res,body]
   }
 }
 
@@ -32,6 +55,7 @@ var setupRequest = function(options){
     }
   })
   req.url = makeURL(options)
+  req.validateResponse = validateResponse
   P.promisifyAll(req)
   return req
 }
