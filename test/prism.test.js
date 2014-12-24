@@ -4,7 +4,7 @@ var expect = require('chai').expect
 var infant = require('infant')
 var request = require('request')
 
-var APIClient = require('../helpers/APIClient')
+var api = require('../helpers/api')
 
 var purchase = require('./helpers/purchase')
 
@@ -15,8 +15,7 @@ P.promisifyAll(infant)
 P.promisifyAll(request)
 
 //setup bridge to master
-var master = new APIClient(config.master.port,config.master.host)
-master.setBasicAuth(config.master.username,config.master.password)
+var master = api.master()
 
 var user = {
   session: {},
@@ -37,7 +36,8 @@ describe('prism',function(){
     ])
       .then(function(){
         //create user
-        return master.post('/user/create',{username: user.username})
+        return master.post(
+          master.url('/user/create'),{username: user.username})
           .spread(function(res,body){
             user.password = body.password
             return P.all([
@@ -50,7 +50,8 @@ describe('prism',function(){
   })
   //remove user and stop services
   after(function(){
-    return master.post('/user/remove',{username: user.username})
+    return master.post(
+      master.url('/user/remove'),{username: user.username})
       .spread(function(res,body){
         return P.all([
           expect(body.success).to.equal('User removed'),
@@ -66,8 +67,7 @@ describe('prism',function(){
   })
   var client
   beforeEach(function(){
-    client = new APIClient(config.prism.port,config.prism.host)
-    client.setBasicAuth(config.prism.username,config.prism.password)
+    client = api.prism(config.prism)
   })
   //home page
   it('should have a homepage',function(){
@@ -99,8 +99,8 @@ describe('prism',function(){
         })
     })
     it('should reset password',function(){
-      client.setSession(user.session)
       return client
+        .setSession(user.session)
         .post('/user/password/reset')
         .spread(function(res,body){
           user.password = body.password
@@ -111,8 +111,8 @@ describe('prism',function(){
         })
     })
     it('should validate a session',function(){
-      client.setSession(user.session)
       return client
+        .setSession(user.session)
         .post('/user/session/validate')
         .spread(function(res,body){
           return P.all([
@@ -121,8 +121,8 @@ describe('prism',function(){
         })
     })
     it('should allow a session update',function(){
-      client.setSession(user.session)
       return client
+        .setSession(user.session)
         .post('/user/session/update',{data: {foo: 'bar'}})
         .spread(function(res,body){
           user.session = body.session
@@ -133,8 +133,8 @@ describe('prism',function(){
         })
     })
     it('should logout',function(){
-      client.setSession(user.session)
       return client
+        .setSession(user.session)
         .post('/user/logout')
         .spread(function(res,body){
           return P.all([

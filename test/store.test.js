@@ -6,7 +6,7 @@ var infant = require('infant')
 var promisePipe = require('promisepipe')
 var request = require('request')
 
-var APIClient = require('../helpers/APIClient')
+var api = require('../helpers/api')
 var SHA1Stream = require('../helpers/SHA1Stream')
 
 var content = require('./helpers/content')
@@ -31,8 +31,7 @@ describe('store',function(){
   })
   var client
   beforeEach(function(){
-    client = new APIClient(config.store.port,config.store.host)
-    client.setBasicAuth(config.store.username,config.store.password)
+    client = api.store(config.store)
   })
   //home page
   it('should have a homepage',function(){

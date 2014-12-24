@@ -19,6 +19,7 @@ var storeBalance = require('../../helpers/storeBalance')
 var UserError = require('../../helpers/UserError')
 
 var config = require('../../config')
+var master = api.master()
 
 //make some promises
 P.promisifyAll(temp)
@@ -124,7 +125,7 @@ exports.upload = function(req,res){
 exports.put = function(req,res){
   var file = req.params.file
   var storeList
-  api.master.post('/store/list',{prism: config.prism.name})
+  master.post(master.url('/store/list'),{prism: config.prism.name})
     .spread(function(res,body){
       storeList = body.store
       return storeBalance.winner(storeList)

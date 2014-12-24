@@ -15,10 +15,6 @@ config.$load({
   host: os.hostname(),
   //storage
   root: __dirname + '/data',
-  //id generation
-  shortid: {
-    seed: '3123572'
-  },
   //databases
   redis: {
     host: '127.0.0.1',

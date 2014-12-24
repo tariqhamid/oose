@@ -4,6 +4,8 @@ var P = require('bluebird')
 var api = require('../../helpers/api')
 var UserError = require('../../helpers/UserError')
 
+var master = api.master()
+
 
 /**
  * User Login
@@ -14,7 +16,7 @@ exports.login = function(req,res){
   var data = req.body
   P.try(function(){
     if(data.$sessionToken) throw new UserError('Already logged in')
-    return api.master.post('/user/login',{
+    return master.post(master.url('/user/login'),{
       username: req.body.username,
       password: req.body.password,
       ip: req.ip
@@ -42,7 +44,7 @@ exports.logout = function(req,res){
   var data = req.body
   P.try(function(){
     if(!data.$sessionToken) throw new UserError('No token provided')
-    return api.master.post('/user/logout',
+    return master.post(master.url('/user/logout'),
       {token: data.$sessionToken, ip: req.ip})
   })
     .spread(function(response,body){
@@ -60,7 +62,10 @@ exports.logout = function(req,res){
  * @param {object} res
  */
 exports.passwordReset = function(req,res){
-  api.master.post('/user/password/reset',{username: req.session.User.username})
+  master.post(
+    master.url('/user/password/reset'),
+    {username: req.session.User.username}
+  )
     .spread(function(response,body){
       res.json(body)
     })
@@ -88,7 +93,7 @@ exports.sessionValidate = function(req,res){
  */
 exports.sessionUpdate = function(req,res){
   var data = req.body
-  api.master.post('/user/session/update',{
+  master.post(master.url('/user/session/update'),{
     token: req.session.token,
     ip: req.ip,
     data: data.data

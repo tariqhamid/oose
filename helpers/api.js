@@ -1,62 +1,79 @@
 'use strict';
-var APIClient = require('../helpers/APIClient')
+var request = require('request')
 
 var config = require('../config')
 
-//setup the connection to master
-var master = new APIClient(config.master.port,config.master.host)
-master.setBasicAuth(config.master.username,config.master.password)
-
 
 /**
- * Master access
- * @type {APIClient}
+ * Setup master access
+ * @param {object} options
+ * @return {request}
  */
-exports.master = master
+exports.master = function(options){
+  if(!options) options = config.master
+  var master = request.defaults({
+    auth: {
+      username: options.username || config.master.username,
+      password: options.password || config.master.password
+    }
+  })
+  master.url = function(uri){
+    return 'https://' + options.host + ':' + options.port + uri
+  }
+  return master
+}
 
 
 /**
  * Setup prism access
- * @param {number} port
- * @param {string} host
- * @param {string} username
- * @param {string} password
- * @return {APIClient}
+ * @param {object} options
+ * @return {request}
  */
-exports.prism = function(port,host,username,password){
-  if('object' === typeof port){
-    host = port.ip || port.host
-    username = port.username || port.user || config.prism.username
-    password = port.password || port.pass || config.prism.password
-    port = +port.port
+exports.prism = function(options){
+  if(!options) options = config.prism
+  var prism = request.defaults({
+    auth: {
+      username: options.username || config.prism.username,
+      password: options.password || config.prism.password
+    }
+  })
+  prism.url = function(uri){
+    return 'https://' + options.host + ':' + options.port + uri
   }
-  var prism = new APIClient(port,host)
-  prism.setBasicAuth(
-    username || config.prism.username,
-    password || config.prism.password
-  )
   return prism
 }
 
 
 /**
  * Store access
- * @param {number} port
- * @param {string} host
- * @param {string} username
- * @param {string} password
- * @return {APIClient}
+ * @param {object} options
+ * @return {request}
  */
-exports.store = function(port,host,username,password){
-  if('object' === typeof port){
-    host = port.ip || port.host
-    username = port.username || port.user || config.store.username
-    password = port.password || port.pass || config.store.password
-    port = +port.port
+exports.store = function(options){
+  if(!options) options = config.store
+  var store = request.defaults({
+    auth: {
+      username: options.username || config.store.username,
+      password: options.password || config.store.password
+    }
+  })
+  store.url = function(uri){
+    return 'https://' + options.host + ':' + options.port + uri
   }
-  var store = new APIClient(port,host)
-  store.setBasicAuth(
-    username || config.store.username,
-    password || config.store.password)
   return store
+}
+
+
+/**
+ * Set session on any request object
+ * @param {object} session
+ * @param {request} request
+ * @return {request}
+ */
+exports.setSession = function(session,request){
+  return request.defaults({
+    headers: {
+      'X-OOSE-Token': session.token
+    }
+  })
 }

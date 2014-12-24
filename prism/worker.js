@@ -62,7 +62,8 @@ var auth = basicAuth(config.prism.username,config.prism.password)
 app.post('/content/exists',auth,routes.content.exists)
 app.post('/content/exists/local',auth,routes.content.existsLocal)
 app.post('/content/exists/invalidate',auth,routes.content.existsInvalidate)
-app.post('/content/exists/invalidate/local',auth,routes.content.existsInvalidateLocal)
+app.post('/content/exists/invalidate/local',auth,
+  routes.content.existsInvalidateLocal)
 app.post('/content/download',auth,routes.content.download)
 app.put('/content/put/:file',auth,routes.content.put)
 

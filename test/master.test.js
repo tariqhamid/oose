@@ -4,7 +4,7 @@ var expect = require('chai').expect
 var infant = require('infant')
 var request = require('request')
 
-var APIClient = require('../helpers/APIClient')
+var api = require('../helpers/api')
 
 var config = require('../config')
 
@@ -12,9 +12,8 @@ var config = require('../config')
 P.promisifyAll(infant)
 P.promisifyAll(request)
 
-//setup api client
-var client = new APIClient(config.master.port,config.master.host)
-client.setBasicAuth(config.master.username,config.master.password)
+//master client
+var client = api.master()
 
 describe('master',function(){
   this.timeout(5000)

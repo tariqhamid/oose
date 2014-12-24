@@ -8,7 +8,6 @@ var request = require('request')
 var url = require('url')
 
 var api = require('../helpers/api')
-var APIClient = require('../helpers/APIClient')
 var content = require('./helpers/content')
 var NetworkError = require('../helpers/NetworkError')
 var UserError = require('../helpers/UserError')
@@ -71,13 +70,9 @@ var clconf = {
 
 /**
  * Override master
- * @type {APIClient}
+ * @type {request}
  */
-api.master = new APIClient(clconf.master.master.port,clconf.master.master.host)
-api.master.setLocalAddress('127.0.0.1')
-api.master.setBasicAuth(
-  clconf.master.master.username,
-  clconf.master.master.password)
+var master = api.master(clconf.master)
 
 //setup our mock cluster
 var masterServer = infant.parent('../master',{
@@ -243,7 +238,8 @@ describe('e2e',function(){
         .then(function(){
           //create user
           return P.try(function(){
-            return api.master.post('/user/create',{username: user.username})
+            return master.post(
+              master.url('/user/create'),{username: user.username})
           })
         })
         .spread(function(res,body){
@@ -262,7 +258,7 @@ describe('e2e',function(){
           for(var i = 0; i < prisms.length; i++){
             prism = clconf[prisms[i]]
             promises.push(
-              api.master.post('/prism/create',{
+              master.post(master.url('/prism/create'),{
                 name: prism.prism.name,
                 domain: prism.domain,
                 site: prism.site,
@@ -282,7 +278,7 @@ describe('e2e',function(){
           for(var i = 0; i < stores.length; i++){
             store = clconf[stores[i]]
             promises.push(
-              api.master.post('/store/create',{
+              master.post(master.url('/store/create'),{
                 prism: store.prism.name,
                 name: store.store.name,
                 ip: store.store.host,
@@ -316,7 +312,8 @@ describe('e2e',function(){
         var promises = []
         var stores = ['store1','store2','store3','store4']
         for(var i = 0; i < stores.length; i++){
-          promises.push(api.master.post('/store/remove',{name: stores[i]}))
+          promises.push(
+            master.post(master.url('/store/remove'),{name: stores[i]}))
         }
         return P.all(promises)
       })
@@ -325,13 +322,15 @@ describe('e2e',function(){
           var promises = []
           var prisms = ['prism1','prism2']
           for(var i = 0; i < prisms.length; i++){
-            promises.push(api.master.post('/prism/remove',{name: prisms[i]}))
+            promises.push(
+              master.post(master.url('/prism/remove'),{name: prisms[i]}))
           }
           return P.all(promises)
         })
         .then(function(){
           //remove user
-          return api.master.post('/user/remove',{username: user.username})
+          return master.post(
+            master.url('/user/remove'),{username: user.username})
         })
         .spread(function(res,body){
           return P.all([
@@ -358,7 +357,7 @@ describe('e2e',function(){
         })
     })
     it('master should be up',function(){
-      return api.master.post('/ping')
+      return master.post(master.url('/ping'))
         .spread(function(res,body){
           expect(body.pong).to.equal('pong')
         })
@@ -554,7 +553,7 @@ describe('e2e',function(){
         return masterServer.startAsync()
       })
       it('master should be down',function(){
-        return api.master.post('/ping')
+        return master.post(master.url('/ping'))
           .then(function(){
             throw new Error('Master not down')
           })

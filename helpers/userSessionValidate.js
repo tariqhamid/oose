@@ -5,6 +5,8 @@ var api = require('../helpers/api')
 var redis = require('../helpers/redis')
 var UserError = require('../helpers/UserError')
 
+var config = require('../config')
+
 
 /**
  * Validate User Session Middleware
@@ -13,7 +15,7 @@ var UserError = require('../helpers/UserError')
  * @param {function} next
  */
 module.exports = function(req,res,next){
-  var token = req.body.$sessionToken || req.query.$sessionToken || ''
+  var token = req.get('X-OOSE-Token') || ''
   var session
   redis.getAsync(redis.schema.userSession(token))
     .then(function(result){
@@ -21,7 +23,8 @@ module.exports = function(req,res,next){
         throw new UserError('Invalid session token passed')
       if(!result){
         debug('cache miss',token)
-        return api.master.post('/user/session/validate',{
+        var client = api.master()
+        return client.post(client.url('/user/session/validate'),{
           token: token,
           ip: req.ip
         })
