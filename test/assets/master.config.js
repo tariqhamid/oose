@@ -14,14 +14,14 @@ module.exports = {
     enabled: false,
     username: 'oose-store',
     password: 'fuckthat',
-    timeout: 500
+    timeout: 500,
   },
   prism: {
     enabled: false,
     name: 'prism1',
     username: 'oose-prism',
     password: 'fuckit',
-    timeout: 500
+    timeout: 500,
   },
   master: {
     enabled: true,
@@ -29,6 +29,7 @@ module.exports = {
     host: '127.0.2.1',
     username: 'oose',
     password: 'fuckyou',
-    timeout: 500
+    timeout: 500,
+    workers: {count: 4, maxConnections: 1000000}
   }
 }

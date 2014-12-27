@@ -25,7 +25,8 @@ module.exports = {
     name: 'prism1',
     username: 'oose-prism',
     password: 'fuckit',
-    timeout: 500
+    timeout: 500,
+    workers: {count: 4, maxConnections: 1000000}
   },
   master: {
     enabled: false,

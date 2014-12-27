@@ -10,7 +10,7 @@ var e2e = require('./helpers/e2e')
  * Requests to run in parallel
  * @type {number}
  */
-var concurrency = 1024
+var concurrency = 64
 
 
 /**
@@ -19,13 +19,13 @@ var concurrency = 1024
  */
 var itn = {
   login: 50,
-  contentUpload: 200000,
-  contentExists: 200000,
-  contentDetail: 200000,
-  contentExistsInvalidate: 200000,
-  contentDownload: 200000,
-  contentPurchase: 200000,
-  contentDeliver: 200000
+  contentUpload: 1000,
+  contentExists: 1000,
+  contentDetail: 1000,
+  contentExistsInvalidate: 1000,
+  contentDownload: 500,
+  contentPurchase: 1000,
+  contentDeliver: 1000
 }
 
 
@@ -38,11 +38,16 @@ var itn = {
  */
 var repeatTest = function(prism,times,test){
   return function(){
+    var start = +new Date()
     var queue = new PromiseQueue(concurrency)
     for(var i = 0; i < times; i++){
       queue.push(e2e[test](prism))
     }
     return queue.close()
+      .then(function(){
+        var rps = (times / (((+new Date()) - start) / 1000)).toFixed(2)
+        console.log('            ' + test + ' ' +rps + '/rps ')
+      })
   }
 }
 
