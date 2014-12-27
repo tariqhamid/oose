@@ -67,23 +67,23 @@ module.exports = function(sequelize,DataTypes) {
     {
       indexes: [
         {
-          name: 'username_unique',
+          name: 'user_username_unique',
           unique: true,
           method: 'BTREE',
           fields: ['username']
         },
         {
-          name: 'active_index',
+          name: 'user_active_index',
           method: 'BTREE',
           fields: [{attribute: 'active', order: 'DESC'}]
         },
         {
-          name: 'dateSeen_index',
+          name: 'user_dateSeen_index',
           method: 'BTREE',
           fields: [{attribute: 'dateSeen', order: 'DESC'}]
         },
         {
-          name: 'dateFail_index',
+          name: 'user_dateFail_index',
           method: 'BTREE',
           fields: [{attribute: 'dateFail', order: 'DESC'}]
         }

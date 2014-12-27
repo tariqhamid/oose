@@ -40,13 +40,13 @@ module.exports = function(sequelize,DataTypes) {
     {
       indexes: [
         {
-          name: 'token_unique',
+          name: 'user_session_token_unique',
           unique: true,
           method: 'BTREE',
           fields: ['token']
         },
         {
-          name: 'token_ip_index',
+          name: 'user_session_token_ip_index',
           unique: false,
           method: 'BTREE',
           fields: ['token','ip']
@@ -56,6 +56,7 @@ module.exports = function(sequelize,DataTypes) {
         /**
          * Before doc validation
          * @param {Sequelize} session
+         * @param {object} options
          * @param {function} next
          */
         beforeValidate: function(session,options,next){

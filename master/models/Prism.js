@@ -50,7 +50,7 @@ module.exports = function(sequelize,DataTypes) {
     },{
       indexes: [
         {
-          name: 'name_unique',
+          name: 'prism_name_unique',
           unique: true,
           method: 'BTREE',
           fields: ['name']
