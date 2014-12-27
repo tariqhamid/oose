@@ -1,8 +1,16 @@
 'use strict';
 var P = require('bluebird')
 var numeral = require('numeral')
+var PromiseQueue = require('promiseq')
 
 var e2e = require('./helpers/e2e')
+
+
+/**
+ * Requests to run in parallel
+ * @type {number}
+ */
+var concurrency = 1024
 
 
 /**
@@ -11,13 +19,13 @@ var e2e = require('./helpers/e2e')
  */
 var itn = {
   login: 50,
-  contentUpload: 2000000,
-  contentExists: 2000000,
-  contentDetail: 2000000,
-  contentExistsInvalidate: 2000000,
-  contentDownload: 2000000,
-  contentPurchase: 2000000,
-  contentDeliver: 2000000
+  contentUpload: 200000,
+  contentExists: 200000,
+  contentDetail: 200000,
+  contentExistsInvalidate: 200000,
+  contentDownload: 200000,
+  contentPurchase: 200000,
+  contentDeliver: 200000
 }
 
 
@@ -30,11 +38,11 @@ var itn = {
  */
 var repeatTest = function(prism,times,test){
   return function(){
-    var promises = []
+    var queue = new PromiseQueue(concurrency)
     for(var i = 0; i < times; i++){
-      promises.push(e2e[test](prism))
+      queue.push(e2e[test](prism))
     }
-    return P.all(promises)
+    return queue.close()
   }
 }
 
