@@ -10,7 +10,7 @@ var e2e = require('./helpers/e2e')
  * @type {object}
  */
 var itn = {
-  login: 150,
+  login: 50,
   contentUpload: 2000000,
   contentExists: 2000000,
   contentDetail: 2000000,
