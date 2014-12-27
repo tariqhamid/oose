@@ -1,5 +1,6 @@
 'use strict';
 var P = require('bluebird')
+var debug = require('debug')('oose:api')
 var http = require('http')
 var request = require('request')
 
@@ -7,6 +8,8 @@ var NetworkError = require('../helpers/NetworkError')
 var UserError = require('../helpers/UserError')
 
 var config = require('../config')
+
+var cache = {}
 
 
 /**
@@ -57,11 +60,13 @@ var handleNetworkError = function(err){
 /**
  * Extend request
  * @param {request} req
+ * @param {string} type
  * @param {object} options
  * @return {request}
  */
-var extendRequest = function(req,options){
+var extendRequest = function(req,type,options){
   req.options = options
+  req.options.type = type
   req.url = makeURL(options)
   req.validateResponse = validateResponse
   req.handleNetworkError = handleNetworkError
@@ -77,23 +82,30 @@ var extendRequest = function(req,options){
  * @return {request}
  */
 var setupRequest = function(type,options){
-  var pool = new http.Agent()
-  pool.maxSockets = options.maxSockets || config[type].maxSockets || 128
-  var req = request.defaults({
-    rejectUnauthorized: false,
-    json: true,
-    timeout:
+  var cacheKey = type + ':' + options.host + ':' + options.port
+  if(!cache[cacheKey]){
+    debug('cache miss',cacheKey)
+    var pool = new http.Agent()
+    pool.maxSockets = options.maxSockets || config[type].maxSockets || 128
+    var req = request.defaults({
+      rejectUnauthorized: false,
+      json: true,
+      timeout:
       process.env.REQUEST_TIMEOUT ||
       options.timeout ||
       config[type].timeout ||
       null,
-    pool: pool,
-    auth: {
-      username: options.username || config[type].username,
-      password: options.password || config[type].password
-    }
-  })
-  return extendRequest(req,options)
+      pool: pool,
+      auth: {
+        username: options.username || config[type].username,
+        password: options.password || config[type].password
+      }
+    })
+    cache[cacheKey] = extendRequest(req,type,options)
+  } else {
+    debug('cache hit',cacheKey)
+  }
+  return cache[cacheKey]
 }
 
 
@@ -137,8 +149,17 @@ exports.store = function(options){
  * @return {request}
  */
 exports.setSession = function(session,request){
-  var newOptions = {headers: {}}
-  newOptions.headers[config.master.user.sessionTokenName] = session.token
-  var req = request.defaults(newOptions)
-  return extendRequest(req,request.options)
+  var cacheKey = request.options.type + ':' + request.options.host +
+    ':' + request.options.port + ':' + session.token
+  if(!cache[cacheKey]){
+    debug('cache miss',cacheKey)
+    var newOptions = {headers: {}}
+    newOptions.headers[config.master.user.sessionTokenName] = session.token
+    var req = request.defaults(newOptions)
+    req = extendRequest(req,request.options.type,request.options)
+    cache[cacheKey] = req
+  } else {
+    debug('cache hit',cacheKey)
+  }
+  return cache[cacheKey]
 }

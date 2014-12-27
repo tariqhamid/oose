@@ -122,6 +122,17 @@ RedisSchema.prototype.purchase = function(token){
 
 
 /**
+ * Purchase Cache by User Session
+ * @param {string} sha1
+ * @param {string} sessionToken
+ * @return {string}
+ */
+RedisSchema.prototype.purchaseCache = function(sha1,sessionToken){
+  return this.applyPrefix('purchase:cache:' + sha1 + ':' + sessionToken)
+}
+
+
+/**
  * Export Object
  * @type {RedisSchema}
  */

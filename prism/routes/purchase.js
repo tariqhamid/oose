@@ -4,6 +4,8 @@ var P = require('bluebird')
 var redis = require('../../helpers/redis')
 var UserError = require('../../helpers/UserError')
 
+var config = require('../../config')
+
 
 /**
  * Create purchase
@@ -12,21 +14,28 @@ var UserError = require('../../helpers/UserError')
  */
 exports.create = function(req,res){
   var purchase = req.body.purchase
-  var redisKey
+  var redisKey, cacheKey
   P.try(function(){
     if(64 !== purchase.token.length)
       throw new UserError('Invalid purchase token')
     redisKey = redis.schema.purchase(purchase.token)
+    cacheKey = redis.schema.purchaseCache(purchase.sha1,purchase.sessionToken)
     return redis.existsAsync(redisKey)
   })
     .then(function(result){
       if(result) throw new UserError('Purchase already exists')
       purchase.created = +new Date()
       purchase.updated = purchase.created
-      return redis.setAsync(redisKey,JSON.stringify(purchase))
+      return P.all([
+        redis.setAsync(redisKey,JSON.stringify(purchase)),
+        redis.setAsync(cacheKey,JSON.stringify(purchase))
+      ])
     })
     .then(function(){
-      return redis.expireAsync(redisKey,purchase.life)
+      return P.all([
+        redis.expireAsync(redisKey,purchase.life),
+        redis.expireAsync(cacheKey,config.prism.purchaseCache)
+      ])
     })
     .then(function(){
       res.json(purchase)
@@ -43,7 +52,7 @@ exports.create = function(req,res){
  * @param {object} res
  */
 exports.find = function(req,res){
-  var token = req.body.purchase.token
+  var token = req.body.token
   var redisKey = redis.schema.purchase(token)
   redis.getAsync(redisKey)
     .then(function(result){
@@ -101,7 +110,18 @@ exports.update = function(req,res){
 exports.remove = function(req,res){
   var token = req.body.token
   var redisKey = redis.schema.purchase(token)
-  redis.delAsync(redisKey)
+  var purchase
+  redis.getAsync(redisKey)
+    .then(function(result){
+      purchase = JSON.parse(result)
+      var promises = [redis.delAsync(redisKey)]
+      if(purchase && purchase.sessionToken){
+        var cacheKey = redis.schema.purchaseCache(
+          purchase.sha1,purchase.sessionToken)
+        promises.push(redis.delAsync(cacheKey))
+      }
+      return P.all(promises)
+    })
     .then(function(){
       res.json({
         token: token,

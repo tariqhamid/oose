@@ -1,6 +1,7 @@
 'use strict';
 var P = require('bluebird')
 var Busboy = require('busboy')
+var debug = require('debug')('oose:prism:content')
 var fs = require('graceful-fs')
 var mime = require('mime')
 var promisePipe = require('promisepipe')
@@ -322,6 +323,36 @@ exports.existsInvalidateLocal = function(req,res){
 
 
 /**
+ * Get content detail
+ * @param {object} req
+ * @param {object} res
+ */
+exports.detail = function(req,res){
+  var sha1 = req.body.sha1
+  P.try(function(){
+    if(!sha1File.validate(sha1))
+      throw new UserError('Invalid SHA1 passed for content detail')
+    return prismBalance.contentExists(req.body.sha1)
+  })
+    .then(function(result){
+      res.json(result)
+    })
+    .catch(NotFoundError,function(err){
+      res.status(404)
+      res.json({error: err.message})
+    })
+    .catch(NetworkError,function(err){
+      res.status(502)
+      res.json({error: err.message})
+    })
+    .catch(UserError,function(err){
+      res.status(500)
+      res.json({error: err.message})
+    })
+}
+
+
+/**
  * Download purchased content
  * @param {object} req
  * @param {object} res
@@ -382,113 +413,125 @@ exports.purchase = function(req,res){
   var ip = req.body.ip || req.ip || '127.0.0.1'
   var sha1 = req.body.sha1
   var referrer = req.body.referrer
-  var life = req.body.life || 21600 //6hrs
+  var life = req.body.life || config.prism.purchaseLife
   var token, map, purchase
+  var cacheKey = redis.schema.purchaseCache(sha1,req.session.token)
   P.try(function(){
     if(!sha1File.validate(sha1))
       throw new UserError('Invalid SHA1 passed for purchase')
-    return prismBalance.contentExists(sha1)
+    //check if we have cache first
+    return redis.getAsync(cacheKey)
   })
     .then(function(result){
-      map = result
-      if(!map.exists) throw new NotFoundError('File not found')
-      //really right here we need to generate a unique token (unique meaning
-      //not already in the redis registry for purchases since we already have
-      //a token then we should just try
-      var tokenExists = true
-      return promiseWhile(
-        function(){
-          return !!tokenExists
-        },
-        function(){
-          token = purchasePath.generateToken()
-          return redis.existsAsync(redis.schema.purchase(token))
-            .then(function(result){
-              tokenExists = result
-            })
-        }
-      )
-    })
-    .then(function(){
-      //now we know our token so register it on the store instances
-      //this means iterating the existence map
-      return storeBalance.populateStores(storeBalance.existsToArray(map))
-    })
-    .then(function(stores){
-      var createPurchase = function(store){
-        var client = api.store(store)
-        return client
-          .postAsync({
-            url: client.url('/purchase/remove'),
-            json: {token: token}
-          })
-          .spread(function(){
-            return client.postAsync({
-              url: client.url('/purchase/create'),
-              json: {
-                sha1: sha1,
-                token: token,
-                life: life
+      if(result){
+        debug('cache hit',cacheKey)
+        purchase = JSON.parse(result)
+      } else {
+        debug('cache miss',cacheKey)
+        return prismBalance.contentExists(sha1)
+          .then(function(result){
+            map = result
+            if(!map.exists) throw new NotFoundError('File not found')
+            //really right here we need to generate a unique token
+            // (unique meaning not already in the redis registry for purchases
+            // since we already have a token then we should just try
+            var tokenExists = true
+            return promiseWhile(
+              function(){
+                return !!tokenExists
+              },
+              function(){
+                token = purchasePath.generateToken()
+                return redis.existsAsync(redis.schema.purchase(token))
+                  .then(function(result){
+                    tokenExists = result
+                  })
               }
-            })
+            )
           })
-          .catch(Error,client.handleNetworkError)
-          .catch(NetworkError,nullFunction)
-      }
-      var promises = []
-      for(var i = 0; i < stores.length; i++){
-        promises.push(createPurchase(stores[i]))
-      }
-      return P.all(promises)
-        .then(function(results){
-          var ext
-          for(var i = 0; i < results.length; i++){
-            if(!ext && results[i] && results[i][1] && results[i][1].ext){
-              ext = results[i][1].ext
-              break
+          .then(function(){
+            //now we know our token so register it on the store instances
+            //this means iterating the existence map
+            return storeBalance.populateStores(storeBalance.existsToArray(map))
+          })
+          .then(function(stores){
+            var createPurchase = function(store){
+              var client = api.store(store)
+              return client
+                .postAsync({
+                  url: client.url('/purchase/remove'),
+                  json: {token: token}
+                })
+                .spread(function(){
+                  return client.postAsync({
+                    url: client.url('/purchase/create'),
+                    json: {
+                      sha1: sha1,
+                      token: token,
+                      life: life
+                    }
+                  })
+                })
+                .catch(Error,client.handleNetworkError)
+                .catch(NetworkError,nullFunction)
             }
-          }
-          return ext
-        })
-    })
-    .then(function(ext){
-      //now create our purchase object
-      purchase = {
-        sha1: sha1,
-        life: life,
-        token: token,
-        map: map,
-        ext: ext,
-        ip: ip,
-        referrer: referrer
-      }
-      //okay so the purchase is registered on all our stores, time to register
-      //it to all the prisms
-      return prismBalance.prismList()
-    })
-    .then(function(result){
-      var createPurchase = function(prism){
-        var client = api.prism(prism)
-        return client
-          .postAsync({
-            url: client.url('/purchase/remove'),
-            json: {token: token}
+            var promises = []
+            for(var i = 0; i < stores.length; i++){
+              promises.push(createPurchase(stores[i]))
+            }
+            return P.all(promises)
+              .then(function(results){
+                var ext
+                for(var i = 0; i < results.length; i++){
+                  if(!ext && results[i] && results[i][1] && results[i][1].ext){
+                    ext = results[i][1].ext
+                    break
+                  }
+                }
+                return ext
+              })
           })
-          .spread(function(){
-            return client.postAsync({
-              url: client.url('/purchase/create'),
-              json: {purchase: purchase}
-            })
+          .then(function(ext){
+            //now create our purchase object
+            purchase = {
+              sha1: sha1,
+              life: life,
+              token: token,
+              sessionToken: req.session.token,
+              map: map,
+              ext: ext,
+              ip: ip,
+              referrer: referrer
+            }
+            //okay so the purchase is registered on all our stores
+            //time to register it to all the prisms
+            return prismBalance.prismList()
           })
-          .catch(Error,client.handleNetworkError)
-          .catch(NetworkError,nullFunction)
+          .then(function(result){
+            var createPurchase = function(prism){
+              var client = api.prism(prism)
+              return client
+                .postAsync({
+                  url: client.url('/purchase/remove'),
+                  json: {token: token}
+                })
+                .spread(function(){
+                  return client.postAsync({
+                    url: client.url('/purchase/create'),
+                    json: {purchase: purchase}
+                  })
+                })
+                .catch(Error,client.handleNetworkError)
+                .catch(NetworkError,nullFunction)
+            }
+            var prismList = result
+            var promises = []
+            for(var i = 0; i < prismList.length; i++){
+              promises.push(createPurchase(prismList[i]))
+            }
+            return P.all(promises)
+          })
       }
-      var prismList = result
-      var promises = []
-      for(var i = 0; i < prismList.length; i++){
-        promises.push(createPurchase(prismList[i]))
-      }
-      return P.all(promises)
     })
     .then(function(){
       res.json(purchase)
@@ -517,7 +560,7 @@ exports.deliver = function(req,res){
     .then(function(result){
       if(!result) throw new NotFoundError('Purchase not found')
       purchase = JSON.parse(result)
-      if(purchase.ip !== req.ip) throw new UserError('Invalid request')
+      //if(purchase.ip !== req.ip) throw new UserError('Invalid request')
       var validReferrer = false
       var referrer = req.get('Referrer')
       for(var i = 0; i < purchase.referrer.length; i++){
@@ -594,7 +637,7 @@ exports.remove = function(req,res){
         promises.push(
           client.postAsync({
             url: client.url('/purchase/remove'),
-            json: {token: token}
+            json: {token: token, sessionToken: req.session.token}
           })
         )
       }

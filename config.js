@@ -67,6 +67,8 @@ config.$load({
       maxConnections: 10000
     },
     contentExistsCache: 300, //5 minutes
+    purchaseLife: 21600, //6hrs
+    purchaseCache: 7200, //2 hours
     guardFrequency: 60000 //1 minute
   },
   //storage system

@@ -160,7 +160,7 @@ describe('prism',function(){
       return client
         .postAsync({
           url: client.url('/purchase/find'),
-          json: {purchase: purchase}
+          json: {token: purchase.token}
         })
         .spread(function(res,body){
           expect(body.token).to.equal(purchase.token)
