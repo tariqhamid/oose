@@ -1,5 +1,4 @@
 'use strict';
-var P = require('bluebird')
 var expect = require('chai').expect
 
 var e2e = require('./helpers/e2e')
