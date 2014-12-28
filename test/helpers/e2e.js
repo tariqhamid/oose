@@ -141,9 +141,16 @@ exports.server = {
  * @return {P}
  */
 exports.before = function(that){
-  that.timeout(20000)
+  that.timeout(40000)
   console.log('Starting mock cluster....')
   return exports.server.master.startAsync()
+    .then(function(){
+      //remove the user in case it was left over after a botched test
+      return exports.master.postAsync({
+        url: exports.master.url('/user/remove'),
+        json: {username: exports.user.username}
+      })
+    })
     .then(function(){
       //create user
       return exports.master.postAsync({
@@ -222,7 +229,7 @@ exports.before = function(that){
  * @return {P}
  */
 exports.after = function(that){
-  that.timeout(5000)
+  that.timeout(10000)
   console.log('Stopping mock cluster...')
   return P.try(function(){
     //remove stores
@@ -534,7 +541,7 @@ exports.contentExistsInvalidate = function(prism){
       json: {sha1: content.sha1}
     })
       .spread(function(res,body){
-        expect(body.success).to.equal('Existence cache cleared')
+        expect(body.success).to.equal('Cleared')
         expect(body.sha1).to.equal(content.sha1)
       })
   }

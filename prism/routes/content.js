@@ -303,7 +303,7 @@ exports.existsInvalidate = function(req,res){
       return P.all(promises)
     })
     .then(function(){
-      res.json({success: 'Existence cache cleared', sha1: sha1})
+      res.json({success: 'Cleared', sha1: sha1})
     })
 }
 
@@ -317,7 +317,7 @@ exports.existsInvalidateLocal = function(req,res){
   var sha1 = req.body.sha1
   redis.delAsync(redis.schema.contentExists(sha1))
     .then(function(){
-      res.json({success: 'Existence cache cleared locally', sha1: sha1})
+      res.json({success: 'Cleared', sha1: sha1})
     })
 }
 

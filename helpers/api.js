@@ -1,14 +1,12 @@
 'use strict';
 var P = require('bluebird')
 var debug = require('debug')('oose:api')
-var http = require('http')
 var request = require('request')
 
 var NetworkError = require('../helpers/NetworkError')
 var UserError = require('../helpers/UserError')
 
 var config = require('../config')
-
 var cache = {}
 
 
@@ -85,17 +83,14 @@ var setupRequest = function(type,options){
   var cacheKey = type + ':' + options.host + ':' + options.port
   if(!cache[cacheKey]){
     debug('cache miss',cacheKey)
-    var pool = new http.Agent()
-    pool.maxSockets = options.maxSockets || config[type].maxSockets || 128
     var req = request.defaults({
       rejectUnauthorized: false,
       json: true,
       timeout:
-      process.env.REQUEST_TIMEOUT ||
-      options.timeout ||
-      config[type].timeout ||
-      null,
-      pool: pool,
+        process.env.REQUEST_TIMEOUT ||
+        options.timeout ||
+        config[type].timeout ||
+        null,
       auth: {
         username: options.username || config[type].username,
         password: options.password || config[type].password

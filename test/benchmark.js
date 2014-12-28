@@ -19,13 +19,13 @@ var concurrency = 64
  */
 var itn = {
   login: 50,
-  contentUpload: 1000,
-  contentExists: 1000,
-  contentDetail: 1000,
-  contentExistsInvalidate: 1000,
+  contentUpload: 500,
+  contentExists: 500,
+  contentDetail: 500,
+  contentExistsInvalidate: 500,
   contentDownload: 500,
-  contentPurchase: 1000,
-  contentDeliver: 1000
+  contentPurchase: 500,
+  contentDeliver: 500
 }
 
 
