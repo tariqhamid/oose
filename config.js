@@ -68,7 +68,8 @@ config.$load({
       host: null,
       workers: {
         count: 1,
-        maxConnections: 10000
+        maxConnections: 10000,
+        recycleTimeout: 600000
       }
     },
     export: {
@@ -77,7 +78,7 @@ config.$load({
       host: null,
       workers: {
         count: 1,
-        maxConnections: 100000,
+        maxConnections: 10000,
         recycleTimeout: 600000
       }
     }
