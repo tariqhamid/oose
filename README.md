@@ -518,9 +518,13 @@ Shredder exposes itself through an HTTP JSONP API.
 
 ## Changelog
 
+### 0.6.4
+* Infant upgraded to 0.9.1 to address process recycling issues
+* Export connections are no longer keep-alive connections
+
 ### 0.6.0
 * Environment level config
-*
+* Upgraded to infant 0.9.x
 
 ### 0.5.6
  [Closed Issues](https://github.com/eSited/oose/issues?q=milestone%3A0.5.6+is%3Aclosed)
