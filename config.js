@@ -77,7 +77,8 @@ config.$load({
       host: null,
       workers: {
         count: 1,
-        maxConnections: 10000
+        maxConnections: 100000,
+        recycleTimeout: 600000
       }
     }
   },

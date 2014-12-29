@@ -14,7 +14,8 @@ if(require.main === module){
         {
           enhanced: true,
           count: config.store.export.workers.count,
-          maxConnections: config.store.export.workers.maxConnections
+          maxConnections: config.store.export.workers.maxConnections,
+          recycleTimeout: config.store.export.workers.recycleTimeout
         }
       )
       cluster.start(function(err){

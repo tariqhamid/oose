@@ -168,9 +168,15 @@ exports.stop = function(done){
   if('function' !== typeof done) done = function(){}
   if(server && running){
     running = false
-    server.close()
+    if('production' === process.env.NODE_ENV){
+      server.close(function(){
+        done()
+      })
+    } else {
+      server.close()
+      done()
+    }
   }
-  done()
 }
 
 if(require.main === module){
