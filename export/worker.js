@@ -59,7 +59,8 @@ app.get('/:sha1/:filename',function(req,res){
         'Accept-Range': 'bytes',
         //set some aggressive cache headers this content cant change, hence sha1
         'Cache-Control': 'public, max-age=31536000',
-        'Pragma': 'public'
+        'Pragma': 'public',
+        'Connection': 'close'
       }
       info.headers['Content-Type'] = info.file.mimeType
       info.headers['Content-Length'] = info.file.stat.size
@@ -168,15 +169,9 @@ exports.stop = function(done){
   if('function' !== typeof done) done = function(){}
   if(server && running){
     running = false
-    if('production' === process.env.NODE_ENV){
-      server.close(function(){
-        done()
-      })
-    } else {
-      server.close()
-      done()
-    }
+    server.close()
   }
+  done()
 }
 
 if(require.main === module){
