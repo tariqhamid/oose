@@ -35,6 +35,9 @@ config.$load({
     key: __dirname + '/test/assets/ssl/oose_test.key',
     cert: __dirname + '/test/assets/ssl/oose_test.crt'
   },
+  api: {
+    maxSockets: 64
+  },
   //master
   master: {
     enabled: false,

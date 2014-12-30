@@ -48,7 +48,7 @@ exports.upload = function(req,res){
     data[key] = value
   })
   busboy.on('file',function(key,file,name,encoding,mimetype){
-    var tmpfile = temp.path({prefix: 'oose:' + config.prism.name})
+    var tmpfile = temp.path({prefix: 'oose-' + config.prism.name + '-'})
     var sniff = new SHA1Stream()
     var writeStream = fs.createWriteStream(tmpfile)
     var prismList
@@ -113,6 +113,17 @@ exports.upload = function(req,res){
   })
   busboy.on('finish',function(){
     P.all(filePromises)
+      //destroy all the temp files from uploading
+      .then(function(){
+        var keys = Object.keys(files)
+        var promises = []
+        var file
+        for(var i = 0; i < keys.length; i++){
+          file = files[keys[i]]
+          promises.push(fs.unlinkAsync(file.tmpfile))
+        }
+        return P.all(promises)
+      })
       .then(function(){
         res.json({success: 'File(s) uploaded',data: data,files: files})
       })

@@ -8,6 +8,7 @@ var UserError = require('../helpers/UserError')
 
 var config = require('../config')
 var cache = {}
+var pool = {maxSockets: config.api.maxSockets}
 
 
 /**
@@ -91,6 +92,7 @@ var setupRequest = function(type,options){
         options.timeout ||
         config[type].timeout ||
         null,
+      pool: pool,
       auth: {
         username: options.username || config[type].username,
         password: options.password || config[type].password
