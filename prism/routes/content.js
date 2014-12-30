@@ -5,6 +5,7 @@ var debug = require('debug')('oose:prism:content')
 var fs = require('graceful-fs')
 var mime = require('mime')
 var promisePipe = require('promisepipe')
+var sha1stream = require('sha1-stream')
 var temp = require('temp')
 
 var api = require('../../helpers/api')
@@ -15,7 +16,6 @@ var promiseWhile = require('../../helpers/promiseWhile')
 var purchasePath = require('../../helpers/purchasePath')
 var redis = require('../../helpers/redis')
 var sha1File = require('../../helpers/sha1File')
-var SHA1Stream = require('../../helpers/SHA1Stream')
 var storeBalance = require('../../helpers/storeBalance')
 var UserError = require('../../helpers/UserError')
 
@@ -49,7 +49,7 @@ exports.upload = function(req,res){
   })
   busboy.on('file',function(key,file,name,encoding,mimetype){
     var tmpfile = temp.path({prefix: 'oose-' + config.prism.name + '-'})
-    var sniff = new SHA1Stream()
+    var sniff = sha1stream.createStream()
     var writeStream = fs.createWriteStream(tmpfile)
     var prismList
     var winners = []

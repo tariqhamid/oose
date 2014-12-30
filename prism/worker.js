@@ -21,10 +21,8 @@ var routes = require('./routes')
 //make some promises
 P.promisifyAll(server)
 
-//setup view enging
-app.set('trust proxy',true)
+//setup
 app.use(bodyParser.json())
-
 
 //--------------------
 //public routes

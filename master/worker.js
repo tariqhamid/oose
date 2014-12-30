@@ -21,9 +21,6 @@ var routes = require('./routes')
 //make some promises
 P.promisifyAll(server)
 
-//setup view enging
-app.set('trust proxy',true)
-
 //load middleware
 app.use(basicAuth(config.master.username,config.master.password))
 app.use(bodyParser.json())

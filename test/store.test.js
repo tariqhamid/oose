@@ -4,9 +4,9 @@ var expect = require('chai').expect
 var fs = require('graceful-fs')
 var infant = require('infant')
 var promisePipe = require('promisepipe')
+var sha1stream = require('sha1-stream')
 
 var api = require('../helpers/api')
-var SHA1Stream = require('../helpers/SHA1Stream')
 
 var content = require('./helpers/content')
 
@@ -57,7 +57,7 @@ describe('store',function(){
       )
     })
     it('should download content',function(){
-      var sniff = new SHA1Stream()
+      var sniff = sha1stream.createStream()
       return promisePipe(
         client.post({
           url: client.url('/content/download'),

@@ -4,13 +4,11 @@ var fs = require('graceful-fs')
 var mkdirp = require('mkdirp-then')
 var path = require('path')
 var promisePipe = require('promisepipe')
+var sha1stream = require('sha1-stream')
 
 var NotFoundError = require('../../helpers/NotFoundError')
 var sha1File = require('../../helpers/sha1File')
-var SHA1Stream = require('../../helpers/SHA1Stream')
 var UserError = require('../../helpers/UserError')
-
-var config = require('../../config')
 
 //make some promises
 P.promisifyAll(fs)
@@ -24,7 +22,7 @@ P.promisifyAll(fs)
 exports.upload = function(req,res){
   var file = req.params.file
   var fileDetails
-  var sniff = new SHA1Stream()
+  var sniff = sha1stream.createStream()
   var dest
   sha1File.details(file)
     .then(function(result){

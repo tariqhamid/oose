@@ -52,11 +52,11 @@ module.exports = function(req,res,next){
     })
     .catch(SyntaxError,function(err){
       res.status(500)
-      res.json({err: 'Failed to parse session record from redis: ' +
+      res.json({error: 'Failed to parse session record from redis: ' +
         err.message})
     })
     .catch(UserError,function(err){
       res.status(401)
-      res.json({err: err.message})
+      res.json({error: err.message})
     })
 }

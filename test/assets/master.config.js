@@ -14,14 +14,14 @@ module.exports = {
     enabled: false,
     username: 'oose-store',
     password: 'fuckthat',
-    timeout: 500,
+    timeout: 500
   },
   prism: {
     enabled: false,
     name: 'prism1',
     username: 'oose-prism',
     password: 'fuckit',
-    timeout: 500,
+    timeout: 500
   },
   master: {
     enabled: true,

@@ -1,0 +1,9 @@
+language: node_js
+node_js:
+  - "0.10"
+services:
+  - mysql
+  - redis
+env: TRAVIS=travis
+before_script:
+  - mysql -e 'create database oose;'

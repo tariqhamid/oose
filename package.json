@@ -38,7 +38,9 @@
     "object-manage": "^0.8.0",
     "promisepipe": "^1.0.1",
     "redis": "^0.12.1",
+    "request": "^2.48.0",
     "sequelize": "^2.0.0-rc2",
+    "sha1-stream": "^0.1.0",
     "temp": "^0.8.1"
   },
   "scripts": {
@@ -50,6 +52,6 @@
     "mocha": "^2.0.1",
     "numeral": "^1.5.3",
     "promiseq": "^0.1.0",
-    "request": "^2.48.0"
+    "rimraf": "^2.2.8"
   }
 }

@@ -19,6 +19,7 @@ var P = require('bluebird')
 
 //make some promises
 P.promisifyAll(infant)
+var rimraf = P.promisify(require('rimraf'))
 
 //lets make sure these processes are killed
 process.on('exit',function(){
@@ -143,7 +144,10 @@ exports.server = {
 exports.before = function(that){
   that.timeout(40000)
   console.log('Starting mock cluster....')
-  return exports.server.master.startAsync()
+  return rimraf(__dirname + '/../assets/data')
+    .then(function(){
+      return exports.server.master.startAsync()
+    })
     .then(function(){
       //remove the user in case it was left over after a botched test
       return exports.master.postAsync({

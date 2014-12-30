@@ -95,6 +95,11 @@ if(fs.existsSync('./config.local.js')){
   config.$load(require(__dirname + '/config.local.js'))
 }
 
+//load test overrides
+if('travis' === process.env.TRAVIS && fs.existsSync('./config.test.js')){
+  config.$load(require(__dirname + '/config.test.js'))
+}
+
 //load instance overrides
 if(process.env.OOSE_CONFIG){
   config.$load(require(process.env.OOSE_CONFIG))
