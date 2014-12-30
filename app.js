@@ -1,13 +1,9 @@
 'use strict';
-var program = require('commander')
 var debug = require('debug')('oose:main')
 var fs = require('graceful-fs')
 var Child = require('infant').Child
 var lifecycle = new (require('infant').Lifecycle)()
 var mkdirp = require('mkdirp-then')
-
-var Logger = require('./helpers/logger')
-var logger = Logger.create('main')
 
 var child = Child.parent
 
@@ -17,34 +13,18 @@ var store = child('./store')
 
 var config = require('./config')
 
-//parse cli
-program
-  .version(config.version)
-  .option(
-  '-v, --verbose',
-  'Increase logging',
-  function(v,total){
-    return total + 1
-  },
-  0
-).parse(process.argv)
-
-//set log verbosity
-debug('setting up console logging with level',+program.verbose)
-Logger.consoleFilter.setConfig({level: (+program.verbose || 2) + 4})
-
 //setup lifecycle logging
 lifecycle.on('start',function(item){
-  logger.info('Starting ' + item.title)
+  console.log('Starting ' + item.title)
 })
 lifecycle.on('stop',function(item){
-  logger.info('Stopping ' + item.title)
+  console.log('Stopping ' + item.title)
 })
 lifecycle.on('online',function(){
-  logger.info('Startup complete')
+  console.log('Startup complete')
 })
 lifecycle.on('offline',function(){
-  logger.info('Shutdown complete')
+  console.log('Shutdown complete')
 })
 
 
@@ -118,7 +98,7 @@ if(config.store.enabled){
  * @param {function} done
  */
 exports.start = function(done){
-  logger.info('Beginning startup')
+  console.log('Beginning startup')
   lifecycle.start(
     function(err){
       if(err) throw err
@@ -134,7 +114,7 @@ exports.start = function(done){
  */
 exports.stop = function(done){
   //start the shutdown process
-  logger.info('Beginning shutdown')
+  console.log('Beginning shutdown')
   lifecycle.stop(function(err){
     if(err) throw err
     done()

@@ -2,7 +2,6 @@
 var P = require('bluebird')
 var redis = require('redis')
 
-var logger = require('../helpers/logger').create('redis')
 var RedisSchema = require('../helpers/RedisSchema')
 
 var config = require('../config')
@@ -13,8 +12,6 @@ P.promisifyAll(redis)
 /*jshint bitwise: false*/
 var cfg = config.redis
 var client = redis.createClient(cfg.port,cfg.host,cfg.options)
-//bind at least one error handler so it won't throw/fatal
-client.on('error',function(err){ logger.error(err) })
 //handle auth
 if(cfg.auth) client.auth(cfg.auth)
 //select db
