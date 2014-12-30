@@ -7,3 +7,4 @@ services:
 env: TRAVIS=travis
 before_script:
   - mysql -e 'create database oose;'
+  - netstat -tulpn
