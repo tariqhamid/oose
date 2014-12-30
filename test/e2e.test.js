@@ -70,6 +70,12 @@ describe('e2e',function(){
         })
     })
 
+    it('should deliver static content on prism1',
+      e2e.contentStatic(e2e.clconf.prism1))
+
+    it('should deliver static content on prism2',
+      e2e.contentStatic(e2e.clconf.prism2))
+
     it('should accept a purchased URL and deliver content on prism1',
       e2e.contentDeliver(e2e.clconf.prism1))
 

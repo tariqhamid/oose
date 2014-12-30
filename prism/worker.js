@@ -73,6 +73,9 @@ app.post('/purchase/find',auth,routes.purchase.find)
 app.post('/purchase/update',auth,routes.purchase.update)
 app.post('/purchase/remove',auth,routes.purchase.remove)
 
+//static content
+app.get('/static/:sha1/:filename',routes.content.contentStatic)
+
 
 //main content retrieval route
 app.get('/:token/:filename',routes.content.deliver)

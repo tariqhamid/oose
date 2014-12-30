@@ -10,13 +10,19 @@ var content = oose.mock.content
 var sha1File = require('../helpers/sha1File')
 
 var config = require('../config')
+var relativeDestination = content.relativePath.replace(/^\//,'')
 var destination = path.resolve(config.root + '/content/' + content.relativePath)
 
 //make some promises
 P.promisifyAll(fs)
 
 describe('sha1File',function(){
-  it('produce a path from sha1',function(){
+  it('should produce a relative path from sha1',function(){
+    expect(
+      sha1File.toRelativePath(content.sha1,content.ext)
+    ).to.equal(relativeDestination)
+  })
+  it('should produce a path from sha1',function(){
     expect(sha1File.toPath(content.sha1,content.ext)).to.equal(destination)
   })
   it('should produce a sha1 from path',function(){

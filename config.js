@@ -42,7 +42,7 @@ config.$load({
   master: {
     enabled: false,
     name: 'localmaster',
-    port: 3001,
+    port: 5970,
     host: null,
     timeout: 1000,
     workers: {
@@ -60,7 +60,7 @@ config.$load({
   prism: {
     enabled: false,
     name: 'localprism',
-    port: 3002,
+    port: 5971,
     host: null,
     timeout: 1000,
     username: 'oose',
@@ -78,7 +78,7 @@ config.$load({
   store: {
     enabled: false,
     name: 'localstore',
-    port: 3003,
+    port: 5972,
     host: null,
     timeout: 2000,
     username: 'oose',
