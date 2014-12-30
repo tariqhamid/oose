@@ -612,11 +612,10 @@ exports.contentStatic = function(req,res){
   var sha1 = req.params.sha1
   var filename = req.params.filename
   var ext = path.extname(filename).replace('.','')
-  var staticExts = ['txt','html','png','jpg','gif']
   prismBalance.contentExists(sha1)
     .then(function(result){
       if(!result.exists) throw new NotFoundError('Content doesnt exist')
-      if(staticExts.indexOf(ext) < 0)
+      if(config.prism.denyStaticTypes.indexOf(ext) >= 0)
         throw new UserError('Invalid static file type')
       return storeBalance.winnerFromExists(sha1,result)
     })

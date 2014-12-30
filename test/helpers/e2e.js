@@ -583,13 +583,15 @@ exports.contentPurchase = function(prism){
  * Static content
  * @param {object} prism
  * @param {string} localAddress
+ * @param {string} ext file extension
  * @return {Function}
  */
-exports.contentStatic = function(prism,localAddress){
+exports.contentStatic = function(prism,localAddress,ext){
+  ext = ext || content.ext
   return function(){
     var client = api.prism(prism.prism)
     var options = {
-      url: client.url('/static/' + content.sha1 + '/' + content.filename),
+      url: client.url('/static/' + content.sha1 + '/test.' + ext),
       followRedirect: false,
       localAddress: localAddress || '127.0.0.1'
     }
@@ -601,7 +603,7 @@ exports.contentStatic = function(prism,localAddress){
         expect(host[0]).to.match(/^store\d{1}$/)
         expect(host[1]).to.equal(prism.domain)
         expect(uri.pathname).to.equal(
-          '/static/' + sha1File.toRelativePath(content.sha1,content.ext)
+          '/static/' + sha1File.toRelativePath(content.sha1,ext)
         )
       })
   }
