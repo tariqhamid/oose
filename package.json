@@ -36,7 +36,7 @@
     "mysql": "^2.5.3",
     "node-password": "^1.0.2",
     "object-manage": "^0.8.0",
-    "oose-sdk": "^1.0.1",
+    "oose-sdk": "^1.0.3",
     "promisepipe": "^1.0.1",
     "redis": "^0.12.1",
     "request": "^2.48.0",

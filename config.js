@@ -1,8 +1,10 @@
 'use strict';
 var fs = require('graceful-fs')
 var ObjectManage = require('object-manage')
+var oose = require('oose-sdk')
 var os = require('os')
 var pkg = require('./package.json')
+
 
 var config = new ObjectManage()
 config.$load({
@@ -32,8 +34,8 @@ config.$load({
     logging: false
   },
   ssl: {
-    key: __dirname + '/test/assets/ssl/oose_test.key',
-    cert: __dirname + '/test/assets/ssl/oose_test.crt'
+    key: oose.mock.sslOptions.keyFile,
+    cert: oose.mock.sslOptions.certFile
   },
   api: {
     maxSockets: 64

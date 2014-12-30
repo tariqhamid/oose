@@ -10,7 +10,7 @@ var content = oose.mock.content
 var sha1File = require('../helpers/sha1File')
 
 var config = require('../config')
-var relativeDestination = content.relativePath.replace(/^\//,'')
+var relativeDestination = content.relativePath
 var destination = path.resolve(config.root + '/content/' + content.relativePath)
 
 //make some promises
