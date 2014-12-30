@@ -1,4 +1,5 @@
-# oose
+OOSE [![Build Status](https://magnum.travis-ci.com/eSited/oose.svg?token=EgNQpuNvio2L8rSzcEkz&branch=master)](https://magnum.travis-ci.com/eSited/oose)
+========
 
 Object Oriented Storage Engine
 
@@ -51,22 +52,7 @@ For development a more interactive test method might be best
 $ mocha -R spec --watch
 ```
 
-## Logging
-
-Console logging is cotrolled by pass one or more `-v` to the app
-
-eg
-```
-$ node app
-```
-
-* Defaults to `-vv` if you want no console logging use `-q`
-* `v` - Only high level process messages are logged
-* `vv` - Normal logging for interactive shells
-* `vvv` - Debug logging with call traces
-* `vvvv` - Debug logging without call traces
-
-## Debug Logging
+## Debugging
 
 All debug logging now uses the [https://github.com/visionmedia/debug](debug)
 package.
@@ -90,11 +76,14 @@ This is what is recommended to use as the main configuration file for the
 OOSE host. This file can be used as a reference to build into a more complex
 system.
 
-`nginx/nginx.oose.conf`
+`nginx/nginx.store.conf`
 
-This file is an example of what each OOSE instance needs to operate properly on
-the server. It is recommended that each OOSE instance uses its own IP address
-to make access more reliable.
+This file is an example of what each OOSE storeinstance needs to operate
+properly on the server. It is recommended that each OOSE instance uses its
+own IP address to make access more reliable.
+
+`nginx/nginx.prism.conf`
+An example prism configuration.
 
 `nginx/html`
 

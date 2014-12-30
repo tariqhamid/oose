@@ -607,7 +607,7 @@ exports.deliver = function(req,res){
  * @param {object} req
  * @param {object} res
  */
-exports.remove = function(req,res){
+exports.purchaseRemove = function(req,res){
   var token = req.body.token
   var redisKey = redis.schema.purchase(token)
   var prismList

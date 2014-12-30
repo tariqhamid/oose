@@ -50,7 +50,8 @@ app.post('/user/session/update',userSessionValidate,routes.user.sessionUpdate)
 app.post('/content/detail',userSessionValidate,routes.content.detail)
 app.post('/content/upload',userSessionValidate,routes.content.upload)
 app.post('/content/purchase',userSessionValidate,routes.content.purchase)
-app.post('/content/remove',userSessionValidate,routes.content.remove)
+app.post(
+  '/content/purchase/remove',userSessionValidate,routes.content.purchaseRemove)
 
 //--------------------
 //private routes
