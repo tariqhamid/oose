@@ -221,9 +221,6 @@ exports.before = function(that){
     .then(function(){
       console.log('Mock cluster started!')
     })
-    .catch(function(err){
-      console.trace(err)
-    })
 }
 
 
@@ -285,9 +282,6 @@ exports.after = function(that){
     })
     .then(function(){
       console.log('Mock cluster stopped!')
-    })
-    .catch(function(err){
-      console.trace(err)
     })
 }
 
