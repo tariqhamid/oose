@@ -2,13 +2,14 @@
 var P = require('bluebird')
 var fs = require('graceful-fs')
 var mkdirp = require('mkdirp-then')
+var oose = require('oose-sdk')
 var path = require('path')
 var promisePipe = require('promisepipe')
 var sha1stream = require('sha1-stream')
 
-var NotFoundError = require('../../helpers/NotFoundError')
+var NotFoundError = oose.NotFoundError
 var sha1File = require('../../helpers/sha1File')
-var UserError = require('../../helpers/UserError')
+var UserError = oose.UserError
 
 //make some promises
 P.promisifyAll(fs)

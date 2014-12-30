@@ -1,8 +1,9 @@
 'use strict';
 var P = require('bluebird')
+var oose = require('oose-sdk')
 
 var redis = require('../../helpers/redis')
-var UserError = require('../../helpers/UserError')
+var UserError = oose.UserError
 
 var config = require('../../config')
 

@@ -3,12 +3,13 @@ var P = require('bluebird')
 var expect = require('chai').expect
 var fs = require('graceful-fs')
 var infant = require('infant')
+var oose = require('oose-sdk')
 var promisePipe = require('promisepipe')
 var sha1stream = require('sha1-stream')
 
 var api = require('../helpers/api')
 
-var content = require('./helpers/content')
+var content = oose.mock.content
 
 var config = require('../config')
 

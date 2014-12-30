@@ -2,8 +2,9 @@
 var bcrypt = require('bcrypt')
 var P = require('bluebird')
 var Password = require('node-password').Password
+var oose = require('oose-sdk')
 
-var UserError = require('../../helpers/UserError')
+var UserError = oose.UserError
 
 //make some promises
 P.promisifyAll(bcrypt)

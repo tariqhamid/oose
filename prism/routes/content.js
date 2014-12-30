@@ -4,20 +4,21 @@ var Busboy = require('busboy')
 var debug = require('debug')('oose:prism:content')
 var fs = require('graceful-fs')
 var mime = require('mime')
+var oose = require('oose-sdk')
 var promisePipe = require('promisepipe')
 var sha1stream = require('sha1-stream')
 var temp = require('temp')
 
 var api = require('../../helpers/api')
-var NetworkError = require('../../helpers/NetworkError')
-var NotFoundError = require('../../helpers/NotFoundError')
+var NetworkError = oose.NetworkError
+var NotFoundError = oose.NotFoundError
 var prismBalance = require('../../helpers/prismBalance')
 var promiseWhile = require('../../helpers/promiseWhile')
 var purchasePath = require('../../helpers/purchasePath')
 var redis = require('../../helpers/redis')
 var sha1File = require('../../helpers/sha1File')
 var storeBalance = require('../../helpers/storeBalance')
-var UserError = require('../../helpers/UserError')
+var UserError = oose.UserError
 
 var config = require('../../config')
 var master = api.master()

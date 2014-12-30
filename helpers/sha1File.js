@@ -2,9 +2,10 @@
 var P = require('bluebird')
 var fs = require('graceful-fs')
 var glob = require('glob')
+var oose = require('oose-sdk')
 var path = require('path')
 
-var UserError = require('../helpers/UserError')
+var UserError = oose.UserError
 
 var config = require('../config')
 

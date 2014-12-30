@@ -1,7 +1,8 @@
 'use strict';
 var P = require('bluebird')
+var oose = require('oose-sdk')
 
-var NotFoundError = require('../helpers/NotFoundError')
+var NotFoundError = oose.NotFoundError
 var redis = require('../helpers/redis')
 
 

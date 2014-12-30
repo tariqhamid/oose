@@ -2,11 +2,12 @@
 var P = require('bluebird')
 var expect = require('chai').expect
 var infant = require('infant')
+var oose = require('oose-sdk')
 var request = require('request')
 
 var api = require('../helpers/api')
 
-var purchase = require('./helpers/purchase')
+var purchase = oose.mock.purchase
 
 var config = require('../config')
 

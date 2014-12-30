@@ -1,12 +1,13 @@
 'use strict';
 var P = require('bluebird')
 var fs = require('graceful-fs')
+var oose = require('oose-sdk')
 
-var NotFoundError = require('../../helpers/NotFoundError')
+var NotFoundError = oose.NotFoundError
 var purchasePath = require('../../helpers/purchasePath')
 var redis = require('../../helpers/redis')
 var sha1File = require('../../helpers/sha1File')
-var UserError = require('../../helpers/UserError')
+var UserError = oose.UserError
 
 //make some promises
 P.promisifyAll(fs)

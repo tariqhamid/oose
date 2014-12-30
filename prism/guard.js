@@ -2,9 +2,10 @@
 var P = require('bluebird')
 var debug = require('debug')('oose:prism:guard')
 var infant = require('infant')
+var oose = require('oose-sdk')
 
 var api = require('../helpers/api')
-var NetworkError = require('../helpers/NetworkError')
+var NetworkError = oose.NetworkError
 var redis = require('../helpers/redis')
 
 var config = require('../config')

@@ -3,13 +3,14 @@ var expect = require('chai').expect
 var fs = require('graceful-fs')
 var infant = require('infant')
 var ObjectManage = require('object-manage')
+var oose = require('oose-sdk')
 var path = require('path')
 var url = require('url')
 
 var api = require('../../helpers/api')
-var content = require('./content')
-var NetworkError = require('../../helpers/NetworkError')
-var UserError = require('../../helpers/UserError')
+var content = oose.mock.content
+var NetworkError = oose.NetworkError
+var UserError = oose.UserError
 
 var config = require('../../config')
 

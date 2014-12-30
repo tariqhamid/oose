@@ -1,9 +1,10 @@
 'use strict';
 var debug = require('debug')('oose:userSessionValidate')
+var oose = require('oose-sdk')
 
 var api = require('../helpers/api')
 var redis = require('../helpers/redis')
-var UserError = require('../helpers/UserError')
+var UserError = oose.UserError
 
 var config = require('../config')
 
