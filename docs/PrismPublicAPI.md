@@ -99,6 +99,7 @@
     * `file` - File to be uploaded
         * Multipart safe upload that can take multiple files
 * **Response** 
+    * `success` - Success message `Content Uploaded`
     * Object Containing File
         * `file` The path to the file
         * `filename` The name of the file
