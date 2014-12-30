@@ -129,3 +129,31 @@
         * `token` The purchase token
         * `path` The path to the content
         * `map` The locations of the content in all prisms
+        
+### Purchase Remove
+
+* **URI** `/purchase/remove`
+* **METHOD** `POST`
+* **Session Required** yes
+* **Params**
+    * `PURCHASE TOKEN` The token received on the Purchase request
+* **Response**
+    * `success` - Success message `Purchase removed`
+      
+## Delivery Methods
+
+### Static Content
+
+* **URI** `/static/:sha1/:filename`
+* **METHOD** `GET`
+* **Session Required** no
+* **Params**
+    * `sha1` File sha1 identifier
+
+### Main Content
+
+* **URI** `/:token/:filename`
+* **METHOD** `GET`
+* **Session Required** no
+* **Params**
+    * `TOKEN` Content token
