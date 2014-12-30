@@ -5,6 +5,7 @@ var debug = require('debug')('oose:prism:content')
 var fs = require('graceful-fs')
 var mime = require('mime')
 var oose = require('oose-sdk')
+var path = require('path')
 var promisePipe = require('promisepipe')
 var sha1stream = require('sha1-stream')
 var temp = require('temp')
@@ -590,6 +591,39 @@ exports.deliver = function(req,res){
     .catch(SyntaxError,function(err){
       res.status(500)
       res.json({error: 'Failed to parse purchase: ' + err.message})
+    })
+    .catch(NotFoundError,function(err){
+      res.status(404)
+      res.json({error: err.message})
+    })
+    .catch(UserError,function(err){
+      res.status(500)
+      res.json({error: err.message})
+    })
+}
+
+
+/**
+ * Static content (no purchase required)
+ * @param {object} req
+ * @param {object} res
+ */
+exports.contentStatic = function(req,res){
+  var sha1 = req.params.sha1
+  var filename = req.params.filename
+  var ext = path.extname(filename).replace('.','')
+  var staticExts = ['txt','html','png','jpg','gif']
+  prismBalance.contentExists(sha1)
+    .then(function(result){
+      if(!result.exists) throw new NotFoundError('Content doesnt exist')
+      if(staticExts.indexOf(ext) < 0)
+        throw new UserError('Invalid static file type')
+      return storeBalance.winnerFromExists(sha1,result)
+    })
+    .then(function(result){
+      var url = 'http://' + result.name + '.' + config.domain +
+        '/static/' + sha1File.toRelativePath(sha1,ext)
+      res.redirect(302,url)
     })
     .catch(NotFoundError,function(err){
       res.status(404)

@@ -10,6 +10,7 @@ var url = require('url')
 var api = require('../../helpers/api')
 var content = oose.mock.content
 var NetworkError = oose.NetworkError
+var sha1File = require('../../helpers/sha1File')
 var UserError = oose.UserError
 
 var config = require('../../config')
@@ -573,6 +574,35 @@ exports.contentPurchase = function(prism){
         expect(body.referrer).to.be.an('array')
         expect(body.referrer[0]).to.equal('localhost')
         return body
+      })
+  }
+}
+
+
+/**
+ * Static content
+ * @param {object} prism
+ * @param {string} localAddress
+ * @return {Function}
+ */
+exports.contentStatic = function(prism,localAddress){
+  return function(){
+    var client = api.prism(prism.prism)
+    var options = {
+      url: client.url('/static/' + content.sha1 + '/' + content.filename),
+      followRedirect: false,
+      localAddress: localAddress || '127.0.0.1'
+    }
+    return client.getAsync(options)
+      .spread(function(res){
+        expect(res.statusCode).to.equal(302)
+        var uri = url.parse(res.headers.location)
+        var host = uri.host.split('.')
+        expect(host[0]).to.match(/^store\d{1}$/)
+        expect(host[1]).to.equal(prism.domain)
+        expect(uri.pathname).to.equal(
+          '/static/' + sha1File.toRelativePath(content.sha1,content.ext)
+        )
       })
   }
 }

@@ -1,8 +1,10 @@
 'use strict';
 var fs = require('graceful-fs')
 var ObjectManage = require('object-manage')
+var oose = require('oose-sdk')
 var os = require('os')
 var pkg = require('./package.json')
+
 
 var config = new ObjectManage()
 config.$load({
@@ -32,8 +34,8 @@ config.$load({
     logging: false
   },
   ssl: {
-    key: __dirname + '/test/assets/ssl/oose_test.key',
-    cert: __dirname + '/test/assets/ssl/oose_test.crt'
+    key: oose.mock.sslOptions.keyFile,
+    cert: oose.mock.sslOptions.certFile
   },
   api: {
     maxSockets: 64
@@ -42,7 +44,7 @@ config.$load({
   master: {
     enabled: false,
     name: 'localmaster',
-    port: 3001,
+    port: 5970,
     host: null,
     timeout: 1000,
     workers: {
@@ -60,7 +62,7 @@ config.$load({
   prism: {
     enabled: false,
     name: 'localprism',
-    port: 3002,
+    port: 5971,
     host: null,
     timeout: 1000,
     username: 'oose',
@@ -78,7 +80,7 @@ config.$load({
   store: {
     enabled: false,
     name: 'localstore',
-    port: 3003,
+    port: 5972,
     host: null,
     timeout: 2000,
     username: 'oose',

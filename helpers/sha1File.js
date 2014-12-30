@@ -17,13 +17,13 @@ glob = P.promisify(glob)
 
 
 /**
- * Convert a sha1 to an absolute path
+ * Get a relative path from a sha1
  * @param {string} sha1
- * @param {string} ext  File extension
+ * @param {string} ext
  * @return {string}
  */
-exports.toPath = function(sha1,ext){
-  var file = basePath + '/'
+exports.toRelativePath = function(sha1,ext){
+  var file = ''
   var parts = sha1.split('')
   for(var i = 1; i <= parts.length; i++){
     file = file + parts[i - 1]
@@ -32,10 +32,19 @@ exports.toPath = function(sha1,ext){
     }
   }
   if(ext)
-    file = path.resolve(file + '.' + ext)
-  else
-    file = path.resolve(file)
+    file = file + '.' + ext
   return file
+}
+
+
+/**
+ * Convert a sha1 to an absolute path
+ * @param {string} sha1
+ * @param {string} ext  File extension
+ * @return {string}
+ */
+exports.toPath = function(sha1,ext){
+  return path.resolve(basePath + '/' + exports.toRelativePath(sha1,ext))
 }
 
 
