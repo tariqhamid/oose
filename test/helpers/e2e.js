@@ -143,7 +143,7 @@ exports.server = {
  * @return {P}
  */
 exports.before = function(that){
-  that.timeout(40000)
+  that.timeout(80000)
   console.log('Starting mock cluster....')
   return rimraf(__dirname + '/../assets/data')
     .then(function(){
