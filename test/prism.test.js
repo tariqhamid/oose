@@ -26,7 +26,7 @@ var user = {
 
 
 describe('prism',function(){
-  this.timeout(5000)
+  this.timeout(10000)
   var masterServer = infant.parent('../master')
   var prismServer = infant.parent('../prism')
   var client

@@ -18,7 +18,7 @@ P.promisifyAll(fs)
 P.promisifyAll(infant)
 
 describe('store',function(){
-  this.timeout(5000)
+  this.timeout(10000)
   var storeServer = infant.parent('../store')
   var client
   //start servers and create a user

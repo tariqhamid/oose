@@ -14,7 +14,7 @@ P.promisifyAll(infant)
 var client = api.master()
 
 describe('master',function(){
-  this.timeout(5000)
+  this.timeout(10000)
   var master = infant.parent('../master')
   before(function(){
     return master.startAsync()
