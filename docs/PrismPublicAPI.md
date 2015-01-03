@@ -91,25 +91,39 @@
         * `relativePath` A relative path for the file
     
 ### Content Upload
-    
-* **URI** `/content/upload`
+
+    * **URI** `/content/upload`
+    * **METHOD** `POST`
+    * **Session Required** yes
+    * **Params**
+        * `file` - File to be uploaded
+            * Multipart safe upload that can take multiple files
+    * **Response**
+        * `success` - Success message `Content Uploaded`
+        * Object Containing File
+            * `file` The path to the file
+            * `filename` The name of the file
+            * `data` The file data
+            * `type` The type of file (text, mp3)
+            * `ext` The file extension
+            * `sha1` The encrypted identifier of the file
+            * `sha1Bogus` A bogus identifier of the file
+            * `relativePath` A relative path for the file
+
+### Content Retrieve
+
+Download content directly to OOSE from a remote server.
+
+* **URI** `/content/retrieve`
 * **METHOD** `POST`
 * **Session Required** yes
-* **Params** 
-    * `file` - File to be uploaded
-        * Multipart safe upload that can take multiple files
-* **Response** 
-    * `success` - Success message `Content Uploaded`
-    * Object Containing File
-        * `file` The path to the file
-        * `filename` The name of the file
-        * `data` The file data
-        * `type` The type of file (text, mp3)
-        * `ext` The file extension
-        * `sha1` The encrypted identifier of the file
-        * `sha1Bogus` A bogus identifier of the file
-        * `relativePath` A relative path for the file
-    
+* **Params**
+    * `request` - Request object for the node-request package
+    * `extension` - The extension of the file indicating the mime type
+* **Response**
+    * 'sha1' - The SHA1 of the downloaded file
+    * `extension` - File extension
+
 ### Content Purchase
     
 * **URI** `/content/purchase`
