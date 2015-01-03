@@ -44,6 +44,8 @@ describe('e2e',function(){
 
     it('should upload content',e2e.contentUpload(e2e.clconf.prism1))
 
+    it('should retrieve content',e2e.contentRetrieve(e2e.clconf.prism1))
+
     it('should show the content exists in 2 places',
       e2e.contentExists(e2e.clconf.prism1))
 

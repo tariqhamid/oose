@@ -7,6 +7,7 @@ var mime = require('mime')
 var oose = require('oose-sdk')
 var path = require('path')
 var promisePipe = require('promisepipe')
+var request = require('request')
 var sha1stream = require('sha1-stream')
 var temp = require('temp')
 
@@ -28,6 +29,54 @@ var master = api.master()
 P.promisifyAll(temp)
 
 var nullFunction = function(){}
+
+
+/**
+ * Send a file to prism
+ * @param {string} tmpfile
+ * @param {string} sha1
+ * @param {string} extension
+ * @return {P}
+ */
+var sendToPrism = function(tmpfile,sha1,extension){
+  var prismList
+  var winners = []
+  //actually stream the file to new peers
+  return prismBalance.prismList()//pick first winner
+    .then(function(result){
+      prismList = result
+      return prismBalance.winner('newFile',prismList)
+    })//pick second winner
+    .then(function(result){
+      if(!result){
+        throw new UserError('Failed to find a prism ' +
+        'instance to upload to')
+      }
+      winners.push(result)
+      return prismBalance.winner('newFile',prismList,[result.name])
+    })//stream the file to winners
+    .then(function(result){
+      if(result) winners.push(result)
+      var readStream = fs.createReadStream(tmpfile)
+      var promises = []
+      var client
+      for(var i = 0; i < winners.length; i++){
+        client = api.prism(winners[i])
+        promises.push(promisePipe(
+          readStream,
+          client.put(
+            client.url('/content/put/' + sha1 +
+            '.' + extension)
+          )
+        ))
+      }
+      return P.all(promises)
+    })
+    .then(function(){
+      //kill the content existence cache
+      return prismBalance.invalidateContentExists(sha1)
+    })
+}
 
 
 /**
@@ -53,8 +102,6 @@ exports.upload = function(req,res){
     var tmpfile = temp.path({prefix: 'oose-' + config.prism.name + '-'})
     var sniff = sha1stream.createStream()
     var writeStream = fs.createWriteStream(tmpfile)
-    var prismList
-    var winners = []
     files[key] = {
       key: key,
       tmpfile: tmpfile,
@@ -72,51 +119,22 @@ exports.upload = function(req,res){
           return prismBalance.contentExists(sniff.sha1)
         }).then(function(result){
           if(!result.exists && 0 === result.count){
-            //actually stream the file to new peers
-            return prismBalance.prismList()//pick first winner
-              .then(function(result){
-                prismList = result
-                return prismBalance.winner('newFile',prismList)
-              })//pick second winner
-              .then(function(result){
-                if(!result){
-                  throw new UserError('Failed to find a prism ' +
-                    'instance to upload to')
-                }
-                winners.push(result)
-                return prismBalance.winner('newFile',prismList,[result.name])
-              })//stream the file to winners
-              .then(function(result){
-                if(result) winners.push(result)
-                var readStream = fs.createReadStream(tmpfile)
-                var promises = []
-                var client
-                for(var i = 0; i < winners.length; i++){
-                  client = api.prism(winners[i])
-                  promises.push(promisePipe(
-                    readStream,
-                    client.put(
-                      client.url('/content/put/' + files[key].sha1 +
-                        '.' + files[key].ext)
-                    )
-                  ))
-                }
-                return P.all(promises)
-              })
-              .then(function(){
-                //kill the content existence cache
-                return prismBalance.invalidateContentExists(files[key].sha1)
-              })
-          } else {
-            //file already exists on cluster so we are done
+            return sendToPrism(tmpfile,sniff.sha1,files[key].ext)
           }
+          //got here? file already exists on cluster so we are done
         })
     )
   })
   busboy.on('finish',function(){
     P.all(filePromises)
-      //destroy all the temp files from uploading
       .then(function(){
+        res.json({success: 'File(s) uploaded',data: data,files: files})
+      })
+      .catch(UserError,function(err){
+        res.json({error: err.message})
+      })
+      //destroy all the temp files from uploading
+      .finally(function(){
         var keys = Object.keys(files)
         var promises = []
         var file
@@ -126,14 +144,46 @@ exports.upload = function(req,res){
         }
         return P.all(promises)
       })
-      .then(function(){
-        res.json({success: 'File(s) uploaded',data: data,files: files})
-      })
-      .catch(UserError,function(err){
-        res.json({error: err.message})
-      })
   })
   req.pipe(busboy)
+}
+
+
+/**
+ * Retrieve a file from a remote server for import
+ * @param {object} req
+ * @param {object} res
+ */
+exports.retrieve = function(req,res){
+  var retrieveRequest = req.body.request
+  var extension = req.body.extension || 'bin'
+  var tmpfile = temp.path({prefix: 'oose-' + config.prism.name + '-'})
+  var sniff = sha1stream.createStream()
+  var sha1
+  var writeStream = fs.createWriteStream(tmpfile)
+  promisePipe(request(retrieveRequest),sniff,writeStream)
+    .then(function(){
+      sha1 = sniff.sha1
+      //do a content lookup and see if this exists yet
+      return prismBalance.contentExists(sha1)
+    }).then(function(result){
+      if(!result.exists && 0 === result.count){
+        return sendToPrism(tmpfile,sha1,extension)
+      }
+      //got here? file already exists on cluster so we are done
+    })
+    .then(function(){
+      return fs.unlinkAsync(tmpfile)
+    })
+    .then(function(){
+      res.json({
+        sha1: sha1,
+        extension: extension
+      })
+    })
+    .finally(function(){
+      return fs.unlinkAsync(tmpfile)
+    })
 }
 
 
@@ -156,7 +206,7 @@ exports.put = function(req,res){
     .then(function(result){
       if(!result) throw new UserError('No suitable store instance found')
       var client = api.store(result)
-      var dest = client.put(client.url('/content/upload/' + file))
+      var dest = client.put(client.url('/content/put/' + file))
       return promisePipe(req,dest)
     })
     .then(function(){

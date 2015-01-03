@@ -1,6 +1,8 @@
 'use strict';
 var expect = require('chai').expect
+var express = require('express')
 var fs = require('graceful-fs')
+var http = require('http')
 var infant = require('infant')
 var ObjectManage = require('object-manage')
 var oose = require('oose-sdk')
@@ -382,11 +384,15 @@ exports.checkProtected = function(prism){
       })
       .catch(UserError,function(err){
         expect(err.message).to.match(/Invalid response code \(401\) to POST/)
+        return client.postAsync(client.url('/content/upload'))
+      })
+      .catch(UserError,function(err){
+        expect(err.message).to.match(/Invalid response code \(401\) to POST/)
         return client.postAsync(client.url('/content/purchase'))
       })
       .catch(UserError,function(err){
         expect(err.message).to.match(/Invalid response code \(401\) to POST/)
-        return client.postAsync(client.url('/content/remove'))
+        return client.postAsync(client.url('/content/purchase/remove'))
       })
       .catch(UserError,function(err){
         expect(err.message).to.match(/Invalid response code \(401\) to POST/)
@@ -457,6 +463,47 @@ exports.contentUpload = function(prism){
       })
       .spread(function(res,body){
         expect(body.files.file.sha1).to.equal(content.sha1)
+      })
+  }
+}
+
+
+/**
+ * Content retrieve
+ * @param {object} prism
+ * @return {Function}
+ */
+exports.contentRetrieve = function(prism){
+  return function(){
+    var client = api.setSession(exports.user.session,api.prism(prism.prism))
+    var app = express()
+    var server = http.createServer(app)
+    app.get('/test.txt',function(req,res){
+      res.sendFile(path.resolve(content.file))
+    })
+    P.promisifyAll(server)
+    return server.listenAsync(null,'127.0.0.1')
+      .then(function(){
+        var port = server.address().port
+        return client
+          .postAsync({
+            url: client.url('/content/retrieve'),
+            json: {
+              request: {
+                url: 'http://127.0.0.1:' + port + '/test.txt',
+                method: 'get'
+              },
+              extension: content.ext
+            },
+            localAddress: '127.0.0.1'
+          })
+      })
+      .spread(function(res,body){
+        expect(body.sha1).to.equal(content.sha1)
+        expect(body.extension).to.equal(content.ext)
+      })
+      .finally(function(){
+        return server.closeAsync()
       })
   }
 }

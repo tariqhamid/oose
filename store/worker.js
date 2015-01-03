@@ -30,7 +30,7 @@ app.post('/',routes.index)
 app.post('/ping',routes.ping)
 
 //content functions
-app.put('/content/upload/:file',routes.content.upload)
+app.put('/content/put/:file',routes.content.put)
 app.post('/content/download',routes.content.download)
 app.post('/content/exists',routes.content.exists)
 app.post('/content/remove',routes.content.remove)

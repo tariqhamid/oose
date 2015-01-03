@@ -54,7 +54,7 @@ describe('store',function(){
       return promisePipe(
         fs.createReadStream(content.file),
         client.put(
-          client.url('/content/upload/') + content.sha1 + '.' + content.ext)
+          client.url('/content/put/') + content.sha1 + '.' + content.ext)
       )
     })
     it('should download content',function(){
@@ -108,7 +108,7 @@ describe('store',function(){
       return promisePipe(
         fs.createReadStream(content.file),
         client.put(
-          client.url('/content/upload/') + content.sha1 + '.' + content.ext)
+          client.url('/content/put/') + content.sha1 + '.' + content.ext)
       )
     })
     after(function(){

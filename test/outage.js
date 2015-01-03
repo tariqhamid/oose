@@ -42,6 +42,7 @@ describe('outage',function(){
       })
       it('master should be down',e2e.checkDown('prism',e2e.clconf.master))
       it('should still upload content',e2e.contentUpload(e2e.clconf.prism1))
+      it('should still retrieve content',e2e.contentRetrieve(e2e.clconf.prism1))
       it('should still show existence',e2e.contentExists(e2e.clconf.prism1))
       it('should invalidate the content existence',
         e2e.contentExistsInvalidate(e2e.clconf.prism1))
@@ -64,6 +65,7 @@ describe('outage',function(){
       })
       it('prism2 should be down',e2e.checkDown('prism',e2e.clconf.prism2))
       it('should still upload content',e2e.contentUpload(e2e.clconf.prism1))
+      it('should still retrieve content',e2e.contentRetrieve(e2e.clconf.prism1))
       it('should still show existence',e2e.contentExists(e2e.clconf.prism1,{
         count: 1,
         deepChecks: ['prism1']
@@ -89,6 +91,7 @@ describe('outage',function(){
       })
       it('prism1 should be down',e2e.checkDown('prism',e2e.clconf.prism1))
       it('should still upload content',e2e.contentUpload(e2e.clconf.prism2))
+      it('should still retrieve content',e2e.contentRetrieve(e2e.clconf.prism2))
       it('should still show existence',e2e.contentExists(e2e.clconf.prism2,{
         count: 1,
         deepChecks: ['prism2']
@@ -121,6 +124,7 @@ describe('outage',function(){
       it('store1 should be down',e2e.checkDown('store',e2e.clconf.store1))
       it('store2 should be down',e2e.checkDown('store',e2e.clconf.store2))
       it('should still upload content',e2e.contentUpload(e2e.clconf.prism1))
+      it('should still retrieve content',e2e.contentRetrieve(e2e.clconf.prism1))
       it('should still show existence',e2e.contentExists(e2e.clconf.prism1,{
         checkExists: true,
         count: 1,
@@ -155,6 +159,7 @@ describe('outage',function(){
       it('store3 should be down',e2e.checkDown('store',e2e.clconf.store3))
       it('store4 should be down',e2e.checkDown('store',e2e.clconf.store4))
       it('should still upload content',e2e.contentUpload(e2e.clconf.prism2))
+      it('should still retrieve content',e2e.contentRetrieve(e2e.clconf.prism2))
       it('should still show existence',e2e.contentExists(e2e.clconf.prism1,{
         checkExists: true,
         count: 1,
@@ -192,6 +197,7 @@ describe('outage',function(){
       it('store1 should be down',e2e.checkDown('store',e2e.clconf.store1))
       it('store2 should be down',e2e.checkDown('store',e2e.clconf.store2))
       it('should still upload content',e2e.contentUpload(e2e.clconf.prism2))
+      it('should still retrieve content',e2e.contentRetrieve(e2e.clconf.prism2))
       it('should still show existence',e2e.contentExists(e2e.clconf.prism2,{
         checkExists: true,
         count: 1,
@@ -229,6 +235,7 @@ describe('outage',function(){
       it('store3 should be down',e2e.checkDown('store',e2e.clconf.store3))
       it('store4 should be down',e2e.checkDown('store',e2e.clconf.store4))
       it('should still upload content',e2e.contentUpload(e2e.clconf.prism1))
+      it('should still retrieve content',e2e.contentRetrieve(e2e.clconf.prism1))
       it('should still show existence',e2e.contentExists(e2e.clconf.prism1,{
         checkExists: true,
         count: 1,

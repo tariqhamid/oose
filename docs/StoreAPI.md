@@ -4,7 +4,7 @@
 
 ### Content Upload
 
-* **URI** `/content/upload/:file`
+* **URI** `/content/put/:file`
 * **METHOD** `PUT`
 * **Session Required** yes
 * **Params**

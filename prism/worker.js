@@ -49,6 +49,7 @@ app.post('/user/session/update',userSessionValidate,routes.user.sessionUpdate)
 //content functions
 app.post('/content/detail',userSessionValidate,routes.content.detail)
 app.post('/content/upload',userSessionValidate,routes.content.upload)
+app.post('/content/retrieve',userSessionValidate,routes.content.retrieve)
 app.post('/content/purchase',userSessionValidate,routes.content.purchase)
 app.post(
   '/content/purchase/remove',userSessionValidate,routes.content.purchaseRemove)

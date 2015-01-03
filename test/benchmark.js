@@ -20,6 +20,7 @@ var concurrency = 64
 var itn = {
   login: 50,
   contentUpload: 500,
+  contentRetrieve: 500,
   contentExists: 500,
   contentDetail: 500,
   contentExistsInvalidate: 500,
@@ -94,6 +95,9 @@ describe('benchmark',function(){
 
     it('content upload ' + numeral(itn.contentUpload).format('0,0') + 'x',
       repeatTest(e2e.clconf.prism1,itn.contentUpload,'contentUpload'))
+
+    it('content retrieve ' + numeral(itn.contentRetrieve).format('0,0') + 'x',
+      repeatTest(e2e.clconf.prism1,itn.contentRetrieve,'contentRetrieve'))
 
     it('content exists ' + numeral(itn.contentExists).format('0,0') + 'x',
       repeatTest(e2e.clconf.prism1,itn.contentExists,'contentExists'))

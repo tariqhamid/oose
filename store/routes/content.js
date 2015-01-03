@@ -16,11 +16,11 @@ P.promisifyAll(fs)
 
 
 /**
- * Upload file
+ * Put file
  * @param {object} req
  * @param {object} res
  */
-exports.upload = function(req,res){
+exports.put = function(req,res){
   var file = req.params.file
   var fileDetails
   var sniff = sha1stream.createStream()
