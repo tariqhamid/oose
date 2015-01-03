@@ -71,7 +71,31 @@ config.$load({
       count: 1,
       maxConnections: 10000
     },
-    denyStaticTypes: ['mp3','mp4','flv','avi','wmv','ogg','aac','webm'],
+    denyStaticTypes: [
+      'aac',
+      'ape',
+      'asf',
+      'avi',
+      'dv',
+      'flac',
+      'flv',
+      'm2v',
+      'm3a',
+      'm4v',
+      'mkv',
+      'mp2',
+      'mp3',
+      'mp4',
+      'mov',
+      'moov',
+      'mpeg',
+      'mpg',
+      'ogg',
+      'ogm',
+      'ts',
+      'webm',
+      'wmv'
+    ],
     contentExistsCache: 300, //5 minutes
     purchaseLife: 21600, //6hrs
     purchaseCache: 7200, //2 hours
