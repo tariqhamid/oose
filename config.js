@@ -40,6 +40,20 @@ config.$load({
   api: {
     maxSockets: 64
   },
+  //admin
+  admin: {
+    enabled: false,
+    port: 5973,
+    host: null,
+    workers: {
+      count: 1,
+      maxConnections: 10000
+    },
+    cookie: {
+      secret: 'oose',
+      maxAge: 2592000000 //30 days
+    }
+  },
   //master
   master: {
     enabled: false,

@@ -1,7 +1,7 @@
 'use strict';
 var oose = require('oose-sdk')
 
-var sequelize = require('../helpers/sequelize')()
+var sequelize = require('../../helpers/sequelize')()
 var UserError = oose.UserError
 
 var Memory = sequelize.models.Memory

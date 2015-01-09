@@ -1,0 +1,28 @@
+extends ../layout
+block append js
+  script(src='/js/table.js')
+block content
+  .container
+    +tableHeader('Users')
+    +alerts()
+    form(method='post', role='form')
+      table.table.table-striped
+        tr
+          th
+            input#toggle(type='checkbox')
+          th Email
+          th Username
+          th Date Created
+          th Last Login
+          th Active
+        each row,i in list
+          tr
+            td
+              input(type='checkbox', name='remove[]', value=row.id)
+            td= row.email
+            td= row.username
+            td= new Date(row.createdAt).toDateString()
+            td= new Date(row.dateSeen * 1000).toDateString()
+            td
+              +active(row.active)
+      +tableFooter(page,count)

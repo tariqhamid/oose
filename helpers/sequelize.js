@@ -2,7 +2,7 @@
 var fs = require('fs')
 var Sequelize = require('sequelize')
 
-var config = require('../../config')
+var config = require('../config')
 
 var inst
 var modelPath = __dirname + '/../models'

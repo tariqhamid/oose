@@ -7,7 +7,7 @@ var fs = require('graceful-fs')
 var https = require('https')
 var worker = require('infant').worker
 
-var sequelize = require('./helpers/sequelize')()
+var sequelize = require('./../helpers/sequelize')()
 
 var app = express()
 var config = require('../config')

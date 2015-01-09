@@ -2,7 +2,7 @@
 var moment = require('moment')
 var Password = require('node-password').Password
 
-var config = require('../../config')
+var config = require('../config')
 
 
 /**

@@ -2,7 +2,7 @@
 var child = require('infant').child
 var clusterSetup = require('infant').cluster
 
-var sequelize = require('./helpers/sequelize')()
+var sequelize = require('./../helpers/sequelize')()
 
 var cluster
 var config = require('../config')

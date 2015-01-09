@@ -1,0 +1,14 @@
+extends ../layout
+block content
+  .container
+    h2 Import Thumbnail
+    p Provide a URL for the thumbnail to be downloaded.
+    form.form-horizontal(action='', method='post', role='form')
+      input(type='hidden', name='id', value=show.id)
+      .form-group
+        label.control-label.col-sm-2 URL
+        .col-sm-10
+          input.form-control(type='text', name='url', placeholder='URL to the thumbnail to be downloaded')
+      .form-group
+        .col-sm-offset-2.col-sm-10
+          button.btn.btn-success(type='submit') Import

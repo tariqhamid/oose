@@ -7,6 +7,7 @@ var mkdirp = require('mkdirp-then')
 
 var child = Child.parent
 
+var admin = child('./admin')
 var master = child('./master')
 var prism = child('./prism')
 var store = child('./store')
@@ -43,6 +44,22 @@ lifecycle.add(
     })
   }
 )
+
+
+/**
+ * Admin
+ */
+if(config.admin.enabled){
+  lifecycle.add(
+    'admin',
+    function(next){
+      admin.start(next)
+    },
+    function(next){
+      admin.stop(next)
+    }
+  )
+}
 
 
 /**
