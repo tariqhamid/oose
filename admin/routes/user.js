@@ -18,7 +18,7 @@ exports.list = function(req,res){
   User.findAndCountAll({
     where: sequelize.or(
       {email: {like: '%' + search + '%'}},
-      {username: {like: '%' + search + '%'}}
+      {name: {like: '%' + search + '%'}}
     ),
     limit: limit,
     offset: start
@@ -46,10 +46,102 @@ exports.list = function(req,res){
 exports.listAction = function(req,res){
   list.remove(User,req.body.remove)
     .then(function(){
-      req.flash('success','Removed user(s) successfully')
-      res.redirect('/user')
+      req.flash('success','User removed successfully')
+      res.redirect('/user/list')
     })
     .catch(function(err){
       res.render('error',{error: err})
     })
+}
+
+
+/**
+ * Create user member
+ * @param {object} req
+ * @param {object} res
+ */
+exports.create = function(req,res){
+  res.render('user/create')
+}
+
+
+/**
+ * User edit form
+ * @param {object} req
+ * @param {object} res
+ */
+exports.edit = function(req,res){
+  User.find(req.query.id)
+    .then(function(result){
+      if(!result) throw new Error('User member not found')
+      res.render('user/edit',{user: result})
+    })
+    .catch(function(err){
+      res.render('error',{error: err})
+    })
+}
+
+
+/**
+ * Save staff member
+ * @param {object} req
+ * @param {object} res
+ */
+exports.save = function(req,res){
+  var data = req.body
+  User.find(data.id)
+    .then(function(doc){
+      if(!doc) doc = User.build()
+      doc.name = data.name
+      doc.email = data.email
+      if(data.password) doc.password = data.password
+      doc.active = !!data.active
+      return doc.save()
+    })
+    .then(function(user){
+      req.flash('success','User member saved')
+      res.redirect('/user/edit?id=' + user.id)
+    })
+    .catch(function(err){
+      res.render('error',{error: err})
+    })
+}
+
+
+/**
+ * User login
+ * @param {object} req
+ * @param {object} res
+ */
+exports.login = function(req,res){
+  res.render('login')
+}
+
+
+/**
+ * Login action
+ * @param {object} req
+ * @param {object} res
+ */
+exports.loginAction = function(req,res){
+  User.login(req.body.email,req.body.password)
+    .then(function(result){
+      req.session.user = result.toJSON()
+      res.redirect('/')
+    })
+    .catch(function(err){
+      req.flash('error',err)
+      res.render('login')
+    })
+}
+
+
+/**
+ * User logout
+ * @param {object} req
+ * @param {object} res
+ */
+exports.logout = function(req,res){
+  delete req.session.user
+  res.redirect('/login')
 }

@@ -60,6 +60,7 @@ app.use(function(req,res,next){
   next()
 })
 app.use(express.static(__dirname + '/public'))
+/*
 app.use(function(req,res,next){
   //allow public routes
   if(req.url.match(/\/api\//)) return next()
@@ -71,6 +72,7 @@ app.use(function(req,res,next){
     next()
   }
 })
+*/
 
 // development only
 if('development' === app.get('env'))
@@ -80,97 +82,41 @@ if('development' === app.get('env'))
 //public routes
 //----------------
 
-app.post('/api/shredderUpdate',routes.shredder.update)
+//app.post('/api/shredderUpdate',routes.shredder.update)
 
 //----------------
 //private routes
 //----------------
 
+/*
 //auth
 app.post('/login',routes.staff.loginAction)
 app.get('/login',routes.staff.login)
 app.get('/logout',routes.staff.logout)
 
 //staff
-app.post('/staff/list',routes.staff.listAction)
-app.post('/staff/save',routes.staff.save)
-app.get('/staff/list',routes.staff.list)
-app.get('/staff/create',routes.staff.create)
-app.get('/staff/edit',routes.staff.edit)
-app.get('/staff',function(req,res){ res.redirect('/staff/list') })
+app.post('/user/list',routes.staff.listAction)
+app.post('/user/save',routes.staff.save)
+app.get('/user/list',routes.staff.list)
+app.get('/user/create',routes.staff.create)
+app.get('/user/edit',routes.staff.edit)
+app.get('/user',function(req,res){ res.redirect('/user/list') })
+*/
 
-//shows
-app.post('/show/list',routes.show.listAction)
-app.post('/show/save',routes.show.save)
-app.post('/show/importThumbnail',routes.show.importThumbnailAction)
-app.get('/show/list',routes.show.list)
-app.get('/show/create',routes.show.create)
-app.get('/show/edit',routes.show.edit)
-app.get('/show/importThumbnail',routes.show.importThumbnail)
-app.get('/show',function(req,res){ res.redirect('/') })
+//prisms
+app.post('/prism/list',routes.prism.listAction)
+app.post('/prism/save',routes.prism.save)
+app.get('/prism/list',routes.prism.list)
+app.get('/prism/create',routes.prism.create)
+app.get('/prism/edit',routes.prism.edit)
+app.get('/prism',function(req,res){ res.redirect('/') })
 
 //show episodes
-app.post('/episode/save',routes.episode.save)
-app.post('/episode/remove',routes.episode.remove)
-app.get('/episode/create',routes.episode.create)
-app.get('/episode/edit',routes.episode.edit)
+app.post('/store/save',routes.store.save)
+app.post('/store/remove',routes.store.remove)
+app.get('/store/create',routes.store.create)
+app.get('/store/edit',routes.store.edit)
 
-//show video
-app.post('/video/save',routes.video.save)
-app.post('/video/remove',routes.video.remove)
-app.post('/video/import',routes.video.importAction)
-app.get('/video/create',routes.video.create)
-app.get('/video/edit',routes.video.edit)
-app.get('/video/import',routes.video.importForm)
-
-//media
-app.post('/media/remove',routes.media.remove)
-app.post('/media/save',routes.media.save)
-app.get('/media/edit',routes.media.edit)
-
-//pages
-app.post('/page/list',routes.page.listAction)
-app.post('/page/save',routes.page.save)
-app.get('/page/list',routes.page.list)
-app.get('/page/create',routes.page.create)
-app.get('/page/edit',routes.page.edit)
-app.get('/page',function(req,res){ res.redirect('/page/list') })
-
-//blog entries
-app.post('/blog/list',routes.blog.listAction)
-app.post('/blog/save',routes.blog.save)
-app.get('/blog/list',routes.blog.list)
-app.get('/blog/create',routes.blog.create)
-app.get('/blog/edit',routes.blog.edit)
-app.get('/blog',function(req,res){ res.redirect('/blog/list') })
-
-//Video Report page
-app.post('/videoReport/list',routes.videoReport.listAction)
-app.get('/videoReport/list',routes.videoReport.list)
-app.get('/videoReport',function(req,res){ res.redirect('/videoReport/list') })
-
-//blog entries
-app.post('/siteMaintenance/list',routes.siteMaintenance.listAction)
-app.post('/siteMaintenance/save',routes.siteMaintenance.save)
-app.get('/siteMaintenance/list',routes.siteMaintenance.list)
-app.get('/siteMaintenance/create',routes.siteMaintenance.create)
-app.get('/siteMaintenance/edit',routes.siteMaintenance.edit)
-app.get('/siteMaintenance',function(req,res){ res.redirect('/siteMaintenance/list') })
-
-//Episode Maintenance Page
-app.post('/episodeMaintenance/list',routes.episodeMaintenance.listAction)
-app.get('/episodeMaintenance/list',routes.episodeMaintenance.list)
-app.get('/episodeMaintenance',function(req,res){ res.redirect('/episodeMaintenance/list') })
-
-//User Management page
-app.post('/user/list',routes.user.listAction)
-app.get('/user/list',routes.user.list)
-app.get('/user',function(req,res){ res.redirect('/user/list') })
-
-//imports page
-app.get('/oose/list',routes.oose.list)
-app.post('/oose/list',routes.oose.listAction)
-app.get('/oose',function(req,res){ res.redirect('/oose/list') })
 
 //home page
 app.get('/',routes.index)
