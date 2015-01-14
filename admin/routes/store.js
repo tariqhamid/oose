@@ -72,7 +72,8 @@ exports.remove = function(req,res){
 exports.save = function(req,res){
   var data = req.body
   var prism, store
-  Store.find(data.prism)
+  console.log(data)
+  Prism.find(data.prism)
     .then(function(result){
       if(!result) throw new Error('Prism not found')
       prism = result
@@ -82,8 +83,8 @@ exports.save = function(req,res){
         },
         defaults: {
           name: data.name,
-          port: data.port || '',
-          host: data.host || ''
+          port: data.port,
+          host: data.host
         }
       })
     })

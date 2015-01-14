@@ -40,11 +40,15 @@ block content
       input(type='hidden', name='prism', value=prism.id)
       table.table.table-striped
         tr
+          th
+            input#toggle(type='checkbox')
           th Name
           th Host
           th Port
         each store in stores
           tr
+            td
+              input(type='checkbox', name='index[]', value=store.id)
             td
               a(href='/store/edit?id=#{store.id}')= store.name
             td= store.host

@@ -92,14 +92,12 @@ exports.save = function(req,res){
   User.find(data.id)
     .then(function(doc){
       if(!doc) doc = User.build()
-      doc.name = data.name
-      doc.email = data.email
+      doc.username = data.username
       if(data.password) doc.password = data.password
-      doc.active = !!data.active
       return doc.save()
     })
     .then(function(user){
-      req.flash('success','User member saved')
+      req.flash('success','User saved')
       res.redirect('/user/edit?id=' + user.id)
     })
     .catch(function(err){
@@ -124,12 +122,16 @@ exports.login = function(req,res){
  * @param {object} res
  */
 exports.loginAction = function(req,res){
-  User.login(req.body.email,req.body.password)
+  User.login(req.body.username,req.body.password)
     .then(function(result){
+      console.log('Success')
       req.session.user = result.toJSON()
+      console.log(req.session)
       res.redirect('/')
+      console.log('should be redirected')
     })
     .catch(function(err){
+      console.trace(err)
       req.flash('error',err)
       res.render('login')
     })

@@ -28,11 +28,13 @@ html
               a(href='/user/list') Users
           ul.nav.navbar-nav.navbar-right
             li.dropdown
-              a.dropdown-toggle(data-toggle='dropdown') #{user.email}
+              a.dropdown-toggle(data-toggle='dropdown') #{user.username}
                 b.caret
               ul.dropdown-menu
                 li
                   a(href='/logout') Logout
+                li
+                  a(href='/') FUCKYOU
     //main content
     block content
     .text-center

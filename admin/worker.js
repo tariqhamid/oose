@@ -60,19 +60,19 @@ app.use(function(req,res,next){
   next()
 })
 app.use(express.static(__dirname + '/public'))
-/*
+
 app.use(function(req,res,next){
   //allow public routes
   if(req.url.match(/\/api\//)) return next()
   //private
-  if(!req.session.staff && req.url.indexOf('/login') < 0){
+  if(!req.session.user && req.url.indexOf('/login') < 0){
     res.redirect('/login')
   } else {
-    app.locals.user = req.session.staff
+    app.locals.user = req.session.user
     next()
   }
 })
-*/
+
 
 // development only
 if('development' === app.get('env'))
@@ -88,20 +88,20 @@ if('development' === app.get('env'))
 //private routes
 //----------------
 
-/*
-//auth
-app.post('/login',routes.staff.loginAction)
-app.get('/login',routes.staff.login)
-app.get('/logout',routes.staff.logout)
 
-//staff
-app.post('/user/list',routes.staff.listAction)
-app.post('/user/save',routes.staff.save)
-app.get('/user/list',routes.staff.list)
-app.get('/user/create',routes.staff.create)
-app.get('/user/edit',routes.staff.edit)
+//auth
+app.post('/login',routes.user.loginAction)
+app.get('/login',routes.user.login)
+app.get('/logout',routes.user.logout)
+
+//user
+app.post('/user/list',routes.user.listAction)
+app.post('/user/save',routes.user.save)
+app.get('/user/list',routes.user.list)
+app.get('/user/create',routes.user.create)
+app.get('/user/edit',routes.user.edit)
 app.get('/user',function(req,res){ res.redirect('/user/list') })
-*/
+
 
 //prisms
 app.post('/prism/list',routes.prism.listAction)

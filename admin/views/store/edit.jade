@@ -25,8 +25,7 @@ block content
       .form-group
         label.control-label.col-sm-2 Port
         .col-sm-10
-          input.form-control(type='text', name='port', placeholder='Store Port', value=store.post)
-      div
-        button.btn.btn-danger#tableDelete(type='submit')
-          span.glyphicon.glyphicon-remove
-          span  Delete Checked
+          input.form-control(type='text', name='port', placeholder='Store Port', value=store.port)
+      .form-group
+        .col-sm-offset-2.col-sm-10
+          button.btn.btn-success(type='submit') Save
