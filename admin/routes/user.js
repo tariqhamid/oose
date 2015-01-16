@@ -17,8 +17,7 @@ exports.list = function(req,res){
   if(start < 0) start = 0
   User.findAndCountAll({
     where: sequelize.or(
-      {email: {like: '%' + search + '%'}},
-      {name: {like: '%' + search + '%'}}
+      {username: {like: '%' + search + '%'}}
     ),
     limit: limit,
     offset: start
@@ -83,7 +82,7 @@ exports.edit = function(req,res){
 
 
 /**
- * Save staff member
+ * Save User
  * @param {object} req
  * @param {object} res
  */
