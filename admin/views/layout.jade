@@ -14,7 +14,7 @@ html
       link(rel='stylesheet', type='text/css', href='/css/layout.css')
     title OOSE Admin
   body
-    if user
+    if staff
       //navbar
       .navbar.navbar-fixed-top.navbar-inverse(role='navigation')
         .container
@@ -23,16 +23,16 @@ html
             li
               a(href='/prism/list') Prisms
             li
+              a(href='/staff/list') Staff
+            li
               a(href='/user/list') Users
           ul.nav.navbar-nav.navbar-right
             li.dropdown
-              a.dropdown-toggle(data-toggle='dropdown') #{user.username}
+              a.dropdown-toggle(data-toggle='dropdown') #{staff.name}
                 b.caret
               ul.dropdown-menu
                 li
                   a(href='/logout') Logout
-                li
-                  a(href='/') FUCKYOU
     //main content
     block content
     .text-center

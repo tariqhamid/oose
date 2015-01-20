@@ -48,7 +48,7 @@ block content
         each store in stores
           tr
             td
-              input(type='checkbox', name='index[]', value=store.id)
+              input(type='checkbox', name='id[]', value=store.id)
             td
               a(href='/store/edit?id=#{store.id}')= store.name
             td= store.host

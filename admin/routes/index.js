@@ -16,6 +16,13 @@ exports.store = require('./store')
 
 
 /**
+ * Staff
+ * @type {exports}
+ */
+exports.staff = require('./staff')
+
+
+/**
  * Users
  * @type {exports}
  */

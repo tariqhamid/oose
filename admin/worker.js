@@ -65,10 +65,10 @@ app.use(function(req,res,next){
   //allow public routes
   if(req.url.match(/\/api\//)) return next()
   //private
-  if(!req.session.user && req.url.indexOf('/login') < 0){
+  if(!req.session.staff && req.url.indexOf('/login') < 0){
     res.redirect('/login')
   } else {
-    app.locals.user = req.session.user
+    app.locals.staff = req.session.staff
     next()
   }
 })
@@ -90,9 +90,17 @@ if('development' === app.get('env'))
 
 
 //auth
-app.post('/login',routes.user.loginAction)
-app.get('/login',routes.user.login)
-app.get('/logout',routes.user.logout)
+app.post('/login',routes.staff.loginAction)
+app.get('/login',routes.staff.login)
+app.get('/logout',routes.staff.logout)
+
+//staff
+app.post('/staff/list',routes.staff.listAction)
+app.post('/staff/save',routes.staff.save)
+app.get('/staff/list',routes.staff.list)
+app.get('/staff/create',routes.staff.create)
+app.get('/staff/edit',routes.staff.edit)
+app.get('/staff',function(req,res){ res.redirect('/staff/list') })
 
 //user
 app.post('/user/list',routes.user.listAction)
@@ -111,7 +119,7 @@ app.get('/prism/create',routes.prism.create)
 app.get('/prism/edit',routes.prism.edit)
 app.get('/prism',function(req,res){ res.redirect('/') })
 
-//show episodes
+//stores
 app.post('/store/save',routes.store.save)
 app.post('/store/remove',routes.store.remove)
 app.get('/store/create',routes.store.create)
