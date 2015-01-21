@@ -3,20 +3,22 @@ block content
   .container
     h1 Update User
     +alerts()
-    form.form-horizontal(action='/user/save', method='post', role='form')
+    form.form-horizontal(action='/user/password/reset', method='post', role='form')
+      input(type='hidden', name='username', value=user.username)
+      .form-group
+        .col-sm-offset-2.col-sm-10
+          button.btn.btn-danger(type='submit') Click Here To Reset The Users Password
+    form.form-horizontal(action='/user/update', method='post', role='form')
       input(type='hidden', name='id', value=user.id)
       .form-group
         label.control-label.col-sm-2 Name
         .col-sm-10
           input.form-control(type='text', name='username', placeholder='User Name', value=user.username)
       .form-group
-        label.control-label.col-sm-2 Password
+        label.control-label.col-sm-2 Active
         .col-sm-10
-          input.form-control(type='password', name='password')
-      .form-group
-        label.control-label.col-sm-2 Confirm
-        .col-sm-10
-          input.form-control(type='password', name='passwordConfirm')
+          input(type='checkbox', name='active', checked=user.active)
       .form-group
         .col-sm-offset-2.col-sm-10
           button.btn.btn-success(type='submit') Save
+

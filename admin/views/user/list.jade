@@ -18,7 +18,7 @@ block content
             td
               input(type='checkbox', name='remove[]', value=row.id)
             td
-              a(href='/staff/edit?id=#{row.id}')= row.username
+              a(href='/user/edit?id=#{row.id}')= row.username
             td
               if row.dateSeen
                 div.text-success= new Date(row.dateSeen * 1000).toDateString()

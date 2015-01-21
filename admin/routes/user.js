@@ -1,8 +1,13 @@
 'use strict';
-var list = require('../../helpers/list')
+
+var oose = require('oose-sdk')
+
 var sequelize = require('../../helpers/sequelize')()
+var list = require('../../helpers/list')
+var UserError = oose.UserError
 
 var User = sequelize.models.User
+var UserSession = sequelize.models.UserSession
 
 
 /**
@@ -55,12 +60,62 @@ exports.listAction = function(req,res){
 
 
 /**
- * Create user member
+ * User find
+ * @param {object} req
+ * @param {object} res
+ */
+exports.find = function(req,res){
+  var data = req.body
+  User.find({where: {username: data.username}})
+    .then(function(result){
+      if(!result) throw new UserError('No user found')
+      var values = result.dataValues
+      delete values.password
+      res.json(values)
+    })
+    .catch(UserError,function(err){
+      res.json({error: err.message})
+    })
+}
+
+
+/**
+ * Create User
  * @param {object} req
  * @param {object} res
  */
 exports.create = function(req,res){
   res.render('user/create')
+}
+
+
+/**
+ * Create User
+ * @param {object} req
+ * @param {object} res
+ */
+exports.save = function(req,res){
+  var data = req.body
+  var password = User.generatePassword()
+  User.create({
+    username: data.username,
+    password: password
+  })
+    .then(function(){
+      req.flash('success','User created successfully')
+      req.flash('notice','User password is: ' + password + '' +
+        '  write this down as it will never be shown again!')
+      res.redirect('/user/list')
+    })
+    .catch(sequelize.ValidationError,function(err){
+      req.flash('error:', err)
+    })
+    .catch(sequelize.UniqueConstraintError,function(){
+      req.flash('error:', 'Username already exists')
+    })
+    .catch(UserError,function(err){
+      req.flash('error:', err)
+    })
 }
 
 
@@ -72,7 +127,7 @@ exports.create = function(req,res){
 exports.edit = function(req,res){
   User.find(req.query.id)
     .then(function(result){
-      if(!result) throw new Error('User member not found')
+      if(!result) throw new Error('User not found')
       res.render('user/edit',{user: result})
     })
     .catch(function(err){
@@ -82,67 +137,173 @@ exports.edit = function(req,res){
 
 
 /**
- * Save User
+ * Update a user
  * @param {object} req
  * @param {object} res
  */
-exports.save = function(req,res){
+exports.update = function(req,res){
   var data = req.body
-  User.find(data.id)
-    .then(function(doc){
-      if(!doc) doc = User.build()
-      doc.username = data.username
-      if(data.password) doc.password = data.password
-      return doc.save()
+  User.find({
+    where: {username: data.username}
+  })
+    .then(function(result){
+      if(!result) throw new UserError('No user found for update')
+      result.active = !!data.active
+      return result.save()
     })
-    .then(function(user){
-      req.flash('success','User saved')
-      res.redirect('/user/edit?id=' + user.id)
+    .then(function(){
+      req.flash('Success:', 'User updated')
+      res.redirect('/user/list')
     })
-    .catch(function(err){
-      res.render('error',{error: err})
+    .catch(sequelize.ValidationError,function(err){
+      req.flash('error:', sequelize.validationErrorToString(err))
+    })
+    .catch(UserError,function(err){
+      req.flash('error:', err)
     })
 }
 
 
 /**
- * User login
+ * Reset a users password
+ * @param {object} req
+ * @param {object} res
+ */
+exports.passwordReset = function(req,res){
+  var data = req.body
+  var password = User.generatePassword()
+  User.find({
+    where: {username: data.username}
+  })
+    .then(function(result){
+      if(!result) throw new UserError('No user found for password reset')
+      result.password = password
+      return result.save()
+    })
+    .then(function(){
+      req.flash('success','User password successfully reset')
+      req.flash('notice','User password is: ' + password + '' +
+        '  write this down as it will never be shown again!')
+      res.redirect('/user/list')
+    })
+    .catch(sequelize.ValidationError,function(err){
+      res.json({error: sequelize.validationErrorToString(err)})
+    })
+    .catch(UserError,function(err){
+      res.json({error: err.message})
+    })
+}
+
+
+/**
+ * Log a user in
  * @param {object} req
  * @param {object} res
  */
 exports.login = function(req,res){
-  res.render('login')
-}
-
-
-/**
- * Login action
- * @param {object} req
- * @param {object} res
- */
-exports.loginAction = function(req,res){
-  User.login(req.body.username,req.body.password)
-    .then(function(result){
-      console.log('Success')
-      req.session.user = result.toJSON()
-      console.log(req.session)
-      res.redirect('/')
-      console.log('should be redirected')
+  var data = req.body
+  User.login(data.username,data.password,data.ip)
+    .then(function(user){
+      //create a session
+      return UserSession.create({
+        token: UserSession.generateToken(),
+        ip: data.ip,
+        UserId: user.id
+      })
     })
-    .catch(function(err){
-      console.trace(err)
-      req.flash('error',err)
-      res.render('login')
+    .then(function(session){
+      res.json({success: 'User logged in', session: session.dataValues})
+    })
+    .catch(sequelize.ValidationError,function(err){
+      res.json({error: sequelize.validationErrorToString(err)})
+    })
+    .catch(UserError,function(err){
+      res.json({error: err.message})
     })
 }
 
 
 /**
- * User logout
+ * Log a user out
  * @param {object} req
  * @param {object} res
  */
 exports.logout = function(req,res){
-  delete req.session.user
-  res.redirect('/login')
+  var data = req.body
+  UserSession.find({where: {token: data.token, ip: data.ip}})
+    .then(function(session){
+      if(!session) throw new UserError('Session not found')
+      return session.destroy()
+    })
+    .then(function(){
+      res.json({success: 'User logged out'})
+    })
+    .catch(sequelize.ValidationError,function(err){
+      res.json({error: sequelize.validationErrorToString(err)})
+    })
+    .catch(UserError,function(err){
+      res.json({error: err.message})
+    })
 }
+
+
+/**
+ * Find a session
+ * @param {object} req
+ * @param {object} res
+ */
+exports.sessionFind = function(req,res){
+  var data = req.body
+  UserSession.find({where: {token: data.token, ip: data.ip}, include: [User]})
+    .then(function(session){
+      if(!session) throw new UserError('Session could not be found')
+      if((+session.expires) < (+new Date())){
+        throw new UserError('Session has expired')
+      }
+      res.json({success: 'Session valid', session: session.dataValues})
+    })
+    .catch(UserError,function(err){
+      res.json({error: err.message})
+    })
+}
+
+
+/**
+ * Update session data
+ * @param {object} req
+ * @param {object} res
+ */
+exports.sessionUpdate = function(req,res){
+  var data = req.body
+  UserSession.find({where: {token: data.token, ip: data.ip}})
+    .then(function(session){
+      if(!session) throw new UserError('Session could not be found')
+      if((+session.expires) < (+new Date())){
+        throw new UserError('Session has expired')
+      }
+      if(data.data) session.data = JSON.stringify(data.data)
+      return session.save()
+    })
+    .then(function(session){
+      res.json({success: 'Session updated', session: session})
+    })
+    .catch(UserError,function(err){
+      res.json({error: err.message})
+    })
+}
+
+
+/**
+ * Remove a user
+ * @param {object} req
+ * @param {object} res
+ */
+exports.remove = function(req,res){
+  var data = req.body
+  User.destroy({where: {username: data.username}})
+    .then(function(count){
+      res.json({success: 'User removed', count: count})
+    })
+}
+
+
