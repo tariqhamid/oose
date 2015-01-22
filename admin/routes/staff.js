@@ -1,8 +1,11 @@
 'use strict';
 var list = require('../../helpers/list')
+var oose = require('oose-sdk')
 var sequelize = require('../../helpers/sequelize')()
 
-var Staff = sequelize.models.Staff
+var Staff = sequelize.modelsStaff
+
+var UserError = oose.UserError
 
 
 /**
@@ -32,9 +35,6 @@ exports.list = function(req,res){
         list: result.rows
       })
     })
-    .catch(function(err){
-      res.render('error',{error: err})
-    })
 }
 
 
@@ -48,9 +48,6 @@ exports.listAction = function(req,res){
     .then(function(){
       req.flash('success','Staff removed successfully')
       res.redirect('/staff/list')
-    })
-    .catch(function(err){
-      res.render('error',{error: err})
     })
 }
 
@@ -73,11 +70,11 @@ exports.create = function(req,res){
 exports.edit = function(req,res){
   Staff.find(req.query.id)
     .then(function(result){
-      if(!result) throw new Error('Staff member not found')
+      if(!result) throw new UserError('Staff member not found')
       res.render('staff/edit',{staff: result})
     })
-    .catch(function(err){
-      res.render('error',{error: err})
+    .catch(UserError,function(err){
+      res.render('error',{error: err.message})
     })
 }
 
@@ -102,8 +99,8 @@ exports.save = function(req,res){
       req.flash('success','Staff member saved')
       res.redirect('/staff/edit?id=' + staff.id)
     })
-    .catch(function(err){
-      res.render('error',{error: err})
+    .catch(sequelize.ValidationError,function(err){
+      res.render('error',{error: sequelize.validationErrorToString(err)})
     })
 }
 
@@ -128,10 +125,6 @@ exports.loginAction = function(req,res){
     .then(function(result){
       req.session.staff = result.toJSON()
       res.redirect('/')
-    })
-    .catch(function(err){
-      req.flash('error',err)
-      res.render('login')
     })
 }
 

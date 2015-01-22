@@ -1,9 +1,12 @@
 'use strict';
 var list = require('../../helpers/list')
+var oose = require('oose-sdk')
 var sequelize = require('../../helpers/sequelize')()
 
 var Store = sequelize.models.Store
 var Prism = sequelize.models.Prism
+
+var UserError = oose.UserError
 
 
 /**
@@ -15,11 +18,11 @@ var Prism = sequelize.models.Prism
 exports.create = function(req,res){
   Prism.find(req.query.prism)
     .then(function(prism){
-      if(!prism) throw new Error('Prism not found')
+      if(!prism) throw new UserError('Prism not found')
       res.render('store/create',{prism: prism})
     })
-    .catch(function(err){
-      res.render('error',{error: err})
+    .catch(UserError,function(err){
+      res.render('error',{error: err.message})
     })
 }
 
@@ -36,11 +39,11 @@ exports.edit = function(req,res){
     include: [Prism]
   })
     .then(function(store){
-      if(!store) throw new Error('Could not find store')
+      if(!store) throw new UserError('Could not find store')
       res.render('store/edit',{store: store})
     })
-    .catch(function(err){
-      res.render('error',{error: err})
+    .catch(UserError,function(err){
+      res.render('error',{error: err.message})
     })
 }
 
@@ -57,9 +60,6 @@ exports.remove = function(req,res){
       req.flash('success','Store(s) removed successfully')
       res.redirect('/prism/edit?id=' + req.body.prism)
     })
-    .catch(function(err){
-      res.render('error',{error: err})
-    })
 }
 
 
@@ -72,10 +72,9 @@ exports.remove = function(req,res){
 exports.save = function(req,res){
   var data = req.body
   var prism, store
-  console.log(data)
   Prism.find(data.prism)
     .then(function(result){
-      if(!result) throw new Error('Prism not found')
+      if(!result) throw new UserError('Prism not found')
       prism = result
       return Store.findOrCreate({
         where: {
@@ -89,7 +88,7 @@ exports.save = function(req,res){
       })
     })
     .spread(function(result,created){
-      if(!result) throw new Error('No store created or found')
+      if(!result) throw new UserError('No store created or found')
       store = result
       if(created) return store.setPrism(prism)
     })
@@ -103,8 +102,10 @@ exports.save = function(req,res){
       req.flash('success','Store saved')
       res.redirect('/store/edit?id=' + store.id)
     })
-    .catch(function(err){
-      console.trace(err)
-      res.render('error',{error: err})
+    .catch(sequelize.ValidationError,function(err){
+      res.render('error',{error: sequelize.validationErrorToString(err)})
+    })
+    .catch(UserError,function(err){
+      res.render('error',{error: err.message})
     })
 }

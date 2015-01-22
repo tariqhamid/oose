@@ -1,8 +1,10 @@
 'use strict';
 var P = require('bluebird')
+var oose = require('oose-sdk')
 
 var list = require('../../helpers/list')
 var sequelize = require('../../helpers/sequelize')()
+var UserError = oose.UserError
 
 var Prism = sequelize.models.Prism
 var Store = sequelize.models.Store
@@ -35,9 +37,6 @@ exports.list = function(req,res){
         list: result.rows
       })
     })
-    .catch(function(err){
-      res.render('error',{error: err})
-    })
 }
 
 
@@ -51,9 +50,6 @@ exports.listAction = function(req,res){
     .then(function(){
       req.flash('success','Prism(s) removed successfully')
       res.redirect('/prism/list')
-    })
-    .catch(function(err){
-      res.render('error',{error: err})
     })
 }
 
@@ -77,7 +73,7 @@ exports.edit = function(req,res){
   var prism
   Prism.find({where: {id: req.query.id}, include: [Store]})
     .then(function(result){
-      if(!result) throw new Error('Prism not found')
+      if(!result) throw new UserError('Prism not found')
       prism = result
       return prism.getStores({order: [['name','DESC']]})
     })
@@ -87,8 +83,8 @@ exports.edit = function(req,res){
         prism: prism
       })
     })
-    .catch(function(err){
-      res.render('error',{error: err})
+    .catch(UserError,function(err){
+      res.render('error',{error: err.message})
     })
 }
 
@@ -116,8 +112,7 @@ exports.save = function(req,res){
       req.flash('success','Prism Saved')
       res.redirect('/prism/edit?id=' + results[0].id)
     })
-    .catch(function(err){
-      console.trace(err)
-      res.render('error',{error: err})
+    .catch(sequelize.ValidationError,function(err){
+      res.render('error',{error: sequelize.validationErrorToString(err)})
     })
 }
