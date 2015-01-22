@@ -1,5 +1,4 @@
 'use strict';
-
 var oose = require('oose-sdk')
 
 var sequelize = require('../../helpers/sequelize')()
@@ -36,9 +35,6 @@ exports.list = function(req,res){
         list: result.rows
       })
     })
-    .catch(function(err){
-      res.render('error',{error: err})
-    })
 }
 
 
@@ -52,9 +48,6 @@ exports.listAction = function(req,res){
     .then(function(){
       req.flash('success','User removed successfully')
       res.redirect('/user/list')
-    })
-    .catch(function(err){
-      res.render('error',{error: err})
     })
 }
 
@@ -104,17 +97,14 @@ exports.save = function(req,res){
     .then(function(){
       req.flash('success','User created successfully')
       req.flash('notice','User password is: ' + password + '' +
-        '  write this down as it will never be shown again!')
+      '  write this down as it will never be shown again!')
       res.redirect('/user/list')
     })
     .catch(sequelize.ValidationError,function(err){
-      req.flash('error:', err)
+      res.render('error',{error: sequelize.validationErrorToString(err)})
     })
     .catch(sequelize.UniqueConstraintError,function(){
-      req.flash('error:', 'Username already exists')
-    })
-    .catch(UserError,function(err){
-      req.flash('error:', err)
+      res.render('error',{error: 'Username already exists'})
     })
 }
 
@@ -129,7 +119,7 @@ exports.edit = function(req,res){
   var user
   User.find(data.id)
     .then(function(result){
-      if(!result) throw new Error('User not found')
+      if(!result) throw new UserError('User not found')
       user = result
       return UserSession.findAndCountAll({where: { UserId: user.id } })
     })
@@ -139,8 +129,8 @@ exports.edit = function(req,res){
         sessions: result.rows
       })
     })
-    .catch(function(err){
-      res.render('error',{error: err})
+    .catch(UserError,function(err){
+      res.json({error: err.message})
     })
 }
 
@@ -165,10 +155,10 @@ exports.update = function(req,res){
       res.redirect('/user/list')
     })
     .catch(sequelize.ValidationError,function(err){
-      req.flash('error:', sequelize.validationErrorToString(err))
+      res.render('error',{error: sequelize.validationErrorToString(err)})
     })
     .catch(UserError,function(err){
-      req.flash('error:', err)
+      res.json({error: err.message})
     })
 }
 
@@ -192,11 +182,11 @@ exports.passwordReset = function(req,res){
     .then(function(){
       req.flash('success','User password successfully reset')
       req.flash('notice','User password is: ' + password + '' +
-        '  write this down as it will never be shown again!')
+      '  write this down as it will never be shown again!')
       res.redirect('/user/list')
     })
     .catch(sequelize.ValidationError,function(err){
-      res.json({error: sequelize.validationErrorToString(err)})
+      res.render('error',{error: sequelize.validationErrorToString(err)})
     })
     .catch(UserError,function(err){
       res.json({error: err.message})
@@ -224,7 +214,7 @@ exports.login = function(req,res){
       res.json({success: 'User logged in', session: session.dataValues})
     })
     .catch(sequelize.ValidationError,function(err){
-      res.json({error: sequelize.validationErrorToString(err)})
+      res.render('error',{error: sequelize.validationErrorToString(err)})
     })
     .catch(UserError,function(err){
       res.json({error: err.message})
@@ -248,7 +238,7 @@ exports.logout = function(req,res){
       res.json({success: 'User logged out'})
     })
     .catch(sequelize.ValidationError,function(err){
-      res.json({error: sequelize.validationErrorToString(err)})
+      res.render('error',{error: sequelize.validationErrorToString(err)})
     })
     .catch(UserError,function(err){
       res.json({error: err.message})
@@ -313,9 +303,6 @@ exports.sessionRemove = function(req,res){
       req.flash('success','Session(s) removed successfully')
       res.redirect('user/edit')
     })
-    .catch(function(err){
-      res.render('error',{error: err})
-    })
 }
 
 
@@ -331,5 +318,3 @@ exports.remove = function(req,res){
       res.json({success: 'User removed', count: count})
     })
 }
-
-
