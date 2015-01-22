@@ -141,7 +141,7 @@ app.get('/',routes.index)
 
 
 /**
- * Start embed system
+ * Start admin
  * @param {function} done
  */
 exports.start = function(done){
@@ -155,7 +155,7 @@ exports.start = function(done){
 
 
 /**
- * Stop embed system
+ * Stop admin
  * @param {function} done
  */
 exports.stop = function(done){
