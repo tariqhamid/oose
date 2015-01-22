@@ -125,10 +125,19 @@ exports.save = function(req,res){
  * @param {object} res
  */
 exports.edit = function(req,res){
-  User.find(req.query.id)
+  var data = req.query
+  var user
+  User.find(data.id)
     .then(function(result){
       if(!result) throw new Error('User not found')
-      res.render('user/edit',{user: result})
+      user = result
+      return UserSession.findAndCountAll({where: { UserId: user.id } })
+    })
+    .then(function(result){
+      res.render('user/edit',{
+        user: user,
+        sessions: result.rows
+      })
     })
     .catch(function(err){
       res.render('error',{error: err})
@@ -289,6 +298,23 @@ exports.sessionUpdate = function(req,res){
     })
     .catch(UserError,function(err){
       res.json({error: err.message})
+    })
+}
+
+
+/**
+ * Session Remove
+ * @param {object} req
+ * @param {object} res
+ */
+exports.sessionRemove = function(req,res){
+  list.remove(UserSession,req.body.remove)
+    .then(function(){
+      req.flash('success','Session(s) removed successfully')
+      res.redirect('user/edit')
+    })
+    .catch(function(err){
+      res.render('error',{error: err})
     })
 }
 

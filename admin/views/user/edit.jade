@@ -3,7 +3,7 @@ block content
   .container
     h1 Update User
     +alerts()
-    form.form-horizontal(action='/user/password/reset', method='post', role='form')
+    form.form-horizontal(action='/user/password/reset', method='post', role='form', style='text-align: center')
       input(type='hidden', name='username', value=user.username)
       .form-group
         .col-sm-offset-2.col-sm-10
@@ -21,4 +21,20 @@ block content
       .form-group
         .col-sm-offset-2.col-sm-10
           button.btn.btn-success(type='submit') Save
-
+      h1 User Sessions
+    form.form-horizontal(action='/user/session/remove', method='post', role='form')
+      input(type='hidden', name='user', value=user.id)
+      table.table.table-striped
+        tr
+          th
+            input#toggle(type='checkbox')
+          th IP
+          th Token
+          th Expires
+        each session in sessions
+          tr
+            td
+              input(type='checkbox', name='remove[]', value=session.id)
+            td= session.ip
+            td= session.token
+            td= session.expires
