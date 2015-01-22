@@ -170,7 +170,7 @@ exports.stop = function(done){
 if(require.main === module){
   worker(
     server,
-    'animegg:admin:worker',
+    'oose:admin:worker',
     function(done){
       exports.start(done)
     },

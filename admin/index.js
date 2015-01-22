@@ -7,7 +7,7 @@ var config = require('../config')
 
 if(require.main === module){
   child(
-    'animegg:admin:master',
+    'oose:admin:master',
     function(done){
       cluster = clusterSetup(
         './worker',
