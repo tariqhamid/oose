@@ -3,7 +3,7 @@ var list = require('../../helpers/list')
 var oose = require('oose-sdk')
 var sequelize = require('../../helpers/sequelize')()
 
-var Staff = sequelize.modelsStaff
+var Staff = sequelize.models.Staff
 
 var UserError = oose.UserError
 
