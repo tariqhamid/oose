@@ -6,7 +6,7 @@ var e2e = require('./helpers/e2e')
 describe('e2e',function(){
   describe('e2e:prism',function(){
     //spin up an entire cluster here
-    this.timeout(3000)
+    this.timeout(10000)
     //start servers and create a user
     before(function(){
       var that = this

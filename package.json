@@ -21,7 +21,7 @@
   "dependencies": {
     "basic-auth-connect": "^1.0.0",
     "bcrypt": "^0.8.1",
-    "bluebird": "^2.8.2",
+    "bluebird": "^2.9.1",
     "body-parser": "^1.10.2",
     "busboy": "^0.2.9",
     "cli-table": "^0.3.1",
@@ -44,7 +44,7 @@
     "mysql": "^2.5.4",
     "node-password": "^1.0.2",
     "object-manage": "^0.8.0",
-    "oose-sdk": "^1.0.4",
+    "oose-sdk": "^1.0.5",
     "pretty-bytes": "^1.0.2",
     "promisepipe": "^1.0.1",
     "redis": "^0.12.1",

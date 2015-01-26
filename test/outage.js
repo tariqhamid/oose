@@ -6,7 +6,7 @@ var e2e = require('./helpers/e2e')
 describe('outage',function(){
   describe('outage:prism',function(){
     //spin up an entire cluster here
-    this.timeout(10000)
+    this.timeout(20000)
     //start servers and create a user
     before(function(){
       var that = this

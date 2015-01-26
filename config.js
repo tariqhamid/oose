@@ -34,8 +34,7 @@ config.$load({
     logging: false
   },
   ssl: {
-    key: oose.mock.sslOptions.keyFile,
-    cert: oose.mock.sslOptions.certFile
+    pem: oose.mock.sslOptions.pemFile
   },
   api: {
     maxSockets: 64

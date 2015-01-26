@@ -12,8 +12,8 @@ var userSessionValidate = require('../helpers/userSessionValidate')
 var app = express()
 var config = require('../config')
 var sslOptions = {
-  key: fs.readFileSync(config.ssl.key),
-  cert: fs.readFileSync(config.ssl.cert)
+  key: fs.readFileSync(config.ssl.pem),
+  cert: fs.readFileSync(config.ssl.pem)
 }
 var server = https.createServer(sslOptions,app)
 var routes = require('./routes')
