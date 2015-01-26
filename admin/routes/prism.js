@@ -75,7 +75,7 @@ exports.edit = function(req,res){
     .then(function(result){
       if(!result) throw new UserError('Prism not found')
       prism = result
-      return prism.getStores({order: [['name','DESC']]})
+      return prism.getStores({order: [['name','ASC']]})
     })
     .then(function(result){
       res.render('prism/edit',{
