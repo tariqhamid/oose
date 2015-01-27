@@ -9,6 +9,8 @@ embed/public/*
 npm-debug.log
 tmp
 *.local.*
+config.*.js
 /data
+/test/assets/data
 /ssh
 /ssl
