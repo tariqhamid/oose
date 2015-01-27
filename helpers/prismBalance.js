@@ -77,7 +77,7 @@ exports.winner = function(token,prismList,skip){
           winner = prism
         }
       }
-      return redis.incrAsync(redis.schema.prismHits(token,prism.name))
+      return redis.incrAsync(redis.schema.prismHits(token,winner.name))
     })
     .then(function(){
       return winner

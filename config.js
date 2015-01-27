@@ -59,7 +59,7 @@ config.$load({
     name: 'localmaster',
     port: 5970,
     host: null,
-    timeout: 1000,
+    timeout: 15000,
     workers: {
       count: 1,
       maxConnections: 10000
@@ -77,7 +77,7 @@ config.$load({
     name: 'localprism',
     port: 5971,
     host: null,
-    timeout: 1000,
+    timeout: 30000,
     username: 'oose',
     password: 'oose',
     workers: {
@@ -120,7 +120,7 @@ config.$load({
     name: 'localstore',
     port: 5972,
     host: null,
-    timeout: 2000,
+    timeout: 120000,
     username: 'oose',
     password: 'oose',
     workers: {
