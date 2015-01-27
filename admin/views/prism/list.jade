@@ -12,6 +12,8 @@ block content
             input#toggle(type='checkbox')
           th Name
           th Site
+          th Host
+          th Port
           th Created
           th Updated
         each row,i in list
@@ -21,6 +23,8 @@ block content
             td
               a(href='/prism/edit?id=#{row.id}')= row.name
             td= row.site
+            td= row.host
+            td= row.port
             td= new Date(row.createdAt).toDateString()
             td= new Date(row.updatedAt).toDateString()
       +tableFooter(page,count)

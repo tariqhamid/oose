@@ -3,7 +3,7 @@ block append js
   script(src='/js/table.js')
 block content
   .container
-    h2 Edit Episode
+    h2 Edit Store
     +alerts()
     form.form-horizontal(action='/store/save', method='post', role='form')
       input(type='hidden', name='id', value=store.id)
