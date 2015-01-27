@@ -112,6 +112,7 @@ exports.contentExists = function(sha1){
           .then(function(){
             return contentExists
           })
+          .catch(Error,prism.handleNetworkError)
       } else {
         debug('cache  hit, contentExists',sha1)
         contentExists = JSON.parse(result)

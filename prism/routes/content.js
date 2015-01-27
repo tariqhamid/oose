@@ -117,11 +117,16 @@ exports.upload = function(req,res){
           files[key].sha1 = sniff.sha1
           //do a content lookup and see if this exists yet
           return prismBalance.contentExists(sniff.sha1)
-        }).then(function(result){
+        })
+        .then(function(result){
           if(!result.exists && 0 === result.count){
             return sendToPrism(tmpfile,sniff.sha1,files[key].ext)
           }
           //got here? file already exists on cluster so we are done
+        })
+        .catch(NetworkError,function(err){
+          throw new UserError(
+            'Failed to check content existence: ' + err.message)
         })
     )
   })
@@ -166,7 +171,8 @@ exports.retrieve = function(req,res){
       sha1 = sniff.sha1
       //do a content lookup and see if this exists yet
       return prismBalance.contentExists(sha1)
-    }).then(function(result){
+    })
+    .then(function(result){
       if(!result.exists && 0 === result.count){
         return sendToPrism(tmpfile,sha1,extension)
       }
@@ -179,6 +185,12 @@ exports.retrieve = function(req,res){
       res.json({
         sha1: sha1,
         extension: extension
+      })
+    })
+    .catch(NetworkError,function(err){
+      res.status(500)
+      res.json({
+        error: 'Faile to check content existence: ' + err.message
       })
     })
     .finally(function(){
@@ -599,6 +611,10 @@ exports.purchase = function(req,res){
     .then(function(){
       res.json(purchase)
     })
+    .catch(NetworkError,function(err){
+      res.status(500)
+      res.json({error: 'Failed to check existence: ' + err.message})
+    })
     .catch(NotFoundError,function(err){
       res.status(404)
       res.json({error: err})
@@ -673,6 +689,12 @@ exports.contentStatic = function(req,res){
       var url = 'http://' + result.name + '.' + config.domain +
         '/static/' + sha1File.toRelativePath(sha1,ext)
       res.redirect(302,url)
+    })
+    .catch(NetworkError,function(err){
+      res.status(500)
+      res.json({
+        error: 'Failed to check existence: ' + err.message
+      })
     })
     .catch(NotFoundError,function(err){
       res.status(404)

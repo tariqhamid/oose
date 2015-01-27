@@ -130,14 +130,14 @@ config.$load({
   }
 })
 
+//load test overrides
+if('test' === process.env.NODE_ENV){
+  config.$load(require(__dirname + '/config.test.js'))
+}
+
 //load global local overrides
 if(fs.existsSync('./config.local.js')){
   config.$load(require(__dirname + '/config.local.js'))
-}
-
-//load test overrides
-if('travis' === process.env.TRAVIS && fs.existsSync('./config.test.js')){
-  config.$load(require(__dirname + '/config.test.js'))
 }
 
 //load instance overrides

@@ -3,6 +3,7 @@ var P = require('bluebird')
 var oose = require('oose-sdk')
 
 var api = require('../../helpers/api')
+var NetworkError = oose.NetworkError
 var UserError = oose.UserError
 
 var config = require('../../config')
@@ -31,6 +32,11 @@ exports.login = function(req,res){
     .spread(function(response,body){
       res.json(body)
     })
+    .catch(Error,master.handleNetworkError)
+    .catch(NetworkError,function(err){
+      res.status(500)
+      res.json({error: 'Failed to login: ' + err.message})
+    })
     .catch(UserError,function(err){
       res.json({error: err.message})
     })
@@ -57,6 +63,11 @@ exports.logout = function(req,res){
     .spread(function(response,body){
       res.json(body)
     })
+    .catch(Error,master.handleNetworkError)
+    .catch(NetworkError,function(err){
+      res.status(500)
+      res.json({error: 'Failed to logout: ' + err.message})
+    })
     .catch(UserError,function(err){
       res.json({error: err.message})
     })
@@ -75,6 +86,11 @@ exports.passwordReset = function(req,res){
   })
     .spread(function(response,body){
       res.json(body)
+    })
+    .catch(Error,master.handleNetworkError)
+    .catch(NetworkError,function(err){
+      res.status(500)
+      res.json({error: 'Failed to reset password: ' + err.message})
     })
     .catch(UserError,function(err){
       res.json({error: err.message})
@@ -109,6 +125,11 @@ exports.sessionUpdate = function(req,res){
   })
     .spread(function(response,body){
       res.json(body)
+    })
+    .catch(Error,master.handleNetworkError)
+    .catch(NetworkError,function(err){
+      res.status(500)
+      res.json({error: 'Failed to update session: ' + err.message})
     })
     .catch(UserError,function(err){
       res.json({error: err.message})

@@ -17,6 +17,13 @@ var UserError = oose.UserError
 
 var config = require('../../config')
 
+
+/**
+ * Test env var
+ * @type {string}
+ */
+process.env.NODE_ENV = 'test'
+
 //load promises here
 var P = require('bluebird')
 //P.longStackTraces() //enable long stack traces for debugging only

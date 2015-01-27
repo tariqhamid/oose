@@ -4,6 +4,7 @@ var oose = require('oose-sdk')
 
 var api = require('../helpers/api')
 var redis = require('../helpers/redis')
+var NetworkError = oose.NetworkError
 var UserError = oose.UserError
 
 var config = require('../config')
@@ -42,6 +43,7 @@ module.exports = function(req,res,next){
             return redis.setAsync(
               redis.schema.userSession(token),JSON.stringify(session))
           })
+          .catch(Error,client.handleNetworkError)
       } else {
         debug('cache hit',token)
         session = JSON.parse(result)
@@ -55,6 +57,10 @@ module.exports = function(req,res,next){
       res.status(500)
       res.json({error: 'Failed to parse session record from redis: ' +
         err.message})
+    })
+    .catch(NetworkError,function(err){
+      res.status(500)
+      res.json({error: 'Failed to validate session: ' + err.message})
     })
     .catch(UserError,function(err){
       res.status(401)

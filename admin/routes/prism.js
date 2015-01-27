@@ -6,8 +6,11 @@ var list = require('../../helpers/list')
 var sequelize = require('../../helpers/sequelize')()
 var UserError = oose.UserError
 
+var Master = sequelize.models.Master
 var Prism = sequelize.models.Prism
 var Store = sequelize.models.Store
+
+var config = require('../../config')
 
 
 /**
@@ -96,9 +99,15 @@ exports.edit = function(req,res){
  */
 exports.save = function(req,res){
   var data = req.body
-  Prism.find(data.id)
+  var master
+  Master.find({where: {domain: config.domain}})
+    .then(function(result){
+      if(!result) throw new UserError('Master not found')
+      master = result
+      return Prism.find(data.id)
+    })
     .then(function(prism){
-      if(!prism) prism = Prism.build()
+      if(!prism) prism = Prism.build({MasterId: master.id})
       if(data.name) prism.name = data.name
       if(data.site) prism.site = data.site
       if(data.zone) prism.zone = data.zone
