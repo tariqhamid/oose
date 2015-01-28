@@ -32,7 +32,7 @@ exports.login = function(req,res){
     .spread(function(response,body){
       res.json(body)
     })
-    .catch(Error,master.handleNetworkError)
+    .catch(master.handleNetworkError)
     .catch(NetworkError,function(err){
       res.status(500)
       res.json({error: 'Failed to login: ' + err.message})
@@ -63,7 +63,7 @@ exports.logout = function(req,res){
     .spread(function(response,body){
       res.json(body)
     })
-    .catch(Error,master.handleNetworkError)
+    .catch(master.handleNetworkError)
     .catch(NetworkError,function(err){
       res.status(500)
       res.json({error: 'Failed to logout: ' + err.message})
@@ -87,7 +87,7 @@ exports.passwordReset = function(req,res){
     .spread(function(response,body){
       res.json(body)
     })
-    .catch(Error,master.handleNetworkError)
+    .catch(master.handleNetworkError)
     .catch(NetworkError,function(err){
       res.status(500)
       res.json({error: 'Failed to reset password: ' + err.message})
@@ -126,7 +126,7 @@ exports.sessionUpdate = function(req,res){
     .spread(function(response,body){
       res.json(body)
     })
-    .catch(Error,master.handleNetworkError)
+    .catch(master.handleNetworkError)
     .catch(NetworkError,function(err){
       res.status(500)
       res.json({error: 'Failed to update session: ' + err.message})

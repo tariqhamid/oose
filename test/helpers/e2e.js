@@ -329,7 +329,7 @@ exports.checkDown = function(type,server){
       .then(function(){
         throw new Error('Server not down')
       })
-      .catch(Error,client.handleNetworkError)
+      .catch(client.handleNetworkError)
       .catch(NetworkError,function(err){
         expect(err.message).to.match(/ECONNREFUSED|ETIMEDOUT/)
       })

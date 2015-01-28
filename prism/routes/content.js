@@ -46,7 +46,8 @@ var sendToPrism = function(tmpfile,sha1,extension){
     .then(function(result){
       prismList = result
       return prismBalance.winner('newFile',prismList)
-    })//pick second winner
+    })
+    //pick second winner
     .then(function(result){
       if(!result){
         throw new UserError('Failed to find a prism ' +
@@ -54,7 +55,8 @@ var sendToPrism = function(tmpfile,sha1,extension){
       }
       winners.push(result)
       return prismBalance.winner('newFile',prismList,[result.name])
-    })//stream the file to winners
+    })
+    //stream the file to winners
     .then(function(result){
       if(result) winners.push(result)
       var readStream = fs.createReadStream(tmpfile)
@@ -124,10 +126,6 @@ exports.upload = function(req,res){
           }
           //got here? file already exists on cluster so we are done
         })
-        .catch(NetworkError,function(err){
-          throw new UserError(
-            'Failed to check content existence: ' + err.message)
-        })
     )
   })
   busboy.on('finish',function(){
@@ -135,7 +133,7 @@ exports.upload = function(req,res){
       .then(function(){
         res.json({success: 'File(s) uploaded',data: data,files: files})
       })
-      .catch(UserError,function(err){
+      .catch(UserError,NetworkError,function(err){
         res.json({error: err.message})
       })
       //destroy all the temp files from uploading
@@ -145,7 +143,8 @@ exports.upload = function(req,res){
         var file
         for(var i = 0; i < keys.length; i++){
           file = files[keys[i]]
-          promises.push(fs.unlinkAsync(file.tmpfile))
+          if(fs.existsSync(file.tmpfile))
+            promises.push(fs.unlinkAsync(file.tmpfile))
         }
         return P.all(promises)
       })
@@ -166,7 +165,9 @@ exports.retrieve = function(req,res){
   var sniff = sha1stream.createStream()
   var sha1
   var writeStream = fs.createWriteStream(tmpfile)
-  promisePipe(request(retrieveRequest),sniff,writeStream)
+  P.try(function(){
+    return promisePipe(request(retrieveRequest),sniff,writeStream)
+  })
     .then(function(){
       sha1 = sniff.sha1
       //do a content lookup and see if this exists yet
@@ -190,7 +191,7 @@ exports.retrieve = function(req,res){
     .catch(NetworkError,function(err){
       res.status(500)
       res.json({
-        error: 'Faile to check content existence: ' + err.message
+        error: 'Failed to check content existence: ' + err.message
       })
     })
     .finally(function(){
@@ -259,7 +260,7 @@ exports.exists = function(req,res){
           .spread(function(res,body){
             return {prism: prism.name, exists: body}
           })
-          .catch(Error,client.handleNetworkError)
+          .catch(client.handleNetworkError)
           .catch(NetworkError,function(){
             return {
               prism: prism.name,
@@ -324,7 +325,7 @@ exports.existsLocal = function(req,res){
           .spread(function(res,body){
             return {store: store.name, exists: body.exists}
           })
-          .catch(Error,client.handleNetworkError)
+          .catch(client.handleNetworkError)
           .catch(NetworkError,function(){
             return {store: store.name, exists: false}
           })
@@ -371,7 +372,7 @@ exports.existsInvalidate = function(req,res){
             url: client.url('/content/exists/invalidate/local'),
             json: {sha1: sha1}
           })
-            .catch(Error,client.handleNetworkError)
+            .catch(client.handleNetworkError)
             .catch(NetworkError,nullFunction)
         )
       }
@@ -451,7 +452,10 @@ exports.download = function(req,res){
             url: store.url('/content/download'),
             json: {sha1: sha1}
           })
-          req.on('error',store.handleNetworkError)
+          req.on('error',function(err){
+            if(!(err instanceof Error)) err = new Error(err)
+            store.handleNetworkError(err)
+          })
           req.pipe(res)
         })
     })
@@ -547,7 +551,7 @@ exports.purchase = function(req,res){
                     }
                   })
                 })
-                .catch(Error,client.handleNetworkError)
+                .catch(client.handleNetworkError)
                 .catch(NetworkError,nullFunction)
             }
             var promises = []
@@ -596,7 +600,7 @@ exports.purchase = function(req,res){
                     json: {purchase: purchase}
                   })
                 })
-                .catch(Error,client.handleNetworkError)
+                .catch(client.handleNetworkError)
                 .catch(NetworkError,nullFunction)
             }
             var prismList = result

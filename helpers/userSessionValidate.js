@@ -43,7 +43,7 @@ module.exports = function(req,res,next){
             return redis.setAsync(
               redis.schema.userSession(token),JSON.stringify(session))
           })
-          .catch(Error,client.handleNetworkError)
+          .catch(client.handleNetworkError)
       } else {
         debug('cache hit',token)
         session = JSON.parse(result)
