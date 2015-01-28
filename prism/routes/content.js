@@ -67,8 +67,10 @@ var sendToPrism = function(tmpfile,sha1,extension){
         promises.push(promisePipe(
           readStream,
           client.put(
-            client.url('/content/put/' + sha1 +
-            '.' + extension)
+            {
+              url: client.url('/content/put/' + sha1 + '.' + extension),
+              timeout: 900000
+            }
           )
         ))
       }
@@ -114,7 +116,9 @@ exports.upload = function(req,res){
       sha1: null
     }
     filePromises.push(
-      promisePipe(file,sniff,writeStream)
+      P.try(function(){
+        return promisePipe(file,sniff,writeStream)
+      })
         .then(function(){
           files[key].sha1 = sniff.sha1
           //do a content lookup and see if this exists yet
@@ -296,6 +300,9 @@ exports.exists = function(req,res){
       //console.log(result)
       res.json(result)
     })
+    .catch(UserError,NetworkError,function(err){
+      res.json({error: err.message})
+    })
 }
 
 
@@ -352,6 +359,9 @@ exports.existsLocal = function(req,res){
       }
       res.json({exists: exists, count: count, map: map})
     })
+    .catch(UserError,NetworkError,function(err){
+      res.json({error: err.message})
+    })
 }
 
 
@@ -381,6 +391,9 @@ exports.existsInvalidate = function(req,res){
     })
     .then(function(){
       res.json({success: 'Cleared', sha1: sha1})
+    })
+    .catch(UserError,NetworkError,function(err){
+      res.json({error: err.message})
     })
 }
 
