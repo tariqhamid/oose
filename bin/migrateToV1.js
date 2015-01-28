@@ -21,6 +21,8 @@ var oosePassword =
 var ooseSession = {}
 
 var files = []
+var fileCount = 0
+var fileCountComplete = 0
 
 //make some promises
 P.promisifyAll(redis)
@@ -57,11 +59,11 @@ var prismServers = [
   {
     host: '104.221.221.220',
     port: '5971'
+  },
+  {
+    host: '104.221.221.221',
+    port: '5971'
   }
-  //{
-  //  host: '104.221.221.221',
-  //  port: '5971'
-  //}
 ]
 
 var prismSelectCount = 0
@@ -81,7 +83,8 @@ glob(search,{cwd: root})
       return !fs.lstatSync(path.resolve(root,a)).isDirectory()
     })
     files = results
-    console.log('Found ' + files.length + ' files to be migrated')
+    fileCount = files.length
+    console.log('Found ' + fileCount + ' files to be migrated')
     return prismLogin(selectPrismServer())
   })
   .then(function(result){
@@ -90,7 +93,6 @@ glob(search,{cwd: root})
     return files
   })
   .each(function(filePath){
-    console.log('----------------------------------')
     //setup our client handle
     var client = oose.api.prism(selectPrismServer())
     client = oose.api.setSession(ooseSession,client)
@@ -140,6 +142,12 @@ glob(search,{cwd: root})
               console.log(sha1,'Error: ' + err.message)
             })
         }
+      })
+      .then(function(){
+        fileCountComplete++
+        console.log('File ' + fileCountComplete + '/' + fileCount +
+        ' [' + ((fileCountComplete / fileCount) * 100).toFixed(2) + '%]')
+        console.log('----------------------------------')
       })
   })
   .then(function(){
