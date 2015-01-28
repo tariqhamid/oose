@@ -133,7 +133,7 @@ exports.upload = function(req,res){
       .then(function(){
         res.json({success: 'File(s) uploaded',data: data,files: files})
       })
-      .catch(UserError,NetworkError,function(err){
+      .catch(function(err){
         res.json({error: err.message})
       })
       //destroy all the temp files from uploading
