@@ -49,6 +49,7 @@ block content
           th Name
           th Host
           th Port
+          th Full
           th Active
         each store in stores
           tr
@@ -58,6 +59,8 @@ block content
               a(href='/store/edit?id=#{store.id}')= store.name
             td= store.host
             td= store.port
+            td
+              +active(store.full)
             td
               +active(store.active)
       div
