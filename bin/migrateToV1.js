@@ -1,5 +1,6 @@
 'use strict';
 var P = require('bluebird')
+var cp = require('child_process')
 var glob = P.promisify(require('glob'))
 var fs = require('graceful-fs')
 var mime = require('mime')
@@ -26,6 +27,7 @@ var fileCountComplete = 0
 
 //make some promises
 P.promisifyAll(redis)
+P.promisifyAll(cp)
 
 //prism api
 oose.api.updateConfig({
@@ -76,13 +78,12 @@ console.log('Starting migration to OOSE 1.0')
 console.log('------------------------------')
 
 //find all the data paths
-glob(search,{cwd: root})
+cp.execAsync(
+  'cd ' + path.resolve(config.root) + '; find -type f | grep -v shredder | grep -v tmp',
+  {maxBuffer: 67108864}
+)
   .then(function(results){
-    //get files only
-    results = results.filter(function(a){
-      return !fs.lstatSync(path.resolve(root,a)).isDirectory()
-    })
-    files = results
+    files = results.toString().split('\n')
     fileCount = files.length
     console.log('Found ' + fileCount + ' files to be migrated')
     return prismLogin(selectPrismServer())
