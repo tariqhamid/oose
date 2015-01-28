@@ -76,9 +76,6 @@ exports.save = function(req,res){
     .then(function(result){
       if(!result) throw new UserError('Prism not found')
       prism = result
-      var active = true
-      if('undefined' !== typeof data.active)
-        active = !!data.active
       return Store.findOrCreate({
         where: {
           id: data.id
@@ -87,7 +84,8 @@ exports.save = function(req,res){
           name: data.name,
           host: data.host,
           port: data.port,
-          active: active
+          full: !!data.full,
+          active: !!data.active
         }
       })
     })
@@ -100,6 +98,7 @@ exports.save = function(req,res){
       if(data.name) store.name = data.name
       if(data.port) store.port = data.port
       if(data.host) store.host = data.host
+      store.full = !!store.full
       store.active = !!data.active
       return store.save()
     })

@@ -105,6 +105,7 @@ exports.winnerFromExists = function(token,exists,skip){
       var store
       for(var i = 0; i < results.length; i++){
         store = results[i]
+        if(store.full) continue
         if(!winner){
           winner = store
           continue

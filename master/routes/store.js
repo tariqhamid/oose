@@ -64,6 +64,7 @@ exports.create = function(req,res){
         name: data.name,
         host: data.host,
         port: data.port,
+        full: !!data.full,
         active: !!data.active,
         PrismId: result.id
       })
@@ -97,6 +98,7 @@ exports.update = function(req,res){
       if(!result) throw new UserError('No store instance found for update')
       if(data.host) result.host = data.host
       if(data.port) result.port = data.port
+      result.full = !!data.full
       result.active = !!data.active
       return result.save()
     })
