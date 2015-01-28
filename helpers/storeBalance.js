@@ -105,16 +105,10 @@ exports.winnerFromExists = function(token,exists,skip){
       var store
       for(var i = 0; i < results.length; i++){
         store = results[i]
-        if(store.full) continue
-        if(!winner){
+        if(!store.full && (!winner) || (winner.hits > store.hits))
           winner = store
-          continue
-        }
-        if(store.hits < winner.hits){
-          winner = store
-        }
       }
-      return redis.incrAsync('hits:' + token + ':' + winner.name)
+      return redis.incrAsync(redis.schema.storeHits(token,winner.name))
     })
     .then(function(){
       return winner
@@ -147,7 +141,7 @@ exports.winner = function(storeList,skip){
           winner = store
         }
       }
-      return redis.incrAsync('hits:' + token + ':' + winner.name)
+      return redis.incrAsync(redis.schema.storeHits(token,winner.name))
     })
     .then(function(){
       return winner
