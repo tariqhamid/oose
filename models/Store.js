@@ -28,6 +28,11 @@ module.exports = function(sequelize,DataTypes) {
         validate: {
           isNumeric: true
         }
+      },
+      active: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true
       }
     },
     {

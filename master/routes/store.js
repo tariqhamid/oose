@@ -16,14 +16,17 @@ var Store = sequelize.models.Store
 exports.list = function(req,res){
   var data = req.body
   if(!data.prism){
-    Store.findAll({include: [Prism]})
+    Store.findAll({where: {active: true}, include: [Prism]})
       .then(function(results){
         res.json({store: results || []})
       })
   } else {
-    Prism.find({where: {name: data.prism}, include: [Store]})
+    Prism.find({where: {name: data.prism}})
+      .then(function(prism){
+        return prism.getStores({where: {active: true}})
+      })
       .then(function(result){
-        res.json({store: result.Stores || []})
+        res.json({store: result || []})
       })
   }
 }
@@ -61,6 +64,7 @@ exports.create = function(req,res){
         name: data.name,
         host: data.host,
         port: data.port,
+        active: !!data.active,
         PrismId: result.id
       })
     })
@@ -93,6 +97,7 @@ exports.update = function(req,res){
       if(!result) throw new UserError('No store instance found for update')
       if(data.host) result.host = data.host
       if(data.port) result.port = data.port
+      result.active = !!data.active
       return result.save()
     })
     .then(function(){

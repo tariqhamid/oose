@@ -1,0 +1,5 @@
+ALTER TABLE `oose`.`Prisms`
+ADD COLUMN `active` TINYINT(1) NOT NULL DEFAULT '1' AFTER `port`;
+
+ALTER TABLE `oose`.`Stores`
+ADD COLUMN `active` TINYINT(1) NOT NULL DEFAULT '1' AFTER `port`;

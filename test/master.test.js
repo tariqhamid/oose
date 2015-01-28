@@ -50,7 +50,8 @@ describe('master',function(){
             site: 'localsite',
             zone: 'localzone',
             host: '127.0.0.1',
-            port: 3002
+            port: 3002,
+            active: true
           }
         })
         .spread(function(res,body){
@@ -108,7 +109,8 @@ describe('master',function(){
             site: 'localsite',
             zone: 'localzone',
             host: '127.0.0.1',
-            port: 3002
+            port: 3002,
+            active: true
           }
         })
         .spread(function(res,body){
@@ -131,7 +133,8 @@ describe('master',function(){
             prism: 'test',
             name: 'test',
             host: '127.0.0.1',
-            port: 3003
+            port: 3003,
+            active: true
           }
         })
         .spread(function(res,body){

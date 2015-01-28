@@ -16,9 +16,12 @@ var Prism = sequelize.models.Prism
  * @param {object} res
  */
 exports.list = function(req,res){
-  Master.find({where: {domain: config.domain}, include: [Prism]})
+  Master.find({where: {domain: config.domain}})
+    .then(function(master){
+      return master.getPrisms({where: {active: true}})
+    })
     .then(function(result){
-      res.json({prism: result.Prisms || []})
+      res.json({prism: result || []})
     })
 }
 
@@ -57,6 +60,7 @@ exports.create = function(req,res){
         zone: data.zone,
         host: data.host,
         port: data.port,
+        active: !!data.active,
         MasterId: result.id
       })
     })
@@ -90,7 +94,8 @@ exports.update = function(req,res){
       if(data.site) result.site = data.site
       if(data.zone) result.zone = data.zone
       if(data.host) result.host = data.host
-      if(data.port) result.port = data.port
+      if(data.port) result.port = !!data.port
+      result.active = !!data.active
       return result.save()
     })
     .then(function(){

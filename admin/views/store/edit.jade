@@ -26,5 +26,9 @@ block content
         .col-sm-10
           input.form-control(type='text', name='port', placeholder='Store Port', value=store.port)
       .form-group
+        label.control-label.col-sm-2 Active
+        .col-sm-10
+          input(type='checkbox', name='active', checked=store.active)
+      .form-group
         .col-sm-offset-2.col-sm-10
           button.btn.btn-success(type='submit') Save

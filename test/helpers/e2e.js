@@ -193,7 +193,8 @@ exports.before = function(that){
               site: prism.site,
               zone: prism.zone,
               host: prism.prism.host,
-              port: prism.prism.port
+              port: prism.prism.port,
+              active: true
             }
           })
         )
@@ -213,7 +214,8 @@ exports.before = function(that){
             prism: store.prism.name,
             name: store.store.name,
             host: store.store.host,
-            port: store.store.port
+            port: store.store.port,
+            active: true
           }
         }))
       }

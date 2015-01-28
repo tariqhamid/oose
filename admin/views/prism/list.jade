@@ -16,6 +16,7 @@ block content
           th Port
           th Created
           th Updated
+          th Active
         each row,i in list
           tr
             td
@@ -27,4 +28,6 @@ block content
             td= row.port
             td= new Date(row.createdAt).toDateString()
             td= new Date(row.updatedAt).toDateString()
+            td
+              +active(row.active)
       +tableFooter(page,count)
