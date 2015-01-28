@@ -195,7 +195,8 @@ exports.retrieve = function(req,res){
       })
     })
     .finally(function(){
-      return fs.unlinkAsync(tmpfile)
+      if(fs.existsSync(tmpfile))
+        return fs.unlinkAsync(tmpfile)
     })
 }
 
