@@ -41,6 +41,10 @@ exports.put = function(req,res){
         fs.unlinkSync(dest)
         throw new UserError('Checksum mismatch')
       }
+      //setup symlink to new file
+      return sha1File.linkPath(fileDetails.sha1,fileDetails.ext)
+    })
+    .then(function(){
       res.status(201)
       res.json({sha1: sniff.sha1})
     })
@@ -60,7 +64,6 @@ exports.download = function(req,res){
   sha1File.find(req.body.sha1)
     .then(function(file){
       if(!file) throw new NotFoundError('File not found')
-      if(file instanceof Array) throw new UserError('SHA1 is ambiguous')
       res.sendFile(file)
     })
     .catch(NotFoundError,function(err){
@@ -94,12 +97,7 @@ exports.exists = function(req,res){
  * @param {object} res
  */
 exports.remove = function(req,res){
-  sha1File.find(req.body.sha1)
-    .then(function(file){
-      if(!file) throw new NotFoundError('File not found')
-      if(file instanceof Array) throw new UserError('SHA1 is ambiguous')
-      return fs.unlinkAsync(file)
-    })
+  sha1File.remove(req.body.sha1)
     .then(function(){
       res.json({success: 'File removed'})
     })

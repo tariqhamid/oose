@@ -1,7 +1,6 @@
 'use strict';
 var P = require('bluebird')
 var fs = require('graceful-fs')
-var glob = require('glob')
 var oose = require('oose-sdk')
 var path = require('path')
 
@@ -11,9 +10,6 @@ var config = require('../config')
 
 var basePath = path.resolve(config.root + '/content')
 var SHA1Exp = /[a-f0-9]{40}/i
-
-//make some promises
-glob = P.promisify(glob)
 
 
 /**
@@ -44,7 +40,26 @@ exports.toRelativePath = function(sha1,ext){
  * @return {string}
  */
 exports.toPath = function(sha1,ext){
-  return path.resolve(basePath + '/' + exports.toRelativePath(sha1,ext))
+  return path.resolve(basePath,exports.toRelativePath(sha1,ext))
+}
+
+
+/**
+ * Make a symlink to the real path with the extension forq uicker lookups
+ * @param {string} sha1
+ * @param {string} ext
+ * @return {P}
+ */
+exports.linkPath = function(sha1,ext){
+  var target = exports.toPath(sha1,ext)
+  var link = exports.toPath(sha1)
+  return exports.fsExists(link)
+    .then(function(result){
+      if(result) return fs.unlinkAsync(link)
+    })
+    .then(function(){
+      return fs.symlinkAsync(target,link,'file')
+    })
 }
 
 
@@ -75,6 +90,20 @@ exports.validate = function(sha1){
 
 
 /**
+ * Since the node fs.existsAsync wont work this has to be done here
+ * @param {string} file
+ * @return {P}
+ */
+exports.fsExists = function(file){
+  return new P(function(resolve){
+    fs.exists(file,function(result){
+      resolve(result)
+    })
+  })
+}
+
+
+/**
  * Find a file based on sha1
  * @param {string} sha1
  * @return {P}
@@ -82,17 +111,11 @@ exports.validate = function(sha1){
 exports.find = function(sha1){
   if(!exports.validate(sha1))
     throw new UserError('Invalid SHA1 passed')
-  return glob(exports.toPath(sha1) + '.*')
-    .then(function(files){
-      if(!files || !files.length) return false
-      if(files.length > 1){
-        for(var i = 0; i < files.length; i++){
-          files[i] = path.resolve(files[i])
-        }
-        return files
-      }
-      if(1 === files.length) return path.resolve(files[0])
-      return false
+  var file = exports.toPath(sha1)
+  return exports.fsExists(file)
+    .then(function(result){
+      if(!result) return false
+      return fs.readlinkAsync(file)
     })
 }
 
@@ -135,4 +158,28 @@ exports.details = function(file){
         return details
       }
     )
+}
+
+
+/**
+ * Remove a file and its accompanying link
+ * @param {string} sha1
+ * @return {P}
+ */
+exports.remove = function(sha1){
+  var link = exports.toPath(sha1)
+  return exports.fsExists(link)
+    .then(function(result){
+      if(!result) return true
+      return fs.readlinkAsync(link)
+    })
+    .then(function(file){
+      return P.all([
+        fs.unlinkAsync(link),
+        fs.unlinkAsync(file)
+      ])
+    })
+    .then(function(){
+      return true
+    })
 }

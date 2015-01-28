@@ -44,9 +44,12 @@ describe('sha1File',function(){
         .then(function(){
           return fs.writeFileAsync(destination,content.data)
         })
+        .then(function(){
+          return sha1File.linkPath(content.sha1,content.ext)
+        })
     })
     afterEach(function(){
-      return fs.unlinkAsync(destination)
+      return sha1File.remove(content.sha1)
     })
     it('should find a file by sha1',function(){
       return sha1File.find(content.sha1)
