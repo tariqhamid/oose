@@ -94,24 +94,15 @@ exports.populateHits = function(token,stores){
  * @return {P}
  */
 exports.winnerFromExists = function(token,exists,skip){
+  if(!(skip instanceof Array)) skip = []
   var candidates = exports.existsToArray(exists,skip)
-  var winner
   if(!candidates.length) throw new NotFoundError('No store candidates found')
   return exports.populateStores(candidates)
     .then(function(results){
       return exports.populateHits(token,results)
     })
     .then(function(results){
-      var store
-      for(var i = 0; i < results.length; i++){
-        store = results[i]
-        if(!store.full && (!winner) || (winner.hits > store.hits))
-          winner = store
-      }
-      return redis.incrAsync(redis.schema.storeHits(token,winner.name))
-    })
-    .then(function(){
-      return winner
+      return exports.pickWinner(token,results,skip)
     })
 }
 
@@ -123,26 +114,33 @@ exports.winnerFromExists = function(token,exists,skip){
  * @return {P}
  */
 exports.winner = function(storeList,skip){
-  if(!(skip instanceof Array)) skip = []
-  if(!(storeList instanceof Array)) storeList = []
   var token = 'new'
-  var winner = false
   return exports.populateHits(token,storeList)
     .then(function(storeList){
-      var store
-      for(var i = 0; i < storeList.length; i++){
-        store = storeList[i]
-        if(-1 !== skip.indexOf(store.name)) continue
-        if(!winner){
-          winner = store
-          continue
-        }
-        if(winner.hits > store.hits){
-          winner = store
-        }
-      }
-      return redis.incrAsync(redis.schema.storeHits(token,winner.name))
+      return exports.pickWinner(token,storeList,skip)
     })
+}
+
+
+/**
+ * Pick a winner
+ * @param {string} token
+ * @param {array} storeList
+ * @param {array} skip
+ * @return {P}
+ */
+exports.pickWinner = function(token,storeList,skip){
+  var store
+  var winner = false
+  if(!token) token = 'new'
+  if(!(skip instanceof Array)) skip = []
+  if(!(storeList instanceof Array)) storeList = []
+  for(var i = 0; i < storeList.length; i++){
+    store = storeList[i]
+    if((-1 === skip.indexOf(store.name) && !store.full) &&
+      ((!winner) || (winner.hits > store.hits))) winner = store
+  }
+  return redis.incrAsync(redis.schema.storeHits(token,winner.name))
     .then(function(){
       return winner
     })

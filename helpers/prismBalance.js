@@ -68,14 +68,8 @@ exports.winner = function(token,prismList,skip){
       var prism
       for(var i = 0; i < prismList.length; i++){
         prism = prismList[i]
-        if(-1 !== skip.indexOf(prism.name)) continue
-        if(!winner){
-          winner = prism
-          continue
-        }
-        if(winner.hits > prism.hits){
-          winner = prism
-        }
+        if((-1 === skip.indexOf(prism.name)) &&
+          ((!winner) || (winner.hits > prism.hits))) winner = prism
       }
       return redis.incrAsync(redis.schema.prismHits(token,winner.name))
     })
