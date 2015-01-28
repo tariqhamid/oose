@@ -1,7 +1,6 @@
 'use strict';
 var P = require('bluebird')
 var cp = require('child_process')
-var glob = P.promisify(require('glob'))
 var fs = require('graceful-fs')
 var mime = require('mime')
 var oose = require('oose-sdk')
@@ -79,7 +78,8 @@ console.log('------------------------------')
 
 //find all the data paths
 cp.execAsync(
-  'cd ' + path.resolve(config.root) + '; find -type f | grep -v shredder | grep -v tmp',
+  'cd ' + path.resolve(config.root) +
+  '; find -type f | grep -v shredder | grep -v tmp',
   {maxBuffer: 67108864}
 )
   .then(function(results){
