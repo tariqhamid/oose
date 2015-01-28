@@ -84,9 +84,7 @@ exports.download = function(req,res){
 exports.exists = function(req,res){
   sha1File.find(req.body.sha1)
     .then(function(file){
-      var exists = false
-      if(file) exists = true
-      res.json({exists: !!exists})
+      res.json({exists: !!file})
     })
 }
 

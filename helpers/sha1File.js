@@ -45,7 +45,7 @@ exports.toPath = function(sha1,ext){
 
 
 /**
- * Make a symlink to the real path with the extension forq uicker lookups
+ * Make a symlink to the real path with the extension for quicker lookup
  * @param {string} sha1
  * @param {string} ext
  * @return {P}
@@ -53,13 +53,8 @@ exports.toPath = function(sha1,ext){
 exports.linkPath = function(sha1,ext){
   var target = exports.toPath(sha1,ext)
   var link = exports.toPath(sha1)
-  return exports.fsExists(link)
-    .then(function(result){
-      if(result) return fs.unlinkAsync(link)
-    })
-    .then(function(){
-      return fs.symlinkAsync(target,link,'file')
-    })
+  return fs.symlinkAsync(target,link,'file')
+    .catch(function(){})
 }
 
 
@@ -109,13 +104,12 @@ exports.fsExists = function(file){
  * @return {P}
  */
 exports.find = function(sha1){
-  if(!exports.validate(sha1))
-    throw new UserError('Invalid SHA1 passed')
   var file = exports.toPath(sha1)
-  return exports.fsExists(file)
+  return fs.readlinkAsync(file)
     .then(function(result){
-      if(!result) return false
-      return fs.readlinkAsync(file)
+      return result
+    },function(){
+      return false
     })
 }
 

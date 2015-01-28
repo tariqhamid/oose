@@ -297,7 +297,6 @@ exports.exists = function(req,res){
         map[row.prism] = row.exists
       }
       var result = {sha1: sha1, exists: exists, count: count, map: map}
-      //console.log(result)
       res.json(result)
     })
     .catch(UserError,NetworkError,function(err){
@@ -314,12 +313,8 @@ exports.exists = function(req,res){
 exports.existsLocal = function(req,res){
   var storeList
   var sha1 = req.body.sha1
-  P.try(function(){
-    if(!sha1File.validate(sha1))
-      throw new UserError('Invalid SHA1 passed for existence check')
-    //get a list of store instances we own
-    return prismBalance.storeListByPrism(config.prism.name)
-  })
+  //get a list of store instances we own
+  prismBalance.storeListByPrism(config.prism.name)
     .then(function(result){
       storeList = result
       var promises = []
