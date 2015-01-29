@@ -7,8 +7,6 @@ var redis = require('../helpers/redis')
 
 var config = require('../config')
 
-var prism = api.prism(config.prism)
-
 
 /**
  * Get list of prisms and cache the result
@@ -89,12 +87,15 @@ exports.contentExists = function(sha1){
   return redis.getAsync(redis.schema.contentExists(sha1))
     .then(function(result){
       if(!result){
-        debug('cache miss, contentExists',sha1)
+        debug(sha1,'cache miss, contentExists')
+        var prism = api.prism(config.prism)
+        debug(sha1,'sending existence check to ' + config.prism.host)
         return prism.postAsync({
           url: prism.url('/content/exists'),
           json: {sha1: sha1}
         })
           .spread(function(res,body){
+            debug(sha1,'existence returned, count',body.count)
             contentExists = body
             return redis.setAsync(
               redis.schema.contentExists(sha1),JSON.stringify(contentExists))
@@ -122,6 +123,7 @@ exports.contentExists = function(sha1){
  * @return {P}
  */
 exports.invalidateContentExists = function(sha1){
+  var prism = api.prism(config.prism)
   return prism.postAsync({
     url: prism.url('/content/exists/invalidate'),
     json: {sha1: sha1}

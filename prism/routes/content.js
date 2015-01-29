@@ -262,6 +262,7 @@ exports.exists = function(req,res){
   P.try(function(){
     if(!sha1File.validate(sha1))
       throw new UserError('Invalid SHA1 passed for existence check')
+    debug(sha1,'got exist request, getting prism list')
     //get a list of store instances we own
     return prismBalance.prismList()
   })
@@ -271,16 +272,19 @@ exports.exists = function(req,res){
       var prism
       var checkExistence = function(prism){
         var client = api.prism(prism)
+        debug(sha1,'existence check sent to ' + prism.host)
         return client.postAsync({
           url: client.url('/content/exists/local'),
           json: {sha1: sha1},
           timeout: 2000
         })
           .spread(function(res,body){
+            debug(sha1,prism.host + ' responded, count:',body.count)
             return {prism: prism.name, exists: body}
           })
           .catch(client.handleNetworkError)
           .catch(NetworkError,function(){
+            debug(sha1,prism.host + ' timed out, marking false')
             return {
               prism: prism.name,
               exists: {
@@ -298,6 +302,7 @@ exports.exists = function(req,res){
       return P.all(promises)
     })
     .then(function(results){
+      debug(sha1,'existence lookup returned, compiling')
       var map = {}
       var exists = false
       var count = 0
@@ -311,9 +316,11 @@ exports.exists = function(req,res){
         map[row.prism] = row.exists
       }
       var result = {sha1: sha1, exists: exists, count: count, map: map}
+      debug(sha1,'existence lookup complete',result.count)
       res.json(result)
     })
     .catch(UserError,NetworkError,function(err){
+      debig(sha1,'existence resutled in error',err)
       res.json({error: err.message})
     })
 }
@@ -327,6 +334,7 @@ exports.exists = function(req,res){
 exports.existsLocal = function(req,res){
   var storeList
   var sha1 = req.body.sha1
+  debug(sha1,'got local request')
   //get a list of store instances we own
   prismBalance.storeListByPrism(config.prism.name)
     .then(function(result){
@@ -335,16 +343,19 @@ exports.existsLocal = function(req,res){
       var store
       var checkExistence = function(store){
         var client = api.store(store)
+        debug(sha1,store.host + ' sent existence request')
         return client.postAsync({
           url: client.url('/content/exists'),
           json: {sha1: sha1},
           timeout: 2000
         })
           .spread(function(res,body){
+            debug(sha1,store.host + ' existence complete',body.exists)
             return {store: store.name, exists: body.exists}
           })
           .catch(client.handleNetworkError)
-          .catch(NetworkError,function(){
+          .catch(NetworkError,function(err){
+            debug(sha1,store.host + ' existence failed',err)
             return {store: store.name, exists: false}
           })
       }
@@ -355,6 +366,7 @@ exports.existsLocal = function(req,res){
       return P.all(promises)
     })
     .then(function(results){
+      debug(sha1,'local lookup returned, compiling')
       var map = {}
       var exists = false
       var count = 0
@@ -367,6 +379,7 @@ exports.existsLocal = function(req,res){
         }
         map[row.store] = row.exists
       }
+      debug(sha1,'existence lookup complete, count',count)
       res.json({exists: exists, count: count, map: map})
     })
     .catch(UserError,NetworkError,function(err){
