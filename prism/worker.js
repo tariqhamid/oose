@@ -1,6 +1,5 @@
 'use strict';
 var P = require('bluebird')
-P.longStackTraces()
 var basicAuth = require('basic-auth-connect')
 var bodyParser = require('body-parser')
 var express = require('express')
