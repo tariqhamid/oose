@@ -1,6 +1,6 @@
 'use strict';
 var P = require('bluebird')
-var cp = require('child_process')
+var debug = require('debug')('oose:migrate')
 var glob = P.promisify(require('glob'))
 var fs = require('graceful-fs')
 var mime = require('mime')
@@ -27,7 +27,6 @@ var fileCountComplete = 0
 
 //make some promises
 P.promisifyAll(redis)
-P.promisifyAll(cp)
 
 //prism api
 oose.api.updateConfig({
@@ -71,29 +70,35 @@ var prismServers = [
 var prismSelectCount = 0
 
 var selectPrismServer = function(){
-  return ++prismSelectCount % 2 === 0 ? prismServers[0] : prismServers[1]
+  var server = ++prismSelectCount % 2 === 0 ? prismServers[0] : prismServers[1]
+  debug('selected prism server ' + server.host)
+  return server
 }
 
 console.log('Starting migration to OOSE 1.0')
 console.log('------------------------------')
 
 //find all the data paths
-cp.execAsync(
-  'cd ' + path.resolve(config.root) + '; find -type f | grep -v shredder | grep -v tmp',
-  {maxBuffer: 67108864}
-)
-  .then(function(results){
-    files = results.toString().split('\n')
+debug('starting to find files to migrate')
+var migrateListFile = process.argv[2]
+if(!fs.existsSync(migrateListFile))
+  throw new Error('No valid file given for migrate inventory list')
+fs.readFileAsync(migrateListFile)
+  .then(function(result){
+    files = result.toString().split('\n')
+    debug('found files to migrate',files.length)
     fileCount = files.length
     console.log('Found ' + fileCount + ' files to be migrated')
     return prismLogin(selectPrismServer())
   })
   .then(function(result){
+    debug('got session response',result)
     ooseSession = result
     console.log('Successfully logged into OOSE v1!')
     return files
   })
   .each(function(filePath){
+    debug('starting on',filePath)
     //setup our client handle
     var client = oose.api.prism(selectPrismServer())
     client = oose.api.setSession(ooseSession,client)
@@ -104,10 +109,12 @@ cp.execAsync(
     //get the file info from the current OOSE db
     return redis.hgetallAsync('inventory:' + sha1)
       .then(function(result){
+        debug('got inventory',result)
         console.log(sha1,'Got file info from local database')
         fileInfo = result
         console.log(sha1,'Checking if exists')
         //ask if the file exists
+        debug('sending detail request')
         return client.postAsync({
           url: client.url('/content/detail'),
           json: {
@@ -116,6 +123,7 @@ cp.execAsync(
         })
       })
       .spread(function(res,body){
+        debug('got detail response',body)
         if(body.exists){
           console.log(sha1,'Does exist, skipping')
         } else {
@@ -133,13 +141,16 @@ cp.execAsync(
             }
           })
             .spread(function(res,body){
+              debug('upload request complete',body)
               if(!(
-                body.files && body.files.file && body.files.file.sha1 === sha1))
-                throw new UserError('File was not uploaded correctly')
+                body.files &&
+                body.files.file && body.files.file.sha1 === sha1
+              )) throw new UserError('File was not uploaded correctly')
               //finished
               console.log(sha1,'Upload complete')
             })
             .catch(UserError,function(err){
+              debug('File error',err)
               console.log(sha1,'Error: ' + err.message)
             })
         }
