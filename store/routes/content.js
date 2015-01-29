@@ -35,6 +35,10 @@ exports.put = function(req,res){
     .then(function(){
       var writeStream = fs.createWriteStream(dest)
       return promisePipe(req,sniff,writeStream)
+        .then(
+          function(val){return val},
+          function(err){throw new UserError(err.message0)}
+        )
     })
     .then(function(){
       if(sniff.sha1 !== fileDetails.sha1){
@@ -44,6 +48,7 @@ exports.put = function(req,res){
       //setup symlink to new file
       return sha1File.linkPath(fileDetails.sha1,fileDetails.ext)
     })
+
     .then(function(){
       res.status(201)
       res.json({sha1: sniff.sha1})

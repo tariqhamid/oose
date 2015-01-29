@@ -59,15 +59,20 @@ var sendToPrism = function(tmpfile,sha1,extension){
     //stream the file to winners
     .then(function(result){
       if(result) winners.push(result)
+      var thenReturn = function(val){return val}
+      var handleError = function(err){throw new UserError(err.message0)}
       var readStream = fs.createReadStream(tmpfile)
       var promises = []
       var client
       for(var i = 0; i < winners.length; i++){
         client = api.prism(winners[i])
-        promises.push(promisePipe(
-          readStream,
-          client.put(client.url('/content/put/' + sha1 + '.' + extension))
-        ))
+        promises.push(
+          promisePipe(
+            readStream,
+            client.put(client.url('/content/put/' + sha1 + '.' + extension))
+          )
+            .then(thenReturn,handleError)
+        )
       }
       return P.all(promises)
     })
@@ -113,6 +118,10 @@ exports.upload = function(req,res){
     filePromises.push(
       P.try(function(){
         return promisePipe(file,sniff,writeStream)
+          .then(
+            function(val){return val},
+            function(err){throw new UserError(err.message0)}
+          )
       })
         .then(function(){
           files[key].sha1 = sniff.sha1
@@ -166,6 +175,10 @@ exports.retrieve = function(req,res){
   var writeStream = fs.createWriteStream(tmpfile)
   P.try(function(){
     return promisePipe(request(retrieveRequest),sniff,writeStream)
+      .then(
+        function(val){return val},
+        function(err){throw new UserError(err.message0)}
+      )
   })
     .then(function(){
       sha1 = sniff.sha1
@@ -221,6 +234,10 @@ exports.put = function(req,res){
       var client = api.store(result)
       var dest = client.put(client.url('/content/put/' + file))
       return promisePipe(req,dest)
+        .then(
+          function(val){return val},
+          function(err){throw new UserError(err.message0)}
+        )
     })
     .then(function(){
       res.status(201)
