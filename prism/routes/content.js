@@ -66,12 +66,7 @@ var sendToPrism = function(tmpfile,sha1,extension){
         client = api.prism(winners[i])
         promises.push(promisePipe(
           readStream,
-          client.put(
-            {
-              url: client.url('/content/put/' + sha1 + '.' + extension),
-              timeout: 900000
-            }
-          )
+          client.put(client.url('/content/put/' + sha1 + '.' + extension))
         ))
       }
       return P.all(promises)
@@ -231,7 +226,8 @@ exports.put = function(req,res){
       res.status(201)
       res.json({success: 'File uploaded', file: file})
     })
-    .catch(UserError,function(err){
+    .catch(master.handleNetworkError)
+    .catch(UserError,NetworkError,function(err){
       res.status(500)
       res.json({error: err.message})
     })
@@ -260,7 +256,8 @@ exports.exists = function(req,res){
         var client = api.prism(prism)
         return client.postAsync({
           url: client.url('/content/exists/local'),
-          json: {sha1: sha1}
+          json: {sha1: sha1},
+          timeout: 2000
         })
           .spread(function(res,body){
             return {prism: prism.name, exists: body}
@@ -323,7 +320,8 @@ exports.existsLocal = function(req,res){
         var client = api.store(store)
         return client.postAsync({
           url: client.url('/content/exists'),
-          json: {sha1: sha1}
+          json: {sha1: sha1},
+          timeout: 2000
         })
           .spread(function(res,body){
             return {store: store.name, exists: body.exists}
