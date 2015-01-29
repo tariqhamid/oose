@@ -1,7 +1,6 @@
 'use strict';
 var P = require('bluebird')
 var debug = require('debug')('oose:migrate')
-var glob = P.promisify(require('glob'))
 var fs = require('graceful-fs')
 var mime = require('mime')
 var oose = require('oose-sdk')
