@@ -98,7 +98,7 @@ exports.save = function(req,res){
       if(data.name) store.name = data.name
       if(data.port) store.port = data.port
       if(data.host) store.host = data.host
-      store.full = !!store.full
+      store.full = !!data.full
       store.active = !!data.active
       return store.save()
     })

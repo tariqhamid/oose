@@ -23,7 +23,7 @@ var storeBalance = require('../../helpers/storeBalance')
 var UserError = oose.UserError
 
 var config = require('../../config')
-var master = api.master()
+//var master = api.master()
 
 //make some promises
 P.promisifyAll(temp)
@@ -221,12 +221,9 @@ exports.retrieve = function(req,res){
 exports.put = function(req,res){
   var file = req.params.file
   var storeList
-  master.postAsync({
-    url: master.url('/store/list'),
-    json: {prism: config.prism.name}
-  })
-    .spread(function(res,body){
-      storeList = body.store
+  storeBalance.storeList(config.prism.name)
+    .then(function(result){
+      storeList = result
       return storeBalance.winner(storeList)
     })
     .then(function(result){
@@ -243,8 +240,7 @@ exports.put = function(req,res){
       res.status(201)
       res.json({success: 'File uploaded', file: file})
     })
-    .catch(master.handleNetworkError)
-    .catch(UserError,NetworkError,function(err){
+    .catch(UserError,function(err){
       res.status(500)
       res.json({error: err.message})
     })

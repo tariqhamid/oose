@@ -7,6 +7,24 @@ var redis = require('../helpers/redis')
 
 
 /**
+ * Get list of stores by prism@
+ * @param {string} prism
+ * @return {P}
+ */
+exports.storeList = function(prism){
+  return redis.getAsync(redis.schema.storeList())
+    .then(function(result){
+      result = JSON.parse(result)
+      //filter result
+      result = result.filter(function(a){
+        return (!prism || (a.Prism.name === prism))
+      })
+      return result
+    })
+}
+
+
+/**
  * Take an existence map and turn it into an array of store instances
  * @param {object} exists
  * @param {Array} skip
