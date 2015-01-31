@@ -1,5 +1,5 @@
 'use strict';
-var basicAuth = require('connect-basic-auth')
+var basicAuth = require('basic-auth-connect')
 var debug = require('debug')('oose:userSessionValidate')
 var oose = require('oose-sdk')
 
