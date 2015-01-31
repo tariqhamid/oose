@@ -29,9 +29,11 @@ app.use(bodyParser.json())
 //--------------------
 
 //home page
+app.get('/',routes.index)
 app.post('/',routes.index)
 
 //health test
+app.get('/ping',routes.ping)
 app.post('/ping',routes.ping)
 
 //--------------------

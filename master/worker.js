@@ -21,15 +21,18 @@ var routes = require('./routes')
 //make some promises
 P.promisifyAll(server)
 
+//home page
+app.get('/',routes.index)
+app.post('/',routes.index)
+
+//health test
+app.get('/ping',routes.ping)
+app.post('/ping',routes.ping)
+
 //load middleware
 app.use(basicAuth(config.master.username,config.master.password))
 app.use(bodyParser.json())
 
-//home page
-app.post('/',routes.index)
-
-//health test
-app.post('/ping',routes.ping)
 
 //memory
 app.post('/memory/create',routes.memory.create)

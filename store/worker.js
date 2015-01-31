@@ -19,15 +19,17 @@ var routes = require('./routes')
 //make some promises
 P.promisifyAll(server)
 
-//load middleware
-app.use(basicAuth(config.store.username,config.store.password))
-app.use(bodyParser.json())
-
 //home page
+app.get('/',routes.index)
 app.post('/',routes.index)
 
 //health test
+app.get('/ping',routes.ping)
 app.post('/ping',routes.ping)
+
+//load middleware
+app.use(basicAuth(config.store.username,config.store.password))
+app.use(bodyParser.json())
 
 //content functions
 app.put('/content/put/:file',routes.content.put)
