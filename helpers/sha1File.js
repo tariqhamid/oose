@@ -115,6 +115,21 @@ exports.find = function(sha1){
 
 
 /**
+ * Extract sha1 and extension from filename
+ * @param {string} file
+ * @return {object}
+ */
+exports.sha1FromFilename = function(file){
+  var match = file.match(/^([a-f0-9]{40})\.(\w+)$/i)
+  if(3 !== match.length) throw new UserError('Failed to parse file name')
+  return {
+    sha1: match[1],
+    ext: match[2]
+  }
+}
+
+
+/**
  * Get details from a filename with extension
  * @param {file} file
  * @return {P}
@@ -122,12 +137,7 @@ exports.find = function(sha1){
 exports.details = function(file){
   var details
   return P.try(function(){
-    var match = file.match(/^([a-f0-9]{40})\.(\w+)$/i)
-    if(3 !== match.length) throw new UserError('Failed to parse file name')
-    details = {
-      sha1: match[1],
-      ext: match[2]
-    }
+    details = exports.sha1FromFilename(file)
     if(!exports.validate(details.sha1))
       throw new UserError('Invalid sha1 passed')
     details.path = exports.toPath(details.sha1,details.ext)

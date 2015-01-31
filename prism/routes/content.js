@@ -221,10 +221,17 @@ exports.retrieve = function(req,res){
 exports.put = function(req,res){
   var file = req.params.file
   var storeList
-  storeBalance.storeList(config.prism.name)
+  P.try(function(){
+    var details = sha1File.sha1FromFilename(file)
+    return P.all([
+      prismBalance.contentExists(details.sha1),
+      storeBalance.storeList(config.prism.name)
+    ])
+  })
     .then(function(result){
-      storeList = result
-      return storeBalance.winner(storeList)
+      var exists = result[0]
+      storeList = result[1]
+      return storeBalance.winner(storeList,storeBalance.existsToArray(exists))
     })
     .then(function(result){
       if(!result) throw new UserError('No suitable store instance found')
@@ -316,7 +323,7 @@ exports.exists = function(req,res){
       res.json(result)
     })
     .catch(UserError,NetworkError,function(err){
-      debig(sha1,'existence resutled in error',err)
+      debug(sha1,'existence resutled in error',err)
       res.json({error: err.message})
     })
 }
