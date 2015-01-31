@@ -8,6 +8,8 @@ var path = require('path')
 
 var file = require('../helpers/file')
 var redis = require('../helpers/redis')
+
+var NetworkError = oose.NetworkError
 var UserError = oose.UserError
 
 var config = require('../config')
@@ -109,6 +111,7 @@ fs.readFileAsync(migrateListFile)
     return redis.hgetallAsync('inventory:' + sha1)
       .then(function(result){
         debug('got inventory',result)
+        if(!result) throw new UserError('Could not get local inventory')
         console.log(sha1,'Got file info from local database')
         fileInfo = result
         console.log(sha1,'Checking if exists')
@@ -148,10 +151,6 @@ fs.readFileAsync(migrateListFile)
               //finished
               console.log(sha1,'Upload complete')
             })
-            .catch(UserError,function(err){
-              debug('File error',err)
-              console.log(sha1,'Error: ' + err.message)
-            })
         }
       })
       .then(function(){
@@ -159,6 +158,11 @@ fs.readFileAsync(migrateListFile)
         console.log('File ' + fileCountComplete + '/' + fileCount +
         ' [' + ((fileCountComplete / fileCount) * 100).toFixed(2) + '%]')
         console.log('----------------------------------')
+      })
+      .catch(client.handleNetworkError)
+      .catch(UserError,NetworkError,function(err){
+        debug('File error',err)
+        console.log(sha1,'Error: ' + err.message)
       })
   })
   .then(function(){

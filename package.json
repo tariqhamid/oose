@@ -58,7 +58,7 @@
     "mongoose-validator": "<1.0.0",
     "node-sigint": "0.0.x",
     "object-manage": "0.8.x",
-    "oose-sdk": "^1.0.5",
+    "oose-sdk": "^1.0.10",
     "pkginfo": "0.3.x",
     "pretty-bytes": "1.0.x",
     "promisepipe": "^1.0.1",
