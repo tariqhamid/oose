@@ -34,7 +34,7 @@ program
 var analyzeFiles = function(progress,fileList){
   var files = {}
   var existsUrl =
-    prism.url(program.detail ? '/content/detail' : '/content/exists')
+    prism.url(program.exists ? '/content/exists' : '/content/detail')
   return P.try(function(){
     return fileList
   })
@@ -49,7 +49,11 @@ var analyzeFiles = function(progress,fileList){
         .spread(function(res,body){
           var add = 0
           var remove = 0
-          if(program.above && body.count > program.above){
+          if(
+            (program.above && body.count > program.above) ||
+            (program.below && body.count < program.below) ||
+            (program.at && body.count === program.at)
+          ){
             if(program.desired > body.count){
               add = program.desired - body.count
             } else {
@@ -137,7 +141,7 @@ var fileCount = 0
 P.try(function(){
   var welcomeMessage = 'Welcome to the OOSE v' + config.version + ' clonetool!'
   console.log(welcomeMessage)
-  console.log(welcomeMessage.replace(/.{1}/g,'-'))
+  console.log('--------------------')
   //do some validation
   if(!program.file && !program.input){
     throw new UserError('No file list or file provided')
@@ -149,6 +153,12 @@ P.try(function(){
     program.below = 2
     program.above = false
   }
+  //print rule changes
+  var changeVerb = 'below'
+  if(program.above) changeVerb = 'above'
+  if(program.at) changeVerb = 'at'
+  console.log('You have asked for ' + program.desired + ' clone(s) of each file ' + changeVerb + ' ' + program[changeVerb] + ' clone(s)')
+  console.log('--------------------')
   //get file list together
   if(program.file){
     fileStream.write(program.file)
