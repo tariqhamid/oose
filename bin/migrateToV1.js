@@ -143,7 +143,6 @@ fs.readFileAsync(migrateListFile)
             }
           })
             .spread(function(res,body){
-              console.log(res.statusCode,body)
               if(!body.files) throw new UserError('Upload failed, no response body')
               if(!body.files.file) throw new UserError('Upload failed, no file returned')
               if(sha1 !== body.files.file.sha1)
