@@ -60,7 +60,7 @@ var sendToPrism = function(tmpfile,sha1,extension){
     .then(function(result){
       if(result) winners.push(result)
       var thenReturn = function(val){return val}
-      var handleError = function(err){throw new UserError(err.message0)}
+      var handleError = function(err){throw new UserError(err.message)}
       var readStream = fs.createReadStream(tmpfile)
       var promises = []
       var client
