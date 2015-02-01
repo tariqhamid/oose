@@ -143,11 +143,11 @@ fs.readFileAsync(migrateListFile)
             }
           })
             .spread(function(res,body){
-              debug('upload request complete',body)
-              if(!(
-                body.files &&
-                body.files.file && body.files.file.sha1 === sha1
-              )) throw new UserError('File was not uploaded correctly')
+              console.log(res.statusCode,body)
+              if(!body.files) throw new UserError('Upload failed, no response body')
+              if(!body.files.file) throw new UserError('Upload failed, no file returned')
+              if(sha1 !== body.files.file.sha1)
+                throw new UserError('Upload failed, sha1 mismatch got ' + sha1 + ' expected ' + body.files.file.sha1)
               //finished
               console.log(sha1,'Upload complete')
             })
@@ -163,6 +163,7 @@ fs.readFileAsync(migrateListFile)
       .catch(UserError,NetworkError,function(err){
         debug('File error',err)
         console.log(sha1,'Error: ' + err.message)
+        console.log('----------------------------------')
       })
   })
   .then(function(){
