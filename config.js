@@ -59,7 +59,6 @@ config.$load({
     name: 'localmaster',
     port: 5970,
     host: null,
-    timeout: 20000,
     workers: {
       count: 1,
       maxConnections: 10000
@@ -77,7 +76,6 @@ config.$load({
     name: 'localprism',
     port: 5971,
     host: null,
-    timeout: 20000,
     username: 'oose',
     password: 'oose',
     workers: {
@@ -109,6 +107,7 @@ config.$load({
       'webm',
       'wmv'
     ],
+    existsTimeout: 1000,
     contentExistsCache: 300, //5 minutes
     purchaseLife: 21600, //6hrs
     purchaseCache: 7200, //2 hours
@@ -120,7 +119,6 @@ config.$load({
     name: 'localstore',
     port: 5972,
     host: null,
-    timeout: 20000,
     username: 'oose',
     password: 'oose',
     workers: {

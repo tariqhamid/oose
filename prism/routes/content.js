@@ -279,7 +279,7 @@ exports.exists = function(req,res){
         return client.postAsync({
           url: client.url('/content/exists/local'),
           json: {sha1: sha1},
-          timeout: 2000
+          timeout: config.prism.existsTimeout || 2000
         })
           .spread(function(res,body){
             debug(sha1,prism.host + ' responded, count:',body.count)
@@ -350,7 +350,7 @@ exports.existsLocal = function(req,res){
         return client.postAsync({
           url: client.url('/content/exists'),
           json: {sha1: sha1},
-          timeout: 2000
+          timeout: config.prism.existsTimeout || null
         })
           .spread(function(res,body){
             debug(sha1,store.host + ' existence complete',body.exists)
