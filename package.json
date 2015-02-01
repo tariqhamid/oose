@@ -44,7 +44,7 @@
     "mysql": "^2.5.4",
     "node-password": "^1.0.2",
     "object-manage": "^0.8.0",
-    "oose-sdk": "^1.0.10",
+    "oose-sdk": "^1.0.11",
     "pretty-bytes": "^1.0.2",
     "progress": "^1.1.8",
     "promisepipe": "^1.0.1",
