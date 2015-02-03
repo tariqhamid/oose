@@ -694,7 +694,8 @@ exports.deliver = function(req,res){
       return storeBalance.winnerFromExists(token,purchase.map)
     })
     .then(function(result){
-      var url = 'http://' + result.name + '.' + config.domain +
+      var proto = 'https' === req.get('X-Forwarded-Protocol') ? 'https' : 'http'
+      var url = proto + '://' + result.name + '.' + config.domain +
         '/' + token + '/' + filename
       res.redirect(302,url)
     })
@@ -730,7 +731,8 @@ exports.contentStatic = function(req,res){
       return storeBalance.winnerFromExists(sha1,result)
     })
     .then(function(result){
-      var url = 'http://' + result.name + '.' + config.domain +
+      var proto = 'https' === req.get('X-Forwarded-Protocol') ? 'https' : 'http'
+      var url = proto + '://' + result.name + '.' + config.domain +
         '/static/' + sha1File.toRelativePath(sha1,ext)
       res.redirect(302,url)
     })
