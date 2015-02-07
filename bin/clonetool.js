@@ -21,9 +21,8 @@ program
   .option('-a, --above <n>','Files above this count will be analyzed')
   .option('-A, --at <n>','Files at this count will be analyzed')
   .option('-b, --below <n>','Files below this count will be analyzed')
+  .option('-B, --block-size <n>','Number of files to analyze at once')
   .option('-d, --desired <n>','Desired clone count')
-  .option('-e, --exists','Use content exists instead of content ' +
-    'detail for analysis')
   .option('-f, --file <s>','SHA1 of file to check')
   .option('-i, --input <s>','List of SHA1s line separated ' +
   'to analyze, use - for stdin')
@@ -33,57 +32,73 @@ program
 
 var analyzeFiles = function(progress,fileList){
   var files = {}
-  var existsUrl =
-    prism.url(program.exists ? '/content/exists' : '/content/detail')
-  return P.try(function(){
-    return fileList
-  })
-    .each(function(sha1){
-      return prism.postAsync({
-        url: existsUrl,
-        json: {
-          sha1: sha1
-        }
-      })
-        .spread(prism.validateResponse())
-        .spread(function(res,body){
+  var fileCount = fileList.length
+  var blockSize = program.blockSize || 100
+  var blocks = Math.ceil(fileCount / blockSize)
+  var analyzeBlock = function(files){
+    return prism.postAsync({
+      url: prism.url('/content/exists'),
+      json: {
+        sha1: files
+      }
+    })
+      .spread(prism.validateResponse())
+      .spread(function(res,body){
+        var keys = Object.keys(body)
+        var compileResult = function(sha1){
           var add = 0
           var remove = 0
           if(
-            (program.above && body.count > program.above) ||
-            (program.below && body.count < program.below) ||
-            (program.at && body.count === program.at)
+            (program.above && body[sha1].count > program.above) ||
+            (program.below && body[sha1].count < program.below) ||
+            (program.at && body[sha1].count === program.at)
           ){
-            if(program.desired > body.count){
-              add = program.desired - body.count
+            if(program.desired > body[sha1].count){
+              add = program.desired - body[sha1].count
             } else {
-              remove = body.count - program.desired
+              remove = body[sha1].count - program.desired
             }
           }
-          files[sha1] = {
+          return {
             sha1: sha1,
-            exists: body.exists,
-            count: body.count,
+            exists: body[sha1].exists,
+            count: body[sha1].count,
             add: add,
             remove: remove,
-            map: body.map
+            map: body[sha1].map
           }
-        })
-        .catch(prism.handleNetworkError)
-        .catch(NetworkError,UserError,function(err){
-          console.log('Error analyzing file',err)
+        }
+        for(var i = 0; i < keys.length; i++){
+          files[keys[i]] = compileResult(keys[i])
+        }
+        return body
+      })
+      .catch(prism.handleNetworkError)
+      .catch(UserError,NetworkError,function(){
+        files.forEach(function(sha1){
           files[sha1] = {
             sha1: sha1,
             exists: false,
             count: 0,
             add: 0,
             remove: 0,
-            map: false
+            map: {}
           }
         })
-        .finally(function(){
-          progress.tick()
-        })
+      })
+      .finally(function(){
+        progress.tick(files.length)
+      })
+  }
+  return P.try(function(){
+    var blockList = []
+    for(var i = 0; i < blocks; i++){
+      blockList.push(fileList.slice(i * blockSize,blockSize))
+    }
+    return blockList
+  })
+    .each(function(block){
+      return analyzeBlock(block)
     })
     .then(function(){
       return files
@@ -157,7 +172,9 @@ P.try(function(){
   var changeVerb = 'below'
   if(program.above) changeVerb = 'above'
   if(program.at) changeVerb = 'at'
-  console.log('You have asked for ' + program.desired + ' clone(s) of each file ' + changeVerb + ' ' + program[changeVerb] + ' clone(s)')
+  console.log('You have asked for ' + program.desired +
+    ' clone(s) of each file ' + changeVerb +
+    ' ' + program[changeVerb] + ' clone(s)')
   console.log('--------------------')
   //get file list together
   if(program.file){
@@ -174,12 +191,15 @@ P.try(function(){
       return a.match(/^[0-9a-f]{40}$/i)
     })
     fileCount = fileList.length
-    var progress = new ProgressBar('  analyzing [:bar] :percent :etas',{
-      total: fileCount,
-      width: 50,
-      complete: '=',
-      incomplete: '-'
-    })
+    var progress = new ProgressBar(
+      '  analyzing [:bar] :current/:total :percent :etas',
+      {
+        total: fileCount,
+        width: 50,
+        complete: '=',
+        incomplete: '-'
+      }
+    )
     console.log('Found ' + fileCount + ' file(s) to be analyzed')
     return analyzeFiles(progress,fileList)
   })

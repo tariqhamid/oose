@@ -120,7 +120,7 @@ exports.upload = function(req,res){
         return promisePipe(file,sniff,writeStream)
           .then(
             function(val){return val},
-            function(err){throw new UserError(err.message0)}
+            function(err){throw new UserError(err.message)}
           )
       })
         .then(function(){
@@ -177,7 +177,7 @@ exports.retrieve = function(req,res){
     return promisePipe(request(retrieveRequest),sniff,writeStream)
       .then(
         function(val){return val},
-        function(err){throw new UserError(err.message0)}
+        function(err){throw new UserError(err.message)}
       )
   })
     .then(function(){
@@ -192,9 +192,6 @@ exports.retrieve = function(req,res){
       //got here? file already exists on cluster so we are done
     })
     .then(function(){
-      return fs.unlinkAsync(tmpfile)
-    })
-    .then(function(){
       res.json({
         sha1: sha1,
         extension: extension
@@ -207,8 +204,8 @@ exports.retrieve = function(req,res){
       })
     })
     .finally(function(){
-      if(fs.existsSync(tmpfile))
-        return fs.unlinkAsync(tmpfile)
+      return fs.unlinkAsync(tmpfile)
+        .catch(function(){})
     })
 }
 
@@ -240,7 +237,7 @@ exports.put = function(req,res){
       return promisePipe(req,dest)
         .then(
           function(val){return val},
-          function(err){throw new UserError(err.message0)}
+          function(err){throw new UserError(err.message)}
         )
     })
     .then(function(){
@@ -262,11 +259,11 @@ exports.put = function(req,res){
 exports.exists = function(req,res){
   var prismList
   var sha1 = req.body.sha1
+  var singular = !(sha1 instanceof Array)
+  if(singular) sha1 = [sha1]
   P.try(function(){
-    if(!sha1File.validate(sha1))
-      throw new UserError('Invalid SHA1 passed for existence check')
     debug(sha1,'got exist request, getting prism list')
-    //get a list of store instances we own
+    //get a list of prism instances we know
     return prismBalance.prismList()
   })
     .then(function(result){
@@ -282,20 +279,22 @@ exports.exists = function(req,res){
           timeout: config.prism.existsTimeout || 2000
         })
           .spread(function(res,body){
-            debug(sha1,prism.host + ' responded, count:',body.count)
+            debug(sha1,prism.host + ' responded')
             return {prism: prism.name, exists: body}
           })
           .catch(client.handleNetworkError)
           .catch(NetworkError,function(){
             debug(sha1,prism.host + ' timed out, marking false')
-            return {
-              prism: prism.name,
-              exists: {
+            var result = {prism: prism.name, exists: {}}
+            for(var i = 0; i < sha1.length; i++){
+              result.exists[sha1[i]] = {
+                sha1: sha1[i],
                 exists: false,
                 count: 0,
                 map: {}
               }
             }
+            return result
           })
       }
       for(var i = 0; i < prismList.length; i++){
@@ -306,21 +305,31 @@ exports.exists = function(req,res){
     })
     .then(function(results){
       debug(sha1,'existence lookup returned, compiling')
-      var map = {}
-      var exists = false
-      var count = 0
-      var row
-      for(var i = 0; i < results.length; i++){
-        row = results[i]
-        if(row.exists.exists){
-          exists = true
-          count += row.exists.count
+      var compileResult = function(sha1){
+        var map = {}
+        var exists = false
+        var count = 0
+        var row
+        for(var i = 0; i < results.length; i++){
+          row = results[i]
+          if(row.exists[sha1].exists){
+            exists = true
+            count += row.exists[sha1].count
+          }
+          map[row.prism] = row.exists[sha1]
         }
-        map[row.prism] = row.exists
+        return {sha1: sha1, exists: exists, count: count, map: map}
       }
-      var result = {sha1: sha1, exists: exists, count: count, map: map}
-      debug(sha1,'existence lookup complete',result.count)
-      res.json(result)
+      var exists = {}
+      for(var i = 0; i < sha1.length; i++){
+        exists[sha1[i]] = compileResult(sha1[i])
+      }
+      debug(sha1,'existence lookup complete')
+      if(singular){
+        res.json(exists[sha1[0]])
+      } else {
+        res.json(exists)
+      }
     })
     .catch(UserError,NetworkError,function(err){
       debug(sha1,'existence resutled in error',err)
@@ -353,13 +362,17 @@ exports.existsLocal = function(req,res){
           timeout: config.prism.existsTimeout || null
         })
           .spread(function(res,body){
-            debug(sha1,store.host + ' existence complete',body.exists)
-            return {store: store.name, exists: body.exists}
+            debug(sha1,store.host + ' existence complete')
+            return {store: store.name, exists: body}
           })
           .catch(client.handleNetworkError)
           .catch(NetworkError,function(err){
             debug(sha1,store.host + ' existence failed',err)
-            return {store: store.name, exists: false}
+            var result = {store: store.name, exists: {}}
+            for(var i = 0; i < sha1.length; i++){
+              result.exists[sha1[i]] = false
+            }
+            return result
           })
       }
       for(var i = 0; i < storeList.length; i++){
@@ -370,20 +383,27 @@ exports.existsLocal = function(req,res){
     })
     .then(function(results){
       debug(sha1,'local lookup returned, compiling')
-      var map = {}
-      var exists = false
-      var count = 0
-      var row
-      for(var i = 0; i < results.length; i++){
-        row = results[i]
-        if(row.exists){
-          exists = true
-          count++
+      var compileResult = function(sha1){
+        var map = {}
+        var exists = false
+        var count = 0
+        var row
+        for(var i = 0; i < results.length; i++){
+          row = results[i]
+          if(row.exists[sha1]){
+            exists = true
+            count++
+          }
+          map[row.store] = row.exists[sha1]
         }
-        map[row.store] = row.exists
+        return {exists: exists, count: count, map: map}
       }
-      debug(sha1,'existence lookup complete, count',count)
-      res.json({exists: exists, count: count, map: map})
+      var exists = {}
+      for(var i = 0; i < sha1.length; i++){
+        exists[sha1[i]] = compileResult(sha1[i])
+      }
+      debug(sha1,'existence lookup complete')
+      res.json(exists)
     })
     .catch(UserError,NetworkError,function(err){
       res.json({error: err.message})

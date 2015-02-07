@@ -82,6 +82,19 @@ describe('store',function(){
           expect(body.exists).to.equal(true)
         })
     })
+    it('should check bulk content exists',function(){
+      return client
+        .postAsync({
+          url: client.url('/content/exists'),
+          json: {
+            sha1: [content.sha1,content.sha1Bogus]
+          }
+        })
+        .spread(function(res,body){
+          expect(body[content.sha1]).to.equal(true)
+          expect(body[content.sha1Bogus]).to.equal(false)
+        })
+    })
     it('should fail for bogus content',function(){
       return client
         .postAsync({

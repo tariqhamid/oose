@@ -50,6 +50,11 @@ module.exports = function(req,res,next){
               session = body.session
               return redis.setAsync(
                 redis.schema.userSession(token),JSON.stringify(session))
+                .then(function(){
+                  var expiration = Math.ceil(
+                     (((+new Date(session.expires)) - (+new Date())) / 1000))
+                  redis.expireAsync(redis.schema.userSession(token),expiration)
+                })
             })
             .catch(client.handleNetworkError)
         } else {

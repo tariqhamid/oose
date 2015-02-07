@@ -201,6 +201,7 @@ exports.sessionUpdate = function(req,res){
         throw new UserError('Session has expired')
       }
       if(data.data) session.data = JSON.stringify(data.data)
+      if(data.expires) session.expires = new Date(data.expires)
       return session.save()
     })
     .then(function(session){

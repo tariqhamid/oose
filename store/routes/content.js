@@ -37,7 +37,7 @@ exports.put = function(req,res){
       return promisePipe(req,sniff,writeStream)
         .then(
           function(val){return val},
-          function(err){throw new UserError(err.message0)}
+          function(err){throw new UserError(err.message)}
         )
     })
     .then(function(){
@@ -87,9 +87,24 @@ exports.download = function(req,res){
  * @param {object} res
  */
 exports.exists = function(req,res){
-  sha1File.find(req.body.sha1)
-    .then(function(file){
-      res.json({exists: !!file})
+  var sha1 = req.body.sha1
+  var singular = !(sha1 instanceof Array)
+  if(singular) sha1 = [sha1]
+  var promises = []
+  for(var i = 0; i < sha1.length; i++){
+    promises.push(sha1File.find(sha1[i]))
+  }
+  P.all(promises)
+    .then(function(result){
+      var exists = {}
+      for(var i = 0; i < sha1.length; i++){
+        exists[sha1[i]] = !!result[i]
+      }
+      if(singular){
+        res.json({exists: exists[sha1[0]]})
+      } else {
+        res.json(exists)
+      }
     })
 }
 

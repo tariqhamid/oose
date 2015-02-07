@@ -553,7 +553,55 @@ exports.contentExists = function(prism,options){
         if(options.deepChecks.indexOf('prism2') !== -1){
           expect(body.map.prism2).to.be.an('object')
           expect(body.map.prism2.exists).to.equal(true)
+          expect(Object.keys(body.map.prism2).length).to.equal(3)
+        }
+      })
+  }
+}
+
+
+/**
+ * Get content exists in bulk
+ * @param {object} prism
+ * @param {object} options
+ * @return {Function}
+ */
+exports.contentExistsBulk = function(prism,options){
+  if('object' !== typeof options) options = {}
+  if(!options.hasOwnProperty('count')) options.count = 2
+  if(!options.hasOwnProperty('checkExists')) options.checkExists = true
+  if(!options.hasOwnProperty('deepChecks'))
+    options.deepChecks = ['prism1','prism2']
+  return function(){
+    var client = api.prism(prism.prism)
+    return client
+      .postAsync({
+        url: client.url('/content/exists'),
+        json: {sha1: [content.sha1,content.sha1Bogus]},
+        localAddress: '127.0.0.1'
+      })
+      .spread(function(res,body){
+        expect(body).to.be.an('object')
+        expect(body[content.sha1]).to.be.an('object')
+        expect(body[content.sha1Bogus]).to.be.an('object')
+        expect(body[content.sha1Bogus].exists).to.equal(false)
+        //shift the main one over an inspect
+        body = body[content.sha1]
+        expect(body.sha1).to.equal(content.sha1)
+        if(options.checkExists) expect(body.exists).to.equal(true)
+        if(options.countGreaterEqual)
+          expect(body.count).to.be.least(options.count)
+        else if(options.checkExists)
+          expect(body.count).to.equal(options.count)
+        if(options.deepChecks.indexOf('prism1') !== -1){
+          expect(body.map.prism1).to.be.an('object')
+          expect(body.map.prism1.exists).to.equal(true)
           expect(Object.keys(body.map.prism1).length).to.equal(3)
+        }
+        if(options.deepChecks.indexOf('prism2') !== -1){
+          expect(body.map.prism2).to.be.an('object')
+          expect(body.map.prism2.exists).to.equal(true)
+          expect(Object.keys(body.map.prism2).length).to.equal(3)
         }
       })
   }

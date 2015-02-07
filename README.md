@@ -91,6 +91,15 @@ This folder contains what should live in the root folder (aka the data folder)
 
 ## Changelog
 
+### 1.1.0
+* Many bug fixes from initial production deployment
+* Exists now takes bulk requests with an array of sha1's and is still
+backward compatible with singular requests.
+* Upgrade to oose-sdk 1.1.0 which implements the Prism helper
+* Introduce `/user/session/renew` to extend session life
+* Sessions are now expired from prisms based on their expiration date it is
+important that API consumers proactively renew their sessions.
+
 ### 1.0.0
 * Ground up rewrite
 * Major restructure of cluster mentality

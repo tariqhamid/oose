@@ -2,7 +2,7 @@
   "author": "ESITED LLC <developers@esited.com>",
   "name": "oose",
   "description": "Object Oriented Storage Engine",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "homepage": "http://oose.io/",
   "repository": {
     "type": "git",
@@ -44,7 +44,7 @@
     "mysql": "^2.5.4",
     "node-password": "^1.0.2",
     "object-manage": "^0.8.0",
-    "oose-sdk": "^1.0.11",
+    "oose-sdk": "^1.1.0",
     "pretty-bytes": "^1.0.2",
     "progress": "^1.1.8",
     "promisepipe": "^1.0.1",

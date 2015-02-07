@@ -110,6 +110,34 @@ exports.sessionValidate = function(req,res){
 
 
 /**
+ * Session renew
+ * @param {object} req
+ * @param {object} res
+ */
+exports.sessionRenew = function(req,res){
+  var data = req.body
+  master.postAsync({
+    url: master.url('/user/session/update'),json: {
+      token: req.session.token,
+      ip: req.ip,
+      expires: data.expires
+    }
+  })
+    .spread(function(response,body){
+      res.json(body)
+    })
+    .catch(master.handleNetworkError)
+    .catch(NetworkError,function(err){
+      res.status(500)
+      res.json({error: 'Failed to renew session: ' + err.message})
+    })
+    .catch(UserError,function(err){
+      res.json({error: err.message})
+    })
+}
+
+
+/**
  * Session update
  * @param {object} req
  * @param {object} res
