@@ -61,6 +61,7 @@
     "oose-sdk": "^1.0.11",
     "pkginfo": "0.3.x",
     "pretty-bytes": "1.0.x",
+    "progress": "^1.1.8",
     "promisepipe": "^1.0.1",
     "q": "1.0.x",
     "random-js": "1.0.x",
