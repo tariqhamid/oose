@@ -80,34 +80,42 @@ exports.winner = function(token,prismList,skip){
 /**
  * Check existence of a SHA1 (cached)
  * @param {string} sha1
+ * @param {boolean} hardLookup
  * @return {P}
  */
-exports.contentExists = function(sha1){
+exports.contentExists = function(sha1,hardLookup){
+  if(undefined === hardLookup) hardLookup = true
   var contentExists
   return redis.getAsync(redis.schema.contentExists(sha1))
     .then(function(result){
       if(!result){
         debug(sha1,'cache miss, contentExists')
-        var prism = api.prism(config.prism)
-        debug(sha1,'sending existence check to ' + config.prism.host)
-        return prism.postAsync({
-          url: prism.url('/content/exists'),
-          json: {sha1: sha1}
-        })
-          .spread(function(res,body){
-            debug(sha1,'existence returned, count',body.count)
-            contentExists = body
-            return redis.setAsync(
-              redis.schema.contentExists(sha1),JSON.stringify(contentExists))
+        if(!hardLookup){
+          debug(sha1,'hard lookup disabled, returning false')
+          return false
+        } else {
+          var prism = api.prism(config.prism)
+          debug(sha1,'sending existence check to ' + config.prism.host)
+          return prism.postAsync({
+            url: prism.url('/content/exists'),
+            json: {sha1: sha1}
           })
-          .then(function(){
-            return redis.expireAsync(
-              redis.schema.contentExists(sha1),config.prism.contentExistsCache)
-          })
-          .then(function(){
-            return contentExists
-          })
-          .catch(prism.handleNetworkError)
+            .spread(function(res,body){
+              debug(sha1,'existence returned, count',body.count)
+              contentExists = body
+              return redis.setAsync(
+                redis.schema.contentExists(sha1),JSON.stringify(contentExists))
+            })
+            .then(function(){
+              return redis.expireAsync(
+                redis.schema.contentExists(sha1),
+                config.prism.contentExistsCache)
+            })
+            .then(function(){
+              return contentExists
+            })
+            .catch(prism.handleNetworkError)
+        }
       } else {
         debug('cache  hit, contentExists',sha1)
         contentExists = JSON.parse(result)

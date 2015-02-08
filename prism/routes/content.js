@@ -465,13 +465,62 @@ exports.existsInvalidateLocal = function(req,res){
  */
 exports.detail = function(req,res){
   var sha1 = req.body.sha1
+  var singular = !(sha1 instanceof Array)
+  if(singular) sha1 = [sha1]
+  var client = api.prism(config.prism)
+  var found = {}
+  var lost = []
   P.try(function(){
-    if(!sha1File.validate(sha1))
-      throw new UserError('Invalid SHA1 passed for content detail')
-    return prismBalance.contentExists(req.body.sha1)
+    //try to query the cache for all of the entries
+    //however pass false so it doesnt do a hard lookup
+    var promises = []
+    for(var i = 0; i < sha1.length; i++){
+      promises.push(prismBalance.contentExists(sha1[i],false))
+    }
+    return P.all(promises)
   })
-    .then(function(result){
-      res.json(result)
+    .then(function(results){
+      //figure out which ones still need to queried for
+      for(var i = 0; i < sha1.length; i++){
+        if(false !== results[i]){
+          found[sha1[i]] = results[i]
+        } else {
+          lost.push(sha1[i])
+        }
+      }
+      //ask for a bulk lookup on the rest
+      return client.postAsync({
+        url: client.url('/content/exists'),
+        json: {
+          sha1: lost
+        }
+      })
+    })
+    .spread(client.validateResponse())
+    .spread(function(res,body){
+      var keys = Object.keys(body)
+      var promises = []
+      //store the results in cache for quicker cache population
+      keys.forEach(function(key){
+        //store in our result
+        found[key] = body[key]
+        //add to cache
+        promises.push(
+          redis.setAsync(
+            redis.schema.contentExists(key),
+            JSON.stringify(body[key])
+          )
+        )
+      })
+      return P.all(promises)
+    })
+    .then(function(){
+      //backwards compatability
+      if(singular){
+        res.json(found[sha1[0]])
+      } else {
+        res.json(found)
+      }
     })
     .catch(NotFoundError,function(err){
       res.status(404)

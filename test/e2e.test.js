@@ -55,6 +55,9 @@ describe('e2e',function(){
     it('should show content detail publicly',
       e2e.contentDetail(e2e.clconf.prism1))
 
+    it('should show content detail in bulk',
+      e2e.contentDetailBulk(e2e.clconf.prism1))
+
     it('should invalidate the content existence',
       e2e.contentExistsInvalidate(e2e.clconf.prism1))
 

@@ -633,6 +633,35 @@ exports.contentDetail = function(prism){
 
 
 /**
+ * Get content detail bulk
+ * @param {object} prism
+ * @return {Function}
+ */
+exports.contentDetailBulk = function(prism){
+  return function(){
+    var client = api.setSession(exports.user.session,api.prism(prism.prism))
+    return client
+      .postAsync({
+        url: client.url('/content/detail'),
+        json: {sha1: [content.sha1,content.sha1Bogus]},
+        localAddress: '127.0.0.1'
+      })
+      .spread(function(res,body){
+        expect(body).to.be.an('object')
+        expect(body[content.sha1]).to.be.an('object')
+        expect(body[content.sha1Bogus]).to.be.an('object')
+        //shift the thing over and run the normal tests
+        body = body[content.sha1]
+        expect(body.sha1).to.equal(content.sha1)
+        expect(body.count).to.be.greaterThan(0)
+        expect(body.exists).to.equal(true)
+        expect(body.map).to.be.an('object')
+      })
+  }
+}
+
+
+/**
  * Invalidate content existence
  * @param {object} prism
  * @return {Function}
