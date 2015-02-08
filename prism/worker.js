@@ -22,7 +22,7 @@ var routes = require('./routes')
 P.promisifyAll(server)
 
 //setup
-app.use(bodyParser.json())
+app.use(bodyParser.json({limit: '100mb'}))
 
 //--------------------
 //public routes

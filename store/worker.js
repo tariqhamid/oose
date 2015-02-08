@@ -29,7 +29,7 @@ app.post('/ping',routes.ping)
 
 //load middleware
 app.use(basicAuth(config.store.username,config.store.password))
-app.use(bodyParser.json())
+app.use(bodyParser.json({limit: '100mb'}))
 
 //content functions
 app.put('/content/put/:file',routes.content.put)

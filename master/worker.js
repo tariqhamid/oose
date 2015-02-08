@@ -31,7 +31,7 @@ app.post('/ping',routes.ping)
 
 //load middleware
 app.use(basicAuth(config.master.username,config.master.password))
-app.use(bodyParser.json())
+app.use(bodyParser.json({limit: '100mb'}))
 
 
 //memory
