@@ -48,9 +48,12 @@ oose.api.updateConfig({
 program
   .version(config.version)
   .option('-B, --block-size <n>','Block size to bulk lookup, default: 1000')
+  .option('-f, --file <s>','File containting list of migration files')
+  .option('-p, --pretend','Turn on pretend mode to analyze only')
   .parse(process.argv)
 
-var blockSize = process.blockSize || 1000
+var blockSize = (+program.blockSize) || 1000
+if(1000 !== blockSize) console.log('Selected block size of ' + blockSize)
 
 
 /**
@@ -118,7 +121,7 @@ var analyzeBlock = function(progress,block){
       }
       //now make a bulk query to oose
       //ask if the file exists
-      debug('sending detail request')
+      debug('sending detail request',sha1.length)
       return client.postAsync({
         url: client.url('/content/detail'),
         json: {
@@ -130,8 +133,8 @@ var analyzeBlock = function(progress,block){
     .spread(function(res,body){
       var keys = Object.keys(body)
       for(var i = 0; i < keys.length; i++){
-        if(body[i].exists) continue
-        fileDetail[keys[i]] = body[i]
+        if(body[keys[i]].exists) continue
+        fileDetail[keys[i]] = body[keys[i]]
         fileUpload.push(keys[i])
       }
       progress.tick(block.length)
@@ -144,7 +147,7 @@ console.log('------------------------------')
 console.log('Beginning analysis...')
 
 //find all the data paths
-var migrateListFile = process.argv[2]
+var migrateListFile = program.file
 if(!fs.existsSync(migrateListFile))
   throw new Error('No valid file given for migrate inventory list')
 fs.readFileAsync(migrateListFile)
@@ -162,7 +165,10 @@ fs.readFileAsync(migrateListFile)
     var blocks = []
     var blockCount = Math.ceil(fileCount / blockSize)
     for(var i = 0; i < blockCount; i++){
-      blocks.push(files.slice(i * blockSize,blockSize))
+      blocks.push(files.slice(
+        ((i * blockSize) - 1),
+        (((i * blockSize) + blockSize) - 1)
+      ))
     }
     progress = new ProgressBar(
       '  analyzing [:bar] :current/:total :percent :etas',
@@ -182,6 +188,10 @@ fs.readFileAsync(migrateListFile)
     console.log('------------------------------')
     console.log('Analysis complete...')
     console.log('About to upload ' + fileUpload.length + ' files')
+    if(program.pretend){
+      console.log('Pretend mode enabled, exiting! Bye!')
+      process.exit()
+    }
     progress = new ProgressBar(
       '  uploading [:bar] :current/:total :percent :etas',
       {
