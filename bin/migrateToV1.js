@@ -101,9 +101,11 @@ var analyzeBlock = function(progress,block){
   //convert the file list to a list of usable sha1s
   var sha1Dirty = []
   var sha1 = []
+  var sha1Raw
   for(var i = 0; i < block.length; i++){
-    sha1Dirty.push(file.sha1FromPath(block[i]))
-    fileMap[sha1] = block[i]
+    sha1Raw = file.sha1FromPath(block[i])
+    sha1Dirty.push(sha1Raw)
+    fileMap[sha1Raw] = block[i]
   }
   //look up the block in inventory
   return P.try(function(){
@@ -174,7 +176,7 @@ fs.readFileAsync(migrateListFile)
       '  analyzing [:bar] :current/:total :percent :etas',
       {
         total: fileCount,
-        width: 50,
+        width: 40,
         complete: '=',
         incomplete: '-'
       }
@@ -185,7 +187,7 @@ fs.readFileAsync(migrateListFile)
     return analyzeBlock(progress,block)
   })
   .then(function(){
-    console.log('------------------------------')
+    console.log('\n------------------------------')
     console.log('Analysis complete...')
     console.log('About to upload ' + fileUpload.length + ' files')
     if(program.pretend){
@@ -196,7 +198,7 @@ fs.readFileAsync(migrateListFile)
       '  uploading [:bar] :current/:total :percent :etas',
       {
         total: fileUpload.length,
-        width: 50,
+        width: 40,
         complete: '=',
         incomplete: '-'
       }
@@ -207,7 +209,6 @@ fs.readFileAsync(migrateListFile)
     //setup our client handle
     var client = oose.api.prism(selectPrismServer())
     client = oose.api.setSession(ooseSession,client)
-    console.log(sha1,'Uploading....')
     return client.postAsync({
       url: client.url('/content/upload'),
       formData: {
@@ -228,7 +229,6 @@ fs.readFileAsync(migrateListFile)
           throw new UserError('Upload failed, sha1 mismatch got ' +
             sha1 + ' expected ' + body.files.file.sha1)
         //finished
-        console.log(sha1,'Upload complete')
       })
       .then(function(){
         fileCountComplete++
