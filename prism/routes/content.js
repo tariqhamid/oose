@@ -745,6 +745,7 @@ exports.purchase = function(req,res){
  */
 exports.deliver = function(req,res){
   var token = req.params.token
+  var start = req.query.start || '0'
   //var filename = req.params.filename
   var redisKey = redis.schema.purchase(token)
   var purchase
@@ -767,7 +768,7 @@ exports.deliver = function(req,res){
     .then(function(result){
       var proto = 'https' === req.get('X-Forwarded-Protocol') ? 'https' : 'http'
       var url = proto + '://' + result.name + '.' + config.domain +
-        '/' + token + '.' + purchase.ext
+        '/' + token + '.' + purchase.ext + '?start=' + start
       res.redirect(302,url)
     })
     .catch(SyntaxError,function(err){
