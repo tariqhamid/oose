@@ -577,7 +577,7 @@ exports.contentExistsBulk = function(prism,options){
     return client
       .postAsync({
         url: client.url('/content/exists'),
-        json: {sha1: [content.sha1,content.sha1Bogus]},
+        json: {sha1: [content.sha1,content.sha1Bogus,'']},
         localAddress: '127.0.0.1'
       })
       .spread(function(res,body){
@@ -643,7 +643,7 @@ exports.contentDetailBulk = function(prism){
     return client
       .postAsync({
         url: client.url('/content/detail'),
-        json: {sha1: [content.sha1,content.sha1Bogus]},
+        json: {sha1: [content.sha1,content.sha1Bogus,'']},
         localAddress: '127.0.0.1'
       })
       .spread(function(res,body){
