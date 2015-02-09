@@ -755,6 +755,8 @@ exports.deliver = function(req,res){
       //if(purchase.ip !== req.ip) throw new UserError('Invalid request')
       var validReferrer = false
       var referrer = req.get('Referrer')
+      if(!referrer || 'string' !== typeof referrer)
+        throw new UserError('Invalid request')
       for(var i = 0; i < purchase.referrer.length; i++){
         if(referrer.match(purchase.referrer[i])) validReferrer = true
       }
