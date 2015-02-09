@@ -36,6 +36,10 @@ app.post('/',routes.index)
 app.get('/ping',routes.ping)
 app.post('/ping',routes.ping)
 
+app.get('/crossdomain.xml',function(req,res){
+  res.sendFile(__dirname + '/public/crossdomain.xml')
+})
+
 //--------------------
 //protected routes
 //--------------------
