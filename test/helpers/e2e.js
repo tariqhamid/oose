@@ -769,7 +769,7 @@ exports.contentDeliver = function(prism,localAddress,referrer){
         expect(host[0]).to.match(/^store\d{1}$/)
         expect(host[1]).to.equal(prism.domain)
         expect(uri.pathname).to.equal(
-          '/' + exports.purchase.token + '/' + content.filename)
+          '/' + exports.purchase.token + '.' + content.ext)
       })
   }
 }
