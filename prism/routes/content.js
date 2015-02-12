@@ -197,7 +197,7 @@ exports.retrieve = function(req,res){
         extension: extension
       })
     })
-    .catch(NetworkError,function(err){
+    .catch(UserError,NetworkError,function(err){
       res.status(500)
       res.json({
         error: 'Failed to check content existence: ' + err.message
