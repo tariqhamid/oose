@@ -67,7 +67,7 @@ config.$load({
     password: 'oose',
     user: {
       sessionTokenName: 'X-OOSE-Token',
-      sessionLife: 86400 //1 day
+      sessionLife: 172800 //1 day
     }
   },
   //prism
