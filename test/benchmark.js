@@ -93,6 +93,8 @@ describe('benchmark',function(){
       return P.all(promises)
     })
 
+    it('should upload content initially',e2e.contentUpload(e2e.clconf.prism1))
+
     it('content upload ' + numeral(itn.contentUpload).format('0,0') + 'x',
       repeatTest(e2e.clconf.prism1,itn.contentUpload,'contentUpload'))
 

@@ -12,6 +12,7 @@ var redis = require('../helpers/redis')
  * @return {P}
  */
 exports.storeList = function(prism){
+  redis.incr(redis.schema.counter('prism','storeBalance:storeList'))
   return redis.getAsync(redis.schema.storeList())
     .then(function(result){
       result = JSON.parse(result)
@@ -54,6 +55,7 @@ exports.existsToArray = function(exists,skip){
  * @return {P}
  */
 exports.populateStores = function(stores){
+  redis.incr(redis.schema.counter('prism','storeBalance:populateStores'))
   var promises = []
   var results = []
   var populate = function(){
@@ -83,6 +85,7 @@ exports.populateStores = function(stores){
  * @return {Array}
  */
 exports.populateHits = function(token,stores){
+  redis.incr(redis.schema.counter('prism','storeBalance:populateHits'))
   var populate = function(store){
     return function(hits){
       store.hits = +hits
@@ -112,6 +115,7 @@ exports.populateHits = function(token,stores){
  * @return {P}
  */
 exports.winnerFromExists = function(token,exists,skip){
+  redis.incr(redis.schema.counter('prism','storeBalance:winnerFromExists'))
   if(!(skip instanceof Array)) skip = []
   var candidates = exports.existsToArray(exists,skip)
   if(!candidates.length) throw new NotFoundError('No store candidates found')
@@ -132,6 +136,7 @@ exports.winnerFromExists = function(token,exists,skip){
  * @return {P}
  */
 exports.winner = function(storeList,skip){
+  redis.incr(redis.schema.counter('prism','storeBalance:winner'))
   var token = 'new'
   return exports.populateHits(token,storeList)
     .then(function(storeList){

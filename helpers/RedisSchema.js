@@ -33,6 +33,15 @@ RedisSchema.prototype.flushKeys = function(){
 
 
 /**
+ * Key used to print stats
+ * @return {string}
+ */
+RedisSchema.prototype.statKeys = function(){
+  return this.applyPrefix('counter:*')
+}
+
+
+/**
  * Prism list Key
  * @return {string}
  */
@@ -129,6 +138,28 @@ RedisSchema.prototype.purchase = function(token){
  */
 RedisSchema.prototype.purchaseCache = function(sha1,sessionToken){
   return this.applyPrefix('purchase:cache:' + sha1 + ':' + sessionToken)
+}
+
+
+/**
+ * Counter stat
+ * @param {string} system
+ * @param {string} key
+ * @return {string}
+ */
+RedisSchema.prototype.counter = function(system,key){
+  return this.applyPrefix('counter:stat:' + system + ':' + key)
+}
+
+
+/**
+ * Counter error
+ * @param {string} system
+ * @param {string} key
+ * @return {string}
+ */
+RedisSchema.prototype.counterError = function(system,key){
+  return this.applyPrefix('counter:error:' + system + ':' + key)
 }
 
 

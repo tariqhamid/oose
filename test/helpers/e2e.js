@@ -7,12 +7,15 @@ var infant = require('infant')
 var ObjectManage = require('object-manage')
 var oose = require('oose-sdk')
 var path = require('path')
+var rimraf = require('rimraf-promise')
 var url = require('url')
 
 var api = require('../../helpers/api')
 var content = oose.mock.content
-var NetworkError = oose.NetworkError
+var redis = require('../../helpers/redis')
 var sha1File = require('../../helpers/sha1File')
+
+var NetworkError = oose.NetworkError
 var UserError = oose.UserError
 
 var config = require('../../config')
@@ -30,7 +33,6 @@ var P = require('bluebird')
 
 //make some promises
 P.promisifyAll(infant)
-var rimraf = P.promisify(require('rimraf'))
 
 //lets make sure these processes are killed
 process.on('exit',function(){
@@ -155,7 +157,12 @@ exports.server = {
 exports.before = function(that){
   that.timeout(80000)
   console.log('Starting mock cluster....')
-  return rimraf(__dirname + '/../assets/data')
+  return P.try(function(){
+    return rimraf(__dirname + '/../assets/data')
+  })
+    .then(function(){
+      return redis.removeKeysPattern(redis.schema.flushKeys())
+    })
     .then(function(){
       return exports.server.master.startAsync()
     })

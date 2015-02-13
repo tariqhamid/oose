@@ -19,6 +19,7 @@ P.promisifyAll(fs)
  * @param {object} res
  */
 exports.create = function(req,res){
+  redis.incr(redis.schema.counter('store','purchase:create'))
   var purchase
   var token = req.body.token || purchasePath.generateToken()
   var sha1 = req.body.sha1
@@ -43,10 +44,12 @@ exports.create = function(req,res){
       res.json(purchase)
     })
     .catch(NotFoundError,function(err){
+      redis.incr(redis.schema.counterError('store','purchase:create:notFound'))
       res.status(404)
       res.json({error: err.message})
     })
     .catch(UserError,function(err){
+      redis.incr(redis.schema.counterError('store','purchase:create'))
       res.json({error: err.message})
     })
 }
@@ -58,6 +61,7 @@ exports.create = function(req,res){
  * @param {object} res
  */
 exports.find = function(req,res){
+  redis.incr(redis.schema.counter('store','purchase:find'))
   var token = req.body.token
   redis.hgetallAsync(redis.schema.purchase(token))
     .then(function(result){
@@ -65,6 +69,7 @@ exports.find = function(req,res){
       res.json(result)
     })
     .catch(UserError,function(err){
+      redis.incr(redis.schema.counterError('store','purchase:create'))
       res.json({error: err.message})
     })
 }
@@ -76,6 +81,7 @@ exports.find = function(req,res){
  * @param {object} res
  */
 exports.update = function(req,res){
+  redis.incr(redis.schema.counter('store','purchase:update'))
   var token = req.body.token
   var key = redis.schema.purchase(token)
   var purchase
@@ -94,6 +100,7 @@ exports.update = function(req,res){
       res.json(purchase)
     })
     .catch(UserError,function(err){
+      redis.incr(redis.schema.counterError('store','purchase:update'))
       res.json({error: err.message})
     })
 }
@@ -105,6 +112,7 @@ exports.update = function(req,res){
  * @param {object} res
  */
 exports.remove = function(req,res){
+  redis.incr(redis.schema.counter('store','purchase:remove'))
   var token = req.body.token
   var key = redis.schema.purchase(token)
   var purchase
@@ -121,6 +129,7 @@ exports.remove = function(req,res){
       res.json({success: 'Purchase removed'})
     })
     .catch(UserError,function(err){
+      redis.incr(redis.schema.counterError('store','purchase:remove'))
       res.json({error: err.message})
     })
 }

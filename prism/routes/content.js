@@ -89,6 +89,7 @@ var sendToPrism = function(tmpfile,sha1,extension){
  * @param {object} res
  */
 exports.upload = function(req,res){
+  redis.incr(redis.schema.counter('prism','content:upload'))
   var data = {}
   var files = {}
   var filePromises = []
@@ -103,8 +104,13 @@ exports.upload = function(req,res){
     data[key] = value
   })
   busboy.on('file',function(key,file,name,encoding,mimetype){
+    redis.incr(redis.schema.counter('prism','content:filesUploaded'))
     var tmpfile = temp.path({prefix: 'oose-' + config.prism.name + '-'})
     var sniff = sha1stream.createStream()
+    sniff.on('data',function(chunk){
+      redis.incrby(
+        redis.schema.counter('prism','content:bytesUploaded'),chunk.length)
+    })
     var writeStream = fs.createWriteStream(tmpfile)
     files[key] = {
       key: key,
@@ -142,6 +148,7 @@ exports.upload = function(req,res){
         res.json({success: 'File(s) uploaded',data: data,files: files})
       })
       .catch(function(err){
+        redis.incr(redis.schema.counterError('prism','content:upload'))
         res.json({error: err.message})
       })
       //destroy all the temp files from uploading
@@ -167,10 +174,15 @@ exports.upload = function(req,res){
  * @param {object} res
  */
 exports.retrieve = function(req,res){
+  redis.incr(redis.schema.counter('prism','content:retrieve'))
   var retrieveRequest = req.body.request
   var extension = req.body.extension || 'bin'
   var tmpfile = temp.path({prefix: 'oose-' + config.prism.name + '-'})
   var sniff = sha1stream.createStream()
+  sniff.on('data',function(chunk){
+    redis.incrby(
+      redis.schema.counter('prism','content:bytesUploaded'),chunk.length)
+  })
   var sha1
   var writeStream = fs.createWriteStream(tmpfile)
   P.try(function(){
@@ -192,12 +204,14 @@ exports.retrieve = function(req,res){
       //got here? file already exists on cluster so we are done
     })
     .then(function(){
+      redis.incr(redis.schema.counter('prism','content:filesUploaded'))
       res.json({
         sha1: sha1,
         extension: extension
       })
     })
     .catch(UserError,NetworkError,function(err){
+      redis.incr(redis.schema.counterError('prism','content:retrieve'))
       res.status(500)
       res.json({
         error: 'Failed to check content existence: ' + err.message
@@ -257,6 +271,7 @@ exports.put = function(req,res){
  * @param {object} res
  */
 exports.exists = function(req,res){
+  redis.incr(redis.schema.counter('prism','content:exists'))
   var prismList
   var sha1 = req.body.sha1
   var singular = !(sha1 instanceof Array)
@@ -332,6 +347,7 @@ exports.exists = function(req,res){
       }
     })
     .catch(UserError,NetworkError,function(err){
+      redis.incr(redis.schema.counterError('prism','content:retrieve'))
       debug(sha1,'existence resutled in error',err)
       res.json({error: err.message})
     })
@@ -417,6 +433,7 @@ exports.existsLocal = function(req,res){
  * @param {object} res
  */
 exports.existsInvalidate = function(req,res){
+  redis.incr(redis.schema.counter('prism','content:existsInvalidate'))
   var sha1 = req.body.sha1
   prismBalance.prismList()
     .then(function(result){
@@ -439,6 +456,7 @@ exports.existsInvalidate = function(req,res){
       res.json({success: 'Cleared', sha1: sha1})
     })
     .catch(UserError,NetworkError,function(err){
+      redis.incr(redis.schema.counter('prism','content:existsInvalidate'))
       res.json({error: err.message})
     })
 }
@@ -464,6 +482,7 @@ exports.existsInvalidateLocal = function(req,res){
  * @param {object} res
  */
 exports.detail = function(req,res){
+  redis.incr(redis.schema.counter('prism','content:detail'))
   var sha1 = req.body.sha1
   var singular = !(sha1 instanceof Array)
   if(singular) sha1 = [sha1]
@@ -480,7 +499,7 @@ exports.detail = function(req,res){
     return P.all(promises)
   })
     .then(function(results){
-      //figure out which ones still need to queried for
+      //figure out which ones still need to query for
       for(var i = 0; i < sha1.length; i++){
         if(false !== results[i]){
           found[sha1[i]] = results[i]
@@ -523,14 +542,17 @@ exports.detail = function(req,res){
       }
     })
     .catch(NotFoundError,function(err){
+      redis.incr(redis.schema.counterError('prism','content:detail:notFound'))
       res.status(404)
       res.json({error: err.message})
     })
     .catch(NetworkError,function(err){
+      redis.incr(redis.schema.counterError('prism','content:detail:network'))
       res.status(502)
       res.json({error: err.message})
     })
     .catch(UserError,function(err){
+      redis.incr(redis.schema.counterError('prism','content:detail'))
       res.status(500)
       res.json({error: err.message})
     })
@@ -543,6 +565,7 @@ exports.detail = function(req,res){
  * @param {object} res
  */
 exports.download = function(req,res){
+  redis.incr(redis.schema.counter('prism','content:download'))
   var sha1 = req.body.sha1
   var winner, exists
   prismBalance.contentExists(sha1)
@@ -560,6 +583,12 @@ exports.download = function(req,res){
           var req = store.post({
             url: store.url('/content/download'),
             json: {sha1: sha1}
+          })
+          req.on('data',function(chunk){
+            redis.incrby(
+              redis.schema.counter('prism','content:bytesDownloaded'),
+              chunk.length
+            )
           })
           req.on('error',function(err){
             if(!(err instanceof Error)) err = new Error(err)
@@ -583,10 +612,12 @@ exports.download = function(req,res){
         })
     })
     .catch(NotFoundError,function(err){
+      redis.incr(redis.schema.counterError('prism','content:download:notFound'))
       res.status(404)
       res.json({error: err.message})
     })
     .catch(UserError,function(err){
+      redis.incr(redis.schema.counterError('prism','content:download'))
       res.json({error: err.message})
     })
 }
@@ -598,6 +629,7 @@ exports.download = function(req,res){
  * @param {object} res
  */
 exports.purchase = function(req,res){
+  redis.incr(redis.schema.counter('prism','content:purchase'))
   var ip = req.body.ip || req.ip || '127.0.0.1'
   var sha1 = req.body.sha1
   var referrer = req.body.referrer
@@ -725,14 +757,17 @@ exports.purchase = function(req,res){
       res.json(purchase)
     })
     .catch(NetworkError,function(err){
+      redis.incr(redis.schema.counterError('prism','content:purchase:network'))
       res.status(500)
       res.json({error: 'Failed to check existence: ' + err.message})
     })
     .catch(NotFoundError,function(err){
+      redis.incr(redis.schema.counterError('prism','content:purchase:notFound'))
       res.status(404)
       res.json({error: err})
     })
     .catch(UserError,function(err){
+      redis.incr(redis.schema.counterError('prism','content:purchase'))
       res.json({error: err})
     })
 }
@@ -744,6 +779,7 @@ exports.purchase = function(req,res){
  * @param {object} res
  */
 exports.deliver = function(req,res){
+  redis.incr(redis.schema.counter('prism','content:deliver'))
   var token = req.params.token
   var start = req.query.start || '0'
   //var filename = req.params.filename
@@ -759,7 +795,10 @@ exports.deliver = function(req,res){
       if(!referrer || 'string' !== typeof referrer)
         throw new UserError('Invalid request')
       for(var i = 0; i < purchase.referrer.length; i++){
-        if(referrer.match(purchase.referrer[i])) validReferrer = true
+        if(referrer.match(purchase.referrer[i])){
+          validReferrer = true
+          break
+        }
       }
       if(!validReferrer) throw new UserError('Invalid request')
       //we have a purchase so now... we need to pick a store....
@@ -772,14 +811,17 @@ exports.deliver = function(req,res){
       res.redirect(302,url)
     })
     .catch(SyntaxError,function(err){
+      redis.incr(redis.schema.counterError('prism','content:deliver:syntax'))
       res.status(500)
       res.json({error: 'Failed to parse purchase: ' + err.message})
     })
     .catch(NotFoundError,function(err){
+      redis.incr(redis.schema.counterError('prism','content:deliver:notFound'))
       res.status(404)
       res.json({error: err.message})
     })
     .catch(UserError,function(err){
+      redis.incr(redis.schema.counterError('prism','content:deliver'))
       res.status(500)
       res.json({error: err.message})
     })
@@ -792,6 +834,7 @@ exports.deliver = function(req,res){
  * @param {object} res
  */
 exports.contentStatic = function(req,res){
+  redis.incr(redis.schema.counter('prism','content:static'))
   var sha1 = req.params.sha1
   var filename = req.params.filename
   var ext = path.extname(filename).replace('.','')
@@ -809,16 +852,19 @@ exports.contentStatic = function(req,res){
       res.redirect(302,url)
     })
     .catch(NetworkError,function(err){
+      redis.incr(redis.schema.counterError('prism','content:static:network'))
       res.status(500)
       res.json({
         error: 'Failed to check existence: ' + err.message
       })
     })
     .catch(NotFoundError,function(err){
+      redis.incr(redis.schema.counterError('prism','content:static:notFound'))
       res.status(404)
       res.json({error: err.message})
     })
     .catch(UserError,function(err){
+      redis.incr(redis.schema.counterError('prism','content:static'))
       res.status(500)
       res.json({error: err.message})
     })
@@ -831,6 +877,7 @@ exports.contentStatic = function(req,res){
  * @param {object} res
  */
 exports.purchaseRemove = function(req,res){
+  redis.incr(redis.schema.counter('prism','content:purchaseRemove'))
   var token = req.body.token
   var redisKey = redis.schema.purchase(token)
   var prismList

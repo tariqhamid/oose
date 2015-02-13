@@ -14,6 +14,7 @@ var config = require('../../config')
  * @param {object} res
  */
 exports.create = function(req,res){
+  redis.incr(redis.schema.counter('prism','purchase:create'))
   var purchase = req.body.purchase
   var redisKey, cacheKey
   P.try(function(){
@@ -42,6 +43,7 @@ exports.create = function(req,res){
       res.json(purchase)
     })
     .catch(UserError,function(err){
+      redis.incr(redis.schema.counterError('prism','purchase:create'))
       res.json({error: err.message})
     })
 }
@@ -53,6 +55,7 @@ exports.create = function(req,res){
  * @param {object} res
  */
 exports.find = function(req,res){
+  redis.incr(redis.schema.counter('prism','purchase:find'))
   var token = req.body.token
   var redisKey = redis.schema.purchase(token)
   redis.getAsync(redisKey)
@@ -61,9 +64,11 @@ exports.find = function(req,res){
       res.json(JSON.parse(result))
     })
     .catch(SyntaxError,function(err){
+      redis.incr(redis.schema.counterError('prism','purchase:find:syntax'))
       res.json({error: 'Couldnt parse JSON: ' + err.message})
     })
     .catch(UserError,function(err){
+      redis.incr(redis.schema.counterError('prism','purchase:find'))
       res.json({error: err.message})
     })
 }
@@ -75,6 +80,7 @@ exports.find = function(req,res){
  * @param {object} res
  */
 exports.update = function(req,res){
+  redis.incr(redis.schema.counter('prism','purchase:update'))
   var data = req.body
   var token = data.token
   var purchase
@@ -95,9 +101,11 @@ exports.update = function(req,res){
       res.json(purchase)
     })
     .catch(SyntaxError,function(err){
+      redis.incr(redis.schema.counterError('prism','purchase:update:syntax'))
       res.json({error: 'Couldnt parse JSON: ' + err.message})
     })
     .catch(UserError,function(err){
+      redis.incr(redis.schema.counterError('prism','purchase:update'))
       res.json({error: err.message})
     })
 }
@@ -109,6 +117,7 @@ exports.update = function(req,res){
  * @param {object} res
  */
 exports.remove = function(req,res){
+  redis.incr(redis.schema.counter('prism','purchase:remove'))
   var token = req.body.token
   var redisKey = redis.schema.purchase(token)
   var purchase

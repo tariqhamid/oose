@@ -25,8 +25,10 @@ module.exports = function(req,res,next){
   debug('got token',token)
   //without a token lets try basic auth since it can override
   if(!token){
+    redis.incr(redis.schema.counter('prism','userSessionValidate:basic'))
     auth(req,res,next)
   } else {
+    redis.incr(redis.schema.counter('prism','userSessionValidate:full'))
     var session
     redis.getAsync(redis.schema.userSession(token))
       .then(function(result){
@@ -62,15 +64,20 @@ module.exports = function(req,res,next){
         next()
       })
       .catch(SyntaxError,function(err){
+        redis.incr(
+          redis.schema.counterError('prism','userSessionValidate:syntax'))
         res.status(500)
         res.json({error: 'Failed to parse session record from redis: ' +
         err.message})
       })
       .catch(NetworkError,function(err){
+        redis.incr(
+          redis.schema.counterError('prism','userSessionValidate:network'))
         res.status(500)
         res.json({error: 'Failed to validate session: ' + err.message})
       })
       .catch(UserError,function(err){
+        redis.incr(redis.schema.counterError('prism','userSessionValidate'))
         res.status(401)
         res.json({error: err.message})
       })

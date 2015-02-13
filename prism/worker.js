@@ -7,6 +7,7 @@ var fs = require('graceful-fs')
 var https = require('https')
 var worker = require('infant').worker
 
+var redis = require('../helpers/redis')
 var userSessionValidate = require('../helpers/userSessionValidate')
 
 var app = express()
@@ -24,6 +25,12 @@ P.promisifyAll(server)
 //setup
 app.use(bodyParser.json({limit: '100mb'}))
 
+//track requests
+app.use(function(req,res,next){
+  redis.incr(redis.schema.counter('prism','requests'))
+  next()
+})
+
 //--------------------
 //public routes
 //--------------------
@@ -36,7 +43,12 @@ app.post('/',routes.index)
 app.get('/ping',routes.ping)
 app.post('/ping',routes.ping)
 
+//stats
+app.get('/stats',routes.stats)
+app.post('/stats',routes.stats)
+
 app.get('/crossdomain.xml',function(req,res){
+  redis.incr(redis.schema.counter('prism','crossdomain'))
   res.sendFile(__dirname + '/public/crossdomain.xml')
 })
 
@@ -64,6 +76,10 @@ app.post(
 //private routes
 //--------------------
 var auth = basicAuth(config.prism.username,config.prism.password)
+
+//cache management
+app.post('/cache/flush/:command',auth,routes.cache.flush)
+app.post('/cache/detail/:command',auth,routes.cache.detail)
 
 //content
 app.post('/content/exists',auth,routes.content.exists)

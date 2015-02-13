@@ -78,14 +78,11 @@ if(require.main === module){
     'oose:' + config.prism.name + ':guard',
     function(done){
       //setup the interval for collection from master
-      redis.removeKeysPattern(redis.schema.flushKeys())
-        .then(function(){
-          debug('set interval')
-          interval = setInterval(collect,config.prism.guardFrequency)
-          //do initial collection during startup
-          debug('doing initial collection')
-          return collect()
-        })
+      debug('set interval')
+      interval = setInterval(collect,config.prism.guardFrequency)
+      //do initial collection during startup
+      debug('doing initial collection')
+      collect()
         .then(function(){
           debug('initial collection complete')
           done()
