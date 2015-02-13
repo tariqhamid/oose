@@ -35,21 +35,16 @@ exports.ping = function(req,res){
  */
 exports.stats = function(req,res){
   redis.incr(redis.schema.counter('prism','stat'))
-  var stat = new ObjectManage()
-  redis.keysAsync(redis.schema.statKeys())
-    .then(function(results){
-      return results
-    })
-    .each(function(key){
-      return redis.getAsync(key)
-        .then(function(result){
-          stat.$set(
-            key.replace(/:/g,'.').replace('oose.counter.',''),
-            result
-          )
-        })
-    })
-    .then(function(){
+  redis.getKeysPattern(redis.schema.statKeys())
+    .then(function(result){
+      var stat = new ObjectManage()
+      var keys = Object.keys(result.data)
+      for(var i = 0; i < keys.length; i++){
+        stat.$set(
+          keys[i].replace(/:/g,'.').replace('oose.counter.',''),
+          result.data[keys[i]]
+        )
+      }
       res.send(JSON.stringify(stat.$strip(),null,'  '))
     })
 }
