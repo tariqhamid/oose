@@ -1,8 +1,5 @@
 'use strict';
-var moment = require('moment')
 var Password = require('node-password').Password
-
-var config = require('../config')
 
 
 /**
@@ -19,10 +16,6 @@ module.exports = function(sequelize,DataTypes) {
         validate: {
           len: [64,64]
         }
-      },
-      expires: {
-        type: DataTypes.DATE,
-        allowNull: false
       },
       ip: {
         type: DataTypes.STRING,
@@ -52,22 +45,6 @@ module.exports = function(sequelize,DataTypes) {
           fields: ['token','ip']
         }
       ],
-      hooks: {
-        /**
-         * Before doc validation
-         * @param {Sequelize} session
-         * @param {object} options
-         * @param {function} next
-         */
-        beforeValidate: function(session,options,next){
-          if(!session.expires){
-            var expires = moment.utc()
-            expires.add(config.master.user.sessionLife,'seconds')
-            session.expires = expires.toDate()
-          }
-          next(null,session)
-        }
-      },
       classMethods: {
         /**
          * Generate a token

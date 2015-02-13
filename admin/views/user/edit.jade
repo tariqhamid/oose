@@ -30,11 +30,11 @@ block content
             input#toggle(type='checkbox')
           th IP
           th Token
-          th Expires
+          th Created
         each session in sessions
           tr
             td
               input(type='checkbox', name='remove[]', value=session.id)
             td= session.ip
             td= session.token
-            td= session.expires
+            td= session.createdAt
