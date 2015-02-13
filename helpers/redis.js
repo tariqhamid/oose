@@ -19,6 +19,54 @@ client.select(cfg.db || 0)
 
 
 /**
+ * Return an Object sorted by it's Key
+ * @param {object} obj
+ * @return {object}
+ */
+var sortObjectByKey = function(obj){
+  var keys = Object.keys(obj)
+  var sorted = {}
+  // sort keys
+  keys.sort()
+  // create new array based on Sorted Keys
+  keys.forEach(function(key){
+    sorted[key] = obj[key]
+  })
+  return sorted
+}
+
+
+/**
+ * Get keys by a pattern
+ * @param {string} pattern
+ * @return {P}
+ * @this {redis}
+ */
+client.getKeysPattern = function(pattern){
+  var that = this
+  var keys = []
+  return that.keysAsync(pattern)
+    .then(function(result){
+      keys = result
+      var promises = []
+      for(var i = 0; i < keys.length; i++){
+        promises.push(
+          that.getAsync(keys[i])
+        )
+      }
+      return P.all(promises)
+    })
+    .then(function(results){
+      var data = {}
+      for(var i = 0; i < results.length; i++)
+        data[keys[i]] = results[i]
+      data = sortObjectByKey(data)
+      return {success: 'ok', count: results.length, data: data}
+    })
+}
+
+
+/**
  * Remove keys by a pattern
  * @param {string} pattern
  * @return {P}

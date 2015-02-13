@@ -56,6 +56,13 @@ exports.stats = function(req,res){
 
 
 /**
+ * Cache routes
+ * @type {object}
+ */
+exports.cache = require('./cache')
+
+
+/**
  * Content routes
  * @type {object}
  */

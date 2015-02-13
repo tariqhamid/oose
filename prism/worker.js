@@ -77,6 +77,10 @@ app.post(
 //--------------------
 var auth = basicAuth(config.prism.username,config.prism.password)
 
+//cache management
+app.post('/cache/flush/:command',auth,routes.cache.flush)
+app.post('/cache/detail/:command',auth,routes.cache.detail)
+
 //content
 app.post('/content/exists',auth,routes.content.exists)
 app.post('/content/exists/local',auth,routes.content.existsLocal)

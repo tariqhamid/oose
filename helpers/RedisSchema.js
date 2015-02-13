@@ -159,7 +159,7 @@ RedisSchema.prototype.counter = function(system,key){
  * @return {string}
  */
 RedisSchema.prototype.counterError = function(system,key){
-  return this.applyPrefix('prism','counter:error:' + system + ':' + key)
+  return this.applyPrefix('counter:error:' + system + ':' + key)
 }
 
 
