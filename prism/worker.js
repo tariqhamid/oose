@@ -50,7 +50,6 @@ app.post('/user/logout',userSessionValidate,routes.user.logout)
 app.post('/user/password/reset',userSessionValidate,routes.user.passwordReset)
 app.post(
   '/user/session/validate',userSessionValidate,routes.user.sessionValidate)
-app.post('/user/session/renew',userSessionValidate,routes.user.sessionRenew)
 app.post('/user/session/update',userSessionValidate,routes.user.sessionUpdate)
 
 //content functions

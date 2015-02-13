@@ -256,9 +256,6 @@ exports.sessionFind = function(req,res){
   UserSession.find({where: {token: data.token, ip: data.ip}, include: [User]})
     .then(function(session){
       if(!session) throw new UserError('Session could not be found')
-      if((+session.expires) < (+new Date())){
-        throw new UserError('Session has expired')
-      }
       res.json({success: 'Session valid', session: session.dataValues})
     })
     .catch(UserError,function(err){
@@ -277,9 +274,6 @@ exports.sessionUpdate = function(req,res){
   UserSession.find({where: {token: data.token, ip: data.ip}})
     .then(function(session){
       if(!session) throw new UserError('Session could not be found')
-      if((+session.expires) < (+new Date())){
-        throw new UserError('Session has expired')
-      }
       if(data.data) session.data = JSON.stringify(data.data)
       return session.save()
     })
