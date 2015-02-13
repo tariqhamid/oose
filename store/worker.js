@@ -7,6 +7,8 @@ var fs = require('graceful-fs')
 var https = require('https')
 var worker = require('infant').worker
 
+var redis = require('../helpers/redis')
+
 var app = express()
 var config = require('../config')
 var sslOptions = {
@@ -19,6 +21,15 @@ var routes = require('./routes')
 //make some promises
 P.promisifyAll(server)
 
+//setup
+app.use(bodyParser.json({limit: '100mb'}))
+
+//track requests
+app.use(function(req,res,next){
+  redis.incr(redis.schema.counter('store','requests'))
+  next()
+})
+
 //home page
 app.get('/',routes.index)
 app.post('/',routes.index)
@@ -27,9 +38,12 @@ app.post('/',routes.index)
 app.get('/ping',routes.ping)
 app.post('/ping',routes.ping)
 
-//load middleware
+//stats
+app.get('/stats',routes.stats)
+app.post('/stats',routes.stats)
+
+//auth below this point
 app.use(basicAuth(config.store.username,config.store.password))
-app.use(bodyParser.json({limit: '100mb'}))
 
 //content functions
 app.put('/content/put/:file',routes.content.put)

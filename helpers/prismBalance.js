@@ -13,6 +13,7 @@ var config = require('../config')
  * @return {P}
  */
 exports.prismList = function(){
+  redis.incr(redis.schema.counter('prism','prismBalance:prismList'))
   var prismList
   return redis.getAsync(redis.schema.prismList())
     .then(function(result){
@@ -29,6 +30,7 @@ exports.prismList = function(){
  * @return {Array}
  */
 exports.populateHits = function(token,prismList){
+  redis.incr(redis.schema.counter('prism','prismBalance:populateHits'))
   var populate = function(prism){
     return function(hits){
       prism.hits = +hits
@@ -58,6 +60,7 @@ exports.populateHits = function(token,prismList){
  * @return {P}
  */
 exports.winner = function(token,prismList,skip){
+  redis.incr(redis.schema.counter('prism','prismBalance:winner'))
   if(!(skip instanceof Array)) skip = []
   if(!(prismList instanceof Array)) prismList = []
   var winner = false
@@ -84,6 +87,7 @@ exports.winner = function(token,prismList,skip){
  * @return {P}
  */
 exports.contentExists = function(sha1,hardLookup){
+  redis.incr(redis.schema.counter('prism','prismBalance:contentExists'))
   if(undefined === hardLookup) hardLookup = true
   var contentExists
   return redis.getAsync(redis.schema.contentExists(sha1))
@@ -131,6 +135,8 @@ exports.contentExists = function(sha1,hardLookup){
  * @return {P}
  */
 exports.invalidateContentExists = function(sha1){
+  redis.incr(
+    redis.schema.counter('prism','prismBalance:invalidateContentExists'))
   var prism = api.prism(config.prism)
   return prism.postAsync({
     url: prism.url('/content/exists/invalidate'),
@@ -145,6 +151,7 @@ exports.invalidateContentExists = function(sha1){
  * @return {P}
  */
 exports.storeListByPrism = function(prism){
+  redis.incr(redis.schema.counter('prism','prismBalance:storeListByPrism'))
   var storeList = []
   return redis.getAsync(redis.schema.storeList())
     .then(function(result){

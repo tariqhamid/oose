@@ -7,8 +7,10 @@ var path = require('path')
 var promisePipe = require('promisepipe')
 var sha1stream = require('sha1-stream')
 
-var NotFoundError = oose.NotFoundError
+var redis = require('../../helpers/redis')
 var sha1File = require('../../helpers/sha1File')
+
+var NotFoundError = oose.NotFoundError
 var UserError = oose.UserError
 
 //make some promises
@@ -21,9 +23,15 @@ P.promisifyAll(fs)
  * @param {object} res
  */
 exports.put = function(req,res){
+  redis.incr(redis.schema.counter('store','content:put'))
+  redis.incr(redis.schema.counter('store','content:filesUploaded'))
   var file = req.params.file
   var fileDetails
   var sniff = sha1stream.createStream()
+  sniff.on('data',function(chunk){
+    redis.incrby(
+      redis.schema.counter('store','content:bytesUploaded'),chunk.length)
+  })
   var dest
   sha1File.details(file)
     .then(function(result){
@@ -54,6 +62,7 @@ exports.put = function(req,res){
       res.json({sha1: sniff.sha1})
     })
     .catch(UserError,function(err){
+      redis.incr(redis.schema.counterError('store','content:put'))
       res.status(500)
       res.json({error: err})
     })
@@ -66,16 +75,19 @@ exports.put = function(req,res){
  * @param {object} res
  */
 exports.download = function(req,res){
+  redis.incr(redis.schema.counter('store','content:download'))
   sha1File.find(req.body.sha1)
     .then(function(file){
       if(!file) throw new NotFoundError('File not found')
       res.sendFile(file)
     })
     .catch(NotFoundError,function(err){
+      redis.incr(redis.schema.counterError('store','content:download:notFound'))
       res.status(404)
       res.json({error: err.message})
     })
     .catch(UserError,function(err){
+      redis.incr(redis.schema.counterError('store','content:download'))
       res.json({error: err.message})
     })
 }
@@ -87,6 +99,7 @@ exports.download = function(req,res){
  * @param {object} res
  */
 exports.exists = function(req,res){
+  redis.incr(redis.schema.counter('store','content:exists'))
   var sha1 = req.body.sha1
   var singular = !(sha1 instanceof Array)
   if(singular) sha1 = [sha1]
@@ -115,15 +128,18 @@ exports.exists = function(req,res){
  * @param {object} res
  */
 exports.remove = function(req,res){
+  redis.incr(redis.schema.counter('store','content:remove'))
   sha1File.remove(req.body.sha1)
     .then(function(){
       res.json({success: 'File removed'})
     })
     .catch(NotFoundError,function(err){
+      redis.incr(redis.schema.counterError('store','content:remove:notFound'))
       res.status(404)
       res.json({error: err.message})
     })
     .catch(UserError,function(err){
+      redis.incr(redis.schema.counterError('store','content:remove'))
       res.json({error: err.message})
     })
 }

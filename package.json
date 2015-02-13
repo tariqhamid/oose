@@ -44,7 +44,7 @@
     "mysql": "^2.5.4",
     "node-password": "^1.0.2",
     "object-manage": "^0.8.0",
-    "oose-sdk": "^1.1.1",
+    "oose-sdk": "^1.1.5",
     "pretty-bytes": "^1.0.2",
     "progress": "^1.1.8",
     "promisepipe": "^1.0.1",
@@ -65,6 +65,6 @@
     "mocha": "^2.1.0",
     "numeral": "^1.5.3",
     "promiseq": "^0.1.0",
-    "rimraf": "^2.2.8"
+    "rimraf-promise": "^1.0.0"
   }
 }
