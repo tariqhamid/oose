@@ -44,7 +44,7 @@ exports.stats = function(req,res){
       return redis.getAsync(key)
         .then(function(result){
           stat.$set(
-            key.replace(/:/g,'.').replace('oose.counter.stat.',''),
+            key.replace(/:/g,'.').replace('oose.counter.',''),
             result
           )
         })
