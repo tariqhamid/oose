@@ -10,12 +10,6 @@ prism.postAsync({
 })
   .spread(function(res,body){
     console.log(body)
-    return prism.postAsync({
-      url: prism.url('/cache/flush/purchase')
-    })
-  })
-  .spread(function(res,body){
-    console.log(body)
     process.exit()
   })
 
