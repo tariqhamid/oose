@@ -6,7 +6,10 @@ var config = require('../config')
 var prism = api.prism(config.prism)
 
 prism.postAsync({
-  url: prism.url('/cache/flush/exists')
+  url: prism.url('/cache/flush'),
+  json: {
+    command: 'exists'
+  }
 })
   .spread(function(res,body){
     console.log(body)
