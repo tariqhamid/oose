@@ -95,6 +95,12 @@ describe('benchmark',function(){
 
     it('should upload content initially',e2e.contentUpload(e2e.clconf.prism1))
 
+    it('will wait for that upload to settle',function(){
+      return new P(function(resolve){
+        setTimeout(resolve,2000)
+      })
+    })
+
     it('content upload ' + numeral(itn.contentUpload).format('0,0') + 'x',
       repeatTest(e2e.clconf.prism1,itn.contentUpload,'contentUpload'))
 

@@ -8,7 +8,7 @@ var redis = require('../../helpers/redis')
  * @param {object} res
  */
 exports.flush = function(req,res){
-  var command = req.params.command
+  var command = req.body.command
   var commands = {
     all: function(){
       return redis.removeKeysPattern(redis.schema.flushKeys())
@@ -41,7 +41,7 @@ exports.flush = function(req,res){
       return redis.removeKeysPattern(redis.schema.storeHits('*','*'))
     },
     storeEntry: function(){
-      return redis.removeKeysPattern(redis.schema.storeHits('*'))
+      return redis.removeKeysPattern(redis.schema.storeEntry('*'))
     }
   }
   commands[command]()
@@ -57,7 +57,7 @@ exports.flush = function(req,res){
  * @param {object} res
  */
 exports.detail = function(req,res){
-  var command = req.params.command
+  var command = req.body.command
   var commands = {
     all: function(){
       return redis.getKeysPattern(redis.schema.flushKeys())
@@ -90,7 +90,7 @@ exports.detail = function(req,res){
       return redis.getKeysPattern(redis.schema.storeHits('*','*'))
     },
     storeEntry: function(){
-      return redis.getKeysPattern(redis.schema.storeHits('*'))
+      return redis.getKeysPattern(redis.schema.storeEntry('*'))
     }
   }
   commands[command]()
