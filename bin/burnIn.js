@@ -71,26 +71,29 @@ P.try(function(){
       var disk = ''
       for(i = 0; i < disks.length; i++){
         disk = disks[i]
-        promises.push(cp.execAsync('cd ' + disk + '; iozone -a'))
+        promises.push(cp.execAsync(
+          'cd ' + disk + '; iozone -a >/dev/null 2>&1'))
       }
     }
     //test cpu
     if(program.cpu){
       for(i = 0; i < cpuCores; i++){
-        promises.push(cp.execAsync('nbench'))
+        promises.push(cp.execAsync('nbench >/dev/null 2>&1'))
       }
     }
     //test memory
     if(program.memory){
       var memoryAmount = program.memoryAmount || 1024
-      promises.push(cp.execAsync('memtester ' + memoryAmount + 'M 1'))
+      promises.push(cp.execAsync(
+        'memtester ' + memoryAmount + 'M 1 >/dev/null 2>&1'))
     }
     //test network
     if(program.network && program.iperf){
       promises.push(
-        cp.execAsync('iperf3 -t 300 -c ' + program.iperf)
+        cp.execAsync('iperf3 -t 300 -c ' + program.iperf + ' >/dev/null 2>&1')
           .then(function(){
-            return cp.execAsync('iperf3 -R -t 300 -c ' + program.iperf)
+            return cp.execAsync(
+              'iperf3 -R -t 300 -c ' + program.iperf + ' >/dev/null 2>&1')
           })
       )
     }
