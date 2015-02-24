@@ -210,7 +210,7 @@ exports.retrieve = function(req,res){
         extension: extension
       })
     })
-    .catch(NetworkError,function(err){
+    .catch(UserError,NetworkError,function(err){
       redis.incr(redis.schema.counterError('prism','content:retrieve'))
       res.status(500)
       res.json({
