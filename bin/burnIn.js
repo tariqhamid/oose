@@ -2,7 +2,7 @@
 var P = require('bluebird')
 var cp = require('child_process')
 var program = require('commander')
-var oose = require('ooser-sdk')
+var oose = require('oose-sdk')
 var ProgressBar = require('progress')
 
 var UserError = oose.UserError
@@ -19,6 +19,7 @@ var parseDisk = function(val){
 program
   .version(config.version)
   .option('-c, --cpu','Enable CPU testing')
+  .option('-C, --cpu-cores <n>','Number of CPU cores')
   .option('-d, --disk <items>','Disks to test',parseDisk)
   .option('-m, --memory','Enable memory testing')
   .option('-M, --memory-amount <n>','MB of memory to test')
@@ -43,7 +44,7 @@ P.try(function(){
     console.log('Network testing enabled...')
   if(program.network && !program.iperf)
     throw new UserError('Network testing enabled without iperf server')
-  var rounds = program.rounds || 1
+  var rounds = +(program.rounds || 1)
   console.log('About to start ' + rounds + ' rounds of concurrent testing')
   console.log('WARNING! System will become very unresponsive during tests.')
   progress = new ProgressBar(
@@ -62,18 +63,22 @@ P.try(function(){
   return iterations
 })
   .each(function(){
+    var cpuCores = +(program.cpuCores || 1)
     var promises = []
+    var i = 0
     //test disks
     if(disks.length > 0){
       var disk = ''
-      for(var i = 0; i < disks.length; i++){
+      for(i = 0; i < disks.length; i++){
         disk = disks[i]
         promises.push(cp.execAsync('cd ' + disk + '; iozone -a'))
       }
     }
     //test cpu
     if(program.cpu){
-      promises.push(cp.execAsync('nbench'))
+      for(i = 0; i < cpuCores; i++){
+        promises.push(cp.execAsync('nbench'))
+      }
     }
     //test memory
     if(program.memory){
@@ -81,8 +86,13 @@ P.try(function(){
       promises.push(cp.execAsync('memtester ' + memoryAmount + 'M 1'))
     }
     //test network
-    if(program.network){
-      promises.push(cp.execAsync('iperf -s ' + program.iperf))
+    if(program.network && program.iperf){
+      promises.push(
+        cp.execAsync('iperf3 -t 300 -c ' + program.iperf)
+          .then(function(){
+            return cp.execAsync('iperf3 -R -t 300 -c ' + program.iperf)
+          })
+      )
     }
     return P.all(promises)
       .finally(function(){
