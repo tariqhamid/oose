@@ -62,7 +62,9 @@ P.try(function(){
   }
   return iterations
 })
-  .each(function(){
+  .each(function(iteration){
+    var start = +(new Date())
+    console.log('Starting round #' + iteration + ' @ ' + (new Date()))
     var cpuCores = +(program.cpuCores || 1)
     var promises = []
     var i = 0
@@ -99,6 +101,10 @@ P.try(function(){
     }
     return P.all(promises)
       .finally(function(){
+        var end = +(new Date())
+        var duration = ((end - start) / 1000).toFixed(2)
+        console.log(
+          'Round #' + iteration + ' has finished in' + duration + ' seconds')
         progress.tick()
       })
   })
