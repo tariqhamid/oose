@@ -160,7 +160,7 @@ var processFile = function(file){
 
 var contentDetail = function(sha1){
   return prism.postAsync({
-    url: prism.url('/content/detail'),
+    url: prism.url('/content/exists'),
     json: {
       sha1: program.detail
     }
