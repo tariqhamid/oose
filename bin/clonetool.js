@@ -119,7 +119,7 @@ var analyzeFiles = function(progress,fileList){
 
 var addClones = function(file,storeList){
   var promises = []
-  var storeWinners = []
+  var storeWinnerList = []
   var addClone = function(file){
     // so to create a clone we need to figure out a source store
     var prismFromWinner
@@ -156,7 +156,7 @@ var addClones = function(file,storeList){
       for(j = 0; j < storeNameList.length; j++){
         storeName = storeNameList[j]
         if(
-          -1 === storeWinners.indexOf(storeName) &&
+          -1 === storeWinnerList.indexOf(storeName) &&
           prismName !== prismFromWinner &&
           !file.map[prismName].map[storeName]
         ){
@@ -166,12 +166,13 @@ var addClones = function(file,storeList){
     }
     //make sure there is a possibility of a winner
     if(!storeToList.length){
-      console.log(file.sha1,'Sorry! No more available stores to send this to :(')
+      console.log(file.sha1,
+        'Sorry! No more available stores to send this to :(')
     } else {
       //figure out a dest winner
       storeToWinner = storeToList[
         random.integer(0,(storeToList.length - 1))]
-      storeWinners.push(storeToWinner.store)
+      storeWinnerList.push(storeToWinner.store)
       prismToWinner = storeToWinner.prism
       //inform of our decision
       console.log(file.sha1,
@@ -197,11 +198,52 @@ var addClones = function(file,storeList){
 
 var removeClones = function(file,storeList){
   var promises = []
+  var storeWinnerList = []
   var removeClone = function(file){
-    return new P(function(resolve){
-      console.log(file.sha1,'Would have removed a clone')
-      process.nextTick(resolve)
-    })
+    // so to create a clone we need to figure out a source store
+    var storeRemoveWinner
+    var storeRemoveList = []
+    //iteration vars
+    var prismNameList = Object.keys(file.map)
+    var storeNameList = []
+    var storeName = ''
+    var prismName = ''
+    var i, j
+    // figure out a source store
+    for(i = 0; i < prismNameList.length; i++){
+      prismName = prismNameList[i]
+      storeNameList = Object.keys(file.map[prismName].map)
+      for(j = 0; j < storeNameList.length; j++){
+        storeName = storeNameList[j]
+        if(
+          -1 === storeWinnerList.indexOf(storeName) &&
+          file.map[prismName].map[storeName]
+        ){
+          storeRemoveList.push({prism: prismName, store: storeName})
+        }
+      }
+    }
+    //make sure there is a possibility of a winner
+    if(!storeRemoveList.length){
+      console.log(file.sha1,
+        'Sorry! No more available stores to remove this from, it is gone. :(')
+    } else {
+      // now we know possible source stores, randomly select one
+      storeRemoveWinner = storeRemoveList[
+        random.integer(0,(storeRemoveList.length - 1))]
+      //inform of our decision
+      console.log(file.sha1,
+        'Removing from ' + storeRemoveWinner.store +
+        ' on prism ' + storeRemoveWinner.prism)
+      var storeClient = oose.api.store(storeList[storeRemoveWinner.store])
+      return storeClient.postAsync({
+        url: storeClient.url('/content/remove'),
+        json: {
+          sha1: file.sha1 + '.' + file.ext
+        }
+      })
+        .spread(storeClient.validateResponse())
+    }
   }
   for(var i = 0; i < file.add; i++){
     promises.push(removeClone(file))
