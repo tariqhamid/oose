@@ -23,11 +23,12 @@ program
   .option('-b, --below <n>','Files below this count will be analyzed')
   .option('-B, --block-size <n>','Number of files to analyze at once')
   .option('-d, --desired <n>','Desired clone count')
-  .option('-f, --file <s>','SHA1 of file to check')
+  .option('-D, --detail <s>','SHA1 of file to get details about')
   .option('-i, --input <s>','List of SHA1s line separated ' +
   'to analyze, use - for stdin')
   .option('-p, --pretend','Dont actually make and clones just analyze')
   .option('-r, --remove','Remove target files')
+  .option('-s, --sha1 <s>','SHA1 of file to check')
   .parse(process.argv)
 
 var analyzeFiles = function(progress,fileList){
@@ -154,6 +155,21 @@ var fileStream = new MemoryStream()
 var fileList = []
 var fileCount = 0
 P.try(function(){
+  if(program.detail){
+    console.log('Details for ' + program.detail)
+    console.log('-----------------------------')
+    return prism.postAsync({
+      url: prism.url('/content/detail'),
+      json: {
+        sha1: program.detail
+      }
+    })
+      .spread(prism.validateResponse())
+      .spread(function(res,body){
+        console.log(body)
+        process.exit()
+      })
+  }
   var welcomeMessage = 'Welcome to the OOSE v' + config.version + ' clonetool!'
   console.log(welcomeMessage)
   console.log('--------------------')
