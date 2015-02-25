@@ -34,9 +34,9 @@ program
   .parse(process.argv)
 
 var symbols = {
-  ok: '✓',
-  err: '✖',
-  dot: '․'
+  ok: '1',
+  err: '0',
+  dot: '.'
 }
 
 var analyzeFiles = function(progress,fileList){
@@ -159,8 +159,6 @@ var processFile = function(file){
 }
 
 var contentDetail = function(sha1){
-  console.log('Details for ' + sha1)
-  console.log('-----------------------------')
   return prism.postAsync({
     url: prism.url('/content/detail'),
     json: {
@@ -169,34 +167,24 @@ var contentDetail = function(sha1){
   })
     .spread(prism.validateResponse())
     .spread(function(res,body){
-      var table = new Table({
-        head: ['Name','Value'],
-        colWidths: [20,40]
-      })
-      table.push(['SHA1',body.sha1])
-      table.push(['Exists',body.exists ? 'Yes' : 'No'])
-      table.push(['Clone Count',body.count])
+      var table = new Table()
+      table.push(
+        {SHA1: clc.yellow(body.sha1)},
+        {Exists: body.exists ? clc.green('Yes') : clc.red('No')},
+        {'Clone Count': clc.green(body.count)}
+      )
       console.log(table.toString())
-      console.log('Location details')
-      console.log('----------------')
       var prisms = Object.keys(body.map)
       prisms.forEach(function(prismName){
-        console.log('Prism: ' + prismName)
+        console.log(' ' + clc.cyan(prismName))
         var stores = Object.keys(body.map[prismName].map)
-        table = new Table({
-          header: Object.keys(body.map[prismName].map)
-        })
-        var row = []
+        var existsLine = '  '
         stores.forEach(function(store){
-          row.push(
-            body.map[prismName].map[store] ?
-              clc.green(symbols.ok) :
-              clc.red(symbols.dot)
-          )
+          if(body.map[prismName].map[store]) existsLine += clc.green(store) + '  '
+          else existsLine += clc.red(store) + '  '
         })
-        table.push(row)
-        console.log(table.toString())
-        console.log('Total: ' + body.map[prismName].count + ' clone(s)\n')
+        console.log('\n' + existsLine + '\n')
+        console.log(' Total: ' + clc.yellow(body.map[prismName].count) + ' clone(s)\n')
       })
       process.exit()
     })
@@ -207,12 +195,12 @@ var fileStream = new MemoryStream()
 var fileList = []
 var fileCount = 0
 P.try(function(){
-  if(program.detail){
-    return contentDetail(program.detail)
-  }
   var welcomeMessage = 'Welcome to the OOSE v' + config.version + ' clonetool!'
   console.log(welcomeMessage)
   console.log('--------------------')
+  if(program.detail){
+    return contentDetail(program.detail)
+  }
   //do some validation
   if(!program.file && !program.input){
     throw new UserError('No file list or file provided')
