@@ -8,6 +8,7 @@ var MemoryStream = require('memory-stream')
 var oose = require('oose-sdk')
 var ProgressBar = require('progress')
 var promisePipe = require('promisepipe')
+var random = require('random-js')()
 
 var NetworkError = oose.NetworkError
 var UserError = oose.UserError
@@ -16,6 +17,9 @@ var config = require('../config')
 
 //setup a connection to our prism
 var prism = oose.api.prism(config.prism)
+
+//setup a connection to the master
+var master = oose.api.master(config.master)
 
 //setup cli parsing
 program
@@ -64,6 +68,7 @@ var analyzeFiles = function(progress,fileList){
           }
           return {
             sha1: sha1,
+            ext: body[sha1].ext,
             exists: body[sha1].exists,
             count: body[sha1].count,
             add: add,
@@ -111,10 +116,64 @@ var analyzeFiles = function(progress,fileList){
 var addClones = function(file){
   var promises = []
   var addClone = function(file){
-    return new P(function(resolve){
-      console.log(file.sha1,'Would have added a clone')
-      process.nextTick(resolve)
+    console.log(file.sha1,'Starting to add a clone')
+    // so to create a clone we need to figure out a source store
+    var prismFromWinner
+    var storeFromWinner
+    var prismToWinner
+    var storeToWinner
+    var storeFromList =[]
+    var storeToList = []
+    //iteration vars
+    var prismNameList = Object.keys(file.map)
+    var storeNameList = []
+    var storeName = ''
+    var prismName = ''
+    var i, j
+    // figure out a source store
+    for(i = 0; i < prismNameList.length; i++){
+      prismName = prismNameList[i]
+      storeNameList = Object.keys(file.map[prismName])
+      for(j = 0; j < storeNameList.length; j++){
+        storeName = storeNameList[j]
+        if(file.map[prismName].map[storeName]){
+          storeFromList.push({prism: prismName, store: storeName})
+        }
+      }
+    }
+    // now we know possible source stores, randomly select one
+    storeFromWinner = storeFromList[
+      random.integer(0,(storeFromList.length - 1))]
+    prismFromWinner = storeFromWinner.prism
+    // figure out a destination store
+    for(i = 0; i < prismNameList.length; i++){
+      prismName = prismNameList[i]
+      storeNameList = Object.keys(file.map[prismName])
+      for(j = 0; j < storeNameList.length; j++){
+        storeName = storeNameList[j]
+        if(
+          prismName !== prismFromWinner &&
+          !file.map[prismName].map[storeName]
+        ){
+          storeToList.push({prism: prismName, sotre: storeName})
+        }
+      }
+    }
+    //figure out a dest winner
+    storeToWinner = storeToList[
+      random.integer(0,(storeToList.length - 1))]
+    prismToWinner = storeToWinner.prism
+    //inform of our decision
+    console.log(file.sha1,'Sending from ' + storeFromWinner.store +
+    ' to ' + storeToWinner.store + ' on prism ' + prismToWinner)
+    //get a list of stores from master
+    return master.postAsync({
+      url: master.url('/store/list')
     })
+      .spread(master.validateResponse())
+      .spread(function(res,body){
+        console.log(body)
+      })
   }
   for(var i = 0; i < file.add; i++){
     promises.push(addClone(file))
