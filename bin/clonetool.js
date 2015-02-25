@@ -38,37 +38,41 @@ program
   .parse(process.argv)
 
 var analyzeFiles = function(progress,fileList){
+  var above = false !== program.above ? +program.above : null
+  var at = false !== program.at ? +program.at : null
+  var below = false !== program.below ? +program.below : null
+  var desired = false !== program.desired ? + program.desired : 2
   var files = {}
   var fileCount = fileList.length
   var blockSize = program.blockSize || 100
-  var blocks = Math.ceil(fileCount / blockSize)
-  var analyzeBlock = function(files){
+  var blockCount = Math.ceil(fileCount / blockSize)
+  var analyzeBlock = function(fileBlock){
     return prism.postAsync({
       url: prism.url('/content/exists'),
       json: {
-        sha1: files
+        sha1: fileBlock
       }
     })
       .spread(prism.validateResponse())
       .spread(function(res,body){
         var keys = Object.keys(body)
-        var compileResult = function(sha1){
+        var compileResult = function(sha1,count){
           var add = 0
           var remove = 0
           if(
-            (program.above && body[sha1].count > program.above) ||
-            (program.below && body[sha1].count < program.below) ||
-            (program.at && body[sha1].count === program.at)
+            (null !== above && count > above) ||
+            (null !== below && count < below) ||
+            (null !== at && count === at)
           ){
-            if(program.desired > body[sha1].count){
-              add = program.desired - body[sha1].count
-            } else {
-              remove = body[sha1].count - program.desired
+            if(desired > count){
+              add = desired - count
+            } else if(desired < count) {
+              remove = count - desired
             }
           }
           return {
             sha1: sha1,
-            ext: body[sha1].ext,
+            ext: body[sha1].ext || '',
             exists: body[sha1].exists,
             count: body[sha1].count,
             add: add,
@@ -77,7 +81,7 @@ var analyzeFiles = function(progress,fileList){
           }
         }
         for(var i = 0; i < keys.length; i++){
-          files[keys[i]] = compileResult(keys[i])
+          files[keys[i]] = compileResult(keys[i],+body[keys[i]].count)
         }
         return body
       })
@@ -95,13 +99,13 @@ var analyzeFiles = function(progress,fileList){
         })
       })
       .finally(function(){
-        progress.tick(files.length)
+        progress.tick(fileBlock.length)
       })
   }
   return P.try(function(){
     var blockList = []
-    for(var i = 0; i < blocks; i++){
-      blockList.push(fileList.slice(i * blockSize,blockSize))
+    for(var i = 0; i < blockCount; i++){
+      blockList.push(fileList.slice(i * blockSize,(i + 1) * blockSize))
     }
     return blockList
   })
@@ -113,10 +117,10 @@ var analyzeFiles = function(progress,fileList){
     })
 }
 
-var addClones = function(file){
+var addClones = function(file,storeList){
   var promises = []
+  var storeWinners = []
   var addClone = function(file){
-    console.log(file.sha1,'Starting to add a clone')
     // so to create a clone we need to figure out a source store
     var prismFromWinner
     var storeFromWinner
@@ -133,7 +137,7 @@ var addClones = function(file){
     // figure out a source store
     for(i = 0; i < prismNameList.length; i++){
       prismName = prismNameList[i]
-      storeNameList = Object.keys(file.map[prismName])
+      storeNameList = Object.keys(file.map[prismName].map)
       for(j = 0; j < storeNameList.length; j++){
         storeName = storeNameList[j]
         if(file.map[prismName].map[storeName]){
@@ -148,32 +152,42 @@ var addClones = function(file){
     // figure out a destination store
     for(i = 0; i < prismNameList.length; i++){
       prismName = prismNameList[i]
-      storeNameList = Object.keys(file.map[prismName])
+      storeNameList = Object.keys(file.map[prismName].map)
       for(j = 0; j < storeNameList.length; j++){
         storeName = storeNameList[j]
         if(
+          -1 === storeWinners.indexOf(storeName) &&
           prismName !== prismFromWinner &&
           !file.map[prismName].map[storeName]
         ){
-          storeToList.push({prism: prismName, sotre: storeName})
+          storeToList.push({prism: prismName, store: storeName})
         }
       }
     }
-    //figure out a dest winner
-    storeToWinner = storeToList[
-      random.integer(0,(storeToList.length - 1))]
-    prismToWinner = storeToWinner.prism
-    //inform of our decision
-    console.log(file.sha1,'Sending from ' + storeFromWinner.store +
-    ' to ' + storeToWinner.store + ' on prism ' + prismToWinner)
-    //get a list of stores from master
-    return master.postAsync({
-      url: master.url('/store/list')
-    })
-      .spread(master.validateResponse())
-      .spread(function(res,body){
-        console.log(body)
+    //make sure there is a possibility of a winner
+    if(!storeToList.length){
+      console.log(file.sha1,'Sorry! No more available stores to send this to :(')
+    } else {
+      //figure out a dest winner
+      storeToWinner = storeToList[
+        random.integer(0,(storeToList.length - 1))]
+      storeWinners.push(storeToWinner.store)
+      prismToWinner = storeToWinner.prism
+      //inform of our decision
+      console.log(file.sha1,
+        'Sending from ' + storeFromWinner.store +
+        ' on prism ' + prismFromWinner +
+        ' to ' + storeToWinner.store + ' on prism ' + prismToWinner)
+      var sendClient = oose.api.store(storeList[storeFromWinner.store])
+      return sendClient.postAsync({
+        url: sendClient.url('/content/send'),
+        json: {
+          sha1: file.sha1 + '.' + file.ext,
+          store: storeList[storeToWinner.store]
+        }
       })
+        .spread(sendClient.validateResponse())
+    }
   }
   for(var i = 0; i < file.add; i++){
     promises.push(addClone(file))
@@ -181,7 +195,7 @@ var addClones = function(file){
   return P.all(promises)
 }
 
-var removeClones = function(file){
+var removeClones = function(file,storeList){
   var promises = []
   var removeClone = function(file){
     return new P(function(resolve){
@@ -195,15 +209,15 @@ var removeClones = function(file){
   return P.all(promises)
 }
 
-var processFile = function(file){
+var processFile = function(file,storeList){
   return P.try(function(){
     if(file.add > 0){
-      return addClones(file)
+      return addClones(file,storeList)
     }
   })
     .then(function(){
       if(file.remove > 0){
-        return removeClones(file)
+        return removeClones(file,storeList)
       }
     })
     .then(function(){
@@ -250,6 +264,7 @@ var files = {}
 var fileStream = new MemoryStream()
 var fileList = []
 var fileCount = 0
+var storeList = {}
 P.try(function(){
   var welcomeMessage = 'Welcome to the OOSE v' + config.version + ' clonetool!'
   console.log(welcomeMessage)
@@ -340,14 +355,24 @@ P.try(function(){
       console.log('Pretend mode selected, taking no action, bye!')
       process.exit()
     }
-    return Object.keys(files)
+    console.log('Retrieving store list from master')
+    return master.postAsync({
+      url: master.url('/store/list')
+    })
+      .spread(master.validateResponse())
+      .spread(function(res,body){
+        body.store.forEach(function(store){
+          storeList[store.name] = store
+        })
+        return Object.keys(files)
+      })
   })
   .each(function(sha1){
     var file = files[sha1]
     if(file.add > 0 || file.remove > 0){
       console.log('--------------------')
       console.log(file.sha1 + ' starting to process changes')
-      return processFile(file)
+      return processFile(file,storeList)
     }
   })
   .catch(UserError,function(err){
