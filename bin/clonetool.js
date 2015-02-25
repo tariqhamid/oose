@@ -1,5 +1,7 @@
 'use strict';
 var P = require('bluebird')
+var clc = require('cli-color')
+var Table = require('cli-table')
 var program = require('commander')
 var fs = require('graceful-fs')
 var MemoryStream = require('memory-stream')
@@ -30,6 +32,12 @@ program
   .option('-r, --remove','Remove target files')
   .option('-s, --sha1 <s>','SHA1 of file to check')
   .parse(process.argv)
+
+var symbols = {
+  ok: '✓',
+  err: '✖',
+  dot: '․'
+}
 
 var analyzeFiles = function(progress,fileList){
   var files = {}
@@ -150,25 +158,57 @@ var processFile = function(file){
     })
 }
 
+var contentDetail = function(sha1){
+  console.log('Details for ' + sha1)
+  console.log('-----------------------------')
+  return prism.postAsync({
+    url: prism.url('/content/detail'),
+    json: {
+      sha1: program.detail
+    }
+  })
+    .spread(prism.validateResponse())
+    .spread(function(res,body){
+      var table = new Table({
+        head: ['Name','Value'],
+        colWidths: [20,40]
+      })
+      table.push(['SHA1',body.sha1])
+      table.push(['Exists',body.exists ? 'Yes' : 'No'])
+      table.push(['Clone Count',body.count])
+      console.log(table.toString())
+      console.log('Location details')
+      console.log('----------------')
+      var prisms = Object.keys(body.map)
+      prisms.forEach(function(prismName){
+        console.log('Prism: ' + prismName)
+        var stores = Object.keys(body.map[prismName].map)
+        table = new Table({
+          header: Object.keys(body.map[prismName].map)
+        })
+        var row = []
+        stores.forEach(function(store){
+          row.push(
+            body.map[prismName].map[store] ?
+              clc.green(symbols.ok) :
+              clc.red(symbols.dot)
+          )
+        })
+        table.push(row)
+        console.log(table.toString())
+        console.log('Total: ' + body.map[prismName].count + ' clone(s)\n')
+      })
+      process.exit()
+    })
+}
+
 var files = {}
 var fileStream = new MemoryStream()
 var fileList = []
 var fileCount = 0
 P.try(function(){
   if(program.detail){
-    console.log('Details for ' + program.detail)
-    console.log('-----------------------------')
-    return prism.postAsync({
-      url: prism.url('/content/detail'),
-      json: {
-        sha1: program.detail
-      }
-    })
-      .spread(prism.validateResponse())
-      .spread(function(res,body){
-        console.log(body)
-        process.exit()
-      })
+    return contentDetail(program.detail)
   }
   var welcomeMessage = 'Welcome to the OOSE v' + config.version + ' clonetool!'
   console.log(welcomeMessage)
