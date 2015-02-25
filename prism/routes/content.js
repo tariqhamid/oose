@@ -323,17 +323,25 @@ exports.exists = function(req,res){
       var compileResult = function(sha1){
         var map = {}
         var exists = false
+        var ext = ''
         var count = 0
         var row
         for(var i = 0; i < results.length; i++){
           row = results[i]
           if(row.exists[sha1].exists){
+            if(!ext) ext = row.exists[sha1].ext
             exists = true
             count += row.exists[sha1].count
           }
           map[row.prism] = row.exists[sha1]
         }
-        return {sha1: sha1, exists: exists, count: count, map: map}
+        return {
+          sha1: sha1,
+          ext: ext,
+          exists: exists,
+          count: count,
+          map: map
+        }
       }
       var exists = {}
       for(var i = 0; i < sha1.length; i++){
@@ -402,17 +410,19 @@ exports.existsLocal = function(req,res){
       var compileResult = function(sha1){
         var map = {}
         var exists = false
+        var ext = ''
         var count = 0
         var row
         for(var i = 0; i < results.length; i++){
           row = results[i]
-          if(row.exists[sha1]){
+          if(row.exists[sha1].exists){
+            if(!ext) ext = row.exists[sha1].ext
             exists = true
             count++
           }
-          map[row.store] = row.exists[sha1]
+          map[row.store] = row.exists[sha1].exists
         }
-        return {exists: exists, count: count, map: map}
+        return {exists: exists, ext: ext, count: count, map: map}
       }
       var exists = {}
       for(var i = 0; i < sha1.length; i++){

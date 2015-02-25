@@ -79,7 +79,8 @@ describe('store',function(){
           }
         })
         .spread(function(res,body){
-          expect(body.exists).to.equal(true)
+          expect(body.exists.exists).to.equal(true)
+          expect(body.exists.ext).to.equal(content.ext)
         })
     })
     it('should check bulk content exists',function(){
@@ -91,8 +92,10 @@ describe('store',function(){
           }
         })
         .spread(function(res,body){
-          expect(body[content.sha1]).to.equal(true)
-          expect(body[content.sha1Bogus]).to.equal(false)
+          expect(body[content.sha1].exists).to.equal(true)
+          expect(body[content.sha1].ext).to.equal(content.ext)
+          expect(body[content.sha1Bogus].exists).to.equal(false)
+          expect(body[content.sha1Bogus].ext).to.equal('')
         })
     })
     it('should fail for bogus content',function(){
@@ -102,7 +105,8 @@ describe('store',function(){
           json: {sha1: content.sha1Bogus}
         })
         .spread(function(res,body){
-          expect(body.exists).to.equal(false)
+          expect(body.exists.exists).to.equal(false)
+          expect(body.exists.ext).to.equal('')
         })
     })
     it('should remove content',function(){

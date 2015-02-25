@@ -107,8 +107,8 @@ config.$load({
       'webm',
       'wmv'
     ],
-    existsTimeout: 1000,
-    contentExistsCache: 300, //5 minutes
+    existsTimeout: 20000, //20 seconds
+    contentExistsCache: 60, //1 minute
     purchaseLife: 21600, //6hrs
     purchaseCache: 7200, //2 hours
     guardFrequency: 60000 //1 minute

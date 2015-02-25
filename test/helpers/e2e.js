@@ -526,6 +526,61 @@ exports.contentRetrieve = function(prism){
 
 
 /**
+ * Content send
+ * @param {object} prism
+ * @return {Function}
+ */
+exports.contentSend = function(prism){
+  return function(){
+    var client = api.prism(prism.prism)
+    var storeFrom = {}
+    var storeTo = {}
+    var store = {}
+    return client.postAsync({
+      url: client.url('/content/exists'),
+      json: {
+        sha1: content.sha1
+      }
+    })
+      .spread(client.validateResponse())
+      .spread(function(res,body){
+        Object.keys(body.map.prism1.map).forEach(function(store){
+          if(body.map.prism1.map[store]) storeFrom = exports.clconf[store].store
+        })
+        Object.keys(body.map.prism2.map).forEach(function(store){
+          if(!body.map.prism2.map[store]) storeTo = exports.clconf[store].store
+        })
+        store = api.store(storeFrom)
+        return store.postAsync({
+          url: store.url('/content/send'),
+          json: {
+            file: content.sha1 + '.' + content.ext,
+            store: storeTo
+          }
+        })
+      })
+      .spread(client.validateResponse())
+      .spread(function(res,body){
+        expect(body.success).to.equal('Clone sent')
+        expect(body.details.sha1).to.equal(content.sha1)
+        expect(body.details.ext).to.equal(content.ext)
+        store = api.store(storeTo)
+        return store.postAsync({
+          url: store.url('/content/remove'),
+          json: {
+            sha1: body.details.sha1
+          }
+        })
+      })
+      .spread(client.validateResponse())
+      .spread(function(res,body){
+        expect(body.success).to.equal('File removed')
+      })
+  }
+}
+
+
+/**
  * Get content detail
  * @param {object} prism
  * @param {object} options
@@ -555,12 +610,12 @@ exports.contentExists = function(prism,options){
         if(options.deepChecks.indexOf('prism1') !== -1){
           expect(body.map.prism1).to.be.an('object')
           expect(body.map.prism1.exists).to.equal(true)
-          expect(Object.keys(body.map.prism1).length).to.equal(3)
+          expect(Object.keys(body.map.prism1).length).to.equal(4)
         }
         if(options.deepChecks.indexOf('prism2') !== -1){
           expect(body.map.prism2).to.be.an('object')
           expect(body.map.prism2.exists).to.equal(true)
-          expect(Object.keys(body.map.prism2).length).to.equal(3)
+          expect(Object.keys(body.map.prism2).length).to.equal(4)
         }
       })
   }
@@ -603,12 +658,12 @@ exports.contentExistsBulk = function(prism,options){
         if(options.deepChecks.indexOf('prism1') !== -1){
           expect(body.map.prism1).to.be.an('object')
           expect(body.map.prism1.exists).to.equal(true)
-          expect(Object.keys(body.map.prism1).length).to.equal(3)
+          expect(Object.keys(body.map.prism1).length).to.equal(4)
         }
         if(options.deepChecks.indexOf('prism2') !== -1){
           expect(body.map.prism2).to.be.an('object')
           expect(body.map.prism2.exists).to.equal(true)
-          expect(Object.keys(body.map.prism2).length).to.equal(3)
+          expect(Object.keys(body.map.prism2).length).to.equal(4)
         }
       })
   }

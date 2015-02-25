@@ -49,6 +49,9 @@ describe('e2e',function(){
     it('should show the content exists in 2 places',
       e2e.contentExists(e2e.clconf.prism1))
 
+    it('should send content between stores',
+      e2e.contentSend(e2e.clconf.prism1))
+
     it('should do a bulk content exists',
       e2e.contentExistsBulk(e2e.clconf.prism1))
 

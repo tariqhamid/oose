@@ -7,6 +7,7 @@ var path = require('path')
 var promisePipe = require('promisepipe')
 var sha1stream = require('sha1-stream')
 
+var api = require('../../helpers/api')
 var redis = require('../../helpers/redis')
 var sha1File = require('../../helpers/sha1File')
 
@@ -111,7 +112,10 @@ exports.exists = function(req,res){
     .then(function(result){
       var exists = {}
       for(var i = 0; i < sha1.length; i++){
-        exists[sha1[i]] = !!result[i]
+        exists[sha1[i]] = {
+          exists: !!result[i],
+          ext: path.extname(result[i]).replace('.','')
+        }
       }
       if(singular){
         res.json({exists: exists[sha1[0]]})
@@ -141,5 +145,31 @@ exports.remove = function(req,res){
     .catch(UserError,function(err){
       redis.incr(redis.schema.counterError('store','content:remove'))
       res.json({error: err.message})
+    })
+}
+
+
+/**
+ * Content send (to another store)
+ * @param {object} req
+ * @param {object} res
+ */
+exports.send = function(req,res){
+  var file = req.body.file
+  var store = api.store(req.body.store)
+  var details = {}
+  sha1File.details(file)
+    .then(function(result){
+      details = result
+      var rs = fs.createReadStream(sha1File.toPath(details.sha1,details.ext))
+      return promisePipe(rs,store.put({url: store.url('/content/put/' + file)}))
+    })
+    .then(function(){
+      res.json({
+        success: 'Clone sent',
+        file: file,
+        store: store,
+        details: details
+      })
     })
 }

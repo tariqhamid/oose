@@ -112,6 +112,16 @@ RedisSchema.prototype.masterUp = function(){
 
 /**
  * Look up a user session by token
+ * @param {string} username
+ * @return {string}
+ */
+RedisSchema.prototype.user = function(username){
+  return this.applyPrefix('user:' + username)
+}
+
+
+/**
+ * Look up a user session by token
  * @param {string} token
  * @return {string}
  */

@@ -33,12 +33,6 @@ program
   .option('-s, --sha1 <s>','SHA1 of file to check')
   .parse(process.argv)
 
-var symbols = {
-  ok: '1',
-  err: '0',
-  dot: '.'
-}
-
 var analyzeFiles = function(progress,fileList){
   var files = {}
   var fileCount = fileList.length
@@ -162,7 +156,7 @@ var contentDetail = function(sha1){
   return prism.postAsync({
     url: prism.url('/content/exists'),
     json: {
-      sha1: program.detail
+      sha1: sha1
     }
   })
     .spread(prism.validateResponse())
@@ -170,6 +164,7 @@ var contentDetail = function(sha1){
       var table = new Table()
       table.push(
         {SHA1: clc.yellow(body.sha1)},
+        {'File Extension': clc.cyan(body.ext)},
         {Exists: body.exists ? clc.green('Yes') : clc.red('No')},
         {'Clone Count': clc.green(body.count)}
       )
@@ -180,11 +175,13 @@ var contentDetail = function(sha1){
         var stores = Object.keys(body.map[prismName].map)
         var existsLine = '  '
         stores.forEach(function(store){
-          if(body.map[prismName].map[store]) existsLine += clc.green(store) + '  '
+          if(body.map[prismName].map[store])
+            existsLine += clc.green(store) + '  '
           else existsLine += clc.red(store) + '  '
         })
         console.log('\n' + existsLine + '\n')
-        console.log(' Total: ' + clc.yellow(body.map[prismName].count) + ' clone(s)\n')
+        console.log(' Total: ' +
+          clc.yellow(body.map[prismName].count) + ' clone(s)\n')
       })
       process.exit()
     })

@@ -59,13 +59,30 @@ var collectStoreList = function(){
     .catch(master.handleNetworkError)
 }
 
+var collectUserSessionList = function(){
+  return master.postAsync(master.url('/user/session/list'))
+    .spread(function(res,body){
+      debug('got user session list, record count?',body.userSession.length)
+      var promises = []
+      body.userSession.forEach(function(session){
+        promises.push(
+          redis.setAsync(
+            redis.schema.userSession(session.token),JSON.stringify(session)))
+      })
+      return P.all(promises)
+    })
+    .catch(master.handleNetworkError)
+}
+
+
 var collect = function(){
   return checkMaster()
     .then(function(){
       if(!masterUp) throw new NetworkError('Master down')
       return P.all([
         collectPrismList(),
-        collectStoreList()
+        collectStoreList(),
+        collectUserSessionList()
       ])
     })
     .catch(NetworkError,function(){

@@ -50,6 +50,7 @@ app.put('/content/put/:file',routes.content.put)
 app.post('/content/download',routes.content.download)
 app.post('/content/exists',routes.content.exists)
 app.post('/content/remove',routes.content.remove)
+app.post('/content/send',routes.content.send)
 
 //content purchasing
 app.post('/purchase/create',routes.purchase.create)

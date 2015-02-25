@@ -9,6 +9,19 @@ var UserSession = sequelize.models.UserSession
 
 
 /**
+ * User list
+ * @param {object} req
+ * @param {object} res
+ */
+exports.list = function(req,res){
+  User.findAll({where: {active: true}})
+    .then(function(result){
+      res.json({user: result})
+    })
+}
+
+
+/**
  * User find
  * @param {object} req
  * @param {object} res
@@ -162,6 +175,19 @@ exports.logout = function(req,res){
     })
     .catch(UserError,function(err){
       res.json({error: err.message})
+    })
+}
+
+
+/**
+ * Session list
+ * @param {object} req
+ * @param {object} res
+ */
+exports.sessionList = function(req,res){
+  UserSession.findAll()
+    .then(function(result){
+      res.json({userSession: result})
     })
 }
 

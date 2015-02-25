@@ -205,6 +205,14 @@ describe('master',function(){
           expect(body.password.length).to.equal(64)
         })
     })
+    it('should list',function(){
+      return client
+        .postAsync(client.url('/user/list'))
+        .spread(function(res,body){
+          expect(body.user[0]).to.be.an('Object')
+          expect(body.user[0].username).to.be.equal('test')
+        })
+    })
     it('should reset password',function(){
       return client
         .postAsync({
