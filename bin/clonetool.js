@@ -5,6 +5,7 @@ var Table = require('cli-table')
 var program = require('commander')
 var fs = require('graceful-fs')
 var MemoryStream = require('memory-stream')
+var ObjectManage = require('object-manage')
 var oose = require('oose-sdk')
 var ProgressBar = require('progress')
 var promisePipe = require('promisepipe')
@@ -36,6 +37,13 @@ program
   .option('-r, --remove','Remove target files')
   .option('-s, --sha1 <s>','SHA1 of file to check')
   .parse(process.argv)
+
+var setupStore = function(store){
+  var opts = new ObjectManage()
+  opts.$load(config.store)
+  opts.$load(store)
+  return oose.api.store(opts.$strip())
+}
 
 var analyzeFiles = function(progress,fileList){
   var above = false !== program.above ? +program.above : null
@@ -179,7 +187,7 @@ var addClones = function(file,storeList){
         'Sending from ' + storeFromWinner.store +
         ' on prism ' + prismFromWinner +
         ' to ' + storeToWinner.store + ' on prism ' + prismToWinner)
-      var sendClient = oose.api.store(storeList[storeFromWinner.store])
+      var sendClient = setupStore(storeList[storeFromWinner.store])
       return sendClient.postAsync({
         url: sendClient.url('/content/send'),
         json: {
@@ -235,7 +243,7 @@ var removeClones = function(file,storeList){
       console.log(file.sha1,
         'Removing from ' + storeRemoveWinner.store +
         ' on prism ' + storeRemoveWinner.prism)
-      var storeClient = oose.api.store(storeList[storeRemoveWinner.store])
+      var storeClient = setupStore(storeList[storeRemoveWinner.store])
       return storeClient.postAsync({
         url: storeClient.url('/content/remove'),
         json: {
@@ -245,7 +253,7 @@ var removeClones = function(file,storeList){
         .spread(storeClient.validateResponse())
     }
   }
-  for(var i = 0; i < file.add; i++){
+  for(var i = 0; i < file.remove; i++){
     promises.push(removeClone(file))
   }
   return P.all(promises)
@@ -315,7 +323,7 @@ P.try(function(){
     return contentDetail(program.detail)
   }
   //do some validation
-  if(!program.file && !program.input){
+  if(!program.sha1 && !program.input){
     throw new UserError('No file list or file provided')
   }
   //set the desired to the default of 2 if not set
@@ -334,8 +342,8 @@ P.try(function(){
     ' ' + program[changeVerb] + ' clone(s)')
   console.log('--------------------')
   //get file list together
-  if(program.file){
-    fileStream.write(program.file)
+  if(program.sha1){
+    fileStream.write(program.sha1)
   } else if('-' === program.input){
     return promisePipe(process.stdin,fileStream)
   } else {
