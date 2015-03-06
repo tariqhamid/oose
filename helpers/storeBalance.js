@@ -112,9 +112,11 @@ exports.populateHits = function(token,stores){
  * @param {string} token
  * @param {object} exists
  * @param {Array} skip
+ * @param {boolean} allowFull
  * @return {P}
  */
-exports.winnerFromExists = function(token,exists,skip){
+exports.winnerFromExists = function(token,exists,skip,allowFull){
+  if(undefined === allowFull) allowFull = false
   redis.incr(redis.schema.counter('prism','storeBalance:winnerFromExists'))
   if(!(skip instanceof Array)) skip = []
   var candidates = exports.existsToArray(exists,skip)
@@ -124,7 +126,7 @@ exports.winnerFromExists = function(token,exists,skip){
       return exports.populateHits(token,results)
     })
     .then(function(results){
-      return exports.pickWinner(token,results,skip)
+      return exports.pickWinner(token,results,skip,allowFull)
     })
 }
 
@@ -150,9 +152,11 @@ exports.winner = function(storeList,skip){
  * @param {string} token
  * @param {array} storeList
  * @param {array} skip
+ * @param {bool} allowFull
  * @return {P}
  */
-exports.pickWinner = function(token,storeList,skip){
+exports.pickWinner = function(token,storeList,skip,allowFull){
+  if(undefined === allowFull) allowFull = false
   var store
   var winner = false
   if(!token) token = 'new'
@@ -160,7 +164,7 @@ exports.pickWinner = function(token,storeList,skip){
   if(!(storeList instanceof Array)) storeList = []
   for(var i = 0; i < storeList.length; i++){
     store = storeList[i]
-    if((-1 === skip.indexOf(store.name) && !store.full) &&
+    if((-1 === skip.indexOf(store.name) && (allowFull || !store.full)) &&
       ((!winner) || (winner.hits > store.hits))) winner = store
   }
   return redis.incrAsync(redis.schema.storeHits(token,winner.name))

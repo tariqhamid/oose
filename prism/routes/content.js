@@ -812,7 +812,7 @@ exports.deliver = function(req,res){
       }
       if(!validReferrer) throw new UserError('Invalid request')
       //we have a purchase so now... we need to pick a store....
-      return storeBalance.winnerFromExists(token,purchase.map)
+      return storeBalance.winnerFromExists(token,purchase.map,[],true)
     })
     .then(function(result){
       var proto = 'https' === req.get('X-Forwarded-Protocol') ? 'https' : 'http'
