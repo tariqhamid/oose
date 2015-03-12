@@ -583,7 +583,7 @@ exports.download = function(req,res){
       exists = result
       if(!exists && !exists.exists)
         throw new NotFoundError('File not found')
-      return storeBalance.winnerFromExists(sha1,exists)
+      return storeBalance.winnerFromExists(sha1,exists,[],true)
     })
     .then(function(result){
       winner = result
@@ -608,7 +608,7 @@ exports.download = function(req,res){
         })
     })
     .catch(NetworkError,function(){
-      return storeBalance.winnerFromExists(sha1,exists,[winner.name])
+      return storeBalance.winnerFromExists(sha1,exists,[winner.name],true)
         .then(function(result){
           winner = result
           var store = api.store(winner)
@@ -853,7 +853,7 @@ exports.contentStatic = function(req,res){
       if(!result.exists) throw new NotFoundError('Content doesnt exist')
       if(config.prism.denyStaticTypes.indexOf(ext) >= 0)
         throw new UserError('Invalid static file type')
-      return storeBalance.winnerFromExists(sha1,result)
+      return storeBalance.winnerFromExists(sha1,result,[],true)
     })
     .then(function(result){
       var proto = 'https' === req.get('X-Forwarded-Protocol') ? 'https' : 'http'
