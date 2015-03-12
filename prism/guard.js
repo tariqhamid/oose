@@ -85,8 +85,9 @@ var collect = function(){
         collectUserSessionList()
       ])
     })
-    .catch(NetworkError,function(){
+    .catch(NetworkError,function(err){
       //continue as normal on a network error
+      debug('network error',err)
     })
 }
 

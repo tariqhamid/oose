@@ -113,6 +113,7 @@ exports.save = function(req,res){
       if(data.zone) prism.zone = data.zone
       if(data.host) prism.host = data.host
       if(data.port) prism.port = data.port
+      prism.full = !!data.full
       prism.active = !!data.active
       return P.all([
         prism.save()

@@ -1,0 +1,5 @@
+ALTER TABLE `oose`.`Prisms`
+ADD COLUMN `full` TINYINT(1) NOT NULL DEFAULT '0' AFTER `port`;
+
+ALTER TABLE `oose`.`Prisms`
+CHANGE COLUMN `full` `full` TINYINT(1) NOT NULL DEFAULT '0' ;

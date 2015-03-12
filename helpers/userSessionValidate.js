@@ -60,6 +60,7 @@ module.exports = function(req,res,next){
         }
       })
       .then(function(){
+        redis.incr(redis.schema.counter('prism','userSession:' + session.token))
         req.session = session
         next()
       })
