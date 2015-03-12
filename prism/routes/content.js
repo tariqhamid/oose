@@ -59,6 +59,7 @@ var sendToPrism = function(tmpfile,sha1,extension){
     //stream the file to winners
     .then(function(result){
       if(result) winners.push(result)
+      debug('new file winners',sha1,winners)
       var thenReturn = function(val){return val}
       var handleError = function(err){throw new UserError(err.message)}
       var readStream = fs.createReadStream(tmpfile)
