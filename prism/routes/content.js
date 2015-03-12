@@ -299,7 +299,7 @@ exports.exists = function(req,res){
           })
           .catch(client.handleNetworkError)
           .catch(NetworkError,function(){
-            debug(sha1,prism.host + ' timed out, marking false')
+            console.log('exists',sha1,prism.host + ' timed out, marking false')
             var result = {prism: prism.name, exists: {}}
             for(var i = 0; i < sha1.length; i++){
               result.exists[sha1[i]] = {
@@ -391,7 +391,7 @@ exports.existsLocal = function(req,res){
           })
           .catch(client.handleNetworkError)
           .catch(NetworkError,function(err){
-            debug(sha1,store.host + ' existence failed',err)
+            console.log('exists',sha1,store.host + ' existence failed',err)
             var result = {store: store.name, exists: {}}
             for(var i = 0; i < sha1.length; i++){
               result.exists[sha1[i]] = false
