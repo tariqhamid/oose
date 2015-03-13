@@ -29,6 +29,7 @@ program
   .option('-l, --list','List commands')
   .option('-D, --detail','Detail of the command')
   .option('-F, --flush','Flush cache of the command')
+  .parse(process.argv)
 
 if(program.list){
   console.log('Command list')
