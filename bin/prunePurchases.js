@@ -74,7 +74,7 @@ fs.readdirAsync(purchaseFolder)
       return false
     } else {
       var token = match[1]
-      return redis.getAsync(redis.schema.purchase(token))
+      return redis.hgetallAsync(redis.schema.purchase(token))
         .then(function(result){
           if(!result){
             return fs.unlinkAsync(entry.path)
@@ -83,19 +83,12 @@ fs.readdirAsync(purchaseFolder)
               })
           } else {
             counter.valid++
-            console.log(token + ' still valid, skipping...')
-            progress.tick()
             return true
           }
         })
         .catch(function(err){
-          if('WRONGTYPE Operation against a key holding the wrong kind of value' === err.message){
-            redis.del(redis.schema.purchase(token))
-            counter.cleaned++
-          } else {
-            counter.error++
-            console.log('\n' + token + ' ERROR: ' + err.message + '\n')
-          }
+          counter.error++
+          console.log('\n' + token + ' ERROR: ' + err.message + '\n')
         })
         .finally(function(){
           progress.tick()
