@@ -792,10 +792,22 @@ exports.purchase = function(req,res){
 exports.deliver = function(req,res){
   redis.incr(redis.schema.counter('prism','content:deliver'))
   var token = req.params.token
-  var start = req.query.start || '0'
   //var filename = req.params.filename
   var redisKey = redis.schema.purchase(token)
   var purchase
+  /**
+   * Make a content URL
+   * @param {object} req
+   * @param {object} store
+   * @return {string}
+   */
+  var makeUrl = function(req,store){
+    var query = req.url.indexOf('?') >= 0 ?
+      req.url.substr(req.url.indexOf('?')+1) : null
+    var proto = 'https' === req.get('X-Forwarded-Protocol') ? 'https' : 'http'
+    return proto + '://' + store.name + '.' + config.domain +
+      '/' + token + '.' + purchase.ext + (query ? '?' + query : '')
+  }
   redis.getAsync(redisKey)
     .then(function(result){
       if(!result) throw new NotFoundError('Purchase not found')
@@ -816,10 +828,7 @@ exports.deliver = function(req,res){
       return storeBalance.winnerFromExists(token,purchase.map,[],true)
     })
     .then(function(result){
-      var proto = 'https' === req.get('X-Forwarded-Protocol') ? 'https' : 'http'
-      var url = proto + '://' + result.name + '.' + config.domain +
-        '/' + token + '.' + purchase.ext + '?start=' + start
-      res.redirect(302,url)
+      res.redirect(302,makeUrl(req,result))
     })
     .catch(SyntaxError,function(err){
       redis.incr(redis.schema.counterError('prism','content:deliver:syntax'))
