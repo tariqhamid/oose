@@ -18,9 +18,6 @@ var config = require('../config')
 var server = http.createServer(app)
 var routes = require('./routes')
 
-//prevent bad cert errors during testing
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
-
 //make some promises
 P.promisifyAll(server)
 

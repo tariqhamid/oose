@@ -7,9 +7,6 @@ var api = require('../helpers/api')
 
 var config = require('../config')
 
-//prevent bad cert errors during testing
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
-
 //make some promises
 P.promisifyAll(infant)
 
