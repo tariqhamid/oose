@@ -3,6 +3,9 @@ var P = require('bluebird')
 
 var e2e = require('./helpers/e2e')
 
+//prevent bad cert errors during testing
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
+
 describe('outage',function(){
   describe('outage:prism',function(){
     //spin up an entire cluster here

@@ -5,6 +5,8 @@ var PromiseQueue = require('promiseq')
 
 var e2e = require('./helpers/e2e')
 
+//prevent bad cert errors during testing
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 
 /**
  * Requests to run in parallel

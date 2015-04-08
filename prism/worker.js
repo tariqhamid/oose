@@ -74,6 +74,7 @@ app.post('/content/retrieve',userSessionValidate,routes.content.retrieve)
 app.post('/content/purchase',userSessionValidate,routes.content.purchase)
 app.post(
   '/content/purchase/remove',userSessionValidate,routes.content.purchaseRemove)
+app.post('/content/download',userSessionValidate,routes.content.download)
 
 //--------------------
 //private routes
@@ -90,7 +91,6 @@ app.post('/content/exists/local',auth,routes.content.existsLocal)
 app.post('/content/exists/invalidate',auth,routes.content.existsInvalidate)
 app.post('/content/exists/invalidate/local',auth,
   routes.content.existsInvalidateLocal)
-app.post('/content/download',auth,routes.content.download)
 app.put('/content/put/:file',auth,routes.content.put)
 
 //purchases

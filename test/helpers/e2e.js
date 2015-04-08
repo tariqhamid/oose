@@ -20,9 +20,6 @@ var UserError = oose.UserError
 
 var config = require('../../config')
 
-//prevent bad cert errors during testing
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
-
 
 /**
  * Test env var
@@ -478,6 +475,7 @@ exports.contentUpload = function(prism){
         formData: {
           file: fs.createReadStream(content.file)
         },
+        json: true,
         localAddress: '127.0.0.1'
       })
       .spread(function(res,body){

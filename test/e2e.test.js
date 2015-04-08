@@ -3,6 +3,9 @@ var expect = require('chai').expect
 
 var e2e = require('./helpers/e2e')
 
+//prevent bad cert errors during testing
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
+
 describe('e2e',function(){
   describe('e2e:prism',function(){
     //spin up an entire cluster here

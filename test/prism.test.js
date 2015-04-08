@@ -11,6 +11,9 @@ var purchase = oose.mock.purchase
 
 var config = require('../config')
 
+//prevent bad cert errors during testing
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
+
 //make some promises
 P.promisifyAll(infant)
 P.promisifyAll(request)
@@ -107,7 +110,7 @@ describe('prism',function(){
     })
     it('should reset password',function(){
       return api.setSession(user.session,client)
-        .postAsync(client.url('/user/password/reset'))
+        .postAsync({url: client.url('/user/password/reset'), json: true})
         .spread(function(res,body){
           user.password = body.password
           expect(body.success).to.equal('User password reset')
@@ -116,7 +119,7 @@ describe('prism',function(){
     })
     it('should validate a session',function(){
       return api.setSession(user.session,client)
-        .postAsync(client.url('/user/session/validate'))
+        .postAsync({url: client.url('/user/session/validate'), json: true})
         .spread(function(res,body){
           expect(body.success).to.equal('Session valid')
         })
@@ -135,7 +138,7 @@ describe('prism',function(){
     })
     it('should logout',function(){
       return api.setSession(user.session,client)
-        .postAsync(client.url('/user/logout'))
+        .postAsync({url: client.url('/user/logout'), json: true})
         .spread(function(res,body){
           expect(body.success).to.equal('User logged out')
         })
