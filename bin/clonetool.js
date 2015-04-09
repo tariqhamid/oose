@@ -166,7 +166,8 @@ var addClones = function(file,storeList){
         if(
           -1 === storeWinnerList.indexOf(storeName) &&
           prismName !== prismFromWinner &&
-          !file.map[prismName].map[storeName]
+          !file.map[prismName].map[storeName] &&
+          !storeList[storeName].full
         ){
           storeToList.push({prism: prismName, store: storeName})
         }
