@@ -276,6 +276,16 @@ var processFile = function(file,storeList){
     })
 }
 
+var relativePath = function(sha1,ext){
+  var result = ''
+  for(var i = 0; i < sha1.length; i++){
+    if(0 === i % 2) result = result + '/'
+    result = result + sha1.charAt(i)
+  }
+  result = result + '.' + ext
+  return result
+}
+
 var contentDetail = function(sha1){
   return prism.postAsync({
     url: prism.url('/content/exists'),
@@ -289,6 +299,7 @@ var contentDetail = function(sha1){
       table.push(
         {SHA1: clc.yellow(body.sha1)},
         {'File Extension': clc.cyan(body.ext)},
+        {'Relative Path': clc.yellow(relativePath(body.sha1,body.ext))},
         {Exists: body.exists ? clc.green('Yes') : clc.red('No')},
         {'Clone Count': clc.green(body.count)}
       )
