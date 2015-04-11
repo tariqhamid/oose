@@ -805,6 +805,12 @@ exports.deliver = function(req,res){
     var query = req.url.indexOf('?') >= 0 ?
       req.url.substr(req.url.indexOf('?')+1) : null
     var proto = 'https' === req.get('X-Forwarded-Protocol') ? 'https' : 'http'
+    //add a start param regardless so nginx will act correctly on videos
+    // which shouldnt hurt other queries
+    if(!req.query.start){
+      if('' === query) query = '?start=0'
+      else query = query + '&start=0'
+    }
     return proto + '://' + store.name + '.' + config.domain +
       '/' + token + '.' + purchase.ext + (query ? '?' + query : '')
   }
