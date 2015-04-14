@@ -192,7 +192,7 @@ var addClones = function(file,storeList){
       return sendClient.postAsync({
         url: sendClient.url('/content/send'),
         json: {
-          sha1: file.sha1 + '.' + file.ext,
+          file: file.sha1 + '.' + file.ext,
           store: storeList[storeToWinner.store]
         }
       })
