@@ -96,9 +96,13 @@ This folder contains what should live in the root folder (aka the data folder)
 * Exists now takes bulk requests with an array of sha1's and is still
 backward compatible with singular requests.
 * Upgrade to oose-sdk 1.1.0 which implements the Prism helper
-* Introduce `/user/session/renew` to extend session life
-* Sessions are now expired from prisms based on their expiration date it is
-important that API consumers proactively renew their sessions.
+* Sessions are now sticky and can be generated through the oose-sdk
+* Finished clonetool for managing content cluster wide
+* Added storeInventory tool for displaying and repairing store content
+* Added prunePurchases tool for keeping purchases from leaking
+* Updated nginx configuration for better cluster management
+* Added content disposition headers to nginx config
+* Improve prism query string handling on requests
 
 ### 1.0.0
 * Ground up rewrite
