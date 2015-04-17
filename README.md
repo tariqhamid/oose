@@ -97,6 +97,9 @@ This folder contains what should live in the root folder (aka the data folder)
 * `oose-sdk` 1.2.0 has been released in conjunction with this release.
 * All clients that purchase content need to request purchases with file
 extension, this is a breaking change.
+* Exists now takes timeout and retryCount at call time to ensure that scripts
+and other tools that need a higher level of guarantee that content doesnt
+exist will get a more reliable result.
 
 ### 1.1.0
 * Many bug fixes from initial production deployment

@@ -8,6 +8,7 @@ var oose = require('oose-sdk')
 var path = require('path')
 var promisePipe = require('promisepipe')
 var request = require('request')
+var retry = require('bluebird-retry')
 var sha1stream = require('sha1-stream')
 var temp = require('temp')
 
@@ -275,6 +276,8 @@ exports.exists = function(req,res){
   redis.incr(redis.schema.counter('prism','content:exists'))
   var prismList
   var sha1 = req.body.sha1
+  var timeout = req.body.timeout || config.prism.existsTimeout || 2000
+  var tryCount = req.body.tryCount || config.prism.existsTryCount || 1
   var singular = !(sha1 instanceof Array)
   if(singular) sha1 = [sha1]
   P.try(function(){
@@ -289,11 +292,17 @@ exports.exists = function(req,res){
       var checkExistence = function(prism){
         var client = api.prism(prism)
         debug(sha1,'existence check sent to ' + prism.host)
-        return client.postAsync({
-          url: client.url('/content/exists/local'),
-          json: {sha1: sha1},
-          timeout: config.prism.existsTimeout || 2000
-        })
+        return retry(function(){
+          return client.postAsync({
+            url: client.url('/content/exists/local'),
+            json: {
+              sha1: sha1,
+              timeout: timeout,
+              tryCount: tryCount
+            },
+            timeout: timeout
+          })
+        },{max_tries: tryCount, backoff: 2, max_interval: 10000})
           .spread(function(res,body){
             debug(sha1,prism.host + ' responded')
             return {prism: prism.name, exists: body}
@@ -371,6 +380,8 @@ exports.exists = function(req,res){
 exports.existsLocal = function(req,res){
   var storeList
   var sha1 = req.body.sha1
+  var timeout = req.body.timeout || config.prism.existsTimeout || 2000
+  var tryCount = req.body.tryCount || config.prism.existsTryCount || 1
   debug(sha1,'got local request')
   //get a list of store instances we own
   prismBalance.storeListByPrism(config.prism.name)
@@ -381,11 +392,13 @@ exports.existsLocal = function(req,res){
       var checkExistence = function(store){
         var client = api.store(store)
         debug(sha1,store.host + ' sent existence request')
-        return client.postAsync({
-          url: client.url('/content/exists'),
-          json: {sha1: sha1},
-          timeout: config.prism.existsTimeout || null
-        })
+        return retry(function(){
+          return client.postAsync({
+            url: client.url('/content/exists'),
+            json: {sha1: sha1},
+            timeout: timeout
+          })
+        },{max_tries: tryCount, backoff: 2, max_interval: 10000})
           .spread(function(res,body){
             debug(sha1,store.host + ' existence complete')
             return {store: store.name, exists: body}
@@ -642,7 +655,7 @@ exports.download = function(req,res){
 exports.purchase = function(req,res){
   redis.incr(redis.schema.counter('prism','content:purchase'))
   var ip = req.body.ip || req.ip || '127.0.0.1'
-  var start = +new Date()
+  //var start = +new Date()
   var sha1 = req.body.sha1
   var ext = req.body.ext
   var referrer = req.body.referrer
@@ -758,8 +771,8 @@ exports.purchase = function(req,res){
       }
     })
     .then(function(){
-      var duration = (+new Date()) - start
-      console.log('Purchase',purchase.token,purchase.sha1,purchase.ext,' +' + duration + ' ms',purchase.referrer.join(','))
+      //var duration = (+new Date()) - start
+      //console.log('Purchase',purchase.token,purchase.sha1,purchase.ext,' +' + duration + ' ms',purchase.referrer.join(','))
       res.json(purchase)
     })
     .catch(NetworkError,function(err){

@@ -108,7 +108,8 @@ config.$load({
       'wmv'
     ],
     existsTimeout: 20000, //20 seconds
-    contentExistsCache: 60, //1 minute
+    existsTryCount: 1, //number of times to try exists calls before return
+    contentExistsCache: 3600, //1 hour
     purchaseLife: 21600, //6hrs
     purchaseCache: 7200, //2 hours
     guardFrequency: 60000 //1 minute

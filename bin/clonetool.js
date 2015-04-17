@@ -38,6 +38,10 @@ program
   .option('-s, --sha1 <s>','SHA1 of file to check')
   .parse(process.argv)
 
+//existence options
+var existsTryCount = 10
+var existsTimeout = 60000
+
 var setupStore = function(store){
   var opts = new ObjectManage()
   opts.$load(config.store)
@@ -58,7 +62,9 @@ var analyzeFiles = function(progress,fileList){
     return prism.postAsync({
       url: prism.url('/content/exists'),
       json: {
-        sha1: fileBlock
+        sha1: fileBlock,
+        tryCount: existsTryCount,
+        timeout: existsTimeout
       }
     })
       .spread(prism.validateResponse())
@@ -290,7 +296,9 @@ var contentDetail = function(sha1){
   return prism.postAsync({
     url: prism.url('/content/exists'),
     json: {
-      sha1: sha1
+      sha1: sha1,
+      tryCount: existsTryCount,
+      timeout: existsTimeout
     }
   })
     .spread(prism.validateResponse())
