@@ -642,6 +642,7 @@ exports.download = function(req,res){
 exports.purchase = function(req,res){
   redis.incr(redis.schema.counter('prism','content:purchase'))
   var ip = req.body.ip || req.ip || '127.0.0.1'
+  var start = +new Date()
   var sha1 = req.body.sha1
   var referrer = req.body.referrer
   var life = req.body.life || config.prism.purchaseLife
@@ -765,6 +766,8 @@ exports.purchase = function(req,res){
       }
     })
     .then(function(){
+      var duration = (+new Date()) - start
+      console.log('Purchase',purchase.token,purchase.sha1,purchase.ext,' +' + duration + ' ms',purchase.referrer.join(','))
       res.json(purchase)
     })
     .catch(NetworkError,function(err){
