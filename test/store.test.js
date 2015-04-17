@@ -143,7 +143,10 @@ describe('store',function(){
       return client
         .postAsync({
           url: client.url('/purchase/create'),
-          json: {sha1: content.sha1}
+          json: {
+            sha1: content.sha1,
+            ext: content.ext
+          }
         })
         .spread(function(res,body){
           expect(body.success).to.equal('Purchase created')

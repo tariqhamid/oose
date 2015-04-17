@@ -757,6 +757,7 @@ exports.contentPurchase = function(prism){
         url: client.url('/content/purchase'),
         json: {
           sha1: content.sha1,
+          ext: content.ext,
           ip: '127.0.0.1',
           referrer: ['localhost']
         },

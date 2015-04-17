@@ -48,7 +48,7 @@ describe('purchasePath',function(){
   })
   it('should create a purchase',function(){
     var token = purchasePath.generateToken()
-    return purchasePath.create(token,filePath)
+    return purchasePath.create(token,filePath,content.ext)
       .then(function(result){
         purchase = result
         expect(purchase.token).to.equal(token)

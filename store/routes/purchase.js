@@ -23,13 +23,14 @@ exports.create = function(req,res){
   var purchase
   var token = req.body.token || purchasePath.generateToken()
   var sha1 = req.body.sha1
+  var ext = req.body.ext
   var life = req.body.life || 21600 //6 hours
   //first check for the real file
   sha1File.find(sha1)
     .then(function(file){
       if(!file) throw new NotFoundError('File not found')
       if(file instanceof Array) throw new UserError('SHA1 is ambiguous')
-      return purchasePath.create(token,file)
+      return purchasePath.create(token,file,ext)
     })
     .then(function(result){
       purchase = result

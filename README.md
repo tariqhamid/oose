@@ -91,6 +91,13 @@ This folder contains what should live in the root folder (aka the data folder)
 
 ## Changelog
 
+### 1.2.0
+* Purchases now require file extension to ensure consistency of purchases.
+* File detail can be used to ascertain an unknown mime type from a sha1
+* `oose-sdk` 1.2.0 has been released in conjunction with this release.
+* All clients that purchase content need to request purchases with file
+extension, this is a breaking change.
+
 ### 1.1.0
 * Many bug fixes from initial production deployment
 * Exists now takes bulk requests with an array of sha1's and is still

@@ -644,6 +644,7 @@ exports.purchase = function(req,res){
   var ip = req.body.ip || req.ip || '127.0.0.1'
   var start = +new Date()
   var sha1 = req.body.sha1
+  var ext = req.body.ext
   var referrer = req.body.referrer
   var life = req.body.life || config.prism.purchaseLife
   var token, map, purchase
@@ -699,6 +700,7 @@ exports.purchase = function(req,res){
                     url: client.url('/purchase/create'),
                     json: {
                       sha1: sha1,
+                      ext: ext,
                       token: token,
                       life: life
                     }
@@ -712,18 +714,8 @@ exports.purchase = function(req,res){
               promises.push(createPurchase(stores[i]))
             }
             return P.all(promises)
-              .then(function(results){
-                var ext
-                for(var i = 0; i < results.length; i++){
-                  if(!ext && results[i] && results[i][1] && results[i][1].ext){
-                    ext = results[i][1].ext
-                    break
-                  }
-                }
-                return ext
-              })
           })
-          .then(function(ext){
+          .then(function(){
             //now create our purchase object
             purchase = {
               sha1: sha1,

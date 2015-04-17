@@ -67,10 +67,10 @@ exports.exists = function(token,ext){
  * Create a purchase path
  * @param {string} token
  * @param {string} target
+ * @param {string} ext
  * @return {P}
  */
-exports.create = function(token,target){
-  var ext = path.extname(target).replace('.','')
+exports.create = function(token,target,ext){
   var tokenPath = exports.toPath(token,ext)
   return mkdirp(path.dirname(tokenPath))
     .then(function(){
