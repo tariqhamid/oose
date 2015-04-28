@@ -14,6 +14,7 @@ var modelPath = __dirname + '/../models'
  */
 var keyMapping = function(s){
   //load models with keys
+  var Inventory = s.models.Inventory
   var Master = s.models.Master
   var Prism = s.models.Prism
   var Store = s.models.Store
@@ -22,8 +23,12 @@ var keyMapping = function(s){
   //parents
   Master.hasMany(Prism,{onDelete: 'CASCADE', onUpdate: 'CASCADE'})
   Prism.hasMany(Store,{onDelete: 'CASCADE', onUpdate: 'CASCADE'})
+  Prism.hasMany(Inventory,{onDelete: 'CASCADE', onUpdate: 'CASCADE'})
+  Store.hasMany(Inventory,{onDelete: 'CASCADE', onUpdate: 'CASCADE'})
   User.hasMany(UserSession,{onDelete: 'CASCADE', onUpdate: 'CASCADE'})
   //children
+  Inventory.belongsTo(Prism,{onDelete: 'CASCADE', onUpdate: 'CASCADE'})
+  Inventory.belongsTo(Store,{onDelete: 'CASCADE', onUpdate: 'CASCADE'})
   Store.belongsTo(Prism,{onDelete: 'CASCADE', onUpdate: 'CASCADE'})
   Prism.belongsTo(Master,{onDelete: 'CASCADE', onUpdate: 'CASCADE'})
   UserSession.belongsTo(User,{onDelete: 'CASCADE', onUpdate: 'CASCADE'})

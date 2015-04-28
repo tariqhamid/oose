@@ -28,6 +28,11 @@ module.exports = function(sequelize,DataTypes) {
         type: DataTypes.STRING,
         allowNull: false,
         defaultValue: '{}'
+      },
+      hits: {
+        type: DataTypes.INTEGER(11).UNSIGNED,
+        allowNull: false,
+        defaultValue: 0
       }
     },
     {
@@ -43,6 +48,11 @@ module.exports = function(sequelize,DataTypes) {
           unique: false,
           method: 'BTREE',
           fields: ['token','ip']
+        },
+        {
+          name: 'user_session_hits_index',
+          method: 'BTREEE',
+          fields: ['hits']
         }
       ],
       classMethods: {

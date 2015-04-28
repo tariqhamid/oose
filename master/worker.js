@@ -33,13 +33,12 @@ app.post('/ping',routes.ping)
 app.use(basicAuth(config.master.username,config.master.password))
 app.use(bodyParser.json({limit: '100mb'}))
 
-
-//memory
-app.post('/memory/create',routes.memory.create)
-app.post('/memory/find',routes.memory.find)
-app.post('/memory/exists',routes.memory.exists)
-app.post('/memory/update',routes.memory.update)
-app.post('/memory/remove',routes.memory.remove)
+//inventory
+app.post('/inventory/create',routes.inventory.create)
+app.post('/inventory/find',routes.inventory.find)
+app.post('/inventory/exists',routes.inventory.exists)
+app.post('/inventory/update',routes.inventory.update)
+app.post('/inventory/remove',routes.inventory.remove)
 
 //prism
 app.post('/prism/create',routes.prism.create)

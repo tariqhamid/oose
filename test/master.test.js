@@ -2,8 +2,10 @@
 var P = require('bluebird')
 var expect = require('chai').expect
 var infant = require('infant')
+var oose = require('oose-sdk')
 
 var api = require('../helpers/api')
+var content = oose.mock.content
 
 var config = require('../config')
 
@@ -328,55 +330,56 @@ describe('master',function(){
         })
     })
   })
-  //memory
-  describe('master:memory',function(){
+  //inventory
+  describe('master:inventory',function(){
     it('should create',function(){
       return client
         .postAsync({
-          url: client.url('/memory/create'),
+          url: client.url('/inventory/create'),
           json: {
-            name: 'test',
-            value: 'foo'
+            sha1: content.sha1,
+            mimeExtension: content.ext,
+            mimeType: content.mimeType,
+            store: 'om101'
           }
         })
         .spread(function(res,body){
-          expect(body.success).to.equal('Object created')
-          expect(body.id).to.be.greaterThan(0)
+          expect(body.success).to.equal('Inventory created')
+          expect(body.inventory.id).to.be.greaterThan(0)
         })
     })
     it('should exist',function(){
       return client
-        .postAsync({url: client.url('/memory/exists'), json: {name: 'test'}})
+        .postAsync({
+          url: client.url('/inventory/exists'),
+          json: {sha1: content.sha1}
+        })
         .spread(function(res,body){
           expect(body.exists).to.equal(true)
-        })
-    })
-    it('should update',function(){
-      return client
-        .postAsync({
-          url: client.url('/memory/update'),
-          json: {
-            name: 'test',
-            value: 'foo2'
-          }
-        })
-        .spread(function(res,body){
-          expect(body.success).to.equal('Object updated')
+          expect(body.count).to.equal(1)
+          expect(body.map.op101.om101).to.equal(true)
         })
     })
     it('should find',function(){
       return client
-        .postAsync({url: client.url('/memory/find'), json: {name: 'test'}})
+        .postAsync({
+          url: client.url('/inventory/find'),
+          json: {sha1: content.sha1}
+        })
         .spread(function(res,body){
-          expect(body.name).to.equal('test')
-          expect(body.value).to.equal('foo2')
+          expect(body.sha1).to.equal(content.sha1)
+          expect(body.mimeExtension).to.equal(content.ext)
+          expect(body.mimeType).to.equal(content.mimeType)
         })
     })
     it('should remove',function(){
       return client
-        .postAsync({url: client.url('/memory/remove'), json: {name: 'test'}})
+        .postAsync({
+          url: client.url('/inventory/remove'),
+          json: {sha1: content.sha1, store: 'om101'}
+        })
         .spread(function(res,body){
-          expect(body.success).to.equal('Object removed')
+          expect(body.success).to.equal('Inventory removed')
           expect(body.count).to.equal(1)
         })
     })

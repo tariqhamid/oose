@@ -91,6 +91,27 @@ This folder contains what should live in the root folder (aka the data folder)
 
 ## Changelog
 
+### 1.3.0
+
+This version changes the stateless existence system to a more stateful system
+powered by the master. Also purchase records are going to be moved to the master
+so that prisms cannot lose sync by being rebooted or by outages. This will also
+greatly improve the performance of the existence and purchase systems. Which
+should increase cluster performance in general.
+
+These changes will not affect any of the client side functionality and will not
+break any APIs no require any changes to the SDK.
+
+* Add inventory system to the master to maintain copy of all data on the
+cluster.
+* Add tests for inventory system.
+* Add script to scan store inventory and submit it to master
+* Add proactive cache filling of existence on prism from master
+* Store purchases on master
+* Add tests for purchase system
+* Add proactive cache filling of purchase on prism from master
+* Drop unused memory system from master
+
 ### 1.2.0
 * Purchases now require file extension to ensure consistency of purchases.
 * File detail can be used to ascertain an unknown mime type from a sha1

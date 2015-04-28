@@ -11,6 +11,7 @@ exports.index = function(req,res){
   res.json({message: 'Welcome to OOSE version ' + config.version})
 }
 
+
 /**
  * Ping pong for health checks
  * @param {object} req
@@ -33,6 +34,13 @@ exports.prism = require('./prism')
  * @type {exports}
  */
 exports.store = require('./store')
+
+
+/**
+ * Inventory routes
+ * @type {exports}
+ */
+exports.inventory = require('./inventory')
 
 
 /**
