@@ -51,7 +51,7 @@ module.exports = function(sequelize,DataTypes) {
         },
         {
           name: 'user_session_hits_index',
-          method: 'BTREEE',
+          method: 'BTREE',
           fields: ['hits']
         }
       ],

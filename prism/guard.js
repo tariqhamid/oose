@@ -14,6 +14,9 @@ var masterUp = false
 
 var master = api.master()
 
+var inventoryStart = null
+var userSessionListStart = null
+
 var checkMaster = function(){
   return master.postAsync(master.url('/ping'))
     .spread(function(res,body){
@@ -60,7 +63,12 @@ var collectStoreList = function(){
 }
 
 var collectUserSessionList = function(){
-  return master.postAsync(master.url('/user/session/list'))
+  return master.postAsync({
+    url: master.url('/user/session/feed'),
+    json: {
+      start: userSessionListStart
+    }
+  })
     .spread(function(res,body){
       debug('got user session list, record count?',body.userSession.length)
       var promises = []
@@ -70,6 +78,32 @@ var collectUserSessionList = function(){
             redis.schema.userSession(session.token),JSON.stringify(session)))
       })
       return P.all(promises)
+    })
+    .then(function(){
+      userSessionListStart = new Date()
+    })
+    .catch(master.handleNetworkError)
+}
+
+var collectInventory = function(){
+  return master.postAsync({
+    url: master.url('/inventory/feed'),
+    json: {
+      start: inventoryStart
+    }
+  })
+    .spread(function(res,body){
+      debug('got inventory list, record count?',body.length)
+      var promises = []
+      body.forEach(function(record){
+        promises.push(
+          redis.setAsync(
+            redis.schema.inventory(record.sha1),JSON.stringify(record)))
+      })
+      return P.all(promises)
+    })
+    .then(function(){
+      inventoryStart = new Date()
     })
     .catch(master.handleNetworkError)
 }
@@ -82,7 +116,8 @@ var collect = function(){
       return P.all([
         collectPrismList(),
         collectStoreList(),
-        collectUserSessionList()
+        collectUserSessionList(),
+        collectInventory()
       ])
     })
     .catch(NetworkError,function(err){

@@ -193,6 +193,27 @@ exports.sessionList = function(req,res){
 
 
 /**
+ * Get a feed of rows from a time stamp
+ * @param {object} req
+ * @param {object} res
+ */
+exports.sessionFeed = function(req,res){
+  var data = req.body
+  if(!data.start) data.start = new Date(0).toString()
+  if(!data.end) data.end = new Date(((+new Date()) + 1000)).toString()
+  UserSession.findAll({
+    where: sequelize.and(
+      {createdAt: {$gt: (new Date('' + data.start))}},
+      {createdAt: {$lt: (new Date('' + data.end))}}
+    )
+  })
+    .then(function(result){
+      res.json(result)
+    })
+}
+
+
+/**
  * Find a session
  * @param {object} req
  * @param {object} res

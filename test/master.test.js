@@ -255,6 +255,29 @@ describe('master',function(){
           expect(body.session.token.length).to.equal(64)
         })
     })
+    it('should list the sessions',function(){
+      return client
+        .postAsync({
+          url: client.url('/user/session/list')
+        })
+        .spread(function(res,body){
+          expect(body.userSession).to.be.an('Array')
+          expect(body.userSession.length).to.be.greaterThan(0)
+        })
+    })
+    it('should feed the sessions',function(){
+      return client
+        .postAsync({
+          url: client.url('/user/session/feed'),
+          json: {
+            start: null
+          }
+        })
+        .spread(function(res,body){
+          expect(body).to.be.an('Array')
+          expect(body.length).to.be.greaterThan(0)
+        })
+    })
     it('should validate the session',function(){
       return client
         .postAsync({

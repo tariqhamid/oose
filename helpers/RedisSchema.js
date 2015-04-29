@@ -152,6 +152,16 @@ RedisSchema.prototype.purchaseCache = function(sha1,sessionToken){
 
 
 /**
+ * Inventory
+ * @param {string} sha1
+ * @return {string}
+ */
+RedisSchema.prototype.purchaseCache = function(sha1){
+  return this.applyPrefix('inventory:' + sha1)
+}
+
+
+/**
  * Counter stat
  * @param {string} system
  * @param {string} key
