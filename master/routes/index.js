@@ -44,13 +44,6 @@ exports.inventory = require('./inventory')
 
 
 /**
- * Memory routes
- * @type {exports}
- */
-exports.memory = require('./memory')
-
-
-/**
  * User routes
  * @type {exports}
  */

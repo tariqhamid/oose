@@ -14,12 +14,12 @@ module.exports = function(sequelize,DataTypes) {
         allowNull: false
       },
       mimeExtension: {
-        type: DataTypes.TEXT,
+        type: DataTypes.STRING,
         allowNull: false,
         defaultValue: 'bin'
       },
       mimeType: {
-        type: DataTypes.TEXT,
+        type: DataTypes.STRING,
         allowNull: false,
         defaultValue: 'application/octet-stream'
       }

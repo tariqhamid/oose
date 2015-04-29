@@ -332,6 +332,53 @@ describe('master',function(){
   })
   //inventory
   describe('master:inventory',function(){
+    before(function(){
+      return client
+        .postAsync({
+          url: client.url('/prism/create'),
+          json: {
+            name: 'op101',
+            domain: 'localdomain',
+            site: 'localsite',
+            zone: 'localzone',
+            host: '127.0.0.1',
+            port: 3002,
+            active: true
+          }
+        })
+        .spread(function(res,body){
+          expect(body.success).to.equal('Prism instance created')
+          expect(body.id).to.be.greaterThan(0)
+          return client.postAsync({
+            url: client.url('/store/create'),
+            json: {
+              prism: 'op101',
+              name: 'om101',
+              host: '127.0.0.1',
+              port: 3003,
+              active: true
+            }
+          })
+        })
+        .spread(function(res,body){
+          expect(body.success).to.equal('Store instance created')
+          expect(body.id).to.be.greaterThan(0)
+        })
+    })
+    after(function(){
+      return client
+        .postAsync({url: client.url('/store/remove'),json: {name: 'om101'}})
+        .spread(function(res,body){
+          expect(body.success).to.equal('Store instance removed')
+          expect(body.count).to.equal(1)
+          return client
+            .postAsync({url: client.url('/prism/remove'),json: {name: 'op101'}})
+        })
+        .spread(function(res,body){
+          expect(body.success).to.equal('Prism instance removed')
+          return client
+        })
+    })
     it('should create',function(){
       return client
         .postAsync({
@@ -367,9 +414,23 @@ describe('master',function(){
           json: {sha1: content.sha1}
         })
         .spread(function(res,body){
-          expect(body.sha1).to.equal(content.sha1)
-          expect(body.mimeExtension).to.equal(content.ext)
-          expect(body.mimeType).to.equal(content.mimeType)
+          expect(body[0].sha1).to.equal(content.sha1)
+          expect(body[0].mimeExtension).to.equal(content.ext)
+          expect(body[0].mimeType).to.equal(content.type)
+        })
+    })
+    it('should feed',function(){
+      return client
+        .postAsync({
+          url: client.url('/inventory/feed'),
+          json: {
+            start: null
+          }
+        })
+        .spread(function(res,body){
+          expect(body[0].sha1).to.equal(content.sha1)
+          expect(body[0].mimeExtension).to.equal(content.ext)
+          expect(body[0].mimeType).to.equal(content.type)
         })
     })
     it('should remove',function(){

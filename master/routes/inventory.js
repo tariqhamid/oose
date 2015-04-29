@@ -26,6 +26,8 @@ exports.create = function(req,res){
   //lookup the store and prism
   Store.find({where: {name: data.store}, include: [Prism]})
     .then(function(result){
+      if(!result || !result.Prism)
+        throw new UserError('Could not find store')
       store = result
       return Inventory.find({
         where: {
@@ -50,6 +52,10 @@ exports.create = function(req,res){
     })
     .then(function(result){
       res.json({success: 'Inventory created', inventory: result})
+    })
+    .catch(UserError,function(err){
+      res.status(500)
+      res.json({error: err.message})
     })
 }
 
@@ -79,7 +85,17 @@ exports.find = function(req,res){
  */
 exports.feed = function(req,res){
   var data = req.body
-
+  if(!data.start) data.start = new Date(0).toString()
+  if(!data.end) data.end = new Date(((+new Date()) + 1000)).toString()
+  Inventory.findAll({
+    where: sequelize.and(
+      {createdAt: {$gt: (new Date('' + data.start))}},
+      {createdAt: {$lt: (new Date('' + data.end))}}
+    )
+  })
+    .then(function(result){
+      res.json(result)
+    })
 }
 
 
@@ -103,6 +119,7 @@ exports.exists = function(req,res){
       } else {
         var map = {}
         for(var i = 0; i < result.length; i++){
+          if(!map[result[i].Prism.name]) map[result[i].Prism.name] = {}
           map[result[i].Prism.name][result[i].Store.name] = true
         }
         res.json({
@@ -125,13 +142,16 @@ exports.exists = function(req,res){
 exports.remove = function(req,res){
   var data = req.body
   var store = {}
-  Store.find({where: {name: data.name}})
+  Store.find({where: {name: data.store}})
     .then(function(result){
       if(!result) throw new UserError('Store not found')
       store = result
       return Inventory.destroy({where: {sha1: data.sha1, StoreId: store.id}})
     })
     .then(function(count){
-      res.json({success: 'Object removed', count: count})
+      res.json({success: 'Inventory removed', count: count})
+    })
+    .catch(UserError,function(err){
+      res.json({error: err})
     })
 }

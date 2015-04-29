@@ -37,7 +37,7 @@ app.use(bodyParser.json({limit: '100mb'}))
 app.post('/inventory/create',routes.inventory.create)
 app.post('/inventory/find',routes.inventory.find)
 app.post('/inventory/exists',routes.inventory.exists)
-app.post('/inventory/update',routes.inventory.update)
+app.post('/inventory/feed',routes.inventory.feed)
 app.post('/inventory/remove',routes.inventory.remove)
 
 //prism
