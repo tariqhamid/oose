@@ -70,9 +70,9 @@ var collectUserSessionList = function(){
     }
   })
     .spread(function(res,body){
-      debug('got user session list, record count?',body.userSession.length)
+      debug('got user session list, record count?',body.length)
       var promises = []
-      body.userSession.forEach(function(session){
+      body.forEach(function(session){
         promises.push(
           redis.setAsync(
             redis.schema.userSession(session.token),JSON.stringify(session)))
