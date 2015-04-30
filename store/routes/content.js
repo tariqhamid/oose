@@ -11,6 +11,8 @@ var api = require('../../helpers/api')
 var redis = require('../../helpers/redis')
 var sha1File = require('../../helpers/sha1File')
 
+var config = require('../../config')
+
 var NotFoundError = oose.NotFoundError
 var UserError = oose.UserError
 
@@ -57,7 +59,17 @@ exports.put = function(req,res){
       //setup symlink to new file
       return sha1File.linkPath(fileDetails.sha1,fileDetails.ext)
     })
-
+    .then(function(){
+      //tell master about the new inventory record
+      return api.master.postAsync({
+        url: api.master.url('/inventory/create'),
+        json: {
+          sha1: sniff.sha1,
+          mimeExtension: fileDetails.ext,
+          store: config.store.name
+        }
+      })
+    })
     .then(function(){
       res.status(201)
       res.json({sha1: sniff.sha1})

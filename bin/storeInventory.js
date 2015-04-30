@@ -9,15 +9,20 @@ var prettyBytes = require('pretty-bytes')
 
 var config = require('../config')
 
+var api = require('../helpers/api')
+
 //make some promises
 P.promisifyAll(fs)
 
 program
   .version(config.version)
   .option('-b, --brief','Dont display inventory only statistics')
+  .option('-n, --name','Name of the store instance for pushing inventory')
   .option('-R, --repair','Repair broken symlinks if found')
   .option('-q, --quiet','Dont display statistics only inventory')
+  .option('-p, --push','Push inventory to master')
   .option('-r, --root <s>','Folder to examine, eg /media/om101/store')
+  .option('-v, --verbose','Print sha1, extension, path')
   .parse(process.argv)
 
 if(!program.root)
@@ -69,13 +74,29 @@ parser.on('data',function(filePath){
       fs.symlinkSync(filePath,linkPath)
     }
   }
+  var ext = relativePath.match(/\.(.+)$/)[0]
   var sha1 = relativePath.replace(/\//g,'').replace(/\..+$/,'')
   if(!sha1.match(/^[a-f0-9]{40}$/i))
     counter.invalid++
   else {
     counter.valid++
-    if(!program.brief)
+    if(!program.brief && !program.verbose)
       console.log(sha1)
+    else if(!program.brief && program.verbose)
+      console.log(sha1,ext,relativePath,linkPath)
+    if(program.push && program.name){
+      api.master.postAsync({
+        url: api.master.url('/inventory/create'),
+        json: {
+          sha1: sha1,
+          mimeExtension: ext,
+          store: program.name
+        }
+      })
+        .then(function(){
+          console.log(sha1,'Pushed to master')
+        })
+    }
   }
 })
 find.on('close',function(){
