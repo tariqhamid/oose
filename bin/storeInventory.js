@@ -10,6 +10,7 @@ var prettyBytes = require('pretty-bytes')
 var config = require('../config')
 
 var api = require('../helpers/api')
+var master = api.master()
 
 //make some promises
 P.promisifyAll(fs)
@@ -85,8 +86,8 @@ parser.on('data',function(filePath){
     else if(!program.brief && program.verbose)
       console.log(sha1,ext,relativePath,linkPath)
     if(program.push && program.name){
-      api.master.postAsync({
-        url: api.master.url('/inventory/create'),
+      master.postAsync({
+        url: master.url('/inventory/create'),
         json: {
           sha1: sha1,
           mimeExtension: ext,

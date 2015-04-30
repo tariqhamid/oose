@@ -12,6 +12,7 @@ var redis = require('../../helpers/redis')
 var sha1File = require('../../helpers/sha1File')
 
 var config = require('../../config')
+var master = api.master()
 
 var NotFoundError = oose.NotFoundError
 var UserError = oose.UserError
@@ -61,8 +62,8 @@ exports.put = function(req,res){
     })
     .then(function(){
       //tell master about the new inventory record
-      return api.master.postAsync({
-        url: api.master.url('/inventory/create'),
+      return master.postAsync({
+        url: master.url('/inventory/create'),
         json: {
           sha1: sniff.sha1,
           mimeExtension: fileDetails.ext,
