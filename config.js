@@ -112,7 +112,8 @@ config.$load({
     contentExistsCache: 3600, //1 hour
     purchaseLife: 21600, //6hrs
     purchaseCache: 7200, //2 hours
-    guardFrequency: 5000 //5 seconds
+    guardFrequency: 5000, //5 seconds
+    enableSoftLookup: true // do soft existence checks based on inventory
   },
   //storage system
   store: {

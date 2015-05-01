@@ -283,6 +283,10 @@ exports.exists = function(req,res){
   var softLookup = {}
   var exists = {}
   var lookupComplete = false
+  var enableSoftLookup = true
+  if('false' === req.body.softLookup) enableSoftLookup = false
+  if(false === process.env.OOSE_DISABLE_SOFT_LOOKUP) enableSoftLookup = false
+  if(false === config.prism.enableSoftLookup) enableSoftLookup = false
   if(singular) sha1 = [sha1]
   //make a copy of the sha1 request here since we augment it
   var originalSha1 = sha1
@@ -311,7 +315,7 @@ exports.exists = function(req,res){
       sha1.forEach(function(sha1){
         promises.push(redis.hgetallAsync(redis.schema.inventory(sha1))
           .then(function(result){
-            return [sha1,result]
+            return [sha1,enableSoftLookup ? result : null]
           })
         )
       })
@@ -376,7 +380,7 @@ exports.exists = function(req,res){
         exists = softLookup
       } else {
         //now we need to modify the request so that the hard lookup system
-        //will continue to work normall, basically we need to copy the original
+        //will continue to work normal, basically we need to copy the original
         //sha1 request and then populate it with the remaining lookups, then
         //we need one more small piece of integration code at the bottom to
         //merge the results
@@ -748,6 +752,9 @@ exports.download = function(req,res){
                 json: {sha1: sha1}
               }).pipe(res)
             })
+        })
+        .catch(NetworkError,function(){
+          throw new NotFoundError('File not available')
         })
     })
     .catch(NotFoundError,function(err){

@@ -26,7 +26,8 @@ module.exports = {
     username: 'oose-prism',
     password: 'fuckit',
     timeout: 500,
-    workers: {count: 4, maxConnections: 1000000}
+    workers: {count: 4, maxConnections: 1000000},
+    enableSoftLookup: false
   },
   master: {
     enabled: false,
