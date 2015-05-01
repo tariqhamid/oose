@@ -112,7 +112,7 @@ config.$load({
     contentExistsCache: 3600, //1 hour
     purchaseLife: 21600, //6hrs
     purchaseCache: 7200, //2 hours
-    guardFrequency: 60000 //1 minute
+    guardFrequency: 5000 //5 seconds
   },
   //storage system
   store: {

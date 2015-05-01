@@ -96,9 +96,11 @@ var collectInventory = function(){
       debug('got inventory list, record count?',body.length)
       var promises = []
       body.forEach(function(record){
-        promises.push(
-          redis.setAsync(
-            redis.schema.inventory(record.sha1),JSON.stringify(record)))
+        promises.push(redis.hsetAsync(
+          redis.schema.inventory(record.sha1),
+          record.Prism.name + '.' + record.Store.name,
+          record.mimeExtension
+        ))
       })
       return P.all(promises)
     })

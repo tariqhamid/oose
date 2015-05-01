@@ -62,16 +62,18 @@ exports.put = function(req,res){
     })
     .then(function(){
       //tell master about the new inventory record
+      var inventory = {
+        sha1: sniff.sha1,
+        mimeExtension: fileDetails.ext,
+        store: config.store.name
+      }
+      //console.log('content added, notifying master',inventory)
       return master.postAsync({
         url: master.url('/inventory/create'),
-        json: {
-          sha1: sniff.sha1,
-          mimeExtension: fileDetails.ext,
-          store: config.store.name
-        }
+        json: inventory
       })
     })
-    .then(function(){
+    .spread(function(){
       res.status(201)
       res.json({sha1: sniff.sha1})
     })

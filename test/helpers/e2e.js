@@ -315,7 +315,7 @@ exports.after = function(that){
 exports.checkUp = function(type,server){
   return function(){
     var client = api[type](server[type])
-    return client.postAsync({url: client.url('/ping'), timeout: 50})
+    return client.postAsync({url: client.url('/ping'), timeout: 250})
       .spread(function(res,body){
         expect(body.pong).to.equal('pong')
       })
@@ -332,7 +332,7 @@ exports.checkUp = function(type,server){
 exports.checkDown = function(type,server){
   return function(){
     var client = api[type](server[type])
-    return client.postAsync({url: client.url('/ping'), timeout: 50})
+    return client.postAsync({url: client.url('/ping'), timeout: 250})
       .then(function(){
         throw new Error('Server not down')
       })

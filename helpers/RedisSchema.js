@@ -156,7 +156,7 @@ RedisSchema.prototype.purchaseCache = function(sha1,sessionToken){
  * @param {string} sha1
  * @return {string}
  */
-RedisSchema.prototype.purchaseCache = function(sha1){
+RedisSchema.prototype.inventory = function(sha1){
   return this.applyPrefix('inventory:' + sha1)
 }
 

@@ -91,7 +91,8 @@ exports.feed = function(req,res){
     where: sequelize.and(
       {createdAt: {$gt: (new Date('' + data.start))}},
       {createdAt: {$lt: (new Date('' + data.end))}}
-    )
+    ),
+    include: [Store,Prism]
   })
     .then(function(result){
       res.json(result)

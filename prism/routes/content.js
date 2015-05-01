@@ -274,21 +274,118 @@ exports.put = function(req,res){
  */
 exports.exists = function(req,res){
   redis.incr(redis.schema.counter('prism','content:exists'))
-  var prismList
+  var prismList = {}
   var sha1 = req.body.sha1
   var timeout = req.body.timeout || config.prism.existsTimeout || 2000
   var tryCount = req.body.tryCount || config.prism.existsTryCount || 1
   var singular = !(sha1 instanceof Array)
+  var hardLookup = []
+  var softLookup = {}
+  var exists = {}
+  var lookupComplete = false
   if(singular) sha1 = [sha1]
+  //make a copy of the sha1 request here since we augment it
+  var originalSha1 = sha1
   P.try(function(){
     debug(sha1,'got exist request, getting prism list')
-    //get a list of prism instances we know
     return prismBalance.prismList()
   })
     .then(function(result){
-      prismList = result
       var promises = []
-      var prism
+      result.forEach(function(prism){
+        promises.push(
+          storeBalance.storeList(prism.name)
+            .then(function(result){
+              prism.storeList = result
+              prismList[prism.name] = prism
+            })
+        )
+      })
+      return promises
+    })
+    .then(function(){
+      //okay so maybe right here we can try to do a lookup from our pre-filled
+      //database that comes from the master, provided we can get an entry here
+      //it should avoid having to make any other lookups and be 1000% quicker
+      var promises = []
+      sha1.forEach(function(sha1){
+        promises.push(redis.hgetallAsync(redis.schema.inventory(sha1))
+          .then(function(result){
+            return [sha1,result]
+          })
+        )
+      })
+      //now we should have scheduled all the lookups to redis, now we need to map
+      //the results and figure out what we already know and what still needs a
+      //lookup
+      return P.all(promises)
+        .map(function(result){
+          //wtf is in the result?
+          if(!result[1]){
+            hardLookup.push(result[0])
+          } else {
+            //now there is a result so try to build the existence record?
+            //how the hell do we build a map?
+            var map = {}
+            var count = 0
+            var ext = ''
+            var addToMap = function(prism){
+              if(!map[prism.name]){
+                map[prism.name] = {
+                  exists: false,
+                  count: 0,
+                  map: {},
+                  ext: ''
+                }
+              }
+              prism.storeList.forEach(function(store){
+                if(result[1].hasOwnProperty(prism.name + '.' + store.name)){
+                  map[prism.name].exists = true
+                  map[prism.name].count++
+                  if(!ext) ext = result[1][prism.name + '.' + store.name]
+                  map[prism.name].ext = result[1][prism.name + '.' + store.name]
+                  map[prism.name].map[store.name] = true
+                } else {
+                  map[prism.name].map[store.name] = false
+                }
+              })
+            }
+            for(var i in prismList){
+              if(!prismList.hasOwnProperty(i)) continue
+              addToMap(prismList[i])
+              count = count + map[prismList[i].name].count
+            }
+            //finally put the result together
+            softLookup[result[0]] = {
+              sha1: result[0],
+              ext: ext,
+              exists: true,
+              count: count,
+              soft: true,
+              map: map
+            }
+          }
+        })
+    })
+    .then(function(){
+      //now we are done doing our local lookup, if we have no hard lookups we
+      //can just respond now... which is easiest
+      if(0 === hardLookup.count){
+        debug(sha1,'no hard lookups required finished and responding')
+        lookupComplete = true
+        exists = softLookup
+      } else {
+        //now we need to modify the request so that the hard lookup system
+        //will continue to work normall, basically we need to copy the original
+        //sha1 request and then populate it with the remaining lookups, then
+        //we need one more small piece of integration code at the bottom to
+        //merge the results
+        sha1 = hardLookup
+      }
+    })
+    .then(function(){
+      if(lookupComplete) return
+      var promises = []
       var checkExistence = function(prism){
         var client = api.prism(prism)
         debug(sha1,'existence check sent to ' + prism.host)
@@ -322,13 +419,14 @@ exports.exists = function(req,res){
             return result
           })
       }
-      for(var i = 0; i < prismList.length; i++){
-        prism = prismList[i]
-        promises.push(checkExistence(prism))
+      for(var i in prismList){
+        if(!prismList.hasOwnProperty(i)) continue
+        promises.push(checkExistence(prismList[i]))
       }
       return P.all(promises)
     })
     .then(function(results){
+      if(lookupComplete) return
       debug(sha1,'existence lookup returned, compiling')
       var compileResult = function(sha1){
         var map = {}
@@ -341,7 +439,7 @@ exports.exists = function(req,res){
           if(row.exists[sha1].exists){
             if(!ext) ext = row.exists[sha1].ext
             exists = true
-            count += row.exists[sha1].count
+            count = count + row.exists[sha1].count
           }
           map[row.prism] = row.exists[sha1]
         }
@@ -350,14 +448,31 @@ exports.exists = function(req,res){
           ext: ext,
           exists: exists,
           count: count,
+          soft: false,
           map: map
         }
       }
-      var exists = {}
       for(var i = 0; i < sha1.length; i++){
         exists[sha1[i]] = compileResult(sha1[i])
       }
-      debug(sha1,'existence lookup complete')
+    })
+    .then(function(){
+      debug(sha1,'existence lookup complete, merging')
+      //now see if we have any softlookups which need to be merged
+      if(Object.keys(softLookup).length > 0){
+        var originalExists = exists
+        exists = {}
+        //merge the results together
+        originalSha1.forEach(function(sha1){
+          if(softLookup[sha1])
+            exists[sha1] = softLookup[sha1]
+          else
+            exists[sha1] = originalExists[sha1]
+        })
+        //now restore the original sha1 request
+        sha1 = originalSha1
+      }
+      //now return the existing lookup type
       if(singular){
         res.json(exists[sha1[0]])
       } else {

@@ -1,12 +1,17 @@
 'use strict';
+var P = require('bluebird')
 var expect = require('chai').expect
+var oose = require('oose-sdk')
 
 var e2e = require('./helpers/e2e')
+var redis = require('../helpers/redis')
+
+var content = oose.mock.content
 
 describe('e2e',function(){
   describe('e2e:prism',function(){
     //spin up an entire cluster here
-    this.timeout(10000)
+    this.timeout(20000)
     //start servers and create a user
     before(function(){
       var that = this
@@ -108,6 +113,26 @@ describe('e2e',function(){
         .catch(Error,function(err){
           expect(err.message).to.equal('expected 500 to equal 302')
         })
+    })
+    describe('soft content existence',function(){
+      before(function(){
+        return P.all([
+          redis.hsetAsync(
+            redis.schema.inventory(content.sha1),
+            e2e.clconf.prism1.prism.name + '.' + e2e.clconf.store1.store.name,
+            content.ext
+          ),
+          redis.hsetAsync(
+            redis.schema.inventory(content.sha1),
+            e2e.clconf.prism2.prism.name + '.' + e2e.clconf.store3.store.name,
+            content.ext
+          )
+        ])
+      })
+      after(function(){
+        return redis.delAsync(redis.schema.inventory(content.sha1))
+      })
+      it('should use soft contentLookups',e2e.contentExists(e2e.clconf.prism1))
     })
     it('should allow removal of purchases',
       e2e.contentPurchaseRemove(e2e.clconf.prism2))
