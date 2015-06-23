@@ -669,9 +669,10 @@ exports.purchase = function(req,res){
     return redis.getAsync(cacheKey)
   })
     .then(function(result){
-      if(result){
+      purchase = false
+      if(result) purchase = JSON.parse(result)
+      if(purchase && purchase.referrer = req.body.referrer){
         debug('cache hit',cacheKey)
-        purchase = JSON.parse(result)
       } else {
         debug('cache miss',cacheKey)
         return prismBalance.contentExists(sha1)
