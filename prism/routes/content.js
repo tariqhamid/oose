@@ -671,7 +671,7 @@ exports.purchase = function(req,res){
     .then(function(result){
       purchase = false
       if(result) purchase = JSON.parse(result)
-      if(purchase && purchase.referrer = req.body.referrer){
+      if(purchase && purchase.referrer === referrer){
         debug('cache hit',cacheKey)
       } else {
         debug('cache miss',cacheKey)
