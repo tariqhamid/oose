@@ -816,7 +816,7 @@ exports.deliver = function(req,res){
     var proto = 'https' === req.get('X-Forwarded-Protocol') ? 'https' : 'http'
     //add a start param regardless so nginx will act correctly on videos
     // which shouldnt hurt other queries
-    if(!req.query.start){
+    if(!req.query.start && !req.query.html5){
       if('' === query) query = '?start=0'
       else query = query + '&start=0'
     }
