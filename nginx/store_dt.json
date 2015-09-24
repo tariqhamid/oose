@@ -1,0 +1,26 @@
+{
+  "name": "OOSENAME",
+  "cwd": "OOSEDIR",
+  "user": "node",
+  "command": "node app",
+  "env": {
+    "NODE_ENV": "production",
+    "OOSE_CONFIG": "OOSECONFIGFILE",
+    "SHELL": "/bin/bash",
+    "USER": "node",
+    "PATH": "/usr/local/bin:/usr/bin:/bin:/opt/bin",
+    "PWD": "MOUNTDIR",
+    "LANG": "en_US.utf8",
+    "SHLVL": "1",
+    "HOME": "/home/node",
+    "LESS": "-R -M --shift 5",
+    "LOGNAME": "node",
+    "LESSOPEN": "|lesspipe %s",
+    "INFOPATH": "/usr/share/info",
+    "_": "/usr/bin/env"
+  },
+  "log": {
+    "user": "node",
+    "command": "multilog s16777215 t LOGFILE"
+  }
+}
