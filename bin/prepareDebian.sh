@@ -29,7 +29,7 @@ echo "Installing Tools"
 apt-get -y install dstat vim gdisk mtr traceroute git make gcc g++
 
 echo "Installing NGINX"
-apt-get -y install nginx
+apt-get -y install nginx-extras
 /etc/init.d/nginx start
 insserv nginx
 
@@ -54,7 +54,7 @@ echo "Installing Node NDT"
 npm -g install ndt
 
 echo "Installing sysfsutils"
-apt-get -y isntall sysfsutils
+apt-get -y install sysfsutils
 insserv sysfsutils
 /etc/init.d/sysfsutils start
 

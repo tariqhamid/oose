@@ -15,7 +15,8 @@ echo "Welcome to OOSE Instance Installation Preparation"
 
 oosedir="$1"
 disk="$2"
-partition="$disk1"
+diskRelative="$(basename $disk)"
+partition="${disk}1"
 mount="$3"
 name=$(basename $3)
 host="$4"
@@ -42,9 +43,9 @@ if [ ! -e "$disk" ]; then
 fi
 
 echo "We are now going to wipe the disk $disk, ALL DATA WILL BE LOST!!"
-read -p "Are you sure? " -n 1 -r
+read -p "Are you sure (y|n)? " -n 1 -r
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-  dd if=/dev/zero of=$disk bs=1M count=1k
+  sgdisk -Z $disk
 else
   echo "Aborting preparation"
   exit
@@ -54,17 +55,18 @@ echo "Installing gdisk and XFS to make partitions and the FS"
 apt-get -y install gdisk xfsprogs
 
 echo "Creating partition table on $disk"
-echo "2\nn\n1\n2048\n\n8300\nw\nq\n" | gdisk $disk
+sgdisk --new=0:0:0 -t 1:8300 $disk
+sgdisk -p $disk
 
 echo "Creating file system on $partition"
-mkfs.xfs $partition
+mkfs.xfs -f $partition
 
 echo -n "Obtaining $partition UUID.."
-uuid="$(head -1 `blkid $partition -o value`)"
+uuid="$(blkid $partition -o value | grep -)"
 echo $uuid
 
 echo -n "Adding $partition to $fstab... "
-if [[ '' == $(cat $fstab | grep $partition) ]]; then
+if [[ '' != $(cat $fstab | grep $uuid) ]]; then
   echo "already exists"
 else
   echo "UUID=$uuid  $mount   xfs    noatime    0    0" >> $fstab
@@ -84,11 +86,11 @@ mkdir -p $mount/store/purchased
 echo "done"
 
 echo -n "Setting ownership permissions... "
-chmod -R node. $mount
+chown -R node. $mount
 echo "done"
 
 echo -n "Creating store config on $mount for $name ($host)... "
-echo "'use strict';" >> $configFile
+echo "'use strict';" > $configFile
 echo >> $configFile
 echo "module.exports = {" >> $configFile
 echo "  root: __dirname + '/store'," >> $configFile
@@ -102,11 +104,11 @@ echo "done"
 
 echo -n "Create $mount/dt.json for loading... "
 cp $oosedir/nginx/store_dt.json $mount/dt.json
-sed -i "s/OOSENAME/$name/g" $mount/dt.json
-sed -i "s/OOSEDIR/$oosedir/g" $mount/dt.json
-sed -i "s/OOSECONFIGFILE/$configFile/g" $mount/dt.json
-sed -i "s/MOUNTDIR/$mount/g" $mount/dt.json
-sed -i "s/LOGFILE/$mount/log/g" $mount/dt.json
+sed -i "s@OOSENAME@$name@g" $mount/dt.json
+sed -i "s@OOSEDIR@$oosedir@g" $mount/dt.json
+sed -i "s@OOSECONFIGFILE@$configFile@g" $mount/dt.json
+sed -i "s@MOUNTDIR@$mount@g" $mount/dt.json
+sed -i "s@LOGFILE@$mount/log@g" $mount/dt.json
 echo "done"
 
 echo -n "Copying files on to disk from $oosedir... "
@@ -114,12 +116,12 @@ cp -a $oosedir/nginx/html/* $mount/store/purchased
 echo "done"
 
 echo -n "Applying disk tuning to sysfs for $disk... "
-echo "block/$disk/queue/scheduler = deadline" >> /etc/sysfs.conf
-echo "block/$disk/queue/iosched/front_merges = 0" >> /etc/sysfs.conf
-echo "block/$disk/queue/iosched/fifo_batch = 2048" >> /etc/sysfs.conf
-echo "block/$disk/queue/iosched/read_expire = 250" >> /etc/sysfs.conf
-echo "block/$disk/queue/iosched/write_expire = 3000" >> /etc/sysfs.conf
-echo "block/$disk/queue/iosched/writes_starved = 10" >> /etc/sysfs.conf
+echo "block/$diskRelative/queue/scheduler = deadline" >> /etc/sysfs.conf
+echo "block/$diskRelative/queue/iosched/front_merges = 0" >> /etc/sysfs.conf
+echo "block/$diskRelative/queue/iosched/fifo_batch = 2048" >> /etc/sysfs.conf
+echo "block/$diskRelative/queue/iosched/read_expire = 250" >> /etc/sysfs.conf
+echo "block/$diskRelative/queue/iosched/write_expire = 3000" >> /etc/sysfs.conf
+echo "block/$diskRelative/queue/iosched/writes_starved = 10" >> /etc/sysfs.conf
 echo "done"
 
 echo "Enabling disk tuning"
