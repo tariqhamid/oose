@@ -62,4 +62,8 @@ echo -n "Adding Node User... "
 useradd node
 echo "done"
 
+echo -n "Adding NGINX User... "
+useradd nginx
+echo "done"
+
 echo "Preparation Complete"
