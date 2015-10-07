@@ -2,9 +2,19 @@ language: node_js
 sudo: false
 node_js:
   - "4.1"
+  - "4.0"
+  - "0.12"
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    packages:
+    - g++-4.8
 services:
   - mysql
   - redis
-env: TRAVIS=travis
+env:
+  - TRAVIS=travis
+  - CXX=g++-4.8
 before_script:
   - mysql -e 'create database oose;'
