@@ -784,6 +784,16 @@ exports.purchase = function(req,res){
   var life = req.body.life || config.prism.purchaseLife
   var token, map, purchase
   var cacheKey = redis.schema.purchaseCache(sha1,req.session.token)
+  var confirmReferrer = function(test,against){
+    var valid = true
+    if(!(test instanceof Array)){
+      return test === against
+    }
+    test.forEach(function(ref,i){
+      if(!against || !against[i] || ref !== against[i]) valid = false
+    })
+    return valid
+  }
   P.try(function(){
     if(!sha1File.validate(sha1))
       throw new UserError('Invalid SHA1 passed for purchase')
@@ -793,7 +803,7 @@ exports.purchase = function(req,res){
     .then(function(result){
       purchase = false
       if(result) purchase = JSON.parse(result)
-      if(purchase && purchase.referrer === referrer){
+      if(purchase && confirmReferrer(purchase.referrer,referrer)){
         debug('cache hit',cacheKey)
       } else {
         debug('cache miss',cacheKey)
