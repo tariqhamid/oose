@@ -1,3 +1,4 @@
+'use strict';
 /**
  * Created by george on 7/10/15.
  */
@@ -5,6 +6,10 @@
 var P = require('bluebird')
 var request = require('request')
 var debug = require('debug')('oose:peer')
+
+//make some promises
+P.promisifyAll(request)
+
 /*
 node{
   name : ''   //The node name
@@ -17,139 +22,185 @@ node{
  */
 
 var instance = null
-var message = function(msg, err){
+var Message = function(msg, err){
   return {message:msg, error:err}
 }
 
-var peerHandler = function(express, config){
+var peerHandler = function(app,config){
   var peers = {}
-  var aliveSince = new Date().getTime() / 1000;
-  var me = this
+  //var aliveSince = new Date().getTime() / 1000
+  var that = this
   var domain = config.domain
   var myDesc = {
-    name:config.name,
-    host:config.host,
-    port:config.port,
-    type:config.type
+    name: config.name,
+    host: config.host,
+    port: config.port,
+    type: config.type
   }
   //Listen for a new peer connecting to this pod
-  express.post('/peer/'+domain+'/downvote', function(req,res){
+  app.post('/peer/' + domain + '/downvote',function(req,res){
     if(req.body){
-      debug("downvote",req.body)
+      debug('downvote',req.body)
       res.json(downvoteHandler(req.body))
-    }else{
-      res.json(new message("No info", true))
+    } else {
+      res.json(new Message('No info',true))
     }
   })
 
   //Listen for a ping request ... health check
-  express.post('/peer/'+domain+'/ping', function(req,res){
-    res.json(new message("Pong", false))
+  app.post('/peer/' + domain + '/ping',function(req,res){
+    res.json(new Message('Pong',false))
   })
 
   //Message from another node letting me know there is a new node in the pod
-  express.post('/peer/'+domain+'/new_node', function(req,res){
-    debug("New node",req.body)
+  app.post('/peer/' + domain + '/newNode', function(req,res){
+    debug('New node',req.body)
     res.json(newNodeHandler(req.body, false))
   })
 
-  //Some data is been sent to this nodes (and all the others, send this to the listener)
-  express.post('/peer/'+domain+'/data', function(req,res){
-    debug("Data",req.body)
+  //Some data is been sent to this nodes
+  // (and all the others, send this to the listener)
+  app.post('/peer/' + domain + '/data', function(req){
+    debug('Data',req.body)
   })
 
   //Message from a new node letting me know about its existence
-  express.post('/peer/'+domain+'/im_new', function(req,res){
+  app.post('/peer/' + domain + '/imNew', function(req,res){
     if(req.body){
-      debug("im new",req.body)
+      debug('im new',req.body)
       res.json(newNodeHandler(req.body,true))
     }else{
-      res.json(new message("No info", true))
+      res.json(new Message('No info', true))
     }
   })
 
   //Announce myself to the pod
-  me.announce = function announce(node){
-    return sendMessage(node,'im_new',myDesc)
+  that.announce = function announce(node){
+    return sendMessage(node,'imNew',myDesc)
   }
 
   function newNodeHandler(node, broadcast){
     var peer = null
     //Are we talking about myself?
-    if(node.name == myDesc.name)return new message("Ok", false)
+    if(node.name === myDesc.name) return new Message('Ok',false)
     //Was this node already in our list?
     if(peers[node.name]){
       peer = peers[node.name]
       //Check if it's in the same host, maybe it crashed, if not, maybe it's a node acknowledging my existence ,
       // or just a host that already exists
-      if(peer.host == node.host && !peer.down) return new message("Host already exists", true)
+      if(peer.host === node.host && !peer.down)
+        return new Message('Host already exists',true)
       if(peer.down){
         peer.down = false       //Back online
         peer.downvote = 0
       }
       peer.aliveSince = node.aliveSince     //Update alive since
-    }else{
+    } else {
       peer = peers[node.name] = node
     }
     peer.lastHeardOf = new Date().getTime() / 1000;
-    if(broadcast)broadcastMessage('new_node', peer).then(function(){ return sendMessage(node,'new_node',myDesc)})
-    else sendMessage(node,'new_node',myDesc)
-    return new message("Ok", false)
+    if(broadcast){
+      broadcastMessage('newNode',peer)
+        .then(function(){
+          return sendMessage(node,'newNode',myDesc)
+        })
+    } else{
+      sendMessage(node,'newNode',myDesc)
+    }
+    return new Message('Ok',false)
   }
 
-  function broadcastMessage(message,data){
+
+  /**
+   * Broadcast Message
+   * @param {Message} message
+   * @param {object} data
+   * @return {P}
+   */
+  var broadcastMessage = function(message,data){
     var nodes = []
     for(var name in peers){
-      if(!peers[name].down)nodes.push(sendMessage(peers[name],message,data))
+      if(!peers[name].down)
+        nodes.push(sendMessage(peers[name],message,data))
     }
     return P.all(nodes)
   }
 
-  function sendMessage(node,message, data){
-    return new P(function(resolve,reject){
-      debug("Messaging : ", 'https://'+node.host+':'+node.port+'/peer/'+domain+'/'+message,data)
-      request.post('https://'+node.host+':'+node.port+'/peer/'+domain+'/'+message, {form : data},function(err,res,body){
-        if(!err && res.statusCode == 200){
-          resolve(body)
-        }else{
-          reject({err:err,node:node,data:data})
-        }
+
+  /**
+   * Send message to a peer
+   * @param {object} node
+   * @param {Message} message
+   * @param {object} data
+   * @return {P}
+   */
+  var sendMessage = function(node,message,data){
+    debug('Messaging: https://' + node.host + ':' +
+      node.port + '/peer/' + domain + '/' + message,data)
+    return request.postAsync(
+      'https://' + node.host + ':' + node.port + '/peer/' +
+        domain +'/' + message,
+      {form : data}
+    )
+      .then(function(res,body){
+        return body
       })
-    })
+      .catch(function(err){
+        return {err: err, node: node, data: data}
+      })
   }
 
+
+  /**
+   * Process downvote
+   * @param {object} node
+   * @return {Message}
+   */
   function downvoteHandler(node){
     if(peers[node.name]){
-      var node=peers[node.name]
-      if(node.down)return new message("Already down",true)
-      if(!node.downvote)node.downvote=1
-      else node.downvote++
-      if((Object.keys(peers).length - 1) == node.downvote ){
-        debug("Node "+node.name+" is down.")
+      node = peers[node.name]
+      if(node.down)
+        return new Message('Already down',true)
+      if(!node.downvote)
+        node.downvote=1
+      else
+        node.downvote++
+      if((Object.keys(peers).length - 1) === node.downvote){
+        debug('Node ' + node.name + ' is down.')
         node.down=true
       }
-    }else{
-      return new message("Unknown node",true)
+    } else {
+      return new Message('Unknown node',true)
     }
   }
 
+
+  /*
   var healthCheck = setInterval(function(){
     var nodes = []
     for(var name in peers){
       nodes.push(sendMessage(peers[name],'ping').catch(function(fault){
-        debug("Broken node" + fault.node.name)
+        debug('Broken node' + fault.node.name)
         peers[fault.node.name].down = true
         broadcastMessage('downvote', fault.node)
       }))
     }
     return P.all(nodes).then(function(){
-      debug("Health check done")
+      debug('Health check done')
     })
   },20*1000)
+  */
 }
 
-exports.getInstance = function(express, config){
+
+/**
+ * Return instance of peer handler, singleton
+ * @param {object} express
+ * @param {object} config
+ * @return {instance}
+ */
+exports.getInstance = function(express,config){
   //Add our routes to handle stuff
   if(instance)return instance
-  return new peerHandler(express, config)
+  return new peerHandler(express,config)
 }
