@@ -26,6 +26,29 @@ var Message = function(msg, err){
   return {message:msg, error:err}
 }
 
+var myHandler = function(){
+  var that = this
+  var handlers = {}
+
+  this.subscribe = function(name,handler){
+    if(typeof handler == "function"){
+      handlers[name] = handler
+    }
+  }
+
+  this.unsubscribe = function(name){
+    if(handlers[name]){
+      delete handlers[name]
+    }
+  }
+
+  this.fire = function(data){
+    for(var name in handlers){
+      handlers[name](data)
+    }
+  }
+}
+
 var peerHandler = function(app,config){
   var peers = {}
   //var aliveSince = new Date().getTime() / 1000
@@ -37,6 +60,13 @@ var peerHandler = function(app,config){
     port: config.port,
     type: config.type
   }
+
+  //Handlers
+
+  var myNodeDownHandler = new myHandler();
+  var myNewNodeHandler = new myHandler();
+  var myDataHandler = new myHandler();
+
   //Listen for a new peer connecting to this pod
   app.post('/peer/' + domain + '/downvote',function(req,res){
     if(req.body){
@@ -60,8 +90,14 @@ var peerHandler = function(app,config){
 
   //Some data is been sent to this nodes
   // (and all the others, send this to the listener)
-  app.post('/peer/' + domain + '/data', function(req){
-    debug('Data',req.body)
+  app.post('/peer/' + domain + '/data', function(req,res){
+    if(req.body && req.body.node && req.body.data){
+      debug('Data',req.body)
+      myDataHandler.fire(req.body)
+      res.json(new Message('ACK',false))
+    }else{
+      res.json(new Message('No info',true))
+    }
   })
 
   //Message from a new node letting me know about its existence
@@ -74,11 +110,46 @@ var peerHandler = function(app,config){
     }
   })
 
+
+  //Message from a node asking about my identity
+  app.post('/peer/' + domain + '/whoAreYou', function(req,res){
+    if(req.body){
+      debug('who are you' , req.body)
+      res.json(whoAreYouHandler(req.body))
+    }else{
+      res.json(new Message('No info for you rude node', true))
+    }
+  })
+
+  //Public interface
   //Announce myself to the pod
   that.announce = function announce(node){
     return sendMessage(node,'imNew',myDesc)
   }
 
+  that.onNodeDown = function(namespace,handler){
+    return myNodeDownHandler.subscribe(namespace,handler)
+  }
+
+  that.onNewNode = function(namespace,handler){
+    return myNewNodeHandler.subscribe(namespace,handler)
+  }
+
+  that.onData = function(namespace,handler){
+    return myDataHandler.subscribe(namespace,handler)
+  }
+
+  //Send data to the other nodes
+  that.sendData = function(data){
+    broadcastMessage('data',{node:myDesc,data:data})
+  }
+
+  //This function just handles a possible new node that might not have introduced himself to me
+  function nodeChecker(node){
+    if(!peers[node.name])sendMessage(node,'whoAreYou',myDesc)
+  }
+
+  //Private Handlers
   function newNodeHandler(node, broadcast){
     var peer = null
     //Are we talking about myself?
@@ -97,6 +168,7 @@ var peerHandler = function(app,config){
       peer.aliveSince = node.aliveSince     //Update alive since
     } else {
       peer = peers[node.name] = node
+      myNewNodeHandler.fire({node:node})
     }
     peer.lastHeardOf = new Date().getTime() / 1000;
     if(broadcast){
@@ -121,7 +193,10 @@ var peerHandler = function(app,config){
     var nodes = []
     for(var name in peers){
       if(!peers[name].down)
-        nodes.push(sendMessage(peers[name],message,data))
+        nodes.push(sendMessage(peers[name],message,data)
+          .catch(function(err){
+            debug("Failed to broadcast message to"+err.node.name)
+          }))
     }
     return P.all(nodes)
   }
@@ -146,7 +221,7 @@ var peerHandler = function(app,config){
         return body
       })
       .catch(function(err){
-        return {err: err, node: node, data: data}
+        throw {err: err, node: node, data: data}
       })
   }
 
@@ -167,29 +242,35 @@ var peerHandler = function(app,config){
         node.downvote++
       if((Object.keys(peers).length - 1) === node.downvote){
         debug('Node ' + node.name + ' is down.')
+        myNodeDownHandler.fire({node:node})
         node.down=true
       }
+      return new Message('ACK',true)
     } else {
       return new Message('Unknown node',true)
     }
   }
 
+  function whoAreYouHandler(node){
+    return {node:myDesc}
+  }
 
-  /*
+
+
   var healthCheck = setInterval(function(){
     var nodes = []
     for(var name in peers){
       nodes.push(sendMessage(peers[name],'ping').catch(function(fault){
         debug('Broken node' + fault.node.name)
-        peers[fault.node.name].down = true
+        //peers[fault.node.name].down = true
         broadcastMessage('downvote', fault.node)
       }))
     }
     return P.all(nodes).then(function(){
       debug('Health check done')
     })
-  },20*1000)
-  */
+  },30*1000)
+
 }
 
 

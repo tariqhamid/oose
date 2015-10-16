@@ -3,6 +3,10 @@ var P = require('bluebird')
 var express = require('express')
 var app = express()
 var bodyParser = require('body-parser')
+var debug = require('debug')('oose:skinnyNode')
+var crypto = require('crypto')
+
+
 
 app.use(bodyParser.json())       // to support JSON-encoded bodies
 app.use(bodyParser.urlencoded({     // to support URL-encoded bodies
@@ -19,29 +23,60 @@ if(process.argv.length < 3){
   process.exit(1)
 }
 
+
+var name = process.argv[2];
+debug("Calling myself:" + name)
 var peer = require('./../helpers/peer.js').getInstance(app,{
-  name: process.argv[2],
+  name: name,
   host: myHost,
   port: process.argv[3],
   type: 'test',
   domain: 'test'
 })
 
+
+peer.onNewNode('skinnyNode',function(info){
+  debug("New node arrived:" + info.node.name)
+})
+
+peer.onData('skinnyNode', function(info){
+  debug("Data arrived from " + info.node.name , info.data)
+})
+
+peer.onNodeDown('skinnyNode', function(info){
+  debug("Node is down: " + info.node.name)
+})
+
 var sslOptions = {
   key: fs.readFileSync(config.ssl.pem),
   cert: fs.readFileSync(config.ssl.pem)
 }
+
 var server = https.createServer(sslOptions,app)
 P.promisifyAll(server)
 
 server.listenAsync(+process.argv[3],myHost)
   .then(function(){
-    console.log('Listening started')
+    debug('Listening started')
   })
 
 if(process.argv[4]){
-  console.log('Announcing to node at port ' + process.argv[4])
+  debug('Announcing to node at port ' + process.argv[4])
   peer.announce({
     name: '',host: myHost,port: process.argv[4],type: 'test',domain: 'test'
   })
+}
+
+
+//Random data at random time
+
+setInterval(function(){
+  var date = new Date()
+  var data = crypto.createHash('md5').update(date.getTime()+"").digest('hex')
+  debug("Sending data:"+data)
+  peer.sendData(data)
+}, getRandomInt(10,20) * 1000)
+
+function getRandomInt(min, max) {
+  return Math.floor(Math.random() * (max - min)) + min;
 }
