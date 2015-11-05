@@ -17,6 +17,8 @@ config.$load({
   host: os.hostname(),
   //storage
   root: __dirname + '/data',
+  //ping
+  pingFrequency: 60000, //One min
   //databases
   redis: {
     host: '127.0.0.1',

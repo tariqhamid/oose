@@ -12,6 +12,7 @@ var userSessionValidate = require('../helpers/userSessionValidate')
 
 var app = express()
 var config = require('../config')
+var pinger = require('../helpers/ping').getInstance('prism',config.prism.name, config.prism.port)
 var sslOptions = {
   key: fs.readFileSync(config.ssl.pem),
   cert: fs.readFileSync(config.ssl.pem)

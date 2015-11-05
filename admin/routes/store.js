@@ -16,7 +16,7 @@ var UserError = oose.UserError
  * @return {*}
  */
 exports.create = function(req,res){
-  Prism.find(req.query.prism)
+  Prism.findById(req.query.prism)
     .then(function(prism){
       if(!prism) throw new UserError('Prism not found')
       res.render('store/create',{prism: prism})
@@ -72,7 +72,7 @@ exports.remove = function(req,res){
 exports.save = function(req,res){
   var data = req.body
   var prism, store
-  Prism.find(data.prism)
+  Prism.findById(data.prism)
     .then(function(result){
       if(!result) throw new UserError('Prism not found')
       prism = result

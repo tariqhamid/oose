@@ -40,6 +40,9 @@ app.post('/inventory/exists',routes.inventory.exists)
 app.post('/inventory/feed',routes.inventory.feed)
 app.post('/inventory/remove',routes.inventory.remove)
 
+//voting system
+app.post('/vote/downvote',routes.vote.downvote)
+
 //prism
 app.post('/prism/create',routes.prism.create)
 app.post('/prism/find',routes.prism.find)

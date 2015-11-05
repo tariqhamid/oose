@@ -48,3 +48,9 @@ exports.inventory = require('./inventory')
  * @type {exports}
  */
 exports.user = require('./user')
+
+/**
+ * Voting routes
+ * @type {exports}
+ */
+exports.vote = require('./vote')

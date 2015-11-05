@@ -17,7 +17,7 @@ var sslOptions = {
 }
 var server = https.createServer(sslOptions,app)
 var routes = require('./routes')
-
+var pinger = require('../helpers/ping').getInstance('store',config.store.name, config.store.port)
 //make some promises
 P.promisifyAll(server)
 
