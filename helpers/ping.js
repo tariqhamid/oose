@@ -1,7 +1,6 @@
 'use strict';
 var P = require('bluebird')
 var debug = null
-var infant = require('infant')
 var oose = require('oose-sdk')
 var request = require('request')
 
@@ -20,7 +19,7 @@ P.promisifyAll(request)
 
 var pinger = function(type,name,port){
   var that = this
-  var myDesc = type+":"+name+":"+port
+  var myDesc = type+':'+name+':'+port
   var master = null
   var masterUp = false
   var checkCounter = 0
@@ -37,8 +36,6 @@ var pinger = function(type,name,port){
 
     return master.postAsync(master.url('/ping'))
       .spread(function(res,body){
-        /*var result= (body)?JSON.parse(body):false
-        masterUp = (result && result.pong && 'pong' === result.pong)*/
         masterUp = (body && body.pong && 'pong' === body.pong)
         return redis.setAsync(redis.schema.masterUp(),masterUp ? 1 : 0)
       })
@@ -57,7 +54,7 @@ var pinger = function(type,name,port){
         if(body.prism.length){
           for(var i = 0 ; i<body.prism.length; i++){
             body.prism[i].request = api.prism(body.prism[i])
-            body.prism[i].type = "prism"
+            body.prism[i].type = 'prism'
             prismList.push(body.prism[i])
           }
         }
@@ -80,7 +77,7 @@ var pinger = function(type,name,port){
           for(var i = 0 ; i<body.store.length; i++){
             var tmpStore = extend({},body.store[i])
             tmpStore.request = api.store(tmpStore)
-            tmpStore.type = "store"
+            tmpStore.type = 'store'
             storeList.push(tmpStore)
           }
         }
@@ -118,7 +115,7 @@ var pinger = function(type,name,port){
   }
 
   var checkStuff = function(){
-    if((checkCounter++%5) == 0){
+    if((checkCounter++%5) === 0){
       checkCounter=1
       return collect().then(function(){
         return pingAll()
@@ -158,7 +155,7 @@ var pinger = function(type,name,port){
   }
 
   var pingHost = function(host){
-    debug("Pinging " + host.name)
+    debug('Pinging ' + host.name)
     return host.request.postAsync(host.request.url('/ping'))
       .spread(function(res,body){
         if(body && body.pong && 'pong' === body.pong){
@@ -180,8 +177,8 @@ var pinger = function(type,name,port){
       }
     }
     if(storeList && storeList.length){
-      for(var i =0 ; i < storeList.length;i++){
-        promises.push(pingHost(storeList[i]));
+      for(var j =0 ; j < storeList.length;j++){
+        promises.push(pingHost(storeList[j]));
       }
     }
 
