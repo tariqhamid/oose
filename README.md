@@ -94,10 +94,12 @@ This folder contains what should live in the root folder (aka the data folder)
 ### 1.4.0
 
 * Implement heartbeat system with downvoting to avoid outages
+* Add purchase storage on master similar to inventory storage to fix prism sync
+issues
 * Move install scripts to the `install` folder
 * Move nginx configuration templates to `install` folder
 * Implement nodejs backed installation script with a bash bootstrap script
-* Upgraded all dependencies and Node.js 4.1.x compatible.
+* Upgraded all dependencies and Node.js 4.2.x / 5.x compatible.
 
 ### 1.3.0
 
