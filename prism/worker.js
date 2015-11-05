@@ -12,7 +12,6 @@ var userSessionValidate = require('../helpers/userSessionValidate')
 
 var app = express()
 var config = require('../config')
-var pinger = require('../helpers/ping').getInstance('prism',config.prism.name, config.prism.port)
 var sslOptions = {
   key: fs.readFileSync(config.ssl.pem),
   cert: fs.readFileSync(config.ssl.pem)
@@ -22,6 +21,10 @@ var routes = require('./routes')
 
 //make some promises
 P.promisifyAll(server)
+
+//start the pinger service early
+require('../helpers/ping')
+  .getInstance('prism',config.prism.name, config.prism.port)
 
 //setup
 app.use(bodyParser.json({limit: '100mb'}))

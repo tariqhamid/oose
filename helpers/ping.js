@@ -2,7 +2,6 @@
 var P = require('bluebird')
 var debug = null
 var oose = require('oose-sdk')
-var request = require('request')
 
 var api = require('../helpers/api')
 var NetworkError = oose.NetworkError
@@ -13,11 +12,16 @@ var extend = require('util')._extend;
 
 var instance = null
 
-//make some promises
-P.promisifyAll(request)
 
 
-var pinger = function(type,name,port){
+/**
+ * Ping Helper for Cluster Consistency
+ * @param {string} type
+ * @param {string} name
+ * @param {number} port
+ * @constructor
+ */
+var Pinger = function(type,name,port){
   var that = this
   var myDesc = type+':'+name+':'+port
   var master = null
@@ -27,13 +31,7 @@ var pinger = function(type,name,port){
   var storeList = null
   var prismList = null
 
-  that.setMaster = function(newMaster){
-    master = api.master(newMaster)
-    if(!interval) createInterval()
-  }
-
   var checkMaster = function(){
-
     return master.postAsync(master.url('/ping'))
       .spread(function(res,body){
         masterUp = (body && body.pong && 'pong' === body.pong)
@@ -52,7 +50,7 @@ var pinger = function(type,name,port){
         prismList = []
         var strPrismList = JSON.stringify(body.prism)
         if(body.prism.length){
-          for(var i = 0 ; i<body.prism.length; i++){
+          for(var i = 0; i<body.prism.length; i++){
             body.prism[i].request = api.prism(body.prism[i])
             body.prism[i].type = 'prism'
             prismList.push(body.prism[i])
@@ -74,14 +72,17 @@ var pinger = function(type,name,port){
         storeList = []
         srvStoreList = body.store
         if(body.store.length){
-          for(var i = 0 ; i<body.store.length; i++){
+          for(var i = 0; i<body.store.length; i++){
             var tmpStore = extend({},body.store[i])
             tmpStore.request = api.store(tmpStore)
             tmpStore.type = 'store'
             storeList.push(tmpStore)
           }
         }
-        return redis.setAsync(redis.schema.storeList(),JSON.stringify(srvStoreList))
+        return redis.setAsync(
+          redis.schema.storeList(),
+          JSON.stringify(srvStoreList)
+        )
       })
       .then(function(){
         var promises = []
@@ -104,8 +105,7 @@ var pinger = function(type,name,port){
         if(!masterUp) throw new NetworkError('Master down')
         return P.all([
           collectPrismList(),
-          collectStoreList(),
-
+          collectStoreList()
         ])
       })
       .catch(NetworkError,function(err){
@@ -114,44 +114,22 @@ var pinger = function(type,name,port){
       })
   }
 
-  var checkStuff = function(){
-    if((checkCounter++%5) === 0){
-      checkCounter=1
-      return collect().then(function(){
-        return pingAll()
-      })
-      .catch(NetworkError,function(err){
-        //continue as normal on a network error
-        debug('network error',err)
-      })
-    }else{
-      return pingAll()
-    }
-  }
-
-  var createInterval = function(){
-    interval = setInterval(function(){
-      return checkStuff()
-    },config.pingFrequency)
-    return checkStuff()
-  }
-
   var downVote = function(host){
     var downHost = extend({},host)
     if(downHost.request) delete(downHost.request)
     return master.postAsync({
-      url:master.url('/vote/downvote'),
-      json: {
-        host: downHost,
-        caster: myDesc
-      }
-    })
-    .spread(function(res,body){
-      debug(body)
-    })
-    .catch(function(){
+        url:master.url('/vote/down'),
+        json: {
+          host: downHost,
+          caster: myDesc
+        }
+      })
+      .spread(function(res,body){
+        debug(body)
+      })
+      .catch(function(){
 
-    })
+      })
   }
 
   var pingHost = function(host){
@@ -172,32 +150,62 @@ var pinger = function(type,name,port){
   var pingAll = function(){
     var promises = []
     if(prismList && prismList.length){
-      for(var i =0 ; i < prismList.length;i++){
+      for(var i =0; i < prismList.length;i++){
         promises.push(pingHost(prismList[i]));
       }
     }
     if(storeList && storeList.length){
-      for(var j =0 ; j < storeList.length;j++){
+      for(var j =0; j < storeList.length;j++){
         promises.push(pingHost(storeList[j]));
       }
     }
-
     return P.all(promises)
   }
 
-  if(config.master)that.setMaster(config.master)
+  var checkStuff = function(){
+    if((checkCounter++ % 5) === 0){
+      checkCounter = 1
+      return collect().then(function(){
+          return pingAll()
+        })
+        .catch(NetworkError,function(err){
+          //continue as normal on a network error
+          debug('network error',err)
+        })
+    }
+    else{
+      return pingAll()
+    }
+  }
+
+  var createInterval = function(){
+    interval = setInterval(function(){
+      return checkStuff()
+    },config.pingFrequency)
+    return checkStuff()
+  }
+
+  that.setMaster = function(newMaster){
+    master = api.master(newMaster)
+    if(!interval) createInterval()
+  }
+
+  //this will start the pinger automatically if the config exists
+  if(config.master) that.setMaster(config.master)
 }
 
 
 /**
  * Return instance of peer handler, singleton
+ * @param {string} type
+ * @param {string} name
+ * @param {number} port
  * @return {instance}
  */
 exports.getInstance = function(type,name,port){
   if(!instance){
-    instance = new pinger(type,name,port)
-    debug=require('debug')('oose:ping:'+type)
+    debug = require('debug')('oose:ping:'+type)
+    instance = new Pinger(type,name,port)
   }
   return instance
-
 }

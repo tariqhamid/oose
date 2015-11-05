@@ -1,19 +1,27 @@
 'use strict';
-var child = require('infant').child
-var clusterSetup = require('infant').cluster
+var P = require('bluebird')
+var infant = require('infant')
 
 var sequelize = require('./../helpers/sequelize')()
 
 var cluster
+var votePrune
 var config = require('../config')
 
+//make some promises
+P.promisifyAll(infant)
+
 if(require.main === module){
-  child(
+  votePrune = infant.parent('./votePrune')
+  infant.child(
     'oose:' + config.master.name + ':master',
     function(done){
       sequelize.doConnect()
         .then(function(){
-          cluster = clusterSetup(
+          return votePrune.startAsync()
+        })
+        .then(function(){
+          cluster = infant.cluster(
             './worker',
             {
               enhanced: true,
@@ -21,9 +29,10 @@ if(require.main === module){
               maxConnections: config.master.workers.maxConnections
             }
           )
-          cluster.start(function(err){
-            done(err)
-          })
+          return cluster.startAsync()
+        })
+        .then(function(){
+          done()
         })
         .catch(function(err){
           done(err.message || err)
@@ -31,9 +40,16 @@ if(require.main === module){
     },
     function(done){
       if(!cluster) return done()
-      cluster.stop(function(err){
-        done(err)
-      })
+      votePrune.stopAsync()
+        .then(function(){
+          return cluster.stopAsync()
+        })
+        .then(function(){
+          done()
+        })
+        .catch(function(err){
+          done(err.message || err)
+        })
     }
   )
 }

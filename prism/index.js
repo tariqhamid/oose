@@ -10,6 +10,7 @@ var guard
 P.promisifyAll(infant)
 
 if(require.main === module){
+  guard = infant.parent('./guard')
   infant.child(
     'oose:' + config.prism.name + ':master',
     function(done){
@@ -21,7 +22,10 @@ if(require.main === module){
           maxConnections: config.prism.workers.maxConnections
         }
       )
-      cluster.startAsync()
+      guard.startAsync()
+        .then(function(){
+          return cluster.startAsync()
+        })
         .then(function(){
           done()
         })
@@ -29,6 +33,9 @@ if(require.main === module){
     },
     function(done){
       cluster.stopAsync()
+        .then(function(){
+          return guard.stopAsync()
+        })
         .then(function(){
           done()
         })

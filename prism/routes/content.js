@@ -319,9 +319,9 @@ exports.exists = function(req,res){
           })
         )
       })
-      //now we should have scheduled all the lookups to redis, now we need to map
-      //the results and figure out what we already know and what still needs a
-      //lookup
+      //now we should have scheduled all the lookups to redis, now we need to
+      //mapthe results and figure out what we already know and what still needs
+      //a lookup
       return P.all(promises)
         .map(function(result){
           //wtf is in the result?

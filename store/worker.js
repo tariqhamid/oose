@@ -17,9 +17,12 @@ var sslOptions = {
 }
 var server = https.createServer(sslOptions,app)
 var routes = require('./routes')
-var pinger = require('../helpers/ping').getInstance('store',config.store.name, config.store.port)
 //make some promises
 P.promisifyAll(server)
+
+//start the pinger service early
+require('../helpers/ping')
+  .getInstance('store',config.store.name,config.store.port)
 
 //setup
 app.use(bodyParser.json({limit: '100mb'}))
