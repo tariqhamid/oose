@@ -53,6 +53,7 @@ var pinger = function(type,name,port){
       .spread(function(res,body){
         debug('got prism list, record count?',body.prism.length)
         prismList = []
+        var strPrismList = JSON.stringify(body.prism)
         if(body.prism.length){
           for(var i = 0 ; i<body.prism.length; i++){
             body.prism[i].request = api.prism(body.prism[i])
@@ -60,8 +61,8 @@ var pinger = function(type,name,port){
             prismList.push(body.prism[i])
           }
         }
-
-        return prismList
+        return redis.setAsync(redis.schema.prismList(),strPrismList)
+        //return prismList
       })
       .catch(function(err){
         debug(err)
@@ -69,19 +70,33 @@ var pinger = function(type,name,port){
   }
 
   var collectStoreList = function(){
-    //var storeList
+    var srvStoreList
     return master.postAsync(master.url('/store/list'))
       .spread(function(res,body){
         debug('got store list, record count?',body.store.length)
         storeList = []
+        srvStoreList = body.store
         if(body.store.length){
           for(var i = 0 ; i<body.store.length; i++){
-            body.store[i].request = api.store(body.store[i])
-            body.store[i].type = "store"
-            storeList.push(body.store[i])
+            var tmpStore = extend({},body.store[i])
+            tmpStore.request = api.store(tmpStore)
+            tmpStore.type = "store"
+            storeList.push(tmpStore)
           }
         }
-        return storeList
+        return redis.setAsync(redis.schema.storeList(),JSON.stringify(srvStoreList))
+      })
+      .then(function(){
+        var promises = []
+        var store
+        for(var i = 0; i < srvStoreList.length; i++){
+          store = srvStoreList[i]
+          promises.push(
+            redis.setAsync(redis.schema.storeEntry(store.name),
+              JSON.stringify(store))
+          )
+        }
+        return P.all(promises)
       })
       .catch(master.handleNetworkError)
   }
@@ -121,6 +136,7 @@ var pinger = function(type,name,port){
     interval = setInterval(function(){
       return checkStuff()
     },config.pingFrequency)
+    return checkStuff()
   }
 
   var downVote = function(host){
