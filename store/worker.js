@@ -21,7 +21,7 @@ var routes = require('./routes')
 P.promisifyAll(server)
 
 //start the pinger service early
-require('../helpers/ping')
+require('../helpers/heartbeat')
   .getInstance('store',config.store.name,config.store.port)
 
 //setup

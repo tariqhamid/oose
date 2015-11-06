@@ -15,13 +15,13 @@ var instance = null
 
 
 /**
- * Ping Helper for Cluster Consistency
+ * Heartbeat for Cluster Consistency
  * @param {string} type
  * @param {string} name
  * @param {number} port
  * @constructor
  */
-var Pinger = function(type,name,port){
+var Heartbeat = function(type,name,port){
   var that = this
   var myDesc = type+':'+name+':'+port
   var master = null
@@ -196,7 +196,7 @@ var Pinger = function(type,name,port){
 
 
 /**
- * Return instance of peer handler, singleton
+ * Return instance of Heartbeat handler, singleton
  * @param {string} type
  * @param {string} name
  * @param {number} port
@@ -205,7 +205,7 @@ var Pinger = function(type,name,port){
 exports.getInstance = function(type,name,port){
   if(!instance){
     debug = require('debug')('oose:ping:'+type)
-    instance = new Pinger(type,name,port)
+    instance = new Heartbeat(type,name,port)
   }
   return instance
 }
