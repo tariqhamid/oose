@@ -116,8 +116,8 @@ var collect = function(){
     .then(function(){
       if(!masterUp) throw new NetworkError('Master down')
       return P.all([
-        collectPrismList(),
-        collectStoreList(),
+        //collectPrismList(),
+        //collectStoreList(),
         collectUserSessionList(),
         collectInventory()
       ])
