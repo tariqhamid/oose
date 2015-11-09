@@ -675,10 +675,12 @@ exports.purchase = function(req,res){
         debug('cache hit',cacheKey)
       } else {
         debug('cache miss',cacheKey)
-        return prismBalance.contentExists(sha1)
+        return prismBalance.contentExists(sha1,true,true)
           .then(function(result){
             map = result
-            if(!map.exists) throw new NotFoundError('File not found')
+            if(!map.exists){
+              throw new NotFoundError('File not found')
+            }
             //really right here we need to generate a unique token
             // (unique meaning not already in the redis registry for purchases
             // since we already have a token then we should just try

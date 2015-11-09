@@ -86,15 +86,18 @@ exports.winner = function(token,prismList,skip,allowFull){
  * Check existence of a SHA1 (cached)
  * @param {string} sha1
  * @param {boolean} hardLookup
+ * @param {boolean} disableCache
  * @return {P}
  */
-exports.contentExists = function(sha1,hardLookup){
+exports.contentExists = function(sha1,hardLookup,disableCache){
   redis.incr(redis.schema.counter('prism','prismBalance:contentExists'))
+  if(undefined === disableCache) disableCache = false
   if(undefined === hardLookup) hardLookup = true
+  if(disableCache) hardLookup = true
   var contentExists
   return redis.getAsync(redis.schema.contentExists(sha1))
     .then(function(result){
-      if(!result){
+      if(!result || disableCache){
         debug(sha1,'cache miss, contentExists')
         if(!hardLookup){
           debug(sha1,'hard lookup disabled, returning false')
