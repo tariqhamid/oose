@@ -1,16 +1,14 @@
 'use strict';
 var P = require('bluebird')
-var oose = require('oose-sdk')
 
 var api = require('../../helpers/api')
+var cradle = require('../../helpers/couchdb')
 var redis = require('../../helpers/redis')
 
 var NetworkError = oose.NetworkError
 var UserError = oose.UserError
 
 var config = require('../../config')
-
-var master = api.master()
 
 
 /**

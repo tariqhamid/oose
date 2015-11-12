@@ -61,6 +61,7 @@ if(require.main === module){
         )
         .then(function(){
           console.log('Store startup complete')
+          done()
         })
         .catch(function(err){
           console.log(err.stack)
