@@ -51,6 +51,10 @@ config.$load({
       }
     }
   },
+  purchase: {
+    life: 7200000, //2 hrs
+    afterlife: 7200000 //2hrs
+  },
   //admin
   admin: {
     enabled: false,
@@ -99,9 +103,7 @@ config.$load({
       'ts',
       'webm',
       'wmv'
-    ],
-    purchaseLife: 7200, //2 hrs
-    purchaseAfterlife: 7200 //2hrs
+    ]
   },
   //storage system
   store: {
@@ -114,7 +116,8 @@ config.$load({
       maxConnections: 10000
     },
     //how often we scan inventory
-    inventoryFrequency: 3600000 //1hr
+    inventoryFrequency: 3600000, //1hr
+    purchaseFrequency: 300000 //5 minutes
   }
 })
 

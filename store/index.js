@@ -1,25 +1,39 @@
 'use strict';
-var child = require('infant').child
-var clusterSetup = require('infant').cluster
+var P = require('bluebird')
+var infant = require('infant')
 
 var cluster
+var inventory
+var purchase
 var config = require('../config')
 
 if(require.main === module){
-  child(
+  infant.child(
     'oose:' + config.store.name + ':master',
     function(done){
-      cluster = clusterSetup(
+      cluster = P.promisifyAll(infant.clusterSetup(
         './worker',
         {
           enhanced: true,
           count: config.store.workers.count,
           maxConnections: config.store.workers.maxConnections
         }
-      )
-      cluster.start(function(err){
-        done(err)
-      })
+      ))
+      inventory = P.promisifyAll(infant.child('./inventory'))
+      purchase = P.promisifyAll(infant.child('./purchase'))
+      P.all([
+        cluster.startAsync(),
+        inventory.startAsync(),
+        purchase.startAsync()
+      ])
+        .then(function(){
+          done()
+        })
+        .catch(function(err){
+          console.log(err.stack)
+          console.log(err)
+          done(err)
+        })
     },
     function(done){
       if(!cluster) return done()
