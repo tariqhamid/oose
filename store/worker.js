@@ -82,7 +82,7 @@ exports.stop = function(done){
   //dont wait for this since it will take to long and we are stopping now
   server.close()
   //just return now
-  done()
+  process.nextTick(done)
 }
 
 if(require.main === module){

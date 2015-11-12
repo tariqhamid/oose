@@ -17,8 +17,17 @@ config.$load({
   host: os.hostname(),
   //storage
   root: __dirname + '/data',
-  //ping
-  pingFrequency: 60000, //One min
+  //api setup
+  ssl: {
+    pem: oose.mock.sslOptions.pemFile
+  },
+  api: {
+    maxSockets: 64
+  },
+  //heartbeat
+  heartbeat: {
+    frequency: 10000 //10 seconds
+  },
   //databases
   redis: {
     host: '127.0.0.1',
@@ -27,19 +36,20 @@ config.$load({
     prefix: 'oose',
     options: {}
   },
-  mysql: {
-    name: 'oose',
+  couchdb: {
     host: '127.0.0.1',
-    port: 3306,
-    user: '',
-    password: '',
-    logging: false
-  },
-  ssl: {
-    pem: oose.mock.sslOptions.pemFile
-  },
-  api: {
-    maxSockets: 64
+    port: '5984',
+    prefix: 'oose',
+    database: 'oose',
+    options: {
+      secure: false,
+      retries: 3,
+      retryTimeout: 10000,
+      auth: {
+        username: 'oose',
+        password: ''
+      }
+    }
   },
   //admin
   admin: {
@@ -55,31 +65,12 @@ config.$load({
       maxAge: 2592000000 //30 days
     }
   },
-  //master
-  master: {
-    enabled: false,
-    name: 'localmaster',
-    port: 5970,
-    host: null,
-    workers: {
-      count: 1,
-      maxConnections: 10000
-    },
-    username: 'oose',
-    password: 'oose',
-    user: {
-      sessionTokenName: 'X-OOSE-Token',
-      sessionLife: 172800 //1 day
-    }
-  },
   //prism
   prism: {
     enabled: false,
     name: 'localprism',
     port: 5971,
     host: null,
-    username: 'oose',
-    password: 'oose',
     workers: {
       count: 1,
       maxConnections: 10000
@@ -109,13 +100,8 @@ config.$load({
       'webm',
       'wmv'
     ],
-    existsTimeout: 20000, //20 seconds
-    existsTryCount: 1, //number of times to try exists calls before return
-    contentExistsCache: 3600, //1 hour
-    purchaseLife: 21600, //6hrs
-    purchaseCache: 7200, //2 hours
-    guardFrequency: 5000, //5 seconds
-    enableSoftLookup: true // do soft existence checks based on inventory
+    purchaseLife: 7200, //2 hrs
+    purchaseAfterlife: 7200 //2hrs
   },
   //storage system
   store: {
@@ -123,12 +109,12 @@ config.$load({
     name: 'localstore',
     port: 5972,
     host: null,
-    username: 'oose',
-    password: 'oose',
     workers: {
       count: 1,
       maxConnections: 10000
-    }
+    },
+    //how often we scan inventory
+    inventoryFrequency: 3600000 //1hr
   }
 })
 

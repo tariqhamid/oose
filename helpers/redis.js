@@ -40,7 +40,7 @@ var sortObjectByKey = function(obj){
  * Get keys by a pattern
  * @param {string} pattern
  * @return {P}
- * @this {redis}
+ * @this {cradle}
  */
 client.getKeysPattern = function(pattern){
   var that = this
@@ -70,7 +70,7 @@ client.getKeysPattern = function(pattern){
  * Remove keys by a pattern
  * @param {string} pattern
  * @return {P}
- * @this {redis}
+ * @this {cradle}
  */
 client.removeKeysPattern = function(pattern){
   var that = this
@@ -95,7 +95,7 @@ client.removeKeysPattern = function(pattern){
 
 /**
  * Add schema to helper
- * @type {RedisSchema}
+ * @type {CouchShema}
  */
 client.schema = new RedisSchema(config.redis.prefix)
 

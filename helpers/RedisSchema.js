@@ -185,6 +185,6 @@ RedisSchema.prototype.counterError = function(system,key){
 
 /**
  * Export Object
- * @type {RedisSchema}
+ * @type {CouchShema}
  */
 module.exports = RedisSchema

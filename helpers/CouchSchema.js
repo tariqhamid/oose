@@ -1,0 +1,70 @@
+'use strict';
+
+
+
+/**
+ * Couch  Key Schema
+ * @param {string} prefix
+ * @constructor
+ */
+var CouchShema = function(prefix){
+  if(!prefix) prefix = 'oose'
+  this.prefix = prefix
+}
+
+
+/**
+ * Apply Key Prefix
+ * @param {string} key
+ * @return {string}
+ */
+CouchShema.prototype.applyPrefix = function(key){
+  return this.prefix + ':' + key
+}
+
+
+/**
+ * Prism Key
+ * @param {string} name
+ * @return {string}
+ */
+CouchShema.prototype.prism = function(name){
+  return this.applyPrefix('prism:' + name)
+}
+
+
+/**
+ * Store Key
+ * @param {string} name
+ * @return {string}
+ */
+CouchShema.prototype.store = function(name){
+  return this.applyPrefix('store:' + name)
+}
+
+
+/**
+ * Look up a purchase
+ * @param {string} token
+ * @return {string}
+ */
+CouchShema.prototype.purchase = function(token){
+  return this.applyPrefix('purchase:' + token)
+}
+
+
+/**
+ * Inventory
+ * @param {string} sha1
+ * @return {string}
+ */
+CouchShema.prototype.inventory = function(sha1){
+  return this.applyPrefix('inventory:' + sha1)
+}
+
+
+/**
+ * Export Object
+ * @type {CouchShema}
+ */
+module.exports = CouchShema
