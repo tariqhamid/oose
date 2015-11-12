@@ -4,13 +4,11 @@ var infant = require('infant')
 
 var cluster
 var config = require('../config')
-var guard
 
 //make some promises
 P.promisifyAll(infant)
 
 if(require.main === module){
-  guard = infant.parent('./guard')
   infant.child(
     'oose:' + config.prism.name + ':master',
     function(done){
@@ -22,11 +20,8 @@ if(require.main === module){
           maxConnections: config.prism.workers.maxConnections
         }
       )
-      guard.startAsync()
-        .then(function(){
-          return cluster.startAsync()
-        })
-        .then(function(){
+      cluster.startAsync()
+       .then(function(){
           done()
         })
         .catch(done)
