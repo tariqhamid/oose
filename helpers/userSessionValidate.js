@@ -1,16 +1,21 @@
 'use strict';
+var P = require('bluebird')
 var basicAuth = require('basic-auth-connect')
 var debug = require('debug')('oose:userSessionValidate')
-var oose = require('oose-sdk')
+var request = require('request')
 
-var api = require('../helpers/api')
 var redis = require('../helpers/redis')
-var NetworkError = oose.NetworkError
-var UserError = oose.UserError
 
 var config = require('../config')
+var couchLoginUrl =
+  config.couchdb.options.secure ? 'https://' : 'http://' +
+  config.couchdb.host + ':' +
+  config.couchdb.port + '/_session'
 
-var auth = basicAuth(config.prism.username,config.prism.password)
+var auth = basicAuth(config.prsm.username,config.prism.password)
+
+//make some promises
+P.promisifyAll(request)
 
 
 /**
@@ -22,6 +27,7 @@ var auth = basicAuth(config.prism.username,config.prism.password)
  */
 module.exports = function(req,res,next){
   var token = req.get(config.master.user.sessionTokenName) || ''
+  var session
   debug('got token',token)
   //without a token lets try basic auth since it can override
   if(!token){
@@ -29,55 +35,30 @@ module.exports = function(req,res,next){
     auth(req,res,next)
   } else {
     redis.incr(redis.schema.counter('prism','userSessionValidate:full'))
-    var session
-    redis.getAsync(redis.schema.userSession(token))
-      .then(function(result){
-        if('string' !== typeof token || 64 !== token.length)
-          throw new UserError('Invalid session token passed')
-        if(!result){
-          debug('cache miss',token)
-          var client = api.master()
-          return client.postAsync({
-            url: client.url('/user/session/validate'),
-            json: {
-              token: token,
-              ip: req.ip
-            }
-          })
-            .spread(function(res,body){
-              if(!body)
-                throw new UserError('Session doesnt exist')
-              if('Session valid' !== body.success)
-                throw new UserError('Invalid session')
-              session = body.session
-              return redis.setAsync(
-                redis.schema.userSession(token),JSON.stringify(session))
-            })
-            .catch(client.handleNetworkError)
-        } else {
-          debug('cache hit',token)
-          session = JSON.parse(result)
+    //now i think we need to query the session itself
+    request.postAsync({
+      url: couchLoginUrl,
+      json: true,
+      headers: {
+        Cookie: token
+      }
+    })
+      .spread(function(res,body){
+        console.log(res,body)
+        if(200 !== res.statusCode){
+          throw new Error(
+            'Failed to query session information ' + body.toJSON())
         }
-      })
-      .then(function(){
+        session = {
+          token: token,
+          ip: req.ip,
+          data: body
+        }
         redis.incr(redis.schema.counter('prism','userSession:' + session.token))
         req.session = session
         next()
       })
-      .catch(SyntaxError,function(err){
-        redis.incr(
-          redis.schema.counterError('prism','userSessionValidate:syntax'))
-        res.status(500)
-        res.json({error: 'Failed to parse session record from redis: ' +
-        err.message})
-      })
-      .catch(NetworkError,function(err){
-        redis.incr(
-          redis.schema.counterError('prism','userSessionValidate:network'))
-        res.status(500)
-        res.json({error: 'Failed to validate session: ' + err.message})
-      })
-      .catch(UserError,function(err){
+      .catch(function(err){
         redis.incr(redis.schema.counterError('prism','userSessionValidate'))
         res.status(401)
         res.json({error: err.message})

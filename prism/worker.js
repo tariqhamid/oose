@@ -63,10 +63,8 @@ app.get('/crossdomain.xml',function(req,res){
 //user functions
 app.post('/user/login',routes.user.login)
 app.post('/user/logout',userSessionValidate,routes.user.logout)
-app.post('/user/password/reset',userSessionValidate,routes.user.passwordReset)
 app.post(
   '/user/session/validate',userSessionValidate,routes.user.sessionValidate)
-app.post('/user/session/update',userSessionValidate,routes.user.sessionUpdate)
 
 //content functions
 app.post('/content/detail',userSessionValidate,routes.content.detail)

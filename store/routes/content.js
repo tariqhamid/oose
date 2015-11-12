@@ -1,6 +1,7 @@
 'use strict';
 var P = require('bluebird')
 var fs = require('graceful-fs')
+var mime = require('mime')
 var mkdirp = require('mkdirp-then')
 var oose = require('oose-sdk')
 var path = require('path')
@@ -8,11 +9,11 @@ var promisePipe = require('promisepipe')
 var sha1stream = require('sha1-stream')
 
 var api = require('../../helpers/api')
+var cradle = require('../../helpers/couchdb')
 var redis = require('../../helpers/redis')
 var sha1File = require('../../helpers/sha1File')
 
 var config = require('../../config')
-var master = api.master()
 
 var NotFoundError = oose.NotFoundError
 var UserError = oose.UserError
@@ -32,6 +33,7 @@ exports.put = function(req,res){
   var file = req.params.file
   var fileDetails
   var sniff = sha1stream.createStream()
+  var inventoryKey
   sniff.on('data',function(chunk){
     redis.incrby(
       redis.schema.counter('store','content:bytesUploaded'),chunk.length)
@@ -41,6 +43,7 @@ exports.put = function(req,res){
     .then(function(result){
       if(!result) throw new UserError('Could not parse filename')
       fileDetails = result
+      inventoryKey = cradle.schema.inventory(fileDetails.sha1)
       dest = sha1File.toPath(fileDetails.sha1,fileDetails.ext)
       return mkdirp(path.dirname(dest))
     })
@@ -61,19 +64,32 @@ exports.put = function(req,res){
       return sha1File.linkPath(fileDetails.sha1,fileDetails.ext)
     })
     .then(function(){
-      //tell master about the new inventory record
-      var inventory = {
-        sha1: sniff.sha1,
-        mimeExtension: fileDetails.ext,
-        store: config.store.name
-      }
-      //console.log('content added, notifying master',inventory)
-      return master.postAsync({
-        url: master.url('/inventory/create'),
-        json: inventory
-      })
+      //get existing existence record and add to it or create one
+      return cradle.db.getAsync(inventoryKey)
     })
-    .spread(function(){
+    .then(
+      //record exists, extend it
+      function(doc){
+        if(doc.exists.indexOf(config.store.name) < 0)
+          doc.exists.push(config.store.name)
+        return cradle.db.saveAsync(inventoryKey,doc._rev,doc)
+      },
+      //record does not exist, create it
+      function(err){
+        if(404 !== err.headers.status) throw err
+        var inventory = {
+          sha1: sniff.sha1,
+          mimeExtension: fileDetails.ext,
+          mimeType: mime.lookup(fileDetails.ext),
+          relativePath: sha1File.toRelativePath(
+            fileDetails.sha1,fileDetails.ext
+          ),
+          exists: [config.store.name]
+        }
+        return cradle.db.saveAsync(inventoryKey,inventory)
+      }
+    )
+    .then(function(){
       res.status(201)
       res.json({sha1: sniff.sha1})
     })
@@ -148,7 +164,24 @@ exports.exists = function(req,res){
  */
 exports.remove = function(req,res){
   redis.incr(redis.schema.counter('store','content:remove'))
+  var inventoryKey = cradle.schema.inventory(req.body.sha1)
   sha1File.remove(req.body.sha1)
+    .then(function(){
+      return cradle.db.getAsync(inventoryKey)
+    })
+    .then(
+      //try to remove ourselves from ownership of this file
+      function(doc){
+        if(doc.exists.indexOf(config.store.name) >= 0)
+          doc.exists.splice(doc.exists.indexOf(config.store.name),1)
+        return cradle.db.saveAsync(inventoryKey,doc._rev,doc)
+      },
+      function(err){
+        if(404 !== err.headers.status) throw err
+        //we ignore this error its not a problem
+        return true
+      }
+    )
     .then(function(){
       res.json({success: 'File removed'})
     })

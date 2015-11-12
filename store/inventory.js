@@ -3,6 +3,7 @@ var P = require('bluebird')
 var debug = require('debug')('oose:store:inventory')
 var fs = require('graceful-fs')
 var infant = require('infant')
+var mime = require('mime')
 var path = require('path')
 var prettyBytes = require('pretty-bytes')
 var readdirp = require('readdirp')
@@ -92,6 +93,9 @@ var scanInventory = function(done){
             if(404 !== err.headers.status) throw err
             var doc = {
               sha1: sha1,
+              mimeExtension: ext,
+              mimeType: mime.lookup(ext),
+              relativePath: relativePath,
               exists: [config.store.name]
             }
             debug(sha1,'creating inventory record',doc)

@@ -1,5 +1,0 @@
-ALTER TABLE `oose`.`Stores`
-ADD COLUMN `full` TINYINT(1) NOT NULL DEFAULT '0' AFTER `port`;
-
-ALTER TABLE `oose`.`Stores`
-CHANGE COLUMN `full` `full` TINYINT(1) NOT NULL DEFAULT '0' ;

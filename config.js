@@ -108,7 +108,7 @@ config.$load({
   //storage system
   store: {
     enabled: false,
-    name: 'localstore',
+    name: 'localprism:localstore',
     port: 5972,
     host: null,
     workers: {

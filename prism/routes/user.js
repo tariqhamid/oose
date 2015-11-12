@@ -1,14 +1,17 @@
 'use strict';
 var P = require('bluebird')
+var request = require('request')
 
-var api = require('../../helpers/api')
-var cradle = require('../../helpers/couchdb')
 var redis = require('../../helpers/redis')
 
-var NetworkError = oose.NetworkError
-var UserError = oose.UserError
-
 var config = require('../../config')
+var couchLoginUrl =
+  config.couchdb.options.secure ? 'https://' : 'http://' +
+  config.couchdb.host + ':' +
+  config.couchdb.port + '/_session'
+
+//make some promises
+P.promisifyAll(request)
 
 
 /**
@@ -18,32 +21,45 @@ var config = require('../../config')
  */
 exports.login = function(req,res){
   redis.incr(redis.schema.counter('prism','user:login'))
-  P.try(function(){
-    if(req.get(config.master.user.sessionTokenName))
-      throw new UserError('Already logged in')
-    return master.postAsync({
-      url: master.url('/user/login'),
-      json: {
-        username: req.body.username,
-        password: req.body.password,
-        ip: req.ip
-      }
-    })
+  var sessionToken
+  //make a login request to couch db
+  request.postAsync({
+    url: couchLoginUrl,
+    json: {
+      name: req.body.username,
+      password: req.body.password
+    }
   })
-    .spread(function(response,body){
-      res.json(body)
+    .spread(function(res,body){
+      console.log(res,body)
+      //i would think we are going to get a 403 for bad logins and then 200
+      //for good logins, we will find out
+      if(200 !== res.statusCode)
+        throw new Error('Invalid login response ' + res.statusCode)
+      //need our session token from the session
+      if(!res.headers['Set-Cookie'])
+        throw new Error('No cookie sent in response')
+      //now i think we need to query the session itself
+      sessionToken = res.headers['Set-Cookie']
+      return request.postAsync({
+        url: couchLoginUrl,
+        json: true,
+        headers: {
+          Cookie: sessionToken
+        }
+      })
     })
-    .catch(master.handleNetworkError)
-    .catch(NetworkError,function(err){
-      redis.incr(redis.schema.counterError('prism','user:login:network'))
-      res.status(500)
-      res.json({error: 'Failed to login: ' + err.message})
+    .spread(function(res,body){
+      console.log(res,body)
+      if(200 !== res.statusCode)
+        throw new Error('Failed to query session information ' + body.toJSON())
+      res.json({
+        token: sessionToken,
+        ip: req.ip,
+        data: body
+      })
     })
-    .catch(UserError,function(err){
-      redis.incr(redis.schema.counterError('prism','user:login'))
-      res.json({error: err.message})
-    })
-    .catch(Error,function(err){
+    .catch(function(err){
       redis.incr(redis.schema.counterError('prism','user:login:invalid'))
       if(!err.message.match('invalid user or password')) throw err
       res.json({error: 'Invalid username or password to master'})
@@ -58,51 +74,19 @@ exports.login = function(req,res){
  */
 exports.logout = function(req,res){
   redis.incr(redis.schema.counter('prism','user:logout'))
-  master.postAsync({
-    url: master.url('/user/logout'),
-    json: {
-      token: req.session.token,
-      ip: req.ip
+  //make a login request to couch db
+  request.deleteAsync({
+    url: couchLoginUrl,
+    json: true,
+    headers: {
+      Cookie: req.session.token
     }
   })
     .spread(function(response,body){
       res.json(body)
     })
-    .catch(master.handleNetworkError)
-    .catch(NetworkError,function(err){
-      redis.incr(redis.schema.counterError('prism','user:logout:network'))
-      res.status(500)
-      res.json({error: 'Failed to logout: ' + err.message})
-    })
-    .catch(UserError,function(err){
+    .catch(function(err){
       redis.incr(redis.schema.counterError('prism','user:logout'))
-      res.json({error: err.message})
-    })
-}
-
-
-/**
- * Password reset
- * @param {object} req
- * @param {object} res
- */
-exports.passwordReset = function(req,res){
-  redis.incr(redis.schema.counter('prism','user:passwordReset'))
-  master.postAsync({
-    url: master.url('/user/password/reset'),
-    json: {username: req.session.User.username}
-  })
-    .spread(function(response,body){
-      res.json(body)
-    })
-    .catch(master.handleNetworkError)
-    .catch(NetworkError,function(err){
-      redis.incr(redis.schema.counterError('prism','user:passwordReset:network'))
-      res.status(500)
-      res.json({error: 'Failed to reset password: ' + err.message})
-    })
-    .catch(UserError,function(err){
-      redis.incr(redis.schema.counterError('prism','user:passwordReset'))
       res.json({error: err.message})
     })
 }
@@ -117,35 +101,4 @@ exports.sessionValidate = function(req,res){
   redis.incr(redis.schema.counter('prism','user:sessionValidate'))
   //the middleware will have already validated us
   res.json({success: 'Session valid'})
-}
-
-
-/**
- * Session update
- * @param {object} req
- * @param {object} res
- */
-exports.sessionUpdate = function(req,res){
-  redis.incr(redis.schema.counter('prism','user:sessionUpdate'))
-  var data = req.body
-  master.postAsync({
-    url: master.url('/user/session/update'),json: {
-      token: req.session.token,
-      ip: req.ip,
-      data: data.data
-    }
-  })
-    .spread(function(response,body){
-      res.json(body)
-    })
-    .catch(master.handleNetworkError)
-    .catch(NetworkError,function(err){
-      redis.incr(redis.schema.counterError('prism','user:sessionUpdate:network'))
-      res.status(500)
-      res.json({error: 'Failed to update session: ' + err.message})
-    })
-    .catch(UserError,function(err){
-      redis.incr(redis.schema.counterError('prism','user:sessionUpdate'))
-      res.json({error: err.message})
-    })
 }

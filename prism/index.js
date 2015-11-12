@@ -6,7 +6,7 @@ var cluster
 var config = require('../config')
 var cradle = require('../helpers/couchdb')
 
-var prismKey = cradle.schema.store(config.prism.name)
+var prismKey = cradle.schema.prism(config.prism.name)
 
 //make some promises
 P.promisifyAll(infant)

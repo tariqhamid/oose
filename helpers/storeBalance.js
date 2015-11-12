@@ -3,6 +3,7 @@ var P = require('bluebird')
 var oose = require('oose-sdk')
 
 var NotFoundError = oose.NotFoundError
+var cradle = require('../helpers/couchdb')
 var redis = require('../helpers/redis')
 
 
@@ -13,14 +14,14 @@ var redis = require('../helpers/redis')
  */
 exports.storeList = function(prism){
   redis.incr(redis.schema.counter('prism','storeBalance:storeList'))
-  return redis.getAsync(redis.schema.storeList())
+  var storeKey = cradle.schema.store(prism + ':')
+  return cradle.db.allAsync({startKey: storeKey, endKey: storeKey + '\uffff'})
     .then(function(result){
-      result = JSON.parse(result)
-      //filter result
-      result = result.filter(function(a){
-        return (!prism || (a.Prism.name === prism))
+      var results = []
+      result.forEach(function(store){
+        if(store.available && store.active) results.push(store)
       })
-      return result
+      return results
     })
 }
 
@@ -57,24 +58,10 @@ exports.existsToArray = function(exists,skip){
 exports.populateStores = function(stores){
   redis.incr(redis.schema.counter('prism','storeBalance:populateStores'))
   var promises = []
-  var results = []
-  var populate = function(){
-    return function(result){
-      results.push(JSON.parse(result))
-    }
-  }
-  var store
   for(var i = 0; i < stores.length; i++){
-    store = stores[i]
-    promises.push(
-      redis.getAsync(redis.schema.storeEntry(store))
-        .then(populate(store))
-    )
+    promises.push(cradle.db.getAsync(cradle.schema.store(stores[i])))
   }
   return P.all(promises)
-    .then(function(){
-      return results
-    })
 }
 
 
@@ -164,7 +151,7 @@ exports.pickWinner = function(token,storeList,skip,allowFull){
   if(!(storeList instanceof Array)) storeList = []
   for(var i = 0; i < storeList.length; i++){
     store = storeList[i]
-    if((-1 === skip.indexOf(store.name) && (allowFull || !store.full)) &&
+    if((-1 === skip.indexOf(store.name) && (allowFull || store.writable)) &&
       ((!winner) || (winner.hits > store.hits))) winner = store
   }
   return redis.incrAsync(redis.schema.storeHits(token,winner.name))
