@@ -132,11 +132,11 @@ var scanInventoryAsync = P.promisify(scanInventory)
  * Run the inventory scan
  */
 var runInterval = function(){
-  debug('Starting to examine store inventory')
+  console.log('Starting to examine store inventory')
   scanInventoryAsync()
     .then(function(counter){
-      debug('Inventory scan complete')
-      debug('  ' +
+      console.log('Inventory scan complete')
+      console.log('  ' +
         counter.valid + ' valid ' +
         prettyBytes(counter.bytes) + ' ' +
         counter.created + ' created ' +

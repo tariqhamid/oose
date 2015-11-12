@@ -6,7 +6,7 @@ var infant = require('infant')
 var path = require('path')
 
 var config = require('../config')
-var cradle = require('../helpers/cradle')
+var cradle = require('../helpers/couchdb')
 
 var interval
 
@@ -124,12 +124,13 @@ var prunePurchases = function(done){
       }
     },{concurrency: 32})
     .then(function(){
-      return counter
+      done(null,counter)
     })
     .catch(function(err){
       console.log(err.stack)
       console.log(err)
       console.log('Purchase prune error',err.message)
+      done(err)
     })
 }
 
@@ -140,11 +141,11 @@ var prunePurchasesAsync = P.promisify(prunePurchases)
  * Run the interval
  */
 var runInterval = function(){
-  debug('Starting to prune purchases')
+  console.log('Starting to prune purchases')
   prunePurchasesAsync()
     .then(function(counter){
-      debug('Purchase prune complete')
-      debug('  ' +
+      console.log('Purchase prune complete')
+      console.log('  ' +
         counter.valid + ' valid ' +
         counter.expired + ' expired ' +
         counter.deleted + ' deleted ' +
