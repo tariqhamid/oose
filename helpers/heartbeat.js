@@ -38,11 +38,13 @@ var Heartbeat = function(type,name,port){
         debug('got prism list, record count?',prisms.length)
         prismList = []
         var strPrismList = JSON.stringify(prisms)
+
         if(prisms.length){
           for(var i = 0; i<prisms.length; i++){
-            prisms.request = api.prism(prisms[i])
-            prisms.type = 'prism'
-            prismList.push(prisms[i])
+            var tmpPrism = extend({},prisms[i])
+            tmpPrism.request = api.prism(tmpPrism)
+            tmpPrism.type = 'prism'
+            prismList.push(tmpPrism)
           }
         }
         return redis.setAsync(redis.schema.prismList(),strPrismList)
