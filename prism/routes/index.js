@@ -65,13 +65,6 @@ exports.content = require('./content')
 
 
 /**
- * Purchase routes
- * @type {object}
- */
-exports.purchase = require('./purchase')
-
-
-/**
  * User routes
  * @type {object}
  */

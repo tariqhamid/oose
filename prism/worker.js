@@ -88,12 +88,6 @@ app.post('/cache/detail',auth,routes.cache.detail)
 app.post('/content/exists',auth,routes.content.exists)
 app.put('/content/put/:file',auth,routes.content.put)
 
-//purchases
-app.post('/purchase/create',auth,routes.purchase.create)
-app.post('/purchase/find',auth,routes.purchase.find)
-app.post('/purchase/update',auth,routes.purchase.update)
-app.post('/purchase/remove',auth,routes.purchase.remove)
-
 //static content
 app.get('/static/:sha1/:filename',routes.content.contentStatic)
 
