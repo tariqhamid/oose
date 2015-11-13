@@ -58,9 +58,9 @@ exports.existsToArray = function(exists,skip){
 exports.populateStores = function(stores){
   redis.incr(redis.schema.counter('prism','storeBalance:populateStores'))
   var promises = []
-  for(var i = 0; i < stores.length; i++){
-    promises.push(cradle.db.getAsync(cradle.schema.store(stores[i])))
-  }
+  stores.forEach(function(store){
+    promises.push(cradle.db.getAsync(cradle.schema.store(store)))
+  })
   return P.all(promises)
 }
 

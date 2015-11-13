@@ -20,7 +20,7 @@ module.exports = {
     username: 'oose-store',
     password: 'fuckthat',
     timeout: 500,
-    workers: {count: 4, maxConnections: 1000000}
+    workers: {count: 2, maxConnections: 1000000}
   },
   prism: {
     enabled: false,

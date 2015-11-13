@@ -1,9 +1,6 @@
 'use strict';
-var debug = require('debug')('oose:main')
-var fs = require('graceful-fs')
 var Child = require('infant').Child
 var lifecycle = new (require('infant').Lifecycle)()
-var mkdirp = require('mkdirp-then')
 
 var child = Child.parent
 
@@ -26,23 +23,6 @@ lifecycle.on('online',function(){
 lifecycle.on('offline',function(){
   console.log('Shutdown complete')
 })
-
-
-/**
- * Touch root to ensure existence
- */
-lifecycle.add(
-  'pre init',
-  function(next){
-    debug('ensure root folder exists')
-    var root = config.root
-    fs.exists(root,function(exists){
-      if(exists) return next()
-      debug('creating root folder')
-      mkdirp(root).then(function(){next()},next)
-    })
-  }
-)
 
 
 /**

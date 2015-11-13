@@ -60,13 +60,13 @@ process.env.REQUEST_TIMEOUT = 10000
  */
 exports.user = {
   session: {},
-  username: 'test',
-  password: ''
+  username: 'oose',
+  password: 'blah1234'
 }
 
 
 /**
- * Purchase storagte
+ * Purchase storage
  * @type {object}
  */
 exports.purchase = {}
@@ -103,7 +103,6 @@ exports.getConfig = function(configFile){
  * @type {object}
  */
 exports.clconf = {
-  master: exports.getConfig(__dirname + '/../assets/master.config.js'),
   prism1: exports.getConfig(__dirname + '/../assets/prism1.config.js'),
   prism2: exports.getConfig(__dirname + '/../assets/prism2.config.js'),
   store1: exports.getConfig(__dirname + '/../assets/store1.config.js'),
@@ -114,20 +113,10 @@ exports.clconf = {
 
 
 /**
- * Override master
- * @type {request}
- */
-exports.master = api.master(exports.clconf.master.master)
-
-
-/**
  * Mock servers
  * @type {object}
  */
 exports.server = {
-  master: infant.parent('../../master',{
-    fork: {env: exports.makeEnv(__dirname + '/../assets/master.config.js')}
-  }),
   prism1: infant.parent('../../prism',{
     fork: {env: exports.makeEnv(__dirname + '/../assets/prism1.config.js')}
   }),
@@ -164,71 +153,6 @@ exports.before = function(that){
       return redis.removeKeysPattern(redis.schema.flushKeys())
     })
     .then(function(){
-      return exports.server.master.startAsync()
-    })
-    .then(function(){
-      //remove the user in case it was left over after a botched test
-      return exports.master.postAsync({
-        url: exports.master.url('/user/remove'),
-        json: {username: exports.user.username}
-      })
-    })
-    .then(function(){
-      //create user
-      return exports.master.postAsync({
-        url: exports.master.url('/user/create'),
-        json: {username: exports.user.username}
-      })
-    })
-    .spread(function(res,body){
-      exports.user.password = body.password
-      expect(body.success).to.equal('User created')
-      expect(body.id).to.be.greaterThan(0)
-      expect(body.password.length).to.equal(64)
-      //create prisms
-      var promises = []
-      var prisms = ['prism1','prism2']
-      var prism
-      for(var i = 0; i < prisms.length; i++){
-        prism = exports.clconf[prisms[i]]
-        promises.push(
-          exports.master.postAsync({
-            url: exports.master.url('/prism/create'),
-            json: {
-              name: prism.prism.name,
-              domain: prism.domain,
-              site: prism.site,
-              zone: prism.zone,
-              host: prism.prism.host,
-              port: prism.prism.port,
-              active: true
-            }
-          })
-        )
-      }
-      return P.all(promises)
-    })
-    .then(function(){
-      //create stores
-      var promises = []
-      var stores = ['store1','store2','store3','store4']
-      var store
-      for(var i = 0; i < stores.length; i++){
-        store = exports.clconf[stores[i]]
-        promises.push(exports.master.postAsync({
-          url: exports.master.url('/store/create'),
-          json: {
-            prism: store.prism.name,
-            name: store.store.name,
-            host: store.store.host,
-            port: store.store.port,
-            active: true
-          }
-        }))
-      }
-      return P.all(promises)
-    })
-    .then(function(){
       return P.all([
         exports.server.prism1.startAsync(),
         exports.server.prism2.startAsync(),
@@ -252,54 +176,14 @@ exports.before = function(that){
 exports.after = function(that){
   that.timeout(10000)
   console.log('Stopping mock cluster...')
-  return P.try(function(){
-    //remove stores
-    var promises = []
-    var stores = ['store1','store2','store3','store4']
-    for(var i = 0; i < stores.length; i++){
-      promises.push(
-        exports.master.postAsync({
-          url: exports.master.url('/store/remove'),
-          json: {name: stores[i]}
-        })
-      )
-    }
-    return P.all(promises)
-  })
-    .then(function(){
-      //remove prisms
-      var promises = []
-      var prisms = ['prism1','prism2']
-      for(var i = 0; i < prisms.length; i++){
-        promises.push(
-          exports.master.postAsync({
-            url: exports.master.url('/prism/remove'),
-            json: {name: prisms[i]}
-          })
-        )
-      }
-      return P.all(promises)
-    })
-    .then(function(){
-      //remove user
-      return exports.master.postAsync({
-        url: exports.master.url('/user/remove'),
-        json: {username: exports.user.username}
-      })
-    })
-    .spread(function(res,body){
-      expect(body.success).to.equal('User removed')
-      expect(body.count).to.equal(1)
-      return P.all([
-        exports.server.store4.stopAsync(),
-        exports.server.store3.stopAsync(),
-        exports.server.store2.stopAsync(),
-        exports.server.store1.stopAsync(),
-        exports.server.prism2.stopAsync(),
-        exports.server.prism1.stopAsync(),
-        exports.server.master.stopAsync()
-      ])
-    })
+  return P.all([
+    exports.server.store4.stopAsync(),
+    exports.server.store3.stopAsync(),
+    exports.server.store2.stopAsync(),
+    exports.server.store1.stopAsync(),
+    exports.server.prism2.stopAsync(),
+    exports.server.prism1.stopAsync(),
+  ])
     .then(function(){
       console.log('Mock cluster stopped!')
     })
@@ -315,7 +199,7 @@ exports.after = function(that){
 exports.checkUp = function(type,server){
   return function(){
     var client = api[type](server[type])
-    return client.postAsync({url: client.url('/ping'), timeout: 250})
+    return client.postAsync({url: client.url('/ping'), timeout: 1000})
       .spread(function(res,body){
         expect(body.pong).to.equal('pong')
       })
@@ -332,7 +216,7 @@ exports.checkUp = function(type,server){
 exports.checkDown = function(type,server){
   return function(){
     var client = api[type](server[type])
-    return client.postAsync({url: client.url('/ping'), timeout: 250})
+    return client.postAsync({url: client.url('/ping'), timeout: 1000})
       .then(function(){
         throw new Error('Server not down')
       })
@@ -388,15 +272,7 @@ exports.checkProtected = function(prism){
     return client.postAsync(client.url('/user/logout'))
       .catch(UserError,function(err){
         expect(err.message).to.match(/Invalid response code \(401\) to POST/)
-        return client.postAsync(client.url('/user/password/reset'))
-      })
-      .catch(UserError,function(err){
-        expect(err.message).to.match(/Invalid response code \(401\) to POST/)
         return client.postAsync(client.url('/user/session/validate'))
-      })
-      .catch(UserError,function(err){
-        expect(err.message).to.match(/Invalid response code \(401\) to POST/)
-        return client.postAsync(client.url('/content/upload'))
       })
       .catch(UserError,function(err){
         expect(err.message).to.match(/Invalid response code \(401\) to POST/)

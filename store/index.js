@@ -1,6 +1,9 @@
 'use strict';
 var P = require('bluebird')
+var fs = require('graceful-fs')
 var infant = require('infant')
+var mkdirp = require('mkdirp-then')
+var path = require('path')
 
 var config = require('../config')
 var cradle = require('../helpers/couchdb')
@@ -29,12 +32,26 @@ if(require.main === module){
       )
       inventory = infant.parent('./inventory')
       purchase = infant.parent('./purchase')
-      //fire everything up
-      P.all([
-        cluster.startAsync(),
-        inventory.startAsync(),
-        purchase.startAsync()
-      ])
+      //check if our needed folders exist
+      P.try(function(){
+        var promises = []
+        var rootFolder = path.resolve(config.root)
+        var contentFolder = path.resolve(rootFolder + '/content')
+        var purchaseFolder = path.resolve(rootFolder + '/purchased')
+        if(!fs.existsSync(contentFolder))
+          promises.push(mkdirp(contentFolder))
+        if(!fs.existsSync(purchaseFolder))
+          promises.push(mkdirp(purchaseFolder))
+        return P.all(promises)
+      })
+        .then(function(){
+          //fire everything up
+          return P.all([
+            cluster.startAsync(),
+            inventory.startAsync(),
+            purchase.startAsync()
+          ])
+        })
         .then(function(){
           //now register ourselves or mark ourselves available
           return cradle.db.getAsync(storeKey)
@@ -47,7 +64,8 @@ if(require.main === module){
           },
           //if we dont exist lets make sure thats why and create ourselves
           function(err){
-            if(404 !== err.headers.status) throw err
+            console.log('THIS IS THE ERROR',err)
+            if(404 !== err.header.status) throw err
             return cradle.db.saveAsync(storeKey,{
               name: config.store.name,
               host: config.store.host,

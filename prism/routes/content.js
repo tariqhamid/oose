@@ -12,6 +12,7 @@ var sha1stream = require('sha1-stream')
 var temp = require('temp')
 
 var api = require('../../helpers/api')
+var cradle = require('../../helpers/couchdb')
 var NetworkError = oose.NetworkError
 var NotFoundError = oose.NotFoundError
 var prismBalance = require('../../helpers/prismBalance')
@@ -380,135 +381,92 @@ exports.download = function(req,res){
 exports.purchase = function(req,res){
   redis.incr(redis.schema.counter('prism','content:purchase'))
   var ip = req.body.ip || req.ip || '127.0.0.1'
-  //var start = +new Date()
+  var start = +new Date()
   var sha1 = req.body.sha1
   var ext = req.body.ext
   var referrer = req.body.referrer
   var life = req.body.life || config.prism.purchaseLife
-  var token, map, purchase
-  var cacheKey = redis.schema.purchaseCache(sha1,req.session.token)
-  var confirmReferrer = function(test,against){
-    var valid = true
-    if(!(test instanceof Array)){
-      return test === against
-    }
-    test.forEach(function(ref,i){
-      if(!against || !against[i] || ref !== against[i]) valid = false
-    })
-    return valid
-  }
+  var token, inventory, purchase
   P.try(function(){
     if(!sha1File.validate(sha1))
       throw new UserError('Invalid SHA1 passed for purchase')
-    //check if we have cache first
-    return redis.getAsync(cacheKey)
+    return prismBalance.contentExists(sha1)
   })
     .then(function(result){
-      purchase = false
-      if(result) purchase = JSON.parse(result)
-      if(purchase && confirmReferrer(purchase.referrer,referrer)){
-        debug('cache hit',cacheKey)
-      } else {
-        debug('cache miss',cacheKey)
-        return prismBalance.contentExists(sha1)
-          .then(function(result){
-            map = result
-            if(!map.exists) throw new NotFoundError('File not found')
-            //really right here we need to generate a unique token
-            // (unique meaning not already in the redis registry for purchases
-            // since we already have a token then we should just try
-            var tokenExists = true
-            return promiseWhile(
-              function(){
-                return !!tokenExists
+      inventory = result
+      if(!inventory.exists) throw new NotFoundError('File not found')
+      //really right here we need to generate a unique token
+      // (unique meaning not already in the redis registry for purchases
+      // since we already have a token then we should just try
+      var tokenExists = true
+      return promiseWhile(
+        function(){
+          return !!tokenExists
+        },
+        function(){
+          token = purchasePath.generateToken()
+          return cradle.db.getAsync(cradle.schema.purchase(token))
+            .then(
+              function(result){
+                tokenExists = result
               },
-              function(){
-                token = purchasePath.generateToken()
-                return redis.existsAsync(redis.schema.purchase(token))
-                  .then(function(result){
-                    tokenExists = result
-                  })
+              function(err){
+                if(404 !== err.headers.status) throw err
               }
             )
-          })
-          .then(function(){
-            //now we know our token so register it on the store instances
-            //this means iterating the existence map
-            return storeBalance.populateStores(storeBalance.existsToArray(map))
-          })
-          .then(function(stores){
-            var createPurchase = function(store){
-              var client = api.store(store)
-              return client
-                .postAsync({
-                  url: client.url('/purchase/remove'),
-                  json: {token: token}
-                })
-                .spread(function(){
-                  return client.postAsync({
-                    url: client.url('/purchase/create'),
-                    json: {
-                      sha1: sha1,
-                      ext: ext,
-                      token: token,
-                      life: life
-                    }
-                  })
-                })
-                .catch(client.handleNetworkError)
-                .catch(NetworkError,nullFunction)
-            }
-            var promises = []
-            for(var i = 0; i < stores.length; i++){
-              promises.push(createPurchase(stores[i]))
-            }
-            return P.all(promises)
-          })
-          .then(function(){
-            //now create our purchase object
-            purchase = {
-              sha1: sha1,
-              life: life,
-              token: token,
-              sessionToken: req.session.token,
-              map: map,
-              ext: ext,
-              ip: ip,
-              referrer: referrer
-            }
-            //okay so the purchase is registered on all our stores
-            //time to register it to all the prisms
-            return prismBalance.prismList()
-          })
-          .then(function(result){
-            var createPurchase = function(prism){
-              var client = api.prism(prism)
-              return client
-                .postAsync({
-                  url: client.url('/purchase/remove'),
-                  json: {token: token}
-                })
-                .spread(function(){
-                  return client.postAsync({
-                    url: client.url('/purchase/create'),
-                    json: {purchase: purchase}
-                  })
-                })
-                .catch(client.handleNetworkError)
-                .catch(NetworkError,nullFunction)
-            }
-            var prismList = result
-            var promises = []
-            for(var i = 0; i < prismList.length; i++){
-              promises.push(createPurchase(prismList[i]))
-            }
-            return P.all(promises)
-          })
-      }
+        }
+      )
     })
     .then(function(){
-      //var duration = (+new Date()) - start
-      //console.log('Purchase',purchase.token,purchase.sha1,purchase.ext,' +' + duration + ' ms',purchase.referrer.join(','))
+      //now we know our token so register it on the store instances
+      //this means iterating the existence map
+      return storeBalance.populateStores(inventory.map)
+    })
+    .each(function(store){
+      var client = api.store(store)
+      return client
+        .postAsync({
+          url: client.url('/purchase/remove'),
+          json: {token: token}
+        })
+        .spread(function(){
+          return client.postAsync({
+            url: client.url('/purchase/create'),
+            json: {
+              sha1: sha1,
+              ext: ext,
+              token: token,
+              life: life
+            }
+          })
+        })
+        .catch(client.handleNetworkError)
+        .catch(NetworkError,nullFunction)
+    })
+    .then(function(){
+      //now create our purchase object
+      purchase = {
+        sha1: sha1,
+        life: life,
+        token: token,
+        sessionToken: req.session.token,
+        inventory: inventory,
+        ext: ext,
+        ip: ip,
+        referrer: referrer
+      }
+      return cradle.db.saveAsync(cradle.schema.purchase(token),purchase)
+    })
+    .then(function(){
+      var duration = (+new Date()) - start
+      console.log(
+        'Purchase',
+        purchase.token,
+        purchase.sha1,
+        purchase.ext,
+        ' + ' + duration + ' ms',
+        purchase.referrer.join(',')
+      )
       res.json(purchase)
     })
     .catch(NetworkError,function(err){
@@ -649,51 +607,28 @@ exports.contentStatic = function(req,res){
 exports.purchaseRemove = function(req,res){
   redis.incr(redis.schema.counter('prism','content:purchaseRemove'))
   var token = req.body.token
-  var redisKey = redis.schema.purchase(token)
-  var prismList
+  var purchaseKey = cradle.schema.purchase(token)
   var purchase
-  redis.getAsync(redisKey)
-    .then(function(result){
-      if(!result){
+  cradle.db.getAsync(purchaseKey)
+    .then(
+      function(result){
+        purchase = result
+        return storeBalance.populateStores(purchase.inventory.map)
+      },
+      function(err){
+        if(404 !== err.headers.status) throw err
         res.json({token: token, count: 0, success: 'Purchase removed'})
-      } else {
-        purchase = JSON.parse(result)
-        return storeBalance.populateStores(
-          storeBalance.existsToArray(purchase.map)
-        )
       }
-    })
-    .then(function(stores){
-      var promises = []
-      var client
-      for(var i = 0; i < stores.length; i++){
-        client = api.store(stores[i])
-        promises.push(
-          client.postAsync({
-            url: client.url('/purchase/remove'),
-            json: {token: token}
-          })
-        )
-      }
-      return P.all(promises)
+    )
+    .each(function(store){
+      var client = api.store(store)
+      return client.postAsync({
+        url: client.url('/purchase/remove'),
+        json: {token: token}
+      })
     })
     .then(function(){
-      return prismBalance.prismList()
-    })
-    .then(function(result){
-      prismList = result
-      var promises = []
-      var client
-      for(var i = 0; i < prismList.length; i++){
-        client = api.prism(prismList[i])
-        promises.push(
-          client.postAsync({
-            url: client.url('/purchase/remove'),
-            json: {token: token, sessionToken: req.session.token}
-          })
-        )
-      }
-      return P.all(promises)
+      return cradle.db.removeAsync(purchaseKey)
     })
     .then(function(){
       res.json({token: token, count: 1, success: 'Purchase removed'})
