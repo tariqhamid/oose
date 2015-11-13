@@ -15,9 +15,6 @@ var config = require('../config')
 P.promisifyAll(infant)
 P.promisifyAll(request)
 
-//setup bridge to master
-var master = api.master()
-
 var user = {
   session: {},
   username: 'test',
@@ -27,66 +24,34 @@ var user = {
 
 describe('prism',function(){
   this.timeout(10000)
-  var masterServer = infant.parent('../master')
   var prismServer = infant.parent('../prism')
   var client
   //start servers and create a user
   before(function(){
     client = api.prism(config.prism)
-    return P.all([
-      masterServer.startAsync(),
-      prismServer.startAsync()
-    ])
-      .then(function(){
-        //create user
-        return master.postAsync({
-          url: master.url('/user/create'),
-          json: {username: user.username}
-        })
-          .spread(function(res,body){
-            user.password = body.password
-            return P.all([
-              expect(body.success).to.equal('User created'),
-              expect(body.id).to.be.greaterThan(0),
-              expect(body.password.length).to.equal(64)
-            ])
-          })
-      })
+    return prismServer.startAsync()
   })
   //remove user and stop services
   after(function(){
-    return master.postAsync({
-      url: master.url('/user/remove'),
-      json: {username: user.username}
-    })
-      .spread(function(res,body){
-        return P.all([
-          expect(body.success).to.equal('User removed'),
-          expect(body.count).to.equal(1)
-        ])
-      })
-      .then(function(){
-        return P.all([
-          prismServer.stopAsync(),
-          masterServer.stopAsync()
-        ])
-      })
+    return prismServer.stopAsync()
   })
   //home page
-  it('should have a homepage',function(){
-    return client
-      .postAsync(client.url('/'))
-      .spread(function(res,body){
-        expect(body.message).to.equal(
-          'Welcome to OOSE version ' + config.version)
-      })
-  })
-  it('should ping',function(){
-    return client
-      .postAsync(client.url('/ping'))
-      .spread(function(res,body){
-        expect(body.pong).to.equal('pong')
-      })
+  describe('prism:basic',function(){
+    it('should have a homepage',function(){
+      return client
+        .postAsync(client.url('/'))
+        .spread(function(res,body){
+          expect(body.message).to.equal(
+            'Welcome to OOSE version ' + config.version)
+        })
+    })
+    it('should ping',function(){
+      return client
+        .postAsync(client.url('/ping'))
+        .spread(function(res,body){
+          expect(body.pong).to.equal('pong')
+        })
+    })
   })
   describe('prism:users',function(){
     it('should login',function(){
@@ -94,8 +59,8 @@ describe('prism',function(){
         .postAsync({
           url: client.url('/user/login'),
           json: {
-            username: user.username,
-            password: user.password
+            username: config.couchdb.options.auth.username,
+            password: config.couchdb.options.auth.password
           }
         })
         .spread(function(res,body){
@@ -105,32 +70,13 @@ describe('prism',function(){
           expect(body.session).to.be.an('Object')
         })
     })
-    it('should reset password',function(){
-      return api.setSession(user.session,client)
-        .postAsync({url: client.url('/user/password/reset'), json: true})
-        .spread(function(res,body){
-          user.password = body.password
-          expect(body.success).to.equal('User password reset')
-          expect(body.password.length).to.equal(64)
-        })
-    })
     it('should validate a session',function(){
       return api.setSession(user.session,client)
         .postAsync({url: client.url('/user/session/validate'), json: true})
         .spread(function(res,body){
           expect(body.success).to.equal('Session valid')
-        })
-    })
-    it('should allow a session update',function(){
-      return api.setSession(user.session,client)
-        .postAsync({
-          url: client.url('/user/session/update'),
-          json: {data: {foo: 'bar'}}
-        })
-        .spread(function(res,body){
-          user.session = body.session
-          expect(body.success).to.equal('Session updated')
-          expect(JSON.parse(body.session.data).foo).to.equal('bar')
+          expect(body.session).to.be.an('object')
+          expect(body.session.token).to.be.a('string')
         })
     })
     it('should logout',function(){
@@ -141,7 +87,7 @@ describe('prism',function(){
         })
     })
   })
-  describe('prism:purchase',function(){
+  describe.skip('prism:purchase',function(){
     it('should create a purchase',function(){
       return client
         .postAsync({

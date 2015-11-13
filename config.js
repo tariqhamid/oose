@@ -22,7 +22,8 @@ config.$load({
     pem: oose.mock.sslOptions.pemFile
   },
   api: {
-    maxSockets: 64
+    maxSockets: 64,
+    sessionTokenName: 'X-OOSE-Token'
   },
   //heartbeat
   heartbeat: {

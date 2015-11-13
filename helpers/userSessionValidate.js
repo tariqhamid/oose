@@ -2,7 +2,7 @@
 var P = require('bluebird')
 var basicAuth = require('basic-auth-connect')
 var debug = require('debug')('oose:userSessionValidate')
-var request = require('request')
+var request = require('request-promise')
 
 var redis = require('../helpers/redis')
 
@@ -26,7 +26,7 @@ P.promisifyAll(request)
  * @return {*}
  */
 module.exports = function(req,res,next){
-  var token = req.get(config.master.user.sessionTokenName) || ''
+  var token = req.get(config.api.sessionTokenName) || ''
   var session
   debug('got token',token)
   //without a token lets try basic auth since it can override
@@ -36,15 +36,17 @@ module.exports = function(req,res,next){
   } else {
     redis.incr(redis.schema.counter('prism','userSessionValidate:full'))
     //now i think we need to query the session itself
-    request.postAsync({
+    request({
       url: couchLoginUrl,
+      method: 'GET',
       json: true,
+      resolveWithFullResponse: true,
       headers: {
         Cookie: token
       }
     })
-      .spread(function(res,body){
-        console.log(res,body)
+      .then(function(res){
+        var body = res.body
         if(200 !== res.statusCode){
           throw new Error(
             'Failed to query session information ' + body.toJSON())

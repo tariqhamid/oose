@@ -3,6 +3,7 @@ var P = require('bluebird')
 var fs = require('graceful-fs')
 var oose = require('oose-sdk')
 
+var cradle = require('../../helpers/couchdb')
 var NotFoundError = oose.NotFoundError
 var purchasePath = require('../../helpers/purchasePath')
 var redis = require('../../helpers/redis')

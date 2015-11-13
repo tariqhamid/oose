@@ -1,6 +1,6 @@
 'use strict';
 var P = require('bluebird')
-var request = require('request')
+var request = require('request-promise')
 
 var redis = require('../../helpers/redis')
 
@@ -23,41 +23,55 @@ exports.login = function(req,res){
   redis.incr(redis.schema.counter('prism','user:login'))
   var sessionToken
   //make a login request to couch db
-  request.postAsync({
+  request({
     url: couchLoginUrl,
-    json: {
+    method: 'POST',
+    resolveWithFullResponse: true,
+    json: true,
+    headers: {
+      HOST: 'localhost:5984'
+    },
+    body: {
       name: req.body.username,
       password: req.body.password
     }
   })
-    .spread(function(res,body){
-      console.log(res,body)
+    .then(function(result){
       //i would think we are going to get a 403 for bad logins and then 200
       //for good logins, we will find out
-      if(200 !== res.statusCode)
-        throw new Error('Invalid login response ' + res.statusCode)
+      if(200 !== result.statusCode)
+        throw new Error('Invalid login response ' + result.statusCode)
       //need our session token from the session
-      if(!res.headers['Set-Cookie'])
+      if(!result.headers['set-cookie'])
         throw new Error('No cookie sent in response')
       //now i think we need to query the session itself
-      sessionToken = res.headers['Set-Cookie']
-      return request.postAsync({
+      sessionToken = result.headers['set-cookie'][0].split(';')[0]
+      return request({
         url: couchLoginUrl,
         json: true,
+        method: 'GET',
+        resolveWithFullResponse: true,
         headers: {
           Cookie: sessionToken
         }
       })
     })
-    .spread(function(res,body){
-      console.log(res,body)
-      if(200 !== res.statusCode)
-        throw new Error('Failed to query session information ' + body.toJSON())
-      res.json({
-        token: sessionToken,
-        ip: req.ip,
-        data: body
-      })
+    .then(function(result){
+      if(200 !== result.statusCode){
+        throw new Error(
+          'Failed to query session information ' + result.body.toJSON())
+      }
+      //establish session?
+      var session = {
+        success: 'User logged in',
+        session: {
+          token: sessionToken,
+          ip: req.ip,
+          data: result.body
+        }
+      }
+      req.session = session
+      res.json(session)
     })
     .catch(function(err){
       redis.incr(redis.schema.counterError('prism','user:login:invalid'))
@@ -75,15 +89,19 @@ exports.login = function(req,res){
 exports.logout = function(req,res){
   redis.incr(redis.schema.counter('prism','user:logout'))
   //make a login request to couch db
-  request.deleteAsync({
+  request({
     url: couchLoginUrl,
+    method: 'DELETE',
     json: true,
     headers: {
       Cookie: req.session.token
     }
   })
-    .spread(function(response,body){
-      res.json(body)
+    .then(function(body){
+      res.json({
+        success: 'User logged out',
+        data: body
+      })
     })
     .catch(function(err){
       redis.incr(redis.schema.counterError('prism','user:logout'))
@@ -100,5 +118,8 @@ exports.logout = function(req,res){
 exports.sessionValidate = function(req,res){
   redis.incr(redis.schema.counter('prism','user:sessionValidate'))
   //the middleware will have already validated us
-  res.json({success: 'Session valid'})
+  res.json({
+    success: 'Session valid',
+    session: req.session
+  })
 }
