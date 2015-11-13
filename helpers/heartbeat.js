@@ -137,8 +137,8 @@ var Heartbeat = function(type,name,port){
       }).then(function(){
         //Delete the vote log, it has served its purpose
         return cradle.db.deleteAsync(downKey,voteLog._rev)
-      }).catch(function(err){
-        console.log(err)
+      }).catch(function(){
+        //console.log(err)
       })
   }
 

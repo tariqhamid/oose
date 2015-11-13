@@ -14,7 +14,6 @@ exports.prismList = function(){
   var prismKey = cradle.schema.prism()
   return cradle.db.allAsync({startKey: prismKey, endKey: prismKey + '\uffff'})
     .then(function(result){
-      console.log(result)
       var promises = []
       for(var i = 0 ; i< result.length ; i++){
         promises.push(cradle.db.getAsync(result[i].key))
