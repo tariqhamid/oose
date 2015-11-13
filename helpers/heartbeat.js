@@ -6,9 +6,11 @@ var oose = require('oose-sdk')
 var api = require('../helpers/api')
 var NetworkError = oose.NetworkError
 var redis = require('../helpers/redis')
-
+var prismBalance = require('../helpers/prismBalance')
+var storeBalance = require('../helpers/storeBalance')
 var config = require('../config')
 var extend = require('util')._extend;
+var cradle = require('../helpers/couchdb')
 
 var instance = null
 
@@ -24,36 +26,23 @@ var instance = null
 var Heartbeat = function(type,name,port){
   var that = this
   var myDesc = type+':'+name+':'+port
-  var master = null
-  var masterUp = false
   var checkCounter = 0
   var interval = null
   var storeList = null
   var prismList = null
-
-  var checkMaster = function(){
-    return master.postAsync(master.url('/ping'))
-      .spread(function(res,body){
-        masterUp = (body && body.pong && 'pong' === body.pong)
-        return redis.setAsync(redis.schema.masterUp(),masterUp ? 1 : 0)
-      })
-      .catch(function(){
-        masterUp = false
-        return redis.setAsync(redis.schema.masterUp(),0)
-      })
-  }
+  var prismName = (type==='prism')?name:config.prism.name
 
   var collectPrismList = function(){
-    return master.postAsync(master.url('/prism/list'))
-      .spread(function(res,body){
-        debug('got prism list, record count?',body.prism.length)
+    return prismBalance.prismList()
+      .then(function(prisms){
+        debug('got prism list, record count?',prisms.length)
         prismList = []
-        var strPrismList = JSON.stringify(body.prism)
-        if(body.prism.length){
-          for(var i = 0; i<body.prism.length; i++){
-            body.prism[i].request = api.prism(body.prism[i])
-            body.prism[i].type = 'prism'
-            prismList.push(body.prism[i])
+        var strPrismList = JSON.stringify(prisms)
+        if(prisms.length){
+          for(var i = 0; i<prisms.length; i++){
+            prisms.request = api.prism(prisms[i])
+            prisms.type = 'prism'
+            prismList.push(prisms[i])
           }
         }
         return redis.setAsync(redis.schema.prismList(),strPrismList)
@@ -66,14 +55,14 @@ var Heartbeat = function(type,name,port){
 
   var collectStoreList = function(){
     var srvStoreList
-    return master.postAsync(master.url('/store/list'))
-      .spread(function(res,body){
-        debug('got store list, record count?',body.store.length)
+    return storeBalance.storeList(prismName)
+      .then(function(stores){
+        debug('got store list, record count?',stores.length)
         storeList = []
-        srvStoreList = body.store
-        if(body.store.length){
-          for(var i = 0; i<body.store.length; i++){
-            var tmpStore = extend({},body.store[i])
+        srvStoreList = stores
+        if(stores.length){
+          for(var i = 0; i<stores.length; i++){
+            var tmpStore = extend({},stores[i])
             tmpStore.request = api.store(tmpStore)
             tmpStore.type = 'store'
             storeList.push(tmpStore)
@@ -96,18 +85,17 @@ var Heartbeat = function(type,name,port){
         }
         return P.all(promises)
       })
-      .catch(master.handleNetworkError)
+      .catch(NetworkError,function(err){
+        //continue as normal on a network error
+        debug('network error',err)
+      })
   }
 
   var collect = function(){
-    return checkMaster()
-      .then(function(){
-        if(!masterUp) throw new NetworkError('Master down')
-        return P.all([
-          collectPrismList(),
-          collectStoreList()
-        ])
-      })
+      return P.all([
+        collectPrismList(),
+        collectStoreList()
+      ])
       .catch(NetworkError,function(err){
         //continue as normal on a network error
         debug('network error',err)
@@ -115,20 +103,40 @@ var Heartbeat = function(type,name,port){
   }
 
   var downVote = function(host){
-    var downHost = extend({},host)
-    if(downHost.request) delete(downHost.request)
-    return master.postAsync({
-        url:master.url('/vote/down'),
-        json: {
-          host: downHost,
-          caster: myDesc
-        }
-      })
-      .spread(function(res,body){
-        debug(body)
-      })
-      .catch(function(){
-
+    //var downHost = extend({},host)
+    var key = (host.type === 'prism')?cradle.schema.prism(host.name):cradle.schema.store(host.name)
+    var downKey = cradle.schema.downVote(key)
+    var voteLog = null
+    var hostInfo = null
+    //if(downHost.request) delete(downHost.request)
+    return cradle.db.getAsync(key)
+      .then(function(node){
+        //got the node
+        if(!(node.available && node.active)) throw new Error('Already down')
+        hostInfo = node
+        return cradle.db.getAsync(downKey)
+      }).then(function(vL){
+        voteLog = vL
+        if(voteLog[key]) throw new Error('Already recorded')
+        voteLog[key] = true
+        return cradle.db.saveAsync(downKey,voteLog._rev,voteLog)
+      },function(err){
+        if(404 !== err.headers.status) throw err
+        voteLog = {}
+        voteLog[key] = true
+        return cradle.db.saveAsync(downKey,voteLog)
+      }).then(function(vL){
+        voteLog = vL
+        var count = storeList.length + prismList.length
+        var votes = Object.keys(voteLog).length
+        if(votes < (count/2))throw new Error('Ok, got it')
+        hostInfo.active = false
+        return cradle.db.saveAsync(key,hostInfo._rev,hostInfo)
+      }).then(function(){
+        //Delete the vote log, it has served its purpose
+        return cradle.db.deleteAsync(downKey,voteLog._rev)
+      }).catch(function(err){
+        console.log(err)
       })
   }
 
@@ -185,13 +193,8 @@ var Heartbeat = function(type,name,port){
     return checkStuff()
   }
 
-  that.setMaster = function(newMaster){
-    master = api.master(newMaster)
-    if(!interval) createInterval()
-  }
-
-  //this will start the pinger automatically if the config exists
-  if(config.master) that.setMaster(config.master)
+  //this will start the heartbeat automatically
+  createInterval()
 }
 
 

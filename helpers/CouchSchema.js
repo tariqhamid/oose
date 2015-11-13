@@ -42,6 +42,15 @@ CouchShema.prototype.store = function(name){
   return this.applyPrefix('store:' + name)
 }
 
+/**
+ * DownVote Key
+ * @param {string} name
+ * @return {string}
+ */
+CouchShema.prototype.downVote = function(name){
+  return this.applyPrefix('downvote:' + name)
+}
+
 
 /**
  * Look up a purchase
