@@ -182,7 +182,7 @@ exports.after = function(that){
     exports.server.store2.stopAsync(),
     exports.server.store1.stopAsync(),
     exports.server.prism2.stopAsync(),
-    exports.server.prism1.stopAsync(),
+    exports.server.prism1.stopAsync()
   ])
     .then(function(){
       console.log('Mock cluster stopped!')

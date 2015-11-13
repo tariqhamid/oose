@@ -16,10 +16,10 @@ module.exports = {
   store: {
     enabled: true,
     host: '127.0.2.7',
-    name: 'store4',
+    name: 'prism2:store4',
     username: 'oose-store',
     password: 'fuckthat',
-    timeout: 500,
+    timeout: 2000,
     workers: {count: 2, maxConnections: 1000000}
   },
   prism: {
@@ -27,13 +27,6 @@ module.exports = {
     name: 'prism2',
     username: 'oose-prism',
     password: 'fuckit',
-    timeout: 500
-  },
-  master: {
-    enabled: false,
-    host: '127.0.2.1',
-    username: 'oose',
-    password: 'fuckyou',
-    timeout: 500
+    timeout: 2000
   }
 }

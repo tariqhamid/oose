@@ -28,9 +28,9 @@ exports.login = function(req,res){
     method: 'POST',
     resolveWithFullResponse: true,
     json: true,
-    headers: {
-      HOST: 'localhost:5984'
-    },
+    //headers: {
+    //  HOST: config.couchdb.host + ':' + config.couchdb.port
+    //},
     body: {
       name: req.body.username,
       password: req.body.password

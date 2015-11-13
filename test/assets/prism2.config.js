@@ -17,7 +17,7 @@ module.exports = {
     enabled: false,
     username: 'oose-store',
     password: 'fuckthat',
-    timeout: 500
+    timeout: 2000
   },
   prism: {
     enabled: true,
@@ -25,15 +25,7 @@ module.exports = {
     name: 'prism2',
     username: 'oose-prism',
     password: 'fuckit',
-    timeout: 500,
-    workers: {count: 2, maxConnections: 1000000},
-    enableSoftLookup: false
-  },
-  master: {
-    enabled: false,
-    host: '127.0.2.1',
-    username: 'oose',
-    password: 'fuckyou',
-    timeout: 500
+    timeout: 2000,
+    workers: {count: 2, maxConnections: 1000000}
   }
 }

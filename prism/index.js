@@ -33,7 +33,7 @@ if(require.main === module){
           //if we exist lets mark ourselves available
           function(doc){
             doc.available = true
-            return cradle.db.saveAsync(prismKey,doc._rev,doc)
+            return cradle.db.saveAsync(prismKey,doc)
           },
           //if we dont exist lets make sure thats why and create ourselves
           function(err){
@@ -65,7 +65,7 @@ if(require.main === module){
       cradle.db.getAsync(prismKey)
         .then(function(doc){
           doc.available = false
-          return cradle.db.saveAsync(prismKey,doc._rev,doc)
+          return cradle.db.saveAsync(prismKey,doc)
         })
         .then(function(){
           if(!cluster) return

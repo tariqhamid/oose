@@ -1,10 +1,15 @@
 'use strict';
+process.env.OOSE_CONFIG = __dirname + '/assets/store1.config.js'
+
 var P = require('bluebird')
 var expect = require('chai').expect
 var fs = require('graceful-fs')
 var infant = require('infant')
+var ObjectManage = require('object-manage')
 var oose = require('oose-sdk')
+var path = require('path')
 var promisePipe = require('promisepipe')
+var rimrafPromise = require('rimraf-promise')
 var sha1stream = require('sha1-stream')
 
 var api = require('../helpers/api')
@@ -13,18 +18,30 @@ var content = oose.mock.content
 
 var config = require('../config')
 
+var makeEnv = function(configFile){
+  var env = new ObjectManage()
+  env.$load(process.env)
+  env.OOSE_CONFIG = path.resolve(configFile)
+  return env.$strip()
+}
+
 //make some promises
 P.promisifyAll(fs)
 P.promisifyAll(infant)
 
 describe('store',function(){
   this.timeout(10000)
-  var storeServer = infant.parent('../store')
+  var storeServer = infant.parent('../store',{
+    fork: {env: makeEnv(__dirname + '/assets/store1.config.js')}
+  })
   var client
   //start servers and create a user
   before(function(){
     client = api.store(config.store)
-    return storeServer.startAsync()
+    return rimrafPromise(config.root)
+      .then(function(){
+        return storeServer.startAsync()
+      })
   })
   //remove user and stop services
   after(function(){

@@ -174,7 +174,7 @@ exports.remove = function(req,res){
       function(doc){
         if(doc.exists.indexOf(config.store.name) >= 0)
           doc.exists.splice(doc.exists.indexOf(config.store.name),1)
-        return cradle.db.saveAsync(inventoryKey,doc._rev,doc)
+        return cradle.db.saveAsync(inventoryKey,doc)
       },
       function(err){
         console.log(err)
