@@ -1,5 +1,6 @@
 'use strict';
 var P = require('bluebird')
+var oose = require('oose-sdk')
 var request = require('request-promise')
 
 var redis = require('../../helpers/redis')
@@ -9,6 +10,7 @@ var couchLoginUrl =
   config.couchdb.options.secure ? 'https://' : 'http://' +
   config.couchdb.host + ':' +
   config.couchdb.port + '/_session'
+var UserError = oose.UserError
 
 //make some promises
 P.promisifyAll(request)
@@ -23,61 +25,76 @@ exports.login = function(req,res){
   redis.incr(redis.schema.counter('prism','user:login'))
   var sessionToken
   //make a login request to couch db
-  request({
-    url: couchLoginUrl,
-    method: 'POST',
-    resolveWithFullResponse: true,
-    json: true,
-    //headers: {
-    //  HOST: config.couchdb.host + ':' + config.couchdb.port
-    //},
-    body: {
-      name: req.body.username,
-      password: req.body.password
-    }
-  })
-    .then(function(result){
-      //i would think we are going to get a 403 for bad logins and then 200
-      //for good logins, we will find out
-      if(200 !== result.statusCode)
-        throw new Error('Invalid login response ' + result.statusCode)
-      //need our session token from the session
-      if(!result.headers['set-cookie'])
-        throw new Error('No cookie sent in response')
-      //now i think we need to query the session itself
-      sessionToken = result.headers['set-cookie'][0].split(';')[0]
-      return request({
-        url: couchLoginUrl,
-        json: true,
-        method: 'GET',
-        resolveWithFullResponse: true,
-        headers: {
-          Cookie: sessionToken
+  if(!req.body.username || !req.body.password){
+    res.json({error: 'Invalid username or password'})
+  } else {
+    request({
+      url: couchLoginUrl,
+      method: 'POST',
+      resolveWithFullResponse: true,
+      json: true,
+      //headers: {
+      //  HOST: config.couchdb.host + ':' + config.couchdb.port
+      //},
+      body: {
+        name: req.body.username,
+        password: req.body.password
+      }
+    })
+      .then(
+        function(result){
+          //i would think we are going to get a 403 for bad logins and then 200
+          //for good logins, we will find out
+          if(200 !== result.statusCode)
+            throw new Error('Invalid login response ' + result.statusCode)
+          //need our session token from the session
+          if(!result.headers['set-cookie'])
+            throw new Error('No cookie sent in response')
+          //now i think we need to query the session itself
+          sessionToken = result.headers['set-cookie'][0].split(';')[0]
+          return request({
+            url: couchLoginUrl,
+            json: true,
+            method: 'GET',
+            resolveWithFullResponse: true,
+            headers: {
+              Cookie: sessionToken
+            }
+          })
+        },
+        function(err){
+          redis.incr(
+            redis.schema.counterError('prism','user:login:invalid'))
+          res.json({error: err.message})
         }
+      )
+      .then(function(result){
+        if(200 !== result.statusCode){
+          throw new Error(
+            'Failed to query session information ' + result.body.toJSON())
+        }
+        //establish session?
+        var session = {
+          success: 'User logged in',
+          session: {
+            token: sessionToken,
+            ip: req.ip,
+            data: result.body
+          }
+        }
+        req.session = session
+        res.json(session)
       })
-    })
-    .then(function(result){
-      if(200 !== result.statusCode){
-        throw new Error(
-          'Failed to query session information ' + result.body.toJSON())
-      }
-      //establish session?
-      var session = {
-        success: 'User logged in',
-        session: {
-          token: sessionToken,
-          ip: req.ip,
-          data: result.body
-        }
-      }
-      req.session = session
-      res.json(session)
-    })
-    .catch(function(err){
-      redis.incr(redis.schema.counterError('prism','user:login:invalid'))
-      if(!err.message.match('invalid user or password')) throw err
-      res.json({error: 'Invalid username or password to master'})
-    })
+      .catch(UserError,function(err){
+        redis.incr(redis.schema.counterError('prism','user:login:invalid'))
+        res.json({error: err.message})
+      })
+      .catch(function(err){
+        redis.incr(redis.schema.counterError('prism','user:login:invalid'))
+        if(!err.message.match('invalid user or password')) throw err
+        res.json({error: 'Invalid username or password to master'})
+      })
+  }
 }
 
 

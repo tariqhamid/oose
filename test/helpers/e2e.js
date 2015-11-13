@@ -255,7 +255,7 @@ exports.checkPublic = function(prism){
         throw new Error('Should have thrown an error for no username')
       })
       .catch(UserError,function(err){
-        expect(err.message).to.equal('No user found')
+        expect(err.message).to.equal('Invalid username or password')
       })
   }
 }

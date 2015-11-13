@@ -14,6 +14,7 @@ describe('e2e',function(){
     })
     //remove user and stop services
     after(function(){
+      this.timeout(30000)
       var that = this
       return e2e.after(that)
     })
@@ -25,7 +26,7 @@ describe('e2e',function(){
       it('store3 should be up',e2e.checkUp('store',e2e.clconf.store3))
       it('store4 should be up',e2e.checkUp('store',e2e.clconf.store4))
     })
-    describe.only('authentication',function(){
+    describe('authentication',function(){
       it('should not require authentication for public functions',
         e2e.checkPublic(e2e.clconf.prism1))
       it('should require a session for all protected prism functions',
@@ -44,7 +45,7 @@ describe('e2e',function(){
           })
       })
     })
-    describe('content',function(){
+    describe.only('content',function(){
       before(e2e.contentUpload(e2e.clconf.prism1))
       it('should retrieve content',e2e.contentRetrieve(e2e.clconf.prism1))
       it('should show the content exists in 2 places',
@@ -72,7 +73,7 @@ describe('e2e',function(){
           })
       })
     })
-    describe('purchases',function(){
+    describe.skip('purchases',function(){
       it('should allow purchase of the content',function(){
         return e2e.contentPurchase(e2e.clconf.prism1)()
           .then(function(result){
