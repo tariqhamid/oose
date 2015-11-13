@@ -12,7 +12,7 @@ var couchLoginUrl =
   config.couchdb.host + ':' +
   config.couchdb.port + '/_session'
 
-var auth = basicAuth(config.prsm.username,config.prism.password)
+var auth = basicAuth(config.prism.username,config.prism.password)
 
 //make some promises
 P.promisifyAll(request)

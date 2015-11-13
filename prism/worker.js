@@ -86,10 +86,6 @@ app.post('/cache/detail',auth,routes.cache.detail)
 
 //content
 app.post('/content/exists',auth,routes.content.exists)
-app.post('/content/exists/local',auth,routes.content.existsLocal)
-app.post('/content/exists/invalidate',auth,routes.content.existsInvalidate)
-app.post('/content/exists/invalidate/local',auth,
-  routes.content.existsInvalidateLocal)
 app.put('/content/put/:file',auth,routes.content.put)
 
 //purchases

@@ -75,6 +75,8 @@ config.$load({
     name: 'localprism',
     port: 5971,
     host: null,
+    username: 'oose',
+    password: 'oose',
     workers: {
       count: 1,
       maxConnections: 10000
@@ -111,6 +113,8 @@ config.$load({
     name: 'localprism:localstore',
     port: 5972,
     host: null,
+    username: 'oose',
+    password: 'oose',
     workers: {
       count: 1,
       maxConnections: 10000

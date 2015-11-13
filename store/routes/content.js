@@ -177,6 +177,7 @@ exports.remove = function(req,res){
         return cradle.db.saveAsync(inventoryKey,doc._rev,doc)
       },
       function(err){
+        console.log(err)
         if(404 !== err.headers.status) throw err
         //we ignore this error its not a problem
         return true

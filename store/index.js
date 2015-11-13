@@ -70,6 +70,7 @@ if(require.main === module){
         })
     },
     function(done){
+      console.log('Beginning store shutdown')
       //mark ourselves as down
       cradle.db.getAsync(storeKey)
         .then(function(doc){
@@ -81,6 +82,7 @@ if(require.main === module){
           return cluster.stopAsync()
         })
         .then(function(){
+          console.log('Store shutdown complete')
           done()
         })
         .catch(function(err){

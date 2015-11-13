@@ -60,6 +60,7 @@ if(require.main === module){
         })
     },
     function(done){
+      console.log('Beginning prism shutdown')
       //mark ourselves as down
       cradle.db.getAsync(prismKey)
         .then(function(doc){
@@ -71,6 +72,7 @@ if(require.main === module){
           return cluster.stopAsync()
         })
         .then(function(){
+          console.log('Prism shutdown complete')
           done()
         })
         .catch(function(err){
