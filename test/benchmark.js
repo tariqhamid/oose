@@ -66,7 +66,6 @@ describe('benchmark',function(){
       var that = this
       return e2e.after(that)
     })
-    it('master should be up',e2e.checkUp('master',e2e.clconf.master))
     it('prism1 should be up',e2e.checkUp('prism',e2e.clconf.prism1))
     it('prism2 should be up',e2e.checkUp('prism',e2e.clconf.prism2))
     it('store1 should be up',e2e.checkUp('store',e2e.clconf.store1))
@@ -95,12 +94,6 @@ describe('benchmark',function(){
 
     it('should upload content initially',e2e.contentUpload(e2e.clconf.prism1))
 
-    it('will wait for that upload to settle',function(){
-      return new P(function(resolve){
-        setTimeout(resolve,2000)
-      })
-    })
-
     it('content upload ' + numeral(itn.contentUpload).format('0,0') + 'x',
       repeatTest(e2e.clconf.prism1,itn.contentUpload,'contentUpload'))
 
@@ -112,11 +105,6 @@ describe('benchmark',function(){
 
     it('content details ' + numeral(itn.contentDetail).format('0,0') + 'x',
       repeatTest(e2e.clconf.prism1,itn.contentDetail,'contentDetail'))
-
-    it('content exists invalidate ' +
-      numeral(itn.contentExistsInvalidate).format('0,0') + 'x',
-      repeatTest(e2e.clconf.prism1,
-        itn.contentExistsInvalidate,'contentExistsInvalidate'))
 
     it('content download ' + numeral(itn.contentDownload).format('0,0') + 'x',
       repeatTest(e2e.clconf.prism1,itn.contentDownload,'contentDownload'))

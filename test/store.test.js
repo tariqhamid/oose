@@ -1,6 +1,4 @@
 'use strict';
-process.env.OOSE_CONFIG = __dirname + '/assets/store1.config.js'
-
 var P = require('bluebird')
 var expect = require('chai').expect
 var fs = require('graceful-fs')
@@ -17,6 +15,7 @@ var api = require('../helpers/api')
 var content = oose.mock.content
 
 var config = require('../config')
+config.$load(require(__dirname + '/assets/store1.config.js'))
 
 var makeEnv = function(configFile){
   var env = new ObjectManage()

@@ -59,6 +59,10 @@ if(require.main === module){
         .then(
           //if we exist lets mark ourselves available
           function(doc){
+            doc.prism = config.store.prism
+            doc.name = config.store.name
+            doc.host = config.store.host
+            doc.port = config.store.port
             doc.available = true
             return cradle.db.saveAsync(storeKey,doc)
           },
@@ -66,6 +70,7 @@ if(require.main === module){
           function(err){
             if(404 !== err.headers.status) throw err
             return cradle.db.saveAsync(storeKey,{
+              prism: config.store.prism,
               name: config.store.name,
               host: config.store.host,
               port: config.store.port,

@@ -10,9 +10,10 @@ addons:
     - gcc-4.8
     - g++-4.8
 services:
-  - mysql
+  - couchdb
   - redis
 env:
   - TRAVIS=travis CXX=g++-4.8
 before_script:
-  - mysql -e 'create database oose;'
+  - curl -X PUT localhost:5984/oose
+  - curl -HContent-Type:application/json -vXPUT localhost:5984/_users/org.couchdb.user:oose --data-binary '{"_id": "org.couchdb.user:oose","name": "oose","roles": [],"type": "admin","password": "blah1234"}'

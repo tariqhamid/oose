@@ -2,30 +2,22 @@
 
 
 /**
- * Confg overrides
+ * Config overrides
  * @type {object}
  */
 module.exports = {
-  mysql: {
-    user: 'travis',
-    password: ''
+  couchdb: {
+    options: {
+      auth: {
+        username: 'oose',
+        password: 'blah1234'
+      }
+    }
   },
   store: {
-    enabled: true,
-    timeout: 2000,
-    username: 'oose',
-    password: 'oose'
+    enabled: true
   },
   prism: {
-    enabled: true,
-    timeout: 1000,
-    username: 'oose',
-    password: 'oose'
-  },
-  master: {
-    enabled: true,
-    timeout: 1000,
-    username: 'oose',
-    password: 'oose'
+    enabled: true
   }
 }

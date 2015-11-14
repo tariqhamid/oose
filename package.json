@@ -65,7 +65,7 @@
   },
   "scripts": {
     "start": "node app",
-    "test": "node ./node_modules/mocha/bin/mocha ./test/*.test.js"
+    "test": "node ./node_modules/mocha/bin/mocha ./test/*.test.js test/outage.js"
   },
   "devDependencies": {
     "chai": "^3.4.0",

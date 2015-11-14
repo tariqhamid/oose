@@ -11,6 +11,7 @@ var rimraf = require('rimraf-promise')
 var url = require('url')
 
 var api = require('../../helpers/api')
+var cradle = require('../../helpers/couchdb')
 var content = oose.mock.content
 var redis = require('../../helpers/redis')
 var sha1File = require('../../helpers/sha1File')
@@ -153,6 +154,34 @@ exports.before = function(that){
       return redis.removeKeysPattern(redis.schema.flushKeys())
     })
     .then(function(){
+      var key = cradle.schema.inventory()
+      return cradle.db.allAsync({startkey: key, endkey: key + '\uffff'})
+    })
+    .map(function(row){
+      return cradle.db.removeAsync(row.key)
+    })
+    .then(function(){
+      var key = cradle.schema.purchase()
+      return cradle.db.allAsync({startkey: key, endkey: key + '\uffff'})
+    })
+    .map(function(row){
+      return cradle.db.removeAsync(row.key)
+    })
+    .then(function(){
+      var key = cradle.schema.prism()
+      return cradle.db.allAsync({startkey: key, endkey: key + '\uffff'})
+    })
+    .map(function(row){
+      return cradle.db.removeAsync(row.key)
+    })
+    .then(function(){
+      var key = cradle.schema.store()
+      return cradle.db.allAsync({startkey: key, endkey: key + '\uffff'})
+    })
+    .map(function(row){
+      return cradle.db.removeAsync(row.key)
+    })
+    .then(function(){
       return P.all([
         exports.server.prism1.startAsync(),
         exports.server.prism2.startAsync(),
@@ -174,7 +203,7 @@ exports.before = function(that){
  * @return {P}
  */
 exports.after = function(that){
-  that.timeout(10000)
+  that.timeout(80000)
   console.log('Stopping mock cluster...')
   return P.all([
     exports.server.store4.stopAsync(),
@@ -352,6 +381,7 @@ exports.contentUpload = function(prism){
           file: fs.createReadStream(content.file)
         },
         json: true,
+        timeout: 300000,
         localAddress: '127.0.0.1'
       })
       .spread(function(res,body){
@@ -410,9 +440,9 @@ exports.contentRetrieve = function(prism){
 exports.contentSend = function(prism){
   return function(){
     var client = api.prism(prism.prism)
-    var storeFrom = {}
-    var storeTo = {}
-    var store = {}
+    var storeFrom = null
+    var storeTo = null
+    var storeClient = {}
     return client.postAsync({
       url: client.url('/content/exists'),
       json: {
@@ -421,15 +451,27 @@ exports.contentSend = function(prism){
     })
       .spread(client.validateResponse())
       .spread(function(res,body){
-        Object.keys(body.map.prism1.map).forEach(function(store){
-          if(body.map.prism1.map[store]) storeFrom = exports.clconf[store].store
+        //we are going to assign the first value of the map to the store from
+        storeFrom = body.map[0]
+        //now we want to establish where it will go i am going to use a dirty
+        //array here to save time
+        var cluster = [
+          'prism1:store1',
+          'prism1:store2',
+          'prism2:store3',
+          'prism2:store4'
+        ]
+        cluster.forEach(function(store){
+          if(store && body.map.indexOf(store) < 0 && !storeTo){
+            storeTo = store
+          }
         })
-        Object.keys(body.map.prism2.map).forEach(function(store){
-          if(!body.map.prism2.map[store]) storeTo = exports.clconf[store].store
-        })
-        store = api.store(storeFrom)
-        return store.postAsync({
-          url: store.url('/content/send'),
+        //now we need to get the configuration details so lets figure out the
+        //store so we can just locally call the config
+        var storeShortname = storeFrom.split(':')[1]
+        storeClient = api.store(exports.clconf[storeShortname].store)
+        return storeClient.postAsync({
+          url: storeClient.url('/content/send'),
           json: {
             file: content.sha1 + '.' + content.ext,
             store: storeTo
@@ -441,9 +483,10 @@ exports.contentSend = function(prism){
         expect(body.success).to.equal('Clone sent')
         expect(body.details.sha1).to.equal(content.sha1)
         expect(body.details.ext).to.equal(content.ext)
-        store = api.store(storeTo)
-        return store.postAsync({
-          url: store.url('/content/remove'),
+        var storeShortname = storeTo.split(':')[1]
+        storeClient = api.store(exports.clconf[storeShortname].store)
+        return storeClient.postAsync({
+          url: storeClient.url('/content/remove'),
           json: {
             sha1: body.details.sha1
           }
@@ -484,15 +527,11 @@ exports.contentExists = function(prism,options){
           expect(body.count).to.be.least(options.count)
         else if(options.checkExists)
           expect(body.count).to.equal(options.count)
-        if(options.deepChecks.indexOf('prism1') !== -1){
-          expect(body.map.prism1).to.be.an('object')
-          expect(body.map.prism1.exists).to.equal(true)
-          expect(Object.keys(body.map.prism1).length).to.equal(4)
+        if(options.deepChecks.indexOf('prism1') >= 0){
+          expect(body.map.join(',').indexOf('prism1')).to.be.least(0)
         }
-        if(options.deepChecks.indexOf('prism2') !== -1){
-          expect(body.map.prism2).to.be.an('object')
-          expect(body.map.prism2.exists).to.equal(true)
-          expect(Object.keys(body.map.prism2).length).to.equal(4)
+        if(options.deepChecks.indexOf('prism2') >= 0){
+          expect(body.map.join(',').indexOf('prism2')).to.be.least(0)
         }
       })
   }
@@ -533,14 +572,10 @@ exports.contentExistsBulk = function(prism,options){
         else if(options.checkExists)
           expect(body.count).to.equal(options.count)
         if(options.deepChecks.indexOf('prism1') !== -1){
-          expect(body.map.prism1).to.be.an('object')
-          expect(body.map.prism1.exists).to.equal(true)
-          expect(Object.keys(body.map.prism1).length).to.equal(4)
+          expect(body.map.join(',').indexOf('prism1')).to.be.least(0)
         }
         if(options.deepChecks.indexOf('prism2') !== -1){
-          expect(body.map.prism2).to.be.an('object')
-          expect(body.map.prism2.exists).to.equal(true)
-          expect(Object.keys(body.map.prism2).length).to.equal(4)
+          expect(body.map.join(',').indexOf('prism2')).to.be.least(0)
         }
       })
   }
@@ -565,7 +600,7 @@ exports.contentDetail = function(prism){
         expect(body.sha1).to.equal(content.sha1)
         expect(body.count).to.be.greaterThan(0)
         expect(body.exists).to.equal(true)
-        expect(body.map).to.be.an('object')
+        expect(body.map).to.be.an('array')
       })
   }
 }
@@ -594,27 +629,7 @@ exports.contentDetailBulk = function(prism){
         expect(body.sha1).to.equal(content.sha1)
         expect(body.count).to.be.greaterThan(0)
         expect(body.exists).to.equal(true)
-        expect(body.map).to.be.an('object')
-      })
-  }
-}
-
-
-/**
- * Invalidate content existence
- * @param {object} prism
- * @return {Function}
- */
-exports.contentExistsInvalidate = function(prism){
-  return function(){
-    var client = api.prism(prism.prism)
-    return client.postAsync({
-      url: client.url('/content/exists/invalidate'),
-      json: {sha1: content.sha1}
-    })
-      .spread(function(res,body){
-        expect(body.success).to.equal('Cleared')
-        expect(body.sha1).to.equal(content.sha1)
+        expect(body.map).to.be.an('array')
       })
   }
 }
@@ -642,7 +657,7 @@ exports.contentPurchase = function(prism){
       .spread(function(res,body){
         expect(body.token.length).to.equal(64)
         expect(body.ext).to.equal('txt')
-        expect(body.life).to.equal(21600)
+        expect(body.life).to.equal(7200000)
         expect(body.sha1).to.equal(content.sha1)
         expect(body.referrer).to.be.an('array')
         expect(body.referrer[0]).to.equal('localhost')

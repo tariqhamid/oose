@@ -1,5 +1,6 @@
 'use strict';
 var P = require('bluebird')
+var debug = require('debug')('oose:prismBalance')
 
 var cradle = require('../helpers/couchdb')
 var redis = require('../helpers/redis')
@@ -12,19 +13,12 @@ var redis = require('../helpers/redis')
 exports.prismList = function(){
   redis.incr(redis.schema.counter('prism','prismBalance:prismList'))
   var prismKey = cradle.schema.prism()
-  return cradle.db.allAsync({startKey: prismKey, endKey: prismKey + '\uffff'})
-    .then(function(result){
-      var promises = []
-      for(var i = 0 ; i< result.length ; i++){
-        promises.push(cradle.db.getAsync(result[i].key))
-      }
-      return P.all(promises)
-    }).then(function(prisms){
-      var results = []
-      prisms.forEach(function(prism){
-        if(prism.available && prism.active) results.push(prism)
-      })
-      return results
+  return cradle.db.allAsync({startkey: prismKey, endkey: prismKey + '\uffff'})
+    .map(function(row){
+      return cradle.db.getAsync(row.key)
+    })
+    .filter(function(row){
+      return row.available && row.active
     })
 }
 
@@ -37,13 +31,12 @@ exports.prismList = function(){
 exports.storeListByPrism = function(prism){
   redis.incr(redis.schema.counter('prism','prismBalance:storeListByPrism'))
   var storeKey = cradle.schema.store(prism + ':')
-  return cradle.db.all({startKey: storeKey, endKey: storeKey + '\uffff'})
-    .then(function(result){
-      var results = []
-      result.forEach(function(store){
-        if(store.available && store.active) results.push(store)
-      })
-      return results
+  return cradle.db.all({startkey: storeKey, endkey: storeKey + '\uffff'})
+    .map(function(row){
+      return cradle.db.getAsync(row.key)
+    })
+    .filter(function(row){
+      return row.available && row.active
     })
 }
 
@@ -115,27 +108,59 @@ exports.winner = function(token,prismList,skip,allowFull){
 exports.contentExists = function(sha1){
   redis.incr(redis.schema.counter('prism','prismBalance:contentExists'))
   var existsKey = cradle.schema.inventory(sha1)
-  return cradle.db.getAsync(existsKey)
-    .then(
-      //content exists
-      function(doc){
-        return {
-          sha1: sha1,
-          exists: true,
-          count: doc.exists.length,
-          map: doc.exists
-        }
+  var count = 0
+  debug(existsKey,'contentExists received')
+  return cradle.db.allAsync({startkey: existsKey, endkey: existsKey + '\uffff'})
+    .map(
+      function(row){
+        //debug(existsKey,'got record',row)
+        count++
+        return cradle.db.getAsync(row.key)
       },
-      //content doesnt exist
       function(err){
-        //make sure we arent getting a different error
         if(404 !== err.headers.status) throw err
+        count = 0
+      }
+    )
+    .then(function(inventoryList){
+      //debug(existsKey,'records',result)
+      if(!count){
         return {
           sha1: sha1,
+          mimeType: null,
+          mimeExtension: null,
+          relativePath: null,
           exists: false,
           count: 0,
           map: []
         }
+      } else {
+        return P.try(function(){
+          return inventoryList.map(function(val){return val.store})
+        })
+          .map(function(row){
+            return P.all([
+              cradle.db.getAsync(cradle.schema.prism(row.split(':')[0])),
+              cradle.db.getAsync(cradle.schema.store(row))
+            ])
+          })
+          .filter(function(row){
+            return !!row[0].available && !!row[1].available
+          })
+          .then(function(result){
+            var map = result.map(function(val){return val[1].name})
+            var record = {
+              sha1: inventoryList[0].sha1,
+              mimeType: inventoryList[0].mimeType,
+              mimeExtension: inventoryList[0].mimeExtension,
+              relativePath: inventoryList[0].relativePath,
+              count: map.length,
+              exists: true,
+              map: map
+            }
+            debug(existsKey,'inventory record',record)
+            return record
+          })
       }
-    )
+    })
 }

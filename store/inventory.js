@@ -77,26 +77,22 @@ var scanInventory = function(done){
       counter.valid++
       debug(sha1,'inventory scan found',ext,relativePath,linkPath)
       //since nodes
-      var inventoryKey = cradle.schema.inventory(sha1)
+      var inventoryKey = cradle.schema.inventory(sha1,config.store.name)
       cradle.db.getAsync(inventoryKey)
         .then(
           function(doc){
-            if(doc.exists.indexOf(config.store.name) < 0)
-              doc.exists.push(config.store.name)
-            debug(sha1,'inventory record exists, extended',doc)
-            counter.updated++
-            return cradle.db.saveAsync(inventoryKey,doc._rev,doc)
+            debug(sha1,'inventory record exists',doc)
           },
           function(err){
-            debug(sha1,'inventory record lookup failed',err)
             //make sure we only catch 404s and let others bubble
             if(404 !== err.headers.status) throw err
             var doc = {
+              store: config.store.name,
+              prism: config.store.prism,
               sha1: sha1,
               mimeExtension: ext,
               mimeType: mime.lookup(ext),
-              relativePath: relativePath,
-              exists: [config.store.name]
+              relativePath: relativePath
             }
             debug(sha1,'creating inventory record',doc)
             counter.created++

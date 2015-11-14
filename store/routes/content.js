@@ -1,5 +1,6 @@
 'use strict';
 var P = require('bluebird')
+var debug = require('debug')('oose:store:content')
 var fs = require('graceful-fs')
 var mime = require('mime')
 var mkdirp = require('mkdirp-then')
@@ -32,6 +33,7 @@ exports.put = function(req,res){
   redis.incr(redis.schema.counter('store','content:filesUploaded'))
   var file = req.params.file
   var fileDetails
+  debug('got new put',file)
   var sniff = sha1stream.createStream()
   var inventoryKey
   sniff.on('data',function(chunk){
@@ -43,11 +45,13 @@ exports.put = function(req,res){
     .then(function(result){
       if(!result) throw new UserError('Could not parse filename')
       fileDetails = result
-      inventoryKey = cradle.schema.inventory(fileDetails.sha1)
+      inventoryKey = cradle.schema.inventory(fileDetails.sha1,config.store.name)
       dest = sha1File.toPath(fileDetails.sha1,fileDetails.ext)
+      debug(fileDetails.sha1,dest)
       return mkdirp(path.dirname(dest))
     })
     .then(function(){
+      debug(inventoryKey,'waiting for stream to complete')
       var writeStream = fs.createWriteStream(dest)
       return promisePipe(req,sniff,writeStream)
         .then(
@@ -61,31 +65,33 @@ exports.put = function(req,res){
         throw new UserError('Checksum mismatch')
       }
       //setup symlink to new file
+      debug(inventoryKey,'linking')
       return sha1File.linkPath(fileDetails.sha1,fileDetails.ext)
     })
     .then(function(){
       //get existing existence record and add to it or create one
+      debug(inventoryKey,'getting inventory record')
       return cradle.db.getAsync(inventoryKey)
     })
     .then(
       //record exists, extend it
       function(doc){
-        if(doc.exists.indexOf(config.store.name) < 0)
-          doc.exists.push(config.store.name)
-        return cradle.db.saveAsync(inventoryKey,doc._rev,doc)
+        debug(inventoryKey,'got inventory record',doc)
       },
       //record does not exist, create it
       function(err){
         if(404 !== err.headers.status) throw err
         var inventory = {
+          prism: config.store.prism,
+          store: config.store.name,
           sha1: sniff.sha1,
           mimeExtension: fileDetails.ext,
           mimeType: mime.lookup(fileDetails.ext),
           relativePath: sha1File.toRelativePath(
             fileDetails.sha1,fileDetails.ext
-          ),
-          exists: [config.store.name]
+          )
         }
+        debug(inventoryKey,'creating inventory record',inventory)
         return cradle.db.saveAsync(inventoryKey,inventory)
       }
     )
@@ -164,25 +170,11 @@ exports.exists = function(req,res){
  */
 exports.remove = function(req,res){
   redis.incr(redis.schema.counter('store','content:remove'))
-  var inventoryKey = cradle.schema.inventory(req.body.sha1)
-  sha1File.remove(req.body.sha1)
-    .then(function(){
-      return cradle.db.getAsync(inventoryKey)
-    })
-    .then(
-      //try to remove ourselves from ownership of this file
-      function(doc){
-        if(doc.exists.indexOf(config.store.name) >= 0)
-          doc.exists.splice(doc.exists.indexOf(config.store.name),1)
-        return cradle.db.saveAsync(inventoryKey,doc)
-      },
-      function(err){
-        console.log(err)
-        if(404 !== err.headers.status) throw err
-        //we ignore this error its not a problem
-        return true
-      }
-    )
+  var inventoryKey = cradle.schema.inventory(req.body.sha1,config.store.name)
+  P.all([
+    sha1File.remove(req.body.sha1),
+    cradle.db.removeAsync(inventoryKey)
+  ])
     .then(function(){
       res.json({success: 'File removed'})
     })
@@ -205,13 +197,31 @@ exports.remove = function(req,res){
  */
 exports.send = function(req,res){
   var file = req.body.file
-  var store = api.store(req.body.store)
+  var storeKey = cradle.schema.store(req.body.store)
+  var storeClient = null
+  var store = {}
   var details = {}
-  sha1File.details(file)
+  cradle.db.getAsync(storeKey)
+    .then(
+      function(result){
+        store = result
+        storeClient = api.store(store)
+      },
+      function(err){
+        if(404 !== err.headers.status) throw err
+        throw new Error('Store not found')
+      }
+    )
+    .then(function(){
+      return sha1File.details(file)
+    })
     .then(function(result){
       details = result
       var rs = fs.createReadStream(sha1File.toPath(details.sha1,details.ext))
-      return promisePipe(rs,store.put({url: store.url('/content/put/' + file)}))
+      return promisePipe(
+        rs,
+        storeClient.put({url: storeClient.url('/content/put/' + file)})
+      )
     })
     .then(function(){
       res.json({

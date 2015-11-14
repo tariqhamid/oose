@@ -1,5 +1,6 @@
 'use strict';
 var P = require('bluebird')
+var debug = require('debug')('oose:storeBalance')
 var oose = require('oose-sdk')
 
 var NotFoundError = oose.NotFoundError
@@ -8,45 +9,38 @@ var redis = require('../helpers/redis')
 
 
 /**
- * Get list of stores by prism@
+ * Get list of stores by prism
  * @param {string} prism
  * @return {P}
  */
 exports.storeList = function(prism){
   redis.incr(redis.schema.counter('prism','storeBalance:storeList'))
   var storeKey = cradle.schema.store(prism + ':')
-  return cradle.db.allAsync({startKey: storeKey, endKey: storeKey + '\uffff'})
-    .then(function(result){
-      var results = []
-      result.forEach(function(store){
-        if(store.available && store.active) results.push(store)
-      })
-      return results
+  debug(storeKey,'getting store list')
+  return cradle.db.allAsync({startkey: storeKey, endkey: storeKey + '\uffff'})
+    .map(function(row){
+      return cradle.db.getAsync(row.key)
+    })
+    .filter(function(row){
+      debug(storeKey,'got store',row)
+      return row.available && row.active
     })
 }
 
 
 /**
  * Take an existence map and turn it into an array of store instances
- * @param {object} exists
+ * @param {object} inventory
  * @param {Array} skip
  * @return {Array}
  */
-exports.existsToArray = function(exists,skip){
+exports.existsToArray = function(inventory,skip){
   if(!(skip instanceof Array)) skip = []
-  var i, k
-  var stores = []
-  var prism, store, sk
-  var pk = Object.keys(exists.map)
-  for(i = 0; i < pk.length; i++){
-    prism = exists.map[pk[i]]
-    sk = Object.keys(prism.map)
-    for(k = 0; k < sk.length; k++){
-      store = prism.map[sk[k]]
-      if(store && -1 === skip.indexOf(sk[k])) stores.push(sk[k])
-    }
-  }
-  return stores
+  var result = []
+  inventory.map.forEach(function(store){
+    if(skip.indexOf(store) < 0) result.push(store)
+  })
+  return result
 }
 
 
@@ -57,39 +51,35 @@ exports.existsToArray = function(exists,skip){
  */
 exports.populateStores = function(stores){
   redis.incr(redis.schema.counter('prism','storeBalance:populateStores'))
-  var promises = []
-  stores.forEach(function(store){
-    promises.push(cradle.db.getAsync(cradle.schema.store(store)))
+  return P.try(function(){
+    return stores
   })
-  return P.all(promises)
+    .map(function(store){
+      return cradle.db.getAsync(cradle.schema.store(store))
+    })
+    .then(function(results){
+      return results
+    })
 }
 
 
 /**
  * Populate hits from a token
  * @param {string} token
- * @param {Array} stores
- * @return {Array}
+ * @param {Array} storeList
+ * @return {P}
  */
-exports.populateHits = function(token,stores){
+exports.populateHits = function(token,storeList){
   redis.incr(redis.schema.counter('prism','storeBalance:populateHits'))
-  var populate = function(store){
-    return function(hits){
-      store.hits = +hits
-    }
-  }
-  var promises = []
-  var store
-  for(var i = 0; i < stores.length; i++){
-    store = stores[i]
-    promises.push(
-      redis.getAsync(redis.schema.storeHits(token,store.name))
-        .then(populate(store))
-    )
-  }
-  return P.all(promises)
-    .then(function(){
-      return stores
+  return P.try(function(){
+    return storeList
+  })
+    .map(function(store){
+      return redis.getAsync(redis.schema.storeHits(token,store.name))
+        .then(function(hits){
+          store.hits = +hits
+          return store
+        })
     })
 }
 

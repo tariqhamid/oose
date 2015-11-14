@@ -21,8 +21,8 @@ var routes = require('./routes')
 P.promisifyAll(server)
 
 //start the pinger service early
-require('../helpers/heartbeat')
-  .getInstance('store',config.store.name,config.store.port)
+//require('../helpers/heartbeat')
+//  .getInstance('store',config.store.name,config.store.port)
 
 //setup
 app.use(bodyParser.json({limit: '100mb'}))

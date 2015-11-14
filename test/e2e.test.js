@@ -4,9 +4,8 @@ var expect = require('chai').expect
 var e2e = require('./helpers/e2e')
 
 describe('e2e',function(){
+  this.timeout(60000)
   describe('e2e:prism',function(){
-    //spin up an entire cluster here
-    this.timeout(20000)
     //start servers and create a user
     before(function(){
       var that = this
@@ -14,7 +13,6 @@ describe('e2e',function(){
     })
     //remove user and stop services
     after(function(){
-      this.timeout(30000)
       var that = this
       return e2e.after(that)
     })
@@ -40,12 +38,22 @@ describe('e2e',function(){
       it('should login to prism2',function(){
         var prism = e2e.clconf.prism2
         return e2e.prismLogin(prism)()
-          .then(function(session){
-            return e2e.prismLogout(session,prism)
-          })
+      })
+      it('should logout',function(){
+        var prism = e2e.clconf.prism1
+        return e2e.prismLogout(prism,e2e.user.session)()
       })
     })
-    describe.only('content',function(){
+    describe('content',function(){
+      before(function(){
+        return e2e.prismLogin(e2e.clconf.prism1)()
+          .then(function(session){
+            e2e.user.session = session
+          })
+      })
+      after(function(){
+        return e2e.prismLogout(e2e.clconf.prism1,e2e.user.session)()
+      })
       before(e2e.contentUpload(e2e.clconf.prism1))
       it('should retrieve content',e2e.contentRetrieve(e2e.clconf.prism1))
       it('should show the content exists in 2 places',
@@ -58,8 +66,6 @@ describe('e2e',function(){
         e2e.contentDetail(e2e.clconf.prism1))
       it('should show content detail in bulk',
         e2e.contentDetailBulk(e2e.clconf.prism1))
-      it('should invalidate the content existence',
-        e2e.contentExistsInvalidate(e2e.clconf.prism1))
       it('should allow API download of the content',
         e2e.contentDownload(e2e.clconf.prism1))
       it('should deliver static content on prism1',
@@ -73,7 +79,17 @@ describe('e2e',function(){
           })
       })
     })
-    describe.skip('purchases',function(){
+    describe('purchases',function(){
+      before(function(){
+        return e2e.prismLogin(e2e.clconf.prism1)()
+          .then(function(session){
+            e2e.user.session = session
+            return e2e.contentUpload(e2e.clconf.prism1)()
+          })
+      })
+      after(function(){
+        return e2e.prismLogout(e2e.clconf.prism1,e2e.user.session)()
+      })
       it('should allow purchase of the content',function(){
         return e2e.contentPurchase(e2e.clconf.prism1)()
           .then(function(result){

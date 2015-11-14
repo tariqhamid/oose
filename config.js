@@ -74,7 +74,7 @@ config.$load({
   //prism
   prism: {
     enabled: false,
-    name: 'localprism',
+    name: 'prism1',
     port: 5971,
     host: null,
     username: 'oose',
@@ -112,7 +112,8 @@ config.$load({
   //storage system
   store: {
     enabled: false,
-    name: 'localprism:localstore',
+    prism: 'prism1',
+    name: 'store1',
     port: 5972,
     host: null,
     username: 'oose',
