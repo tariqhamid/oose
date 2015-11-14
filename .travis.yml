@@ -17,7 +17,3 @@ env:
 before_script:
   - curl -X PUT localhost:5984/oose
   - curl -X PUT localhost:5984/_config/admins/root -d '"blah1234"'
-  - >
-    curl -X PUT "http://root:blah1234@localhost:5984/_users/org.couchdb.user:oose"
-    -H "Accept: application/json" -H "Content-Type: application/json"
-    -d '{"name": "oose", "password": "blah1234", "roles": [], "type": "user"}'
