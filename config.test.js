@@ -7,7 +7,7 @@
  */
 module.exports = {
   couchdb: {
-    host: 'lpcalhost',
+    host: 'localhost',
     port: 5984,
     options: {
       auth: {
