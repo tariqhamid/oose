@@ -41,33 +41,26 @@ exports.login = function(req,res){
         password: req.body.password
       }
     })
-      .then(
-        function(result){
-          //i would think we are going to get a 403 for bad logins and then 200
-          //for good logins, we will find out
-          if(200 !== result.statusCode)
-            throw new Error('Invalid login response ' + result.statusCode)
-          //need our session token from the session
-          if(!result.headers['set-cookie'])
-            throw new Error('No cookie sent in response')
-          //now i think we need to query the session itself
-          sessionToken = result.headers['set-cookie'][0].split(';')[0]
-          return request({
-            url: couchLoginUrl,
-            json: true,
-            method: 'GET',
-            resolveWithFullResponse: true,
-            headers: {
-              Cookie: sessionToken
-            }
-          })
-        },
-        function(err){
-          redis.incr(
-            redis.schema.counterError('prism','user:login:invalid'))
-          res.json({error: err.message})
-        }
-      )
+      .then(function(result){
+        //i would think we are going to get a 403 for bad logins and then 200
+        //for good logins, we will find out
+        if(200 !== result.statusCode)
+          throw new Error('Invalid login response ' + result.statusCode)
+        //need our session token from the session
+        if(!result.headers['set-cookie'])
+          throw new Error('No cookie sent in response')
+        //now i think we need to query the session itself
+        sessionToken = result.headers['set-cookie'][0].split(';')[0]
+        return request({
+          url: couchLoginUrl,
+          json: true,
+          method: 'GET',
+          resolveWithFullResponse: true,
+          headers: {
+            Cookie: sessionToken
+          }
+        })
+      })
       .then(function(result){
         if(200 !== result.statusCode){
           throw new Error(
