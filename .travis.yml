@@ -15,5 +15,5 @@ services:
 env:
   - TRAVIS=travis CXX=g++-4.8
 before_script:
-  - curl -X PUT localhost:5984/oose
-  - curl -X PUT localhost:5984/_config/admins/root -d '"blah1234"'
+  - curl -X PUT http://localhost:5984/_config/admins/root -d '"blah1234"'
+  - curl -X PUT http://root:blah1234@localhost:5984/oose

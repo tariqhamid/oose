@@ -129,7 +129,7 @@ config.$load({
 })
 
 //load test overrides
-if('test' === process.env.NODE_ENV){
+if('travis' === process.env.TRAVIS){
   config.$load(require(__dirname + '/config.test.js'))
 }
 
