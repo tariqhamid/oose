@@ -20,12 +20,13 @@ exports.storeList = function(prism){
   return cradle.db.allAsync({startkey: storeKey, endkey: storeKey + '\uffff'})
     .then(function(rows){
       var ids = []
-      for (var i=0 ; i<rows.length;i++) ids.push(rows[i].id)
+      for (var i=0; i < rows.length; i++) ids.push(rows[i].id)
       return cradle.db.getAsync(ids)
     })
     .map(function(row){
       return row.doc
-    }).filter(function(doc){
+    })
+    .filter(function(doc){
       debug(storeKey,'got store',doc)
       return doc.available && doc.active
     })
@@ -50,17 +51,16 @@ exports.existsToArray = function(inventory,skip){
 
 /**
  * Populate stores from array of names
- * @param string prism name
  * @param {Array} stores
  * @return {P}
  */
-exports.populateStores = function(prism,stores){
+exports.populateStores = function(stores){
   redis.incr(redis.schema.counter('prism','storeBalance:populateStores'))
   return P.try(function(){
     return stores
   })
     .map(function(store){
-      return cradle.db.getAsync(cradle.schema.store(prism,store))
+      return cradle.db.getAsync(cradle.schema.store(store))
     })
     .then(function(results){
       return results
@@ -91,20 +91,19 @@ exports.populateHits = function(token,storeList){
 
 /**
  * Take the result of an existence check and pick a winner
- * @param {string} prism
  * @param {string} token
- * @param {object} exists
+ * @param {object} inventory
  * @param {Array} skip
  * @param {boolean} allowFull
  * @return {P}
  */
-exports.winnerFromExists = function(prism,token,exists,skip,allowFull){
+exports.winnerFromExists = function(token,inventory,skip,allowFull){
   if(undefined === allowFull) allowFull = false
   redis.incr(redis.schema.counter('prism','storeBalance:winnerFromExists'))
   if(!(skip instanceof Array)) skip = []
-  var candidates = exports.existsToArray(exists,skip)
+  var candidates = exports.existsToArray(inventory,skip)
   if(!candidates.length) throw new NotFoundError('No store candidates found')
-  return exports.populateStores(prism,candidates)
+  return exports.populateStores(candidates)
     .then(function(results){
       return exports.populateHits(token,results)
     })

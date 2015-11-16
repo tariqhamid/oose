@@ -45,7 +45,8 @@ exports.put = function(req,res){
     .then(function(result){
       if(!result) throw new UserError('Could not parse filename')
       fileDetails = result
-      inventoryKey = cradle.schema.inventory(fileDetails.sha1,config.store.name)
+      inventoryKey = cradle.schema.inventory(
+        fileDetails.sha1,config.store.prism,config.store.name)
       dest = sha1File.toPath(fileDetails.sha1,fileDetails.ext)
       debug(fileDetails.sha1,dest)
       return mkdirp(path.dirname(dest))
@@ -170,7 +171,8 @@ exports.exists = function(req,res){
  */
 exports.remove = function(req,res){
   redis.incr(redis.schema.counter('store','content:remove'))
-  var inventoryKey = cradle.schema.inventory(req.body.sha1,config.store.name)
+  var inventoryKey = cradle.schema.inventory(
+    req.body.sha1,config.store.prism,config.store.name)
   P.all([
     sha1File.remove(req.body.sha1),
     cradle.db.removeAsync(inventoryKey)

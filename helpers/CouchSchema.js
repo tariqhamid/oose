@@ -29,17 +29,18 @@ CouchShema.prototype.applyPrefix = function(key){
  * @return {string}
  */
 CouchShema.prototype.prism = function(name){
-  return this.applyPrefix('_prism_:' + (name || ''))
+  return this.applyPrefix('prism:' + (name || ''))
 }
 
 
 /**
  * Store Key
+ * @param {string} prism (optional)
  * @param {string} name
  * @return {string}
  */
 CouchShema.prototype.store = function(prism,name){
-  return this.applyPrefix('_store_:' +prism+':'+ (name || ''))
+  return this.applyPrefix('store:' + prism + (name ? ':' + name : ''))
 }
 
 
@@ -49,7 +50,7 @@ CouchShema.prototype.store = function(prism,name){
  * @return {string}
  */
 CouchShema.prototype.downVote = function(name){
-  return this.applyPrefix('_downvote_:' + (name || ''))
+  return this.applyPrefix('downvote:' + (name || ''))
 }
 
 
@@ -59,19 +60,22 @@ CouchShema.prototype.downVote = function(name){
  * @return {string}
  */
 CouchShema.prototype.purchase = function(token){
-  return this.applyPrefix('_purchase_:' + (token || ''))
+  return this.applyPrefix('purchase:' + (token || ''))
 }
 
 
 /**
  * Inventory
  * @param {string} sha1
+ * @param {string} prism
  * @param {string} store
  * @return {string}
  */
-CouchShema.prototype.inventory = function(sha1,store){
+CouchShema.prototype.inventory = function(sha1,prism,store){
   return this.applyPrefix(
-    'inventory:' + (sha1 || '') + (store ? ':' + store : '')
+    'inventory:' + (sha1 || '') +
+    (prism ? ':' + prism : '') +
+    (store ? ':' + store : '')
   )
 }
 

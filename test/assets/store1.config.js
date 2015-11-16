@@ -16,7 +16,7 @@ module.exports = {
   store: {
     enabled: true,
     host: '127.0.2.4',
-    name: 'prism1:store1',
+    name: 'store1',
     prism: 'prism1',
     username: 'oose-store',
     password: 'fuckthat',

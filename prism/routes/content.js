@@ -338,13 +338,13 @@ exports.exists = function(req,res){
 exports.download = function(req,res){
   redis.incr(redis.schema.counter('prism','content:download'))
   var sha1 = req.body.sha1
-  var winner, exists
+  var winner, inventory
   prismBalance.contentExists(sha1)
     .then(function(result){
-      exists = result
-      if(!exists && !exists.exists)
+      inventory = result
+      if(!inventory && !inventory.exists)
         throw new NotFoundError('File not found')
-      return storeBalance.winnerFromExists(config.prism.name,sha1,exists,[],true)
+      return storeBalance.winnerFromExists(sha1,inventory,[],true)
     })
     .then(function(result){
       winner = result
@@ -369,7 +369,7 @@ exports.download = function(req,res){
         })
     })
     .catch(NetworkError,function(){
-      return storeBalance.winnerFromExists(config.prism.name,sha1,exists,[winner.name],true)
+      return storeBalance.winnerFromExists(sha1,inventory,[winner.name],true)
         .then(function(result){
           winner = result
           var store = api.store(winner)
@@ -445,7 +445,7 @@ exports.purchase = function(req,res){
     .then(function(){
       //now we know our token so register it on the store instances
       //this means iterating the existence map
-      return storeBalance.populateStores(config.prism.name,inventory.map)
+      return storeBalance.populateStores(inventory.map)
     })
     .each(function(store){
       var client = api.store(store)
@@ -539,7 +539,7 @@ exports.deliver = function(req,res){
       if('' === query) query = '?start=0'
       else query = query + '&start=0'
     }
-    return proto + '://' + store.name.split(':')[1] + '.' + config.domain +
+    return proto + '://' + store.name + '.' + config.domain +
       '/' + token + '.' + purchase.ext + (query ? '?' + query : '')
   }
   cradle.db.getAsync(purchaseKey)
@@ -559,7 +559,7 @@ exports.deliver = function(req,res){
       }
       if(!validReferrer) throw new UserError('Invalid request')
       //we have a purchase so now... we need to pick a store....
-      return storeBalance.winnerFromExists(config.prism.name,token,purchase.inventory,[],true)
+      return storeBalance.winnerFromExists(token,purchase.inventory,[],true)
     })
     .then(function(result){
       res.redirect(302,makeUrl(req,result))
@@ -597,11 +597,11 @@ exports.contentStatic = function(req,res){
       if(!result.exists) throw new NotFoundError('Content does not exist')
       if(config.prism.denyStaticTypes.indexOf(ext) >= 0)
         throw new UserError('Invalid static file type')
-      return storeBalance.winnerFromExists(config.prism.name,sha1,result,[],true)
+      return storeBalance.winnerFromExists(sha1,result,[],true)
     })
     .then(function(result){
       var proto = 'https' === req.get('X-Forwarded-Protocol') ? 'https' : 'http'
-      var url = proto + '://' + result.name.split(':')[1] +
+      var url = proto + '://' + result.name +
         '.' + config.domain + '/static/' + sha1File.toRelativePath(sha1,ext)
       res.redirect(302,url)
     })
@@ -639,7 +639,7 @@ exports.purchaseRemove = function(req,res){
     .then(
       function(result){
         purchase = result
-        return storeBalance.populateStores(config.prism.name,purchase.inventory.map)
+        return storeBalance.populateStores(purchase.inventory.map)
       },
       function(err){
         if(404 !== err.headers.status) throw err

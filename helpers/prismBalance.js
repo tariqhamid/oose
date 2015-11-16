@@ -117,7 +117,7 @@ exports.contentExists = function(sha1){
   return cradle.db.allAsync({startkey: existsKey, endkey: existsKey + '\uffff'})
     .map(
       function(row){
-        //debug(existsKey,'got record',row)
+        debug(existsKey,'got record',row)
         count++
         return cradle.db.getAsync(row.key)
       },
@@ -140,19 +140,22 @@ exports.contentExists = function(sha1){
         }
       } else {
         return P.try(function(){
-          return inventoryList.map(function(val){return val.store})
+          return inventoryList
         })
           .map(function(row){
+            debug(existsKey,'got inventory list record',row)
             return P.all([
-              cradle.db.getAsync(cradle.schema.prism(row.split(':')[0])),
-              cradle.db.getAsync(cradle.schema.store(row.split(':')[0],row))
+              cradle.db.getAsync(cradle.schema.prism(row.prism)),
+              cradle.db.getAsync(cradle.schema.store(row.prism,row.store))
             ])
           })
           .filter(function(row){
             return !!row[0].available && !!row[1].available
           })
           .then(function(result){
-            var map = result.map(function(val){return val[1].name})
+            var map = result.map(function(val){
+              return val[0].name + ':' + val[1].name
+            })
             var record = {
               sha1: inventoryList[0].sha1,
               mimeType: inventoryList[0].mimeType,
