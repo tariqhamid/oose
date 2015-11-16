@@ -11,10 +11,9 @@ var storeBalance = require('../helpers/storeBalance')
 var config = require('../config')
 var extend = require('util')._extend;
 var cradle = require('../helpers/couchdb')
-
+var crypto = require('crypto');
+var request = P.promisifyAll(require('request'))
 var instance = null
-
-
 
 /**
  * Heartbeat for Cluster Consistency
@@ -106,8 +105,9 @@ var Heartbeat = function(type,name,port){
 
   var downVote = function(host){
     //var downHost = extend({},host)
-    var key = (host.type === 'prism')?cradle.schema.prism(host.name):cradle.schema.store(host.name)
-    var downKey = cradle.schema.downVote(key)
+    var key = (host.type === 'prism')?cradle.schema.prism(host.name):cradle.schema.store(host.prism,host.name)
+    debug('DOWNVOTING: '+key)
+    var downKey = cradle.schema.downVote(crypto.createHash('md5').update(key).digest('hex'))
     var voteLog = null
     var hostInfo = null
     //if(downHost.request) delete(downHost.request)
@@ -136,23 +136,25 @@ var Heartbeat = function(type,name,port){
         return cradle.db.saveAsync(key,hostInfo._rev,hostInfo)
       }).then(function(){
         //Delete the vote log, it has served its purpose
-        return cradle.db.deleteAsync(downKey,voteLog._rev)
-      }).catch(function(){
-        //console.log(err)
+        return cradle.db.removeAsync(downKey,voteLog._rev)
+      }).catch(function(err){
+        debug(err.message)
       })
   }
 
   var pingHost = function(host){
-    debug('Pinging ' + host.name)
-    return host.request.postAsync(host.request.url('/ping'))
-      .spread(function(res,body){
+    debug('Pinging ' + host.name + ">>" + host.request.url('/ping'))
+    return host.request.postAsync(host.request.url('/ping')+'')
+      .then(function(res){
+        var body = res.body
         if(body && body.pong && 'pong' === body.pong){
           return true
         }else{
           return downVote(host)
         }
       })
-      .catch(function(){
+      .catch(function(err){
+        debug(err)
         return downVote(host)
       })
   }

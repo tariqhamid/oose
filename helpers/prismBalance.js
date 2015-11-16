@@ -14,11 +14,15 @@ exports.prismList = function(){
   redis.incr(redis.schema.counter('prism','prismBalance:prismList'))
   var prismKey = cradle.schema.prism()
   return cradle.db.allAsync({startkey: prismKey, endkey: prismKey + '\uffff'})
-    .map(function(row){
-      return cradle.db.getAsync(row.key)
+    .then(function(rows){
+      var ids = []
+      for (var i=0 ; i<rows.length;i++) ids.push(rows[i].id)
+      return cradle.db.getAsync(ids)
     })
-    .filter(function(row){
-      return row.available && row.active
+    .map(function(row){
+      return row.doc
+    }).filter(function(doc){
+      return doc.available && doc.active
     })
 }
 
@@ -30,7 +34,7 @@ exports.prismList = function(){
  */
 exports.storeListByPrism = function(prism){
   redis.incr(redis.schema.counter('prism','prismBalance:storeListByPrism'))
-  var storeKey = cradle.schema.store(prism + ':')
+  var storeKey = cradle.schema.store(prism)
   return cradle.db.all({startkey: storeKey, endkey: storeKey + '\uffff'})
     .map(function(row){
       return cradle.db.getAsync(row.key)
@@ -141,7 +145,7 @@ exports.contentExists = function(sha1){
           .map(function(row){
             return P.all([
               cradle.db.getAsync(cradle.schema.prism(row.split(':')[0])),
-              cradle.db.getAsync(cradle.schema.store(row))
+              cradle.db.getAsync(cradle.schema.store(row.split(':')[0],row))
             ])
           })
           .filter(function(row){

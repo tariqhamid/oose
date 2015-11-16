@@ -29,7 +29,7 @@ CouchShema.prototype.applyPrefix = function(key){
  * @return {string}
  */
 CouchShema.prototype.prism = function(name){
-  return this.applyPrefix('prism:' + (name || ''))
+  return this.applyPrefix('_prism_:' + (name || ''))
 }
 
 
@@ -38,8 +38,8 @@ CouchShema.prototype.prism = function(name){
  * @param {string} name
  * @return {string}
  */
-CouchShema.prototype.store = function(name){
-  return this.applyPrefix('store:' + (name || ''))
+CouchShema.prototype.store = function(prism,name){
+  return this.applyPrefix('_store_:' +prism+':'+ (name || ''))
 }
 
 
@@ -49,7 +49,7 @@ CouchShema.prototype.store = function(name){
  * @return {string}
  */
 CouchShema.prototype.downVote = function(name){
-  return this.applyPrefix('downvote:' + (name || ''))
+  return this.applyPrefix('_downvote_:' + (name || ''))
 }
 
 
@@ -59,7 +59,7 @@ CouchShema.prototype.downVote = function(name){
  * @return {string}
  */
 CouchShema.prototype.purchase = function(token){
-  return this.applyPrefix('purchase:' + (token || ''))
+  return this.applyPrefix('_purchase_:' + (token || ''))
 }
 
 

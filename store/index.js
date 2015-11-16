@@ -11,7 +11,7 @@ var cradle = require('../helpers/couchdb')
 var cluster
 var inventory
 var purchase
-var storeKey = cradle.schema.store(config.store.name)
+var storeKey = cradle.schema.store(config.prism.name,config.store.name)
 
 //make some promises
 P.promisifyAll(infant)

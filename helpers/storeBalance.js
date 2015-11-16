@@ -15,15 +15,19 @@ var redis = require('../helpers/redis')
  */
 exports.storeList = function(prism){
   redis.incr(redis.schema.counter('prism','storeBalance:storeList'))
-  var storeKey = cradle.schema.store(prism + ':')
+  var storeKey = cradle.schema.store(prism)
   debug(storeKey,'getting store list')
   return cradle.db.allAsync({startkey: storeKey, endkey: storeKey + '\uffff'})
-    .map(function(row){
-      return cradle.db.getAsync(row.key)
+    .then(function(rows){
+      var ids = []
+      for (var i=0 ; i<rows.length;i++) ids.push(rows[i].id)
+      return cradle.db.getAsync(ids)
     })
-    .filter(function(row){
-      debug(storeKey,'got store',row)
-      return row.available && row.active
+    .map(function(row){
+      return row.doc
+    }).filter(function(doc){
+      debug(storeKey,'got store',doc)
+      return doc.available && doc.active
     })
 }
 
@@ -46,16 +50,17 @@ exports.existsToArray = function(inventory,skip){
 
 /**
  * Populate stores from array of names
+ * @param string prism name
  * @param {Array} stores
  * @return {P}
  */
-exports.populateStores = function(stores){
+exports.populateStores = function(prism,stores){
   redis.incr(redis.schema.counter('prism','storeBalance:populateStores'))
   return P.try(function(){
     return stores
   })
     .map(function(store){
-      return cradle.db.getAsync(cradle.schema.store(store))
+      return cradle.db.getAsync(cradle.schema.store(prism,store))
     })
     .then(function(results){
       return results
@@ -86,19 +91,20 @@ exports.populateHits = function(token,storeList){
 
 /**
  * Take the result of an existence check and pick a winner
+ * @param {string} prism
  * @param {string} token
  * @param {object} exists
  * @param {Array} skip
  * @param {boolean} allowFull
  * @return {P}
  */
-exports.winnerFromExists = function(token,exists,skip,allowFull){
+exports.winnerFromExists = function(prism,token,exists,skip,allowFull){
   if(undefined === allowFull) allowFull = false
   redis.incr(redis.schema.counter('prism','storeBalance:winnerFromExists'))
   if(!(skip instanceof Array)) skip = []
   var candidates = exports.existsToArray(exists,skip)
   if(!candidates.length) throw new NotFoundError('No store candidates found')
-  return exports.populateStores(candidates)
+  return exports.populateStores(prism,candidates)
     .then(function(results){
       return exports.populateHits(token,results)
     })
