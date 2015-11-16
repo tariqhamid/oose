@@ -182,6 +182,13 @@ exports.before = function(that){
       return cradle.db.removeAsync(row.key)
     })
     .then(function(){
+      var key = cradle.schema.downVote()
+      return cradle.db.allAsync({startkey: key, endkey: key + '\uffff'})
+    })
+    .map(function(row){
+      return cradle.db.removeAsync(row.key)
+    })
+    .then(function(){
       return P.all([
         exports.server.prism1.startAsync(),
         exports.server.prism2.startAsync(),

@@ -20,10 +20,6 @@ var routes = require('./routes')
 //make some promises
 P.promisifyAll(server)
 
-//start the pinger service early
-//require('../helpers/heartbeat')
-//  .getInstance('store',config.store.name,config.store.port)
-
 //setup
 app.use(bodyParser.json({limit: '100mb'}))
 
@@ -57,8 +53,6 @@ app.post('/content/send',routes.content.send)
 
 //content purchasing
 app.post('/purchase/create',routes.purchase.create)
-app.post('/purchase/find',routes.purchase.find)
-app.post('/purchase/update',routes.purchase.update)
 app.post('/purchase/remove',routes.purchase.remove)
 
 

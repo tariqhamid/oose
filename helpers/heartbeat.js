@@ -1,19 +1,24 @@
 'use strict';
 var P = require('bluebird')
-var debug = null
+var crypto = require('crypto')
+var extend = require('util')._extend
+//var request = P.promisifyAll(require('request'))
 var oose = require('oose-sdk')
 
-var api = require('../helpers/api')
 var NetworkError = oose.NetworkError
-var redis = require('../helpers/redis')
-var prismBalance = require('../helpers/prismBalance')
-var storeBalance = require('../helpers/storeBalance')
-var config = require('../config')
-var extend = require('util')._extend;
+
+var api = require('../helpers/api')
 var cradle = require('../helpers/couchdb')
-var crypto = require('crypto');
-var request = P.promisifyAll(require('request'))
+var prismBalance = require('../helpers/prismBalance')
+var redis = require('../helpers/redis')
+var storeBalance = require('../helpers/storeBalance')
+
+var config = require('../config')
+var debug = null
 var instance = null
+var interval = null
+
+
 
 /**
  * Heartbeat for Cluster Consistency
@@ -23,13 +28,13 @@ var instance = null
  * @constructor
  */
 var Heartbeat = function(type,name,port){
-  var that = this
-  var myDesc = type+':'+name+':'+port
+  //var that = this
+  //var myDesc = type+':'+name+':'+port
   var checkCounter = 0
-  var interval = null
+  //var interval = null
   var storeList = null
   var prismList = null
-  var prismName = (type==='prism')?name:config.prism.name
+  var prismName = (type==='prism') ? name : config.prism.name
 
   var collectPrismList = function(){
     return prismBalance.prismList()
@@ -105,9 +110,11 @@ var Heartbeat = function(type,name,port){
 
   var downVote = function(host){
     //var downHost = extend({},host)
-    var key = (host.type === 'prism')?cradle.schema.prism(host.name):cradle.schema.store(host.prism,host.name)
+    var key = (host.type === 'prism') ?
+      cradle.schema.prism(host.name) : cradle.schema.store(host.prism,host.name)
     debug('DOWNVOTING: '+key)
-    var downKey = cradle.schema.downVote(crypto.createHash('md5').update(key).digest('hex'))
+    var downKey = cradle.schema.downVote(
+      crypto.createHash('md5').update(key).digest('hex'))
     var voteLog = null
     var hostInfo = null
     //if(downHost.request) delete(downHost.request)
@@ -132,7 +139,7 @@ var Heartbeat = function(type,name,port){
         var count = storeList.length + prismList.length
         var votes = Object.keys(voteLog).length
         if(votes < (count/2))throw new Error('Ok, got it')
-        hostInfo.active = false
+        hostInfo.available = false
         return cradle.db.saveAsync(key,hostInfo._rev,hostInfo)
       }).then(function(){
         //Delete the vote log, it has served its purpose
@@ -143,7 +150,7 @@ var Heartbeat = function(type,name,port){
   }
 
   var pingHost = function(host){
-    debug('Pinging ' + host.name + ">>" + host.request.url('/ping'))
+    debug('Pinging ' + host.name + '>>' + host.request.url('/ping'))
     return host.request.postAsync(host.request.url('/ping')+'')
       .then(function(res){
         var body = res.body
@@ -174,7 +181,7 @@ var Heartbeat = function(type,name,port){
     return P.all(promises)
   }
 
-  var checkStuff = function(){
+  var checkSystem = function(){
     if((checkCounter++ % 5) === 0){
       checkCounter = 1
       return collect().then(function(){
@@ -192,9 +199,8 @@ var Heartbeat = function(type,name,port){
 
   var createInterval = function(){
     interval = setInterval(function(){
-      return checkStuff()
-    },config.pingFrequency)
-    return checkStuff()
+      return checkSystem()
+    },config.heartbeat.frequency || 10000)
   }
 
   //this will start the heartbeat automatically

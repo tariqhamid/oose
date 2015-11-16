@@ -36,6 +36,7 @@ if(require.main === module){
             doc.host = config.prism.host
             doc.port = config.prism.port
             doc.available = true
+            doc.active = true
             return cradle.db.saveAsync(prismKey,doc)
           },
           //if we dont exist lets make sure thats why and create ourselves
@@ -53,6 +54,11 @@ if(require.main === module){
           }
         )
         .then(function(){
+          //start the Heartbeat service
+          if(config.heartbeat.enabled){
+            require('../helpers/heartbeat')
+              .getInstance('prism',config.prism.name,config.prism.port)
+          }
           console.log('Prism startup complete')
           done()
         })

@@ -27,6 +27,7 @@ config.$load({
   },
   //heartbeat
   heartbeat: {
+    enabled: false,
     frequency: 10000 //10 seconds
   },
   //databases

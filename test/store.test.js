@@ -171,38 +171,11 @@ describe('store',function(){
           expect(body.token.length).to.equal(64)
           expect(body.path).to.be.a('string')
           expect(body.ext).to.equal(content.ext)
-          expect(body.life).to.equal(21600)
           purchase = {
             token: body.token,
             path: body.path,
             ext: body.ext
           }
-        })
-    })
-    it('should find a purchase',function(){
-      return client
-        .postAsync({
-          url: client.url('/purchase/find'),
-          json: {token: purchase.token}
-        })
-        .spread(function(res,body){
-          expect(body.token.length).to.equal(64)
-          expect(body.path).to.be.a('string')
-          expect(body.ext).to.equal(content.ext)
-          expect(+body.life).to.equal(21600)
-        })
-    })
-    it('should update a purchase',function(){
-      return client
-        .postAsync({
-          url: client.url('/purchase/update'),
-          json: {token: purchase.token,ext: 'mp3'}
-        })
-        .spread(function(req,body){
-          expect(body.token.length).to.equal(64)
-          expect(body.path).to.be.a('string')
-          expect(body.ext).to.equal('mp3')
-          expect(+body.life).to.equal(21600)
         })
     })
     it('should remove a purchase',function(){

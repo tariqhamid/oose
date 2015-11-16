@@ -22,10 +22,6 @@ var routes = require('./routes')
 //make some promises
 P.promisifyAll(server)
 
-//start the Heartbeat service early
-//require('../helpers/heartbeat')
-//  .getInstance('prism',config.prism.name, config.prism.port)
-
 //setup
 app.use(bodyParser.json({limit: '100mb'}))
 

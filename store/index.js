@@ -64,6 +64,7 @@ if(require.main === module){
             doc.host = config.store.host
             doc.port = config.store.port
             doc.available = true
+            doc.active = true
             return cradle.db.saveAsync(storeKey,doc)
           },
           //if we dont exist lets make sure thats why and create ourselves
@@ -82,6 +83,11 @@ if(require.main === module){
           }
         )
         .then(function(){
+          //start the heartbeat service
+          if(config.heartbeat.enabled){
+            require('../helpers/heartbeat')
+              .getInstance('store',config.store.name,config.store.port)
+          }
           console.log('Store startup complete')
           done()
         })
