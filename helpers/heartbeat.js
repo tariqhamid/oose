@@ -34,6 +34,7 @@ var Heartbeat = function(type,name,port){
   //var interval = null
   var storeList = null
   var prismList = null
+  var pingList = null
   var prismName = (type==='prism') ? name : config.prism.name
 
   var collectPrismList = function(){
@@ -136,9 +137,9 @@ var Heartbeat = function(type,name,port){
         return cradle.db.saveAsync(downKey,voteLog)
       }).then(function(vL){
         voteLog = vL
-        var count = storeList.length + prismList.length
+        var count = pingList.length
         var votes = Object.keys(voteLog).length
-        if(votes < (count/2))throw new Error('Ok, got it')
+        if(count === 0 || votes < (count/2))throw new Error('Ok, got it')
         hostInfo.available = false
         return cradle.db.saveAsync(key,hostInfo._rev,hostInfo)
       }).then(function(){
@@ -152,8 +153,7 @@ var Heartbeat = function(type,name,port){
   var pingHost = function(host){
     debug('Pinging ' + host.name + '>>' + host.request.url('/ping'))
     return host.request.postAsync(host.request.url('/ping')+'')
-      .then(function(res){
-        var body = res.body
+      .spread(function(res,body){
         if(body && body.pong && 'pong' === body.pong){
           return true
         }else{
@@ -168,26 +168,52 @@ var Heartbeat = function(type,name,port){
 
   var pingAll = function(){
     var promises = []
-    if(prismList && prismList.length){
-      for(var i =0; i < prismList.length;i++){
-        promises.push(pingHost(prismList[i]));
+    if(pingList && pingList.length){
+      for(var i =0; i < pingList.length;i++){
+        promises.push(pingHost(pingList[i]));
       }
-    }
+    }/*
     if(storeList && storeList.length){
       for(var j =0; j < storeList.length;j++){
         promises.push(pingHost(storeList[j]));
       }
-    }
+    }*/
     return P.all(promises)
+  }
+
+  var markMeUp = function(){
+    debug('Marking myself up')
+    var key = (type === 'prism') ?
+      cradle.schema.prism(prismName) : cradle.schema.store(prismName,name)
+    return cradle.db.getAsync(key)
+      .then(function(node){
+        node.available = true
+        node.active = true
+        return cradle.db.saveAsync(key,node._rev,node)
+      }).catch(function(err){
+        debug(err.mesage)
+      })
   }
 
   var checkSystem = function(){
     if((checkCounter++ % 5) === 0){
       checkCounter = 1
+      var allNodes = []
       return collect().then(function(){
-          return pingAll()
-        })
-        .catch(NetworkError,function(err){
+          allNodes = allNodes.concat(storeList,prismList)
+          return P.filter(allNodes,function(node){
+            return (node.name !== name || node.type !== type)
+          })
+        }).then(function(filteredNodes){
+          pingList = filteredNodes
+          //This host was filtered out, no need to enable again
+          if(pingList.length !== allNodes.length)
+            return pingAll()
+          return markMeUp().then(function(){
+            pingAll()
+          })
+
+        }).catch(NetworkError,function(err){
           //continue as normal on a network error
           debug('network error',err)
         })
