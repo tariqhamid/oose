@@ -16,6 +16,9 @@ module.exports = {
       }
     }
   },
+  heartbeat: {
+    enabled: true
+  },
   store: {
     enabled: true
   },
