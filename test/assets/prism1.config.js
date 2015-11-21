@@ -7,8 +7,7 @@
  */
 module.exports = {
   domain: 'oose-test',
-  site: 'site1',
-  zone: 'zone1',
+  group: 'group1',
   root: __dirname + '/data/test/prism1',
   redis: {
     db: 0

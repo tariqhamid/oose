@@ -13,15 +13,7 @@ Clusters are split into 5 basic levels in order of highest to lowest.
 In order to identify a cluster a domain should be used. This domain should be a SLD but it can also be a subdomain however it makes the naming structure longer in production.
 For our production purposes oose.io is used as the domain. For a more local enterprise instance however a subdomain could be used, for example: oose.esited.net
 
-### Site
-To identify geographic locations, sites are used. These give just enough information to identify the location of the OOSE site. Sites are used to identify groups of hosts that are located on the same physical network.
-For our production purposes we use a site naming convention that looks like the following.
-
-`<nearest major airport code><site #>`
-
-For us this equates to for example: lax1. Which would yield Los Angeles, CA; Site # 1
-
-### Zone
+### Group
 
 Zones are used to identify groups of hardware that are connected to the same physical switch or power source.
 In our case we use the switch tag to indentify hosts that are connected to the same physical switch. Which would yield content unavailable during the case of a switch outage or maintenance.
@@ -49,8 +41,8 @@ This FQDN is very important for a few purposes.
 * We use hyphens instead of subdomains for SSL purposes.
 
 ##Replication Considerations
-When the OOSE system distributes data it tries send the data to a host on the same physical network, or in other words the same site as mentioned above. It will not however replicate to an instance on the same host as this would create the possibility for data to be unavailable in the event of a host going offline.
+When the OOSE system distributes data it tries send the data to a host on the same physical network, or in other words the same group as mentioned above. It will not however replicate to an instance on the same host as this would create the possibility for data to be unavailable in the event of a host going offline.
 
-If there are multiple *zones* available OOSE will do its best to create copies of data that are independent of zones but still reside within the same site.
+If there are multiple *groups* available OOSE will do its best to create copies of data that are independent of groups but still reside within the same site.
 
 Inter-site copies are only used in geographic caching situations or if high availability of data is requested at the instance configuration level. Each instance will make decisions about where to send data there is no monolithic master that makes decisions. So, it is important to configure each instance with similar replication rules.

@@ -7,8 +7,7 @@
  */
 module.exports = {
   domain: 'oose-test',
-  site: 'site1',
-  zone: 'zone2',
+  group: 'group2',
   root: __dirname + '/data/test/store4',
   redis: {
     db: 5

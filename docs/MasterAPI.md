@@ -73,8 +73,7 @@
 * **Params** 
     * `name` -Prism Name
     * `domain` -Prism Domain
-    * `site` - Prism Site
-    * `zone` - Prism Zone
+    * `group` - Prism Group
     * `host` - Prism Host
     * `port` - Prism Port
 * **RESPONSE** 
@@ -91,8 +90,7 @@
 * **RESPONSE**
     * Prism Instance
         * `id` - Prism Name
-        * `site` - Prism Site Location
-        * `zone` - Prism Zone Location
+        * `group` - Prism Group
         * `host` - Prism Host
         * `port` - Prism Port
         * `createdAt` - Date the Prism was created
@@ -108,8 +106,7 @@
 * **RESPONSE**
     * All Prism Instances
         * `id` - Prism Name
-        * `site` - Prism Site Location
-        * `zone` - Prism Zone Location
+        * `group` - Prism Group
         * `host` - Prism Host
         * `port` - Prism Port
         * `createdAt` - Date the Prism was created
@@ -123,13 +120,11 @@
 * **Session Required** no
 * **Params** 
     * `name` - Prism Name
-    * `site` - Prism Site Location
 * **RESPONSE**
     * `success` - Success message `Prism instance updated`
     * Updated Prism Instance
         * `id` - Prism Name
-        * `site` - Prism Site Location
-        * `zone` - Prism Zone Location
+        * `group` - Prism Group
         * `host` - Prism Host
         * `port` - Prism Port
         * `createdAt` - Date the Prism was created

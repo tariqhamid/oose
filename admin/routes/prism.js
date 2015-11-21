@@ -109,8 +109,7 @@ exports.save = function(req,res){
     .then(function(prism){
       if(!prism) prism = Prism.build({MasterId: master.id})
       if(data.name) prism.name = data.name
-      if(data.site) prism.site = data.site
-      if(data.zone) prism.zone = data.zone
+      if(data.group) prism.group = data.group
       if(data.host) prism.host = data.host
       if(data.port) prism.port = data.port
       prism.full = !!data.full

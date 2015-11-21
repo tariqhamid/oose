@@ -12,8 +12,7 @@ config.$load({
   version: pkg.version,
   //locale
   domain: 'localhost',
-  site: 'localsite',
-  zone: 'localzone',
+  group: 'localgroup',
   host: os.hostname(),
   //storage
   root: __dirname + '/data',
