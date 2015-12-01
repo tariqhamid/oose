@@ -548,8 +548,14 @@ exports.deliver = function(req,res){
       req.url.substr(req.url.indexOf('?')+1) : null
     var proto = 'https' === req.get('X-Forwarded-Protocol') ? 'https' : 'http'
     //add a start param regardless so nginx will act correctly on videos
-    // which shouldnt hurt other queries
-    if(!req.query.start && !req.query.html5){
+    // which should not hurt other queries
+    //instead of just adding this param whenever we want lets use the mime
+    //type of the file to figure this out
+    if(
+      mime.lookup(purchase.ext).match('video') &&
+      !req.query.start &&
+      !req.query.html5
+    ){
       if('' === query) query = '?start=0'
       else query = query + '&start=0'
     }
@@ -576,7 +582,7 @@ exports.deliver = function(req,res){
       return storeBalance.winnerFromExists(token,purchase.inventory,[],true)
     })
     .then(function(result){
-      res.redirect(302,makeUrl(req,result))
+      res.redirect(302,makeUrl(req,result,purchase))
     })
     .catch(SyntaxError,function(err){
       redis.incr(redis.schema.counterError('prism','content:deliver:syntax'))
