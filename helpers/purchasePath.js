@@ -13,11 +13,34 @@ P.promisifyAll(fs)
 
 
 /**
+ * Split value
+ * @param {string} value
+ * @param {number} index
+ * @return {string}
+ */
+var splitValue = function(value,index){
+  return [value.substring(0, index),value.substring(index)]
+}
+
+
+/**
  * Generate token
  * @return {string}
  */
 exports.generateToken = function(){
   return new Password({length: 64, special: false}).toString()
+}
+
+
+/**
+ * Split our token to create multiple folders to ease file system access
+ * time on heavily loaded machines
+ * @param {string} token
+ * @return {string}
+ */
+exports.tokenToRelativePath = function(token){
+  var parts = splitValue(token,4)
+  return parts.join('/')
 }
 
 
@@ -28,10 +51,11 @@ exports.generateToken = function(){
  * @return {string}
  */
 exports.toPath = function(token,ext){
+  var tokenPath = exports.tokenToRelativePath(token)
   if(ext)
-    return path.resolve(basePath + '/' + token + '.' + ext)
+    return path.resolve(basePath + '/' + tokenPath + '.' + ext)
   else
-    return path.resolve(basePath + '/' + token)
+    return path.resolve(basePath + '/' + tokenPath)
 }
 
 
@@ -42,8 +66,8 @@ exports.toPath = function(token,ext){
  */
 exports.fromPath = function(filePath){
   filePath = filePath.replace(basePath,'')
-  filePath = filePath.replace(/^\W+/i,'')
-  filePath = filePath.replace(/\.\w+$/i,'')
+  filePath = filePath.replace(/\.\w+$/gi,'')
+  filePath = filePath.replace(/\W+/gi,'')
   return filePath
 }
 

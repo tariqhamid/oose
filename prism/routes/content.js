@@ -533,6 +533,7 @@ exports.purchase = function(req,res){
 exports.deliver = function(req,res){
   redis.incr(redis.schema.counter('prism','content:deliver'))
   var token = req.params.token
+  var tokenPath = purchasePath.tokenToRelativePath(token)
   //var filename = req.params.filename
   var purchaseKey = cradle.schema.purchase(token)
   var purchase
@@ -553,7 +554,7 @@ exports.deliver = function(req,res){
       else query = query + '&start=0'
     }
     return proto + '://' + store.name + '.' + config.domain +
-      '/' + token + '.' + purchase.ext + (query ? '?' + query : '')
+      '/' + tokenPath + '.' + purchase.ext + (query ? '?' + query : '')
   }
   cradle.db.getAsync(purchaseKey)
     .then(function(result){

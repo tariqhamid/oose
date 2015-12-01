@@ -15,7 +15,9 @@ var config = require('../config')
 var purchase
 var testToken =
   'tH5ex77JRt3v4o8JP88bb44re6HWNyCdtKI732a1a27k431pWRu2AQmjbM5R5Nn3'
-var testDest = path.resolve(config.root + '/purchased/' + testToken + '.mp4')
+var testTokenPath = purchasePath.tokenToRelativePath(testToken)
+var testDest =
+  path.resolve(config.root + '/purchased/' + testTokenPath + '.mp4')
 
 //make some promises
 P.promisifyAll(fs)

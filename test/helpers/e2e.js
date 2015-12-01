@@ -13,6 +13,7 @@ var url = require('url')
 var api = require('../../helpers/api')
 var cradle = require('../../helpers/couchdb')
 var content = oose.mock.content
+var purchasePath = require('../../helpers/purchasePath')
 var redis = require('../../helpers/redis')
 var sha1File = require('../../helpers/sha1File')
 
@@ -714,6 +715,7 @@ exports.contentStatic = function(prism,localAddress,ext){
  */
 exports.contentDeliver = function(prism,localAddress,referrer){
   return function(){
+    var tokenPath = purchasePath.tokenToRelativePath(exports.purchase.token)
     var client = api.prism(prism.prism)
     var options = {
       url: client.url('/' + exports.purchase.token + '/' + content.filename),
@@ -731,7 +733,7 @@ exports.contentDeliver = function(prism,localAddress,referrer){
         expect(host[0]).to.match(/^store\d{1}$/)
         expect(host[1]).to.equal(prism.domain)
         expect(uri.pathname).to.equal(
-          '/' + exports.purchase.token + '.' + content.ext)
+          '/' + tokenPath + '.' + content.ext)
       })
   }
 }
