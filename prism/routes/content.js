@@ -83,6 +83,19 @@ var sendToPrism = function(tmpfile,sha1,extension){
 
 
 /**
+ * Rewrite file extensions that are commonly confused with our naming scheme
+ * we do not want to force anything on our users so it is best to rewrite these
+ * and it is a list we compile over time.
+ * @param {string} ext
+ * @return {string}
+ */
+var extensionRewrite = function(ext){
+  ext = ext.replace('jpg','jpeg')
+  return ext
+}
+
+
+/**
  * Upload file
  * @param {object} req
  * @param {object} res
@@ -591,7 +604,7 @@ exports.contentStatic = function(req,res){
   redis.incr(redis.schema.counter('prism','content:static'))
   var sha1 = req.params.sha1
   var filename = req.params.filename
-  var ext = path.extname(filename).replace('.','')
+  var ext = extensionRewrite(path.extname(filename).replace('.',''))
   prismBalance.contentExists(sha1)
     .then(function(result){
       if(!result.exists) throw new NotFoundError('Content does not exist')
