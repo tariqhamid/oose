@@ -1,4 +1,4 @@
-OOSE [![Build Status](https://magnum.travis-ci.com/eSited/oose.svg?token=EgNQpuNvio2L8rSzcEkz&branch=master)](https://magnum.travis-ci.com/eSited/oose)
+OOSE [![Build Status](https://magnum.travis-ci.com/nullivex/oose.svg?token=EgNQpuNvio2L8rSzcEkz&branch=master)](https://magnum.travis-ci.com/nullivex/oose)
 ========
 
 Object Oriented Storage Engine
