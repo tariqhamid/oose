@@ -6,7 +6,7 @@ var oose = require('oose-sdk')
 var NotFoundError = oose.NotFoundError
 var purchasePath = require('../../helpers/purchasePath')
 var redis = require('../../helpers/redis')
-var sha1File = require('../../helpers/sha1File')
+var sha1File = require('../../helpers/hashFile')
 var UserError = oose.UserError
 
 //make some promises
@@ -22,7 +22,7 @@ exports.create = function(req,res){
   redis.incr(redis.schema.counter('store','purchase:create'))
   var purchase
   var token = req.body.token || purchasePath.generateToken()
-  var sha1 = req.body.sha1
+  var sha1 = req.body.hash
   var ext = req.body.ext
   //first check for the real file
   sha1File.find(sha1)

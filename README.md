@@ -104,6 +104,14 @@ This folder contains what should live in the root folder (aka the data folder)
 * Implement CouchDB for cluster consistency
 * Scan content existence directly into CouchDB
 * Drop OOSE backed content existence system
+* Variable hash typing added the following ciphers are supported
+  * sha512
+  * sha384
+  * sha256
+  * sha224
+  * sha1
+  * md5
+* The new variable hashing system defaults to sha1 (to be backwards compatible) this can be changed in the configuration.
 
 ### 1.3.0
 

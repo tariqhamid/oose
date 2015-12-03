@@ -16,6 +16,7 @@ config.$load({
   host: os.hostname(),
   //storage
   root: __dirname + '/data',
+  defaultHashType: 'sha1',
   //api setup
   ssl: {
     pem: oose.mock.sslOptions.pemFile

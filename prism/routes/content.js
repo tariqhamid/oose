@@ -8,7 +8,7 @@ var oose = require('oose-sdk')
 var path = require('path')
 var promisePipe = require('promisepipe')
 var request = require('request')
-var sha1stream = require('sha1-stream')
+var hashStream = require('sha1-stream')
 var temp = require('temp')
 
 var api = require('../../helpers/api')
@@ -19,7 +19,8 @@ var prismBalance = require('../../helpers/prismBalance')
 var promiseWhile = require('../../helpers/promiseWhile')
 var purchasePath = require('../../helpers/purchasePath')
 var redis = require('../../helpers/redis')
-var sha1File = require('../../helpers/sha1File')
+var hasher = require('../../helpers/hasher')
+var hashFile = require('../../helpers/hashFile')
 var storeBalance = require('../../helpers/storeBalance')
 var UserError = oose.UserError
 
@@ -34,17 +35,17 @@ var nullFunction = function(){}
 /**
  * Send a file to prism
  * @param {string} tmpfile
- * @param {string} sha1
+ * @param {string} hash
  * @param {string} extension
  * @return {P}
  */
-var sendToPrism = function(tmpfile,sha1,extension){
+var sendToPrism = function(tmpfile,hash,extension){
   var prismList
   var winners = []
   //actually stream the file to new peers
   return prismBalance.prismList()//pick first winner
     .then(function(result){
-      debug(sha1,'sendToPrism prismList',result)
+      debug(hash,'sendToPrism prismList',result)
       prismList = result
       return prismBalance.winner('newFile',prismList)
     })
@@ -59,9 +60,9 @@ var sendToPrism = function(tmpfile,sha1,extension){
     })
     //stream the file to winners
     .then(function(result){
-      debug(sha1,'2nd winner result',result)
+      debug(hash,'2nd winner result',result)
       if(result) winners.push(result)
-      debug('new file winners',sha1,winners)
+      debug('new file winners',hash,winners)
       var thenReturn = function(val){return val}
       var handleError = function(err){throw new UserError(err.message)}
       var readStream = fs.createReadStream(tmpfile)
@@ -72,7 +73,7 @@ var sendToPrism = function(tmpfile,sha1,extension){
         promises.push(
           promisePipe(
             readStream,
-            client.put(client.url('/content/put/' + sha1 + '.' + extension))
+            client.put(client.url('/content/put/' + hash + '.' + extension))
           )
             .then(thenReturn,handleError)
         )
@@ -121,7 +122,8 @@ exports.upload = function(req,res){
     redis.incr(redis.schema.counter('prism','content:filesUploaded'))
     debug('upload, got file')
     var tmpfile = temp.path({prefix: 'oose-' + config.prism.name + '-'})
-    var sniff = sha1stream.createStream()
+    if(!data.hashType) data.hashType = config.defaultHashType || 'sha1'
+    var sniff = hashStream.createStream(data.hashType)
     sniff.on('data',function(chunk){
       redis.incrby(
         redis.schema.counter('prism','content:bytesUploaded'),chunk.length)
@@ -134,7 +136,8 @@ exports.upload = function(req,res){
       encoding: encoding,
       mimetype: mimetype,
       ext: mime.extension(mimetype),
-      sha1: null
+      hash: null,
+      hashType: data.hashType
     }
     filePromises.push(
       P.try(function(){
@@ -145,16 +148,17 @@ exports.upload = function(req,res){
           )
       })
         .then(function(){
-          files[key].sha1 = sniff.sha1
-          debug(sniff.sha1,'upload received')
+          files[key].hash = sniff.hash
+          files[key].hashType = hasher.identify(sniff.hash)
+          debug(sniff.hash,'upload received')
           //do a content lookup and see if this exists yet
-          debug(sniff.sha1,'asking if exists')
-          return prismBalance.contentExists(sniff.sha1)
+          debug(sniff.hash,'asking if exists')
+          return prismBalance.contentExists(sniff.hash)
         })
         .then(function(result){
           debug(files[key],'exists result',result)
           if(!result.exists && 0 === result.count){
-            return sendToPrism(tmpfile,sniff.sha1,files[key].ext)
+            return sendToPrism(tmpfile,sniff.hash,files[key].ext)
           }
           //got here? file already exists on cluster so we are done
         })
@@ -200,14 +204,15 @@ exports.upload = function(req,res){
 exports.retrieve = function(req,res){
   redis.incr(redis.schema.counter('prism','content:retrieve'))
   var retrieveRequest = req.body.request
+  var hashType = req.body.hashType || config.defaultHashType || 'sha1'
   var extension = req.body.extension || 'bin'
   var tmpfile = temp.path({prefix: 'oose-' + config.prism.name + '-'})
-  var sniff = sha1stream.createStream()
+  var sniff = hashStream.createStream(hashType)
   sniff.on('data',function(chunk){
     redis.incrby(
       redis.schema.counter('prism','content:bytesUploaded'),chunk.length)
   })
-  var sha1
+  var hash
   var writeStream = fs.createWriteStream(tmpfile)
   promisePipe(request(retrieveRequest),sniff,writeStream)
     .then(
@@ -215,20 +220,20 @@ exports.retrieve = function(req,res){
       function(err){throw new UserError(err.message)}
     )
     .then(function(){
-      sha1 = sniff.sha1
+      hash = sniff.hash
       //do a content lookup and see if this exists yet
-      return prismBalance.contentExists(sha1)
+      return prismBalance.contentExists(hash)
     })
     .then(function(result){
       if(!result.exists && 0 === result.count){
-        return sendToPrism(tmpfile,sha1,extension)
+        return sendToPrism(tmpfile,hash,extension)
       }
       //got here? file already exists on cluster so we are done
     })
     .then(function(){
       redis.incr(redis.schema.counter('prism','content:filesUploaded'))
       res.json({
-        sha1: sha1,
+        hash: hash,
         extension: extension
       })
     })
@@ -254,30 +259,30 @@ exports.retrieve = function(req,res){
 exports.put = function(req,res){
   var file = req.params.file
   var storeList
-  var details = sha1File.sha1FromFilename(file)
-  debug(details.sha1,'put request received, checking existence and store list')
+  var details = hashFile.hashFromFilename(file)
+  debug(details.hash,'put request received, checking existence and store list')
   P.all([
-    prismBalance.contentExists(details.sha1),
+    prismBalance.contentExists(details.hash),
     storeBalance.storeList(config.prism.name)
   ])
     .then(function(result){
       var exists = result[0]
       storeList = result[1]
-      debug(details.sha1,'got exists',exists)
-      debug(details.sha1,'got store list',storeList)
-      debug(details.sha1,'picking store winner')
+      debug(details.hash,'got exists',exists)
+      debug(details.hash,'got store list',storeList)
+      debug(details.hash,'picking store winner')
       return storeBalance.winner(storeList,storeBalance.existsToArray(exists))
     })
     .then(function(result){
-      debug(details.sha1,'winner',result)
+      debug(details.hash,'winner',result)
       if(!result) throw new UserError('No suitable store instance found')
       var client = api.store(result)
       var destination = client.put(client.url('/content/put/' + file))
-      debug(details.sha1,'streaming file to',result.name)
+      debug(details.hash,'streaming file to',result.name)
       return promisePipe(req,destination)
         .then(
           function(val){
-            debug(details.sha1,'finished streaming file')
+            debug(details.hash,'finished streaming file')
             return val
           },
           function(err){throw new UserError(err.message)}
@@ -301,7 +306,7 @@ exports.put = function(req,res){
  */
 exports.detail = function(req,res){
   redis.incr(redis.schema.counter('prism','content:detail'))
-  var sha1 = req.body.sha1
+  var sha1 = req.body.hash
   var record = {}
   var singular = !(sha1 instanceof Array)
   if(singular) sha1 = [sha1]
@@ -310,11 +315,11 @@ exports.detail = function(req,res){
   P.try(function(){
     return sha1
   })
-    .map(function(sha1){
-      return prismBalance.contentExists(sha1)
+    .map(function(hash){
+      return prismBalance.contentExists(hash)
     })
     .each(function(row){
-      record[row.sha1] = row
+      record[row.hash] = row
     })
     .then(function(){
       //backwards compatability
@@ -350,14 +355,14 @@ exports.exists = function(req,res){
  */
 exports.download = function(req,res){
   redis.incr(redis.schema.counter('prism','content:download'))
-  var sha1 = req.body.sha1
+  var hash = req.body.hash || req.body.sha1 || ''
   var winner, inventory
-  prismBalance.contentExists(sha1)
+  prismBalance.contentExists(hash)
     .then(function(result){
       inventory = result
       if(!inventory && !inventory.exists)
         throw new NotFoundError('File not found')
-      return storeBalance.winnerFromExists(sha1,inventory,[],true)
+      return storeBalance.winnerFromExists(hash,inventory,[],true)
     })
     .then(function(result){
       winner = result
@@ -366,7 +371,7 @@ exports.download = function(req,res){
         .then(function(){
           var req = store.post({
             url: store.url('/content/download'),
-            json: {sha1: sha1}
+            json: {hash: hash}
           })
           req.on('data',function(chunk){
             redis.incrby(
@@ -382,7 +387,7 @@ exports.download = function(req,res){
         })
     })
     .catch(NetworkError,function(){
-      return storeBalance.winnerFromExists(sha1,inventory,[winner.name],true)
+      return storeBalance.winnerFromExists(hash,inventory,[winner.name],true)
         .then(function(result){
           winner = result
           var store = api.store(winner)
@@ -390,7 +395,7 @@ exports.download = function(req,res){
             .then(function(){
               store.post({
                 url: store.url('/content/download'),
-                json: {sha1: sha1}
+                json: {hash: hash}
               }).pipe(res)
             })
         })
@@ -419,15 +424,16 @@ exports.purchase = function(req,res){
   redis.incr(redis.schema.counter('prism','content:purchase'))
   var ip = req.body.ip || req.ip || '127.0.0.1'
   //var start = +new Date()
-  var sha1 = req.body.sha1
+  var hash = req.body.hash || req.body.sha1 || ''
+  var hashType = hasher.identify(hash)
   var ext = req.body.ext
   var referrer = req.body.referrer
   var life = req.body.life || config.purchase.life
   var token, inventory, purchase
   P.try(function(){
-    if(!sha1File.validate(sha1))
+    if(!hashFile.validate(hash))
       throw new UserError('Invalid SHA1 passed for purchase')
-    return prismBalance.contentExists(sha1)
+    return prismBalance.contentExists(hash)
   })
     .then(function(result){
       inventory = result
@@ -471,7 +477,8 @@ exports.purchase = function(req,res){
           return client.postAsync({
             url: client.url('/purchase/create'),
             json: {
-              sha1: sha1,
+              hash: hash,
+              hashType: hashType,
               ext: ext,
               token: token,
               life: life
@@ -484,7 +491,8 @@ exports.purchase = function(req,res){
     .then(function(){
       //now create our purchase object
       purchase = {
-        sha1: sha1,
+        hash: hash,
+        hashType: hashType,
         life: life,
         expirationDate: new Date((+new Date() + life)).toJSON(),
         token: token,
@@ -609,20 +617,20 @@ exports.deliver = function(req,res){
  */
 exports.contentStatic = function(req,res){
   redis.incr(redis.schema.counter('prism','content:static'))
-  var sha1 = req.params.sha1
+  var hash = req.params.hash || req.params.sha1 || 'sha1'
   var filename = req.params.filename
   var ext = extensionRewrite(path.extname(filename).replace('.',''))
-  prismBalance.contentExists(sha1)
+  prismBalance.contentExists(hash)
     .then(function(result){
       if(!result.exists) throw new NotFoundError('Content does not exist')
       if(config.prism.denyStaticTypes.indexOf(ext) >= 0)
         throw new UserError('Invalid static file type')
-      return storeBalance.winnerFromExists(sha1,result,[],true)
+      return storeBalance.winnerFromExists(hash,result,[],true)
     })
     .then(function(result){
       var proto = 'https' === req.get('X-Forwarded-Protocol') ? 'https' : 'http'
       var url = proto + '://' + result.name +
-        '.' + config.domain + '/static/' + sha1File.toRelativePath(sha1,ext)
+        '.' + config.domain + '/static/' + hashFile.toRelativePath(hash,ext)
       res.redirect(302,url)
     })
     .catch(NetworkError,function(err){

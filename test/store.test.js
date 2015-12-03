@@ -72,14 +72,14 @@ describe('store',function(){
       return promisePipe(
         fs.createReadStream(content.file),
         client.put(
-          client.url('/content/put/') + content.sha1 + '.' + content.ext)
+          client.url('/content/put/') + content.hash + '.' + content.ext)
       )
     })
     after(function(){
       return client
         .postAsync({
           url: client.url('/content/remove'),
-          json: {sha1: content.sha1}
+          json: {hash: content.hash}
         })
         .spread(function(res,body){
           expect(body.success).to.equal('File removed')
@@ -90,7 +90,7 @@ describe('store',function(){
         .postAsync({
           url: client.url('/content/exists'),
           json: {
-            sha1: content.sha1
+            hash: content.hash
           }
         })
         .spread(function(res,body){
@@ -103,12 +103,12 @@ describe('store',function(){
         .postAsync({
           url: client.url('/content/exists'),
           json: {
-            sha1: [content.sha1,content.sha1Bogus]
+            hash: [content.hash,content.sha1Bogus]
           }
         })
         .spread(function(res,body){
-          expect(body[content.sha1].exists).to.equal(true)
-          expect(body[content.sha1].ext).to.equal(content.ext)
+          expect(body[content.hash].exists).to.equal(true)
+          expect(body[content.hash].ext).to.equal(content.ext)
           expect(body[content.sha1Bogus].exists).to.equal(false)
           expect(body[content.sha1Bogus].ext).to.equal('')
         })
@@ -117,7 +117,7 @@ describe('store',function(){
       return client
         .postAsync({
           url: client.url('/content/exists'),
-          json: {sha1: content.sha1Bogus}
+          json: {hash: content.sha1Bogus}
         })
         .spread(function(res,body){
           expect(body.exists.exists).to.equal(false)
@@ -129,12 +129,12 @@ describe('store',function(){
       return promisePipe(
         client.post({
           url: client.url('/content/download'),
-          json: {sha1: content.sha1}
+          json: {hash: content.hash}
         }),
         sniff
       )
         .then(function(){
-          expect(sniff.sha1).to.equal(content.sha1)
+          expect(sniff.hash).to.equal(content.hash)
         })
     })
   })
@@ -143,14 +143,14 @@ describe('store',function(){
       return promisePipe(
         fs.createReadStream(content.file),
         client.put(
-          client.url('/content/put/') + content.sha1 + '.' + content.ext)
+          client.url('/content/put/') + content.hash + '.' + content.ext)
       )
     })
     after(function(){
       return client
         .postAsync({
           url: client.url('/content/remove'),
-          json: {sha1: content.sha1}
+          json: {hash: content.hash}
         })
         .spread(function(res,body){
           expect(body.success).to.equal('File removed')
@@ -162,7 +162,7 @@ describe('store',function(){
         .postAsync({
           url: client.url('/purchase/create'),
           json: {
-            sha1: content.sha1,
+            hash: content.hash,
             ext: content.ext
           }
         })

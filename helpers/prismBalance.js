@@ -130,7 +130,7 @@ exports.contentExists = function(sha1){
       //debug(existsKey,'records',result)
       if(!count){
         return {
-          sha1: sha1,
+          hash: sha1,
           mimeType: null,
           mimeExtension: null,
           relativePath: null,
@@ -157,7 +157,7 @@ exports.contentExists = function(sha1){
               return val[0].name + ':' + val[1].name
             })
             var record = {
-              sha1: inventoryList[0].sha1,
+              hash: inventoryList[0].hash,
               mimeType: inventoryList[0].mimeType,
               mimeExtension: inventoryList[0].mimeExtension,
               relativePath: inventoryList[0].relativePath,

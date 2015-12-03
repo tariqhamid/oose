@@ -7,23 +7,24 @@ var path = require('path')
 var UserError = oose.UserError
 
 var config = require('../config')
+var hasher = require('./hasher')
 
 var basePath = path.resolve(config.root + '/content')
-var SHA1Exp = /[a-f0-9]{40}/i
 
 
 /**
- * Get a relative path from a sha1
- * @param {string} sha1
+ * Get a relative path from a hash
+ * @param {string} hash
  * @param {string} ext
  * @return {string}
  */
-exports.toRelativePath = function(sha1,ext){
+exports.toRelativePath = function(hash,ext){
   var file = ''
-  var parts = sha1.split('')
+  var type = hasher.identify(hash)
+  var parts = hash.split('')
   for(var i = 1; i <= parts.length; i++){
     file = file + parts[i - 1]
-    if(i % 2 === 0 && i !== 40){
+    if(i % 2 === 0 && i !== hasher.hashLengths[type]){
       file = file + '/'
     }
   }
@@ -34,32 +35,32 @@ exports.toRelativePath = function(sha1,ext){
 
 
 /**
- * Convert a sha1 to an absolute path
- * @param {string} sha1
+ * Convert a hash to an absolute path
+ * @param {string} hash
  * @param {string} ext  File extension
  * @return {string}
  */
-exports.toPath = function(sha1,ext){
-  return path.resolve(basePath,exports.toRelativePath(sha1,ext))
+exports.toPath = function(hash,ext){
+  return path.resolve(basePath,exports.toRelativePath(hash,ext))
 }
 
 
 /**
  * Make a symlink to the real path with the extension for quicker lookup
- * @param {string} sha1
+ * @param {string} hash
  * @param {string} ext
  * @return {P}
  */
-exports.linkPath = function(sha1,ext){
-  var target = exports.toPath(sha1,ext)
-  var link = exports.toPath(sha1)
+exports.linkPath = function(hash,ext){
+  var target = exports.toPath(hash,ext)
+  var link = exports.toPath(hash)
   return fs.symlinkAsync(target,link,'file')
     .catch(function(){})
 }
 
 
 /**
- * Convert a path back to a sha1
+ * Convert a path back to a hash
  * @param {string} file
  * @return {string}
  */
@@ -68,19 +69,20 @@ exports.fromPath = function(file){
   file = file.replace(basePath,'')
   //strip extension
   file = file.replace(/\.\w+$/,'')
-  //filter out to sha1
+  //filter out to hash
   return file.replace(/[^a-f0-9]+/gi,'')
 }
 
 
 /**
- * Validate sha1
- * @param {string} sha1
+ * Validate hash
+ * @param {string} hash
  * @return {boolean}
  */
-exports.validate = function(sha1){
-  if(!sha1) return false
-  return !!sha1.match(SHA1Exp)
+exports.validate = function(hash){
+  if(!hash) return false
+  var type = hasher.identify(hash)
+  return !!hash.match(hasher.hashExpressions[type])
 }
 
 
@@ -99,12 +101,12 @@ exports.fsExists = function(file){
 
 
 /**
- * Find a file based on sha1
- * @param {string} sha1
+ * Find a file based on hash
+ * @param {string} hash
  * @return {P}
  */
-exports.find = function(sha1){
-  var file = exports.toPath(sha1)
+exports.find = function(hash){
+  var file = exports.toPath(hash)
   return fs.readlinkAsync(file)
     .then(function(result){
       return result
@@ -115,16 +117,20 @@ exports.find = function(sha1){
 
 
 /**
- * Extract sha1 and extension from filename
+ * Extract hash and extension from filename
  * @param {string} file
  * @return {object}
  */
-exports.sha1FromFilename = function(file){
-  var match = file.match(/^([a-f0-9]{40})\.(\w+)$/i)
+exports.hashFromFilename = function(file){
+  var match = file.match(/^([a-f0-9]+)\.(\w+)$/i)
   if(3 !== match.length) throw new UserError('Failed to parse file name')
+  var hash = match[1]
+  var type = hasher.identify(hash)
+  var ext = match[2]
   return {
-    sha1: match[1],
-    ext: match[2]
+    hash: hash,
+    type: type,
+    ext: ext
   }
 }
 
@@ -137,10 +143,10 @@ exports.sha1FromFilename = function(file){
 exports.details = function(file){
   var details
   return P.try(function(){
-    details = exports.sha1FromFilename(file)
-    if(!exports.validate(details.sha1))
-      throw new UserError('Invalid sha1 passed')
-    details.path = exports.toPath(details.sha1,details.ext)
+    details = exports.hashFromFilename(file)
+    if(!exports.validate(details.hash))
+      throw new UserError('Invalid hash passed')
+    details.path = exports.toPath(details.hash,details.ext)
     return fs.statAsync(details.path)
       .then(function(stat){
         return stat
@@ -167,11 +173,11 @@ exports.details = function(file){
 
 /**
  * Remove a file and its accompanying link
- * @param {string} sha1
+ * @param {string} hash
  * @return {P}
  */
-exports.remove = function(sha1){
-  var link = exports.toPath(sha1)
+exports.remove = function(hash){
+  var link = exports.toPath(hash)
   return exports.fsExists(link)
     .then(function(result){
       if(!result) return true

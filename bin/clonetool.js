@@ -181,7 +181,7 @@ var addClones = function(file,storeList){
     }
     //make sure there is a possibility of a winner
     if(!storeToList.length){
-      console.log(file.sha1,
+      console.log(file.hash,
         'Sorry! No more available stores to send this to :(')
     } else {
       //figure out a dest winner
@@ -190,7 +190,7 @@ var addClones = function(file,storeList){
       storeWinnerList.push(storeToWinner.store)
       prismToWinner = storeToWinner.prism
       //inform of our decision
-      console.log(file.sha1,
+      console.log(file.hash,
         'Sending from ' + storeFromWinner.store +
         ' on prism ' + prismFromWinner +
         ' to ' + storeToWinner.store + ' on prism ' + prismToWinner)
@@ -198,7 +198,7 @@ var addClones = function(file,storeList){
       return sendClient.postAsync({
         url: sendClient.url('/content/send'),
         json: {
-          file: file.sha1 + '.' + file.ext,
+          file: file.hash + '.' + file.ext,
           store: storeList[storeToWinner.store]
         }
       })
@@ -240,21 +240,21 @@ var removeClones = function(file,storeList){
     }
     //make sure there is a possibility of a winner
     if(!storeRemoveList.length){
-      console.log(file.sha1,
+      console.log(file.hash,
         'Sorry! No more available stores to remove this from, it is gone. :(')
     } else {
       // now we know possible source stores, randomly select one
       storeRemoveWinner = storeRemoveList[
         random.integer(0,(storeRemoveList.length - 1))]
       //inform of our decision
-      console.log(file.sha1,
+      console.log(file.hash,
         'Removing from ' + storeRemoveWinner.store +
         ' on prism ' + storeRemoveWinner.prism)
       var storeClient = setupStore(storeList[storeRemoveWinner.store])
       return storeClient.postAsync({
         url: storeClient.url('/content/remove'),
         json: {
-          sha1: file.sha1 + '.' + file.ext
+          sha1: file.hash + '.' + file.ext
         }
       })
         .spread(storeClient.validateResponse())
@@ -278,7 +278,7 @@ var processFile = function(file,storeList){
       }
     })
     .then(function(){
-      console.log(file.sha1,'Processing complete')
+      console.log(file.hash,'Processing complete')
     })
 }
 
@@ -305,9 +305,9 @@ var contentDetail = function(sha1){
     .spread(function(res,body){
       var table = new Table()
       table.push(
-        {SHA1: clc.yellow(body.sha1)},
+        {SHA1: clc.yellow(body.hash)},
         {'File Extension': clc.cyan(body.ext)},
-        {'Relative Path': clc.yellow(relativePath(body.sha1,body.ext))},
+        {'Relative Path': clc.yellow(relativePath(body.hash,body.ext))},
         {Exists: body.exists ? clc.green('Yes') : clc.red('No')},
         {'Clone Count': clc.green(body.count)}
       )
@@ -343,7 +343,7 @@ P.try(function(){
     return contentDetail(program.detail)
   }
   //do some validation
-  if(!program.sha1 && !program.input){
+  if(!program.hash && !program.input){
     throw new UserError('No file list or file provided')
   }
   //set the desired to the default of 2 if not set
@@ -362,8 +362,8 @@ P.try(function(){
     ' ' + program[changeVerb] + ' clone(s)')
   console.log('--------------------')
   //get file list together
-  if(program.sha1){
-    fileStream.write(program.sha1)
+  if(program.hash){
+    fileStream.write(program.hash)
   } else if('-' === program.input){
     return promisePipe(process.stdin,fileStream)
   } else {
@@ -441,7 +441,7 @@ P.try(function(){
     var file = files[sha1]
     if(file.add > 0 || file.remove > 0){
       console.log('--------------------')
-      console.log(file.sha1 + ' starting to process changes')
+      console.log(file.hash + ' starting to process changes')
       return processFile(file,storeList)
     }
   })

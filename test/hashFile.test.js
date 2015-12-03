@@ -7,7 +7,7 @@ var oose = require('oose-sdk')
 var path = require('path')
 
 var content = oose.mock.content
-var sha1File = require('../helpers/sha1File')
+var hashFile = require('../helpers/hashFile')
 
 var config = require('../config')
 var relativeDestination = content.relativePath
@@ -16,27 +16,35 @@ var destination = path.resolve(config.root + '/content/' + content.relativePath)
 //make some promises
 P.promisifyAll(fs)
 
-describe('sha1File',function(){
-  it('should produce a relative path from sha1',function(){
+
+/**
+ * Rewrite hash name
+ * @type {string}
+ */
+content.hash = content.sha1
+
+describe('hashFile',function(){
+  it('should produce a relative path from hash',function(){
     expect(
-      sha1File.toRelativePath(content.sha1,content.ext)
+      hashFile.toRelativePath(content.hash,content.ext)
     ).to.equal(relativeDestination)
   })
-  it('should produce a path from sha1',function(){
-    expect(sha1File.toPath(content.sha1,content.ext)).to.equal(destination)
+  it('should produce a path from hash',function(){
+    expect(hashFile.toPath(content.hash,content.ext)).to.equal(destination)
   })
   it('should produce a sha1 from path',function(){
-    expect(sha1File.fromPath(destination)).to.equal(content.sha1)
+    expect(hashFile.fromPath(destination)).to.equal(content.hash)
   })
   it('should produce a short path without an extension',function(){
-    expect(sha1File.toPath(content.sha1)).to.equal(
-      destination.replace(/\.\w+$/,''))
+    expect(hashFile.toPath(content.hash)).to.equal(
+      destination.replace(/\.\w+$/,'')
+    )
   })
-  it('should validate a sha1',function(){
-    expect(sha1File.validate(content.sha1)).to.equal(true)
+  it('should validate a hash',function(){
+    expect(hashFile.validate(content.hash)).to.equal(true)
   })
-  it('should invalidate a sha1',function(){
-    expect(sha1File.validate('brown')).to.equal(false)
+  it('should invalidate a hash',function(){
+    expect(hashFile.validate('brown')).to.equal(false)
   })
   describe('sha1File:operations',function(){
     beforeEach(function(){
@@ -45,22 +53,22 @@ describe('sha1File',function(){
           return fs.writeFileAsync(destination,content.data)
         })
         .then(function(){
-          return sha1File.linkPath(content.sha1,content.ext)
+          return hashFile.linkPath(content.hash,content.ext)
         })
     })
     afterEach(function(){
-      return sha1File.remove(content.sha1)
+      return hashFile.remove(content.hash)
     })
-    it('should find a file by sha1',function(){
-      return sha1File.find(content.sha1)
+    it('should find a file by hash',function(){
+      return hashFile.find(content.hash)
         .then(function(file){
           expect(file).to.equal(destination)
         })
     })
     it('should have details for a file',function(){
-      return sha1File.details(content.sha1 + '.' + content.ext)
+      return hashFile.details(content.hash + '.' + content.ext)
         .then(function(details){
-          expect(details.sha1).to.equal(content.sha1)
+          expect(details.hash).to.equal(content.hash)
           expect(details.ext).to.equal(content.ext)
           expect(details.path).to.be.a('string')
           expect(details.stat).to.be.an('object')
@@ -68,9 +76,9 @@ describe('sha1File',function(){
         })
     })
     it('should have details for a bogus file',function(){
-      return sha1File.details(content.sha1Bogus + '.' + content.ext)
+      return hashFile.details(content.sha1Bogus + '.' + content.ext)
         .then(function(details){
-          expect(details.sha1).to.equal(content.sha1Bogus)
+          expect(details.hash).to.equal(content.sha1Bogus)
           expect(details.ext).to.equal(content.ext)
           expect(details.path).to.be.a('string')
           expect(details.stat).to.be.an('object')

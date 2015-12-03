@@ -8,7 +8,7 @@ var path = require('path')
 
 var content = oose.mock.content
 var purchasePath = require('../helpers/purchasePath')
-var sha1File = require('../helpers/sha1File')
+var sha1File = require('../helpers/hashFile')
 
 var config = require('../config')
 
@@ -23,7 +23,7 @@ var testDest =
 P.promisifyAll(fs)
 
 describe('purchasePath',function(){
-  var filePath = sha1File.toPath(content.sha1,content.ext)
+  var filePath = sha1File.toPath(content.hash,content.ext)
   before(function(){
     return mkdirp(path.dirname(filePath))
       .then(function(){

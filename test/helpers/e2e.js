@@ -15,12 +15,19 @@ var cradle = require('../../helpers/couchdb')
 var content = oose.mock.content
 var purchasePath = require('../../helpers/purchasePath')
 var redis = require('../../helpers/redis')
-var sha1File = require('../../helpers/sha1File')
+var sha1File = require('../../helpers/hashFile')
 
 var NetworkError = oose.NetworkError
 var UserError = oose.UserError
 
 var config = require('../../config')
+
+
+/**
+ * Rewrite hash name
+ * @type {string}
+ */
+content.hash = content.sha1
 
 
 /**
@@ -393,7 +400,7 @@ exports.contentUpload = function(prism){
         localAddress: '127.0.0.1'
       })
       .spread(function(res,body){
-        expect(body.files.file.sha1).to.equal(content.sha1)
+        expect(body.files.file.hash).to.equal(content.hash)
       })
   }
 }
@@ -430,7 +437,7 @@ exports.contentRetrieve = function(prism){
           })
       })
       .spread(function(res,body){
-        expect(body.sha1).to.equal(content.sha1)
+        expect(body.hash).to.equal(content.hash)
         expect(body.extension).to.equal(content.ext)
       })
       .finally(function(){
@@ -454,7 +461,7 @@ exports.contentSend = function(prism){
     return client.postAsync({
       url: client.url('/content/exists'),
       json: {
-        sha1: content.sha1
+        hash: content.hash
       }
     })
       .spread(client.validateResponse())
@@ -481,7 +488,7 @@ exports.contentSend = function(prism){
         return storeClient.postAsync({
           url: storeClient.url('/content/send'),
           json: {
-            file: content.sha1 + '.' + content.ext,
+            file: content.hash + '.' + content.ext,
             store: storeTo
           }
         })
@@ -489,14 +496,14 @@ exports.contentSend = function(prism){
       .spread(client.validateResponse())
       .spread(function(res,body){
         expect(body.success).to.equal('Clone sent')
-        expect(body.details.sha1).to.equal(content.sha1)
+        expect(body.details.hash).to.equal(content.hash)
         expect(body.details.ext).to.equal(content.ext)
         var storeShortname = storeTo.split(':')[1]
         storeClient = api.store(exports.clconf[storeShortname].store)
         return storeClient.postAsync({
           url: storeClient.url('/content/remove'),
           json: {
-            sha1: body.details.sha1
+            hash: body.details.hash
           }
         })
       })
@@ -525,11 +532,11 @@ exports.contentExists = function(prism,options){
     return client
       .postAsync({
         url: client.url('/content/exists'),
-        json: {sha1: content.sha1},
+        json: {hash: content.hash},
         localAddress: '127.0.0.1'
       })
       .spread(function(res,body){
-        expect(body.sha1).to.equal(content.sha1)
+        expect(body.hash).to.equal(content.hash)
         if(options.checkExists) expect(body.exists).to.equal(true)
         if(options.countGreaterEqual)
           expect(body.count).to.be.least(options.count)
@@ -563,17 +570,17 @@ exports.contentExistsBulk = function(prism,options){
     return client
       .postAsync({
         url: client.url('/content/exists'),
-        json: {sha1: [content.sha1,content.sha1Bogus,'']},
+        json: {hash: [content.hash,content.sha1Bogus,'']},
         localAddress: '127.0.0.1'
       })
       .spread(function(res,body){
         expect(body).to.be.an('object')
-        expect(body[content.sha1]).to.be.an('object')
+        expect(body[content.hash]).to.be.an('object')
         expect(body[content.sha1Bogus]).to.be.an('object')
         expect(body[content.sha1Bogus].exists).to.equal(false)
         //shift the main one over an inspect
-        body = body[content.sha1]
-        expect(body.sha1).to.equal(content.sha1)
+        body = body[content.hash]
+        expect(body.hash).to.equal(content.hash)
         if(options.checkExists) expect(body.exists).to.equal(true)
         if(options.countGreaterEqual)
           expect(body.count).to.be.least(options.count)
@@ -601,11 +608,11 @@ exports.contentDetail = function(prism){
     return client
       .postAsync({
         url: client.url('/content/detail'),
-        json: {sha1: content.sha1},
+        json: {hash: content.hash},
         localAddress: '127.0.0.1'
       })
       .spread(function(res,body){
-        expect(body.sha1).to.equal(content.sha1)
+        expect(body.hash).to.equal(content.hash)
         expect(body.count).to.be.greaterThan(0)
         expect(body.exists).to.equal(true)
         expect(body.map).to.be.an('array')
@@ -625,16 +632,16 @@ exports.contentDetailBulk = function(prism){
     return client
       .postAsync({
         url: client.url('/content/detail'),
-        json: {sha1: [content.sha1,content.sha1Bogus,'']},
+        json: {hash: [content.hash,content.sha1Bogus,'']},
         localAddress: '127.0.0.1'
       })
       .spread(function(res,body){
         expect(body).to.be.an('object')
-        expect(body[content.sha1]).to.be.an('object')
+        expect(body[content.hash]).to.be.an('object')
         expect(body[content.sha1Bogus]).to.be.an('object')
         //shift the thing over and run the normal tests
-        body = body[content.sha1]
-        expect(body.sha1).to.equal(content.sha1)
+        body = body[content.hash]
+        expect(body.hash).to.equal(content.hash)
         expect(body.count).to.be.greaterThan(0)
         expect(body.exists).to.equal(true)
         expect(body.map).to.be.an('array')
@@ -655,7 +662,7 @@ exports.contentPurchase = function(prism){
       .postAsync({
         url: client.url('/content/purchase'),
         json: {
-          sha1: content.sha1,
+          hash: content.hash,
           ext: content.ext,
           ip: '127.0.0.1',
           referrer: ['localhost']
@@ -666,7 +673,7 @@ exports.contentPurchase = function(prism){
         expect(body.token.length).to.equal(64)
         expect(body.ext).to.equal('txt')
         expect(body.life).to.equal(7200000)
-        expect(body.sha1).to.equal(content.sha1)
+        expect(body.hash).to.equal(content.hash)
         expect(body.referrer).to.be.an('array')
         expect(body.referrer[0]).to.equal('localhost')
         return body
@@ -687,7 +694,7 @@ exports.contentStatic = function(prism,localAddress,ext){
   return function(){
     var client = api.prism(prism.prism)
     var options = {
-      url: client.url('/static/' + content.sha1 + '/test.' + ext),
+      url: client.url('/static/' + content.hash + '/test.' + ext),
       followRedirect: false,
       localAddress: localAddress || '127.0.0.1'
     }
@@ -699,7 +706,7 @@ exports.contentStatic = function(prism,localAddress,ext){
         expect(host[0]).to.match(/^store\d{1}$/)
         expect(host[1]).to.equal(prism.domain)
         expect(uri.pathname).to.equal(
-          '/static/' + sha1File.toRelativePath(content.sha1,ext)
+          '/static/' + sha1File.toRelativePath(content.hash,ext)
         )
       })
   }
@@ -749,7 +756,7 @@ exports.contentDownload = function(prism){
     var client = api.setSession(exports.user.session,api.prism(prism.prism))
     return client.postAsync({
       url: client.url('/content/download'),
-      json: {sha1: content.sha1},
+      json: {hash: content.hash},
       localAddress: '127.0.0.1'
     })
       .spread(function(res,body){

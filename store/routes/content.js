@@ -12,7 +12,7 @@ var sha1stream = require('sha1-stream')
 var api = require('../../helpers/api')
 var cradle = require('../../helpers/couchdb')
 var redis = require('../../helpers/redis')
-var sha1File = require('../../helpers/sha1File')
+var hashFile = require('../../helpers/hashFile')
 
 var config = require('../../config')
 
@@ -32,23 +32,24 @@ exports.put = function(req,res){
   redis.incr(redis.schema.counter('store','content:put'))
   redis.incr(redis.schema.counter('store','content:filesUploaded'))
   var file = req.params.file
+  var hashType = req.params.hashType || config.defaultHashType || 'sha1'
   var fileDetails
   debug('got new put',file)
-  var sniff = sha1stream.createStream()
+  var sniff = sha1stream.createStream(hashType)
   var inventoryKey
   sniff.on('data',function(chunk){
     redis.incrby(
       redis.schema.counter('store','content:bytesUploaded'),chunk.length)
   })
   var dest
-  sha1File.details(file)
+  hashFile.details(file)
     .then(function(result){
       if(!result) throw new UserError('Could not parse filename')
       fileDetails = result
       inventoryKey = cradle.schema.inventory(
-        fileDetails.sha1,config.store.prism,config.store.name)
-      dest = sha1File.toPath(fileDetails.sha1,fileDetails.ext)
-      debug(fileDetails.sha1,dest)
+        fileDetails.hash,config.store.prism,config.store.name)
+      dest = hashFile.toPath(fileDetails.hash,fileDetails.ext)
+      debug(fileDetails.hash,dest)
       return mkdirp(path.dirname(dest))
     })
     .then(function(){
@@ -61,13 +62,13 @@ exports.put = function(req,res){
         )
     })
     .then(function(){
-      if(sniff.sha1 !== fileDetails.sha1){
+      if(sniff.hash !== fileDetails.hash){
         fs.unlinkSync(dest)
         throw new UserError('Checksum mismatch')
       }
       //setup symlink to new file
       debug(inventoryKey,'linking')
-      return sha1File.linkPath(fileDetails.sha1,fileDetails.ext)
+      return hashFile.linkPath(fileDetails.hash,fileDetails.ext)
     })
     .then(function(){
       //get existing existence record and add to it or create one
@@ -85,11 +86,11 @@ exports.put = function(req,res){
         var inventory = {
           prism: config.store.prism,
           store: config.store.name,
-          sha1: sniff.sha1,
+          hash: sniff.hash,
           mimeExtension: fileDetails.ext,
           mimeType: mime.lookup(fileDetails.ext),
-          relativePath: sha1File.toRelativePath(
-            fileDetails.sha1,fileDetails.ext
+          relativePath: hashFile.toRelativePath(
+            fileDetails.hash,fileDetails.ext
           )
         }
         debug(inventoryKey,'creating inventory record',inventory)
@@ -98,7 +99,7 @@ exports.put = function(req,res){
     )
     .then(function(){
       res.status(201)
-      res.json({sha1: sniff.sha1})
+      res.json({hash: sniff.hash})
     })
     .catch(UserError,function(err){
       redis.incr(redis.schema.counterError('store','content:put'))
@@ -115,7 +116,7 @@ exports.put = function(req,res){
  */
 exports.download = function(req,res){
   redis.incr(redis.schema.counter('store','content:download'))
-  sha1File.find(req.body.sha1)
+  hashFile.find(req.body.hash)
     .then(function(file){
       if(!file) throw new NotFoundError('File not found')
       res.sendFile(file)
@@ -139,12 +140,12 @@ exports.download = function(req,res){
  */
 exports.exists = function(req,res){
   redis.incr(redis.schema.counter('store','content:exists'))
-  var sha1 = req.body.sha1
+  var sha1 = req.body.hash
   var singular = !(sha1 instanceof Array)
   if(singular) sha1 = [sha1]
   var promises = []
   for(var i = 0; i < sha1.length; i++){
-    promises.push(sha1File.find(sha1[i]))
+    promises.push(hashFile.find(sha1[i]))
   }
   P.all(promises)
     .then(function(result){
@@ -172,10 +173,10 @@ exports.exists = function(req,res){
 exports.remove = function(req,res){
   redis.incr(redis.schema.counter('store','content:remove'))
   var inventoryKey = cradle.schema.inventory(
-    req.body.sha1,config.store.prism,config.store.name)
+    req.body.hash,config.store.prism,config.store.name)
   P.all([
-    sha1File.remove(req.body.sha1),
-    cradle.db.removeAsync(inventoryKey)
+      hashFile.remove(req.body.hash),
+      cradle.db.removeAsync(inventoryKey)
   ])
     .then(function(){
       res.json({success: 'File removed'})
@@ -215,11 +216,11 @@ exports.send = function(req,res){
       }
     )
     .then(function(){
-      return sha1File.details(file)
+      return hashFile.details(file)
     })
     .then(function(result){
       details = result
-      var rs = fs.createReadStream(sha1File.toPath(details.sha1,details.ext))
+      var rs = fs.createReadStream(hashFile.toPath(details.hash,details.ext))
       return promisePipe(
         rs,
         storeClient.put({url: storeClient.url('/content/put/' + file)})
