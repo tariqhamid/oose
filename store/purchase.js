@@ -78,7 +78,7 @@ var prunePurchases = function(done){
                 doc.expired = true
                 doc.afterlifeExpirationDate =
                   (+new Date() + config.purchase.afterlife)
-                return cradle.db.saveAsync(cradle.schme.purchase(token),doc)
+                return cradle.db.saveAsync(cradle.schema.purchase(token),doc)
               }
               //now we have a doc that is expired when we encounter these
               //and the afterlifeExpiration has also passed, we go ahead and
