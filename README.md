@@ -6,7 +6,7 @@ Object Oriented Storage Engine
 ## Installation
 
 ```
-$ git clone git@github.com:eSited/oose.git
+$ git clone git@github.com:nullivex/oose.git
 $ cd oose
 $ npm install
 ```
@@ -22,9 +22,6 @@ module.exports = {
     enabled: true
   },
   prism: {
-    enabled: true
-  },
-  master: {
     enabled: true
   }
 }
@@ -59,35 +56,11 @@ package.
 
 The following can be used to see all messages (typically used in dev)
 ```
-$ DEBUG=oose* node app
+$ DEBUG=oose:* node app
 ```
 
 From there follow the debug filtering rules defined
 [https://github.com/visionmedia/debug#wildcards](here)
-
-## NGINX Configuration
-
-There is a folder `nginx` in the main root it contains some samples to get
-OOSE up and running.
-
-`nginx/nginx.conf`
-
-This is what is recommended to use as the main configuration file for the
-OOSE host. This file can be used as a reference to build into a more complex
-system.
-
-`nginx/nginx.store.conf`
-
-This file is an example of what each OOSE storeinstance needs to operate
-properly on the server. It is recommended that each OOSE instance uses its
-own IP address to make access more reliable.
-
-`nginx/nginx.prism.conf`
-An example prism configuration.
-
-`nginx/html`
-
-This folder contains what should live in the root folder (aka the data folder)
 
 ## Changelog
 
