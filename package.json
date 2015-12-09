@@ -21,11 +21,10 @@
   },
   "dependencies": {
     "basic-auth-connect": "^1.0.0",
-    "bcrypt": "^0.8.5",
-    "bluebird": "^3.0.5",
+    "bluebird": "^3.0.6",
     "bluebird-retry": "^0.5.2",
     "body-parser": "^1.14.1",
-    "busboy": "^0.2.11",
+    "busboy": "^0.2.12",
     "cli-color": "^1.1.0",
     "cli-table": "^0.3.1",
     "commander": "^2.9.0",
@@ -48,28 +47,28 @@
     "morgan": "^1.6.1",
     "node-password": "^1.0.2",
     "object-manage": "^0.8.0",
-    "oose-sdk": "^1.4.1",
+    "oose-sdk": "nullivex/oose-sdk",
     "pretty-bytes": "^2.0.1",
     "progress": "^1.1.8",
     "promisepipe": "^1.0.1",
     "random-js": "^1.0.8",
     "readdirp": "^2.0.0",
-    "redis": "^2.3.0",
-    "request": "^2.65.0",
+    "redis": "^2.4.2",
+    "request": "^2.67.0",
     "request-promise": "^1.0.2",
     "rimraf-promise": "^2.0.0",
     "sha1-stream": "^0.2.1",
     "string": "^3.3.1",
     "temp": "^0.8.3",
-    "validator": "^4.2.1"
+    "validator": "^4.4.0"
   },
   "scripts": {
     "start": "node app",
     "test": "node ./node_modules/mocha/bin/mocha ./test/*.test.js test/outage.js"
   },
   "devDependencies": {
-    "chai": "^3.4.0",
-    "mocha": "^2.3.3",
+    "chai": "^3.4.1",
+    "mocha": "^2.3.4",
     "numeral": "^1.5.3",
     "promiseq": "^0.1.0",
     "rimraf-promise": "^2.0.0"
