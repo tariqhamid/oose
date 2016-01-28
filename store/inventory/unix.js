@@ -119,7 +119,7 @@ module.exports = function(done){
             console.log(sha1,'insertion FAILED',err.message)
           })
       }
-    },config.store.inventoryConcurrency)
+    },{concurrency: config.store.inventoryConcurrency})
     .then(function(){
       done(null,counter)
     })
