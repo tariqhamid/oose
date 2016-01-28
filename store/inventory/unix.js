@@ -10,8 +10,6 @@ var cradle = require('../../helpers/couchdb')
 
 var config = require('../../config')
 
-var execAsync = P.promisify(cp.exec)
-
 
 /**
  * Scan Store Inventory
@@ -44,18 +42,31 @@ module.exports = function(done){
     created: 0,
     updated: 0,
     bytes: 0,
+    bytesReceived: 0,
     repaired: 0
   }
   debug('starting to scan',contentFolder)
-  execAsync(
-    'find ' + contentFolder + ' -type f',
+  var buffer = ''
+  var cmd = cp.spawn(
+    'find',
+    [contentFolder,'-type','f'],
     {
       cwd: '/',
-      maxBuffer: 4294967296
+      maxBuffer: 4294967296,
+      stdio: ['pipe','pipe',process.stderr]
     }
   )
-    .then(function(result){
-      return result
+  cmd.stdout.on('data',function(chunk){
+    counter.bytesReceived = counter.bytesReceived + chunk.length
+    console.log('Receiving from find ' +
+      (counter.bytesReceived / 1024).toFixed(0) + 'kb\r')
+    buffer = buffer + '' + chunk.toString()
+  })
+  cmd.on('close',function(code){
+    if(code > 0) return done(new Error('Find failed with code ' + code))
+    debug('finished find, splitting and starting processing')
+    P.try(function(){
+      return buffer
         .split('\n')
         .filter(function(item){return '' !== item})
         .map(function(val){
