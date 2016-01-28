@@ -58,7 +58,7 @@ module.exports = function(done){
   )
   cmd.stdout.on('data',function(chunk){
     counter.bytesReceived = counter.bytesReceived + chunk.length
-    console.log('Receiving from find ' +
+    process.stdout.write('Receiving from find ' +
       (counter.bytesReceived / 1024).toFixed(0) + 'kb\r')
     buffer = buffer + '' + chunk.toString()
   })
