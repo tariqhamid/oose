@@ -64,6 +64,13 @@ From there follow the debug filtering rules defined
 
 ## Changelog
 
+### 2.0.1
+
+* Add inventory driver system
+* Abstract native inventory driver from current implementation
+* Implement unix high performance driver
+* Auto load proper inventory driver
+
 ### 2.0.0
 
 * Implement heartbeat system with downvoting to avoid outages

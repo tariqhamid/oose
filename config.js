@@ -124,6 +124,7 @@ config.$load({
       maxConnections: 10000
     },
     //how often we scan inventory
+    inventoryConcurrency: 8,
     inventoryFrequency: 3600000, //1hr
     purchaseFrequency: 300000 //5 minutes
   }
