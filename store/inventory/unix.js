@@ -47,7 +47,13 @@ module.exports = function(done){
     repaired: 0
   }
   debug('starting to scan',contentFolder)
-  execAsync('find ' + contentFolder + ' -type f')
+  execAsync(
+    'find ' + contentFolder + ' -type f',
+    {
+      cwd: '/',
+      maxBuffer: 4294967296
+    }
+  )
     .then(function(result){
       return result
         .split('\n')
