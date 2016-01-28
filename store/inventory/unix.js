@@ -61,7 +61,7 @@ module.exports = function(done){
       debug('got a hit',filePath)
       var relativePath = path.posix.relative(contentFolder,filePath)
       var linkPath = filePath.replace(/\..+$/,'')
-      var stat = fs.fstatSync(filePath)
+      var stat = fs.statSync(filePath)
       counter.bytes += stat.size
       if(!fs.existsSync(linkPath)){
         counter.repaired++
