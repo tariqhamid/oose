@@ -137,4 +137,5 @@ module.exports = function(done){
     .catch(function(err){
       done(err)
     })
+  })
 }
