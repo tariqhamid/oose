@@ -64,6 +64,8 @@ module.exports = function(done){
     buffer = buffer + '' + chunk.toString()
   })
   cmd.on('close',function(code){
+    //clear to a new line now that the data print is done
+    process.stdout.write('\n')
     if(code > 0) return done(new Error('Find failed with code ' + code))
     debug('finished find, splitting and starting processing')
     var fileCount = 0
@@ -149,9 +151,11 @@ module.exports = function(done){
       }
     },{concurrency: config.store.inventoryConcurrency})
     .then(function(){
+      console.log('map ended')
       done(null,counter)
     })
     .catch(function(err){
+      console.log('file process error',err)
       done(err)
     })
   })
