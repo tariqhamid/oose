@@ -170,4 +170,7 @@ exports.contentExists = function(sha1){
           })
       }
     })
+    .catch(function(err){
+      console.log('EXISTS ERROR: ' + err.message)
+    })
 }
