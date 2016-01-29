@@ -72,8 +72,10 @@ if(require.main === module){
       //setup the interval for collection from master
       debug('set inventory interval')
       //do initial scan at startup
-      debug('doing initial inventory scan')
-      runInterval()
+      var startupDelay = (1000 * random.integer(300,3600))
+      debug('setting timeout initial inventory scan for ' +
+        (startupDelay / 1000))
+      setTimeout(runInterval,startupDelay)
       //return now as we do not want to wait on the first scan it can be
       //lengthy
       process.nextTick(done)
