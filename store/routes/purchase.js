@@ -6,7 +6,7 @@ var oose = require('oose-sdk')
 var NotFoundError = oose.NotFoundError
 var purchasePath = require('../../helpers/purchasePath')
 var redis = require('../../helpers/redis')
-var sha1File = require('../../helpers/hashFile')
+var hashFile = require('../../helpers/hashFile')
 var UserError = oose.UserError
 
 //make some promises
@@ -22,13 +22,13 @@ exports.create = function(req,res){
   redis.incr(redis.schema.counter('store','purchase:create'))
   var purchase
   var token = req.body.token || purchasePath.generateToken()
-  var sha1 = req.body.hash
+  var hash = req.body.hash
   var ext = req.body.ext
   //first check for the real file
-  sha1File.find(sha1)
+  hashFile.find(hash)
     .then(function(file){
       if(!file) throw new NotFoundError('File not found')
-      if(file instanceof Array) throw new UserError('SHA1 is ambiguous')
+      if(file instanceof Array) throw new UserError('Hash is ambiguous')
       return purchasePath.create(token,file,ext)
     })
     .then(function(result){

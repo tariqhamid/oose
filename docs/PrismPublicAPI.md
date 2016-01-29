@@ -78,7 +78,7 @@
 * **METHOD** `POST`
 * **Session Required** no
 * **Params**
-    * `sha1` - Content Sha1 ID
+    * `hash` - Content hash ID
 * **Response**
     * Object Containing content
         * `file` The path to the file
@@ -86,8 +86,8 @@
         * `data` The file data
         * `type` The type of file (text, mp3)
         * `ext` The file extension
-        * `sha1` The encrypted identifier of the file
-        * `sha1Bogus` A bogus identifier of the file
+        * `hash` The encrypted identifier of the file
+        * `hashBogus` A bogus identifier of the file
         * `relativePath` A relative path for the file
     
 ### Content Upload
@@ -106,8 +106,8 @@
             * `data` The file data
             * `type` The type of file (text, mp3)
             * `ext` The file extension
-            * `sha1` The encrypted identifier of the file
-            * `sha1Bogus` A bogus identifier of the file
+            * `hash` The encrypted identifier of the file
+            * `hashBogus` A bogus identifier of the file
             * `relativePath` A relative path for the file
 
 ### Content Retrieve
@@ -121,7 +121,7 @@ Download content directly to OOSE from a remote server.
     * `request` - Request object for the node-request package
     * `extension` - The extension of the file indicating the mime type
 * **Response**
-    * 'sha1' - The SHA1 of the downloaded file
+    * 'hash' - The hash of the downloaded file
     * `extension` - File extension
 
 ### Content Purchase
@@ -130,13 +130,13 @@ Download content directly to OOSE from a remote server.
 * **METHOD** `POST`
 * **Session Required** yes
 * **Params**
-    * `sha1` Content Sha1 ID
+    * `hash` Content hash ID
     * `token` Purchase Method
     * `life` Lifespan of the file
 * **Response**
     * `success` - Success message `Purchase Created`
     * Returns the purchase token (optionally, the preferred token can be requested)
-        * `sha1` The purchased content identifier
+        * `hash` The purchased content identifier
         * `ext` The purchased content extension
         * `token` The purchase token
         * `sessionToken` The session token

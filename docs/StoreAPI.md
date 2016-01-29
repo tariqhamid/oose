@@ -15,7 +15,7 @@
         * `encoding` Bryan Tong Complete this <---
         * `mimetype` The file type
         * `ext` File extension (from the mimetype)
-        * `sha1` File Sha1 identifier
+        * `hash` File hash identifier
     * `prism` A prism in which to place the file
 * **Response**
     * `path` A path for the file
@@ -28,7 +28,7 @@
 * **METHOD** `POST`
 * **Session Required** yes
 * **Params**
-    * `sha1` - Content Sha1 ID
+    * `hash` - Content hash ID
 * **Response**
     * Object Containing File
         * `file` The path to the file
@@ -36,8 +36,8 @@
         * `data` The file data
         * `type` The type of file (text, mp3)
         * `ext` The file extension
-        * `sha1` The encrypted identifier of the file
-        * `sha1Bogus` A bogus identifier of the file
+        * `hash` The encrypted identifier of the file
+        * `hashBogus` A bogus identifier of the file
         * `relativePath` A relative path for the file
         
 ### Content Exists
@@ -46,9 +46,9 @@
 * **METHOD** `POST`
 * **Session Required** no
 * **Params**
-    * `sha1` - Content Sha1 ID
+    * `hash` - Content hash ID
 * **Response**
-    * `sha1` The sha1 identifier for the content
+    * `hash` The hash identifier for the content
     * `exists` A true or false statement whether the content exists
     * `count` Content count
     * `map` The location of the content in all prisms it exists on
@@ -59,7 +59,7 @@
 * **METHOD** `POST`
 * **Session Required** no
 * **Params**
-    * `sha1` - Content Sha1 ID
+    * `hash` - Content hash ID
 * **Response**
     * `success` - Success message `File removed`
     
@@ -71,7 +71,7 @@
 * **METHOD** `POST`
 * **Session Required** yes
 * **Params**
-    * `sha1` Content Sha1 ID
+    * `hash` Content hash ID
 * **Response**
     * `success` - Success message `Purchase Created`
     * Returns the purchase token (optionally, the preferred token can be requested)

@@ -32,7 +32,7 @@ describe('hashFile',function(){
   it('should produce a path from hash',function(){
     expect(hashFile.toPath(content.hash,content.ext)).to.equal(destination)
   })
-  it('should produce a sha1 from path',function(){
+  it('should produce a hash from path',function(){
     expect(hashFile.fromPath(destination)).to.equal(content.hash)
   })
   it('should produce a short path without an extension',function(){
@@ -46,7 +46,7 @@ describe('hashFile',function(){
   it('should invalidate a hash',function(){
     expect(hashFile.validate('brown')).to.equal(false)
   })
-  describe('sha1File:operations',function(){
+  describe('hashFile:operations',function(){
     beforeEach(function(){
       return mkdirp(path.dirname(destination))
         .then(function(){

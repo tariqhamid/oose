@@ -7,7 +7,7 @@ var mkdirp = require('mkdirp-then')
 var oose = require('oose-sdk')
 var path = require('path')
 var promisePipe = require('promisepipe')
-var sha1stream = require('sha1-stream')
+var hashStream = require('sha1-stream')
 
 var api = require('../../helpers/api')
 var cradle = require('../../helpers/couchdb')
@@ -35,7 +35,7 @@ exports.put = function(req,res){
   var hashType = req.params.hashType || config.defaultHashType || 'sha1'
   var fileDetails
   debug('got new put',file)
-  var sniff = sha1stream.createStream(hashType)
+  var sniff = hashStream.createStream(hashType)
   var inventoryKey
   sniff.on('data',function(chunk){
     redis.incrby(
@@ -140,24 +140,24 @@ exports.download = function(req,res){
  */
 exports.exists = function(req,res){
   redis.incr(redis.schema.counter('store','content:exists'))
-  var sha1 = req.body.hash
-  var singular = !(sha1 instanceof Array)
-  if(singular) sha1 = [sha1]
+  var hash = req.body.hash
+  var singular = !(hash instanceof Array)
+  if(singular) hash = [hash]
   var promises = []
-  for(var i = 0; i < sha1.length; i++){
-    promises.push(hashFile.find(sha1[i]))
+  for(var i = 0; i < hash.length; i++){
+    promises.push(hashFile.find(hash[i]))
   }
   P.all(promises)
     .then(function(result){
       var exists = {}
-      for(var i = 0; i < sha1.length; i++){
-        exists[sha1[i]] = {
+      for(var i = 0; i < hash.length; i++){
+        exists[hash[i]] = {
           exists: !!result[i],
           ext: path.extname(result[i]).replace('.','')
         }
       }
       if(singular){
-        res.json({exists: exists[sha1[0]]})
+        res.json({exists: exists[hash[0]]})
       } else {
         res.json(exists)
       }
