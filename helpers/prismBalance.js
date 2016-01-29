@@ -172,7 +172,7 @@ exports.contentExists = function(sha1){
       }
     })
     .catch(function(err){
-      console.log('EXISTS ERROR: ' + err.message)
+      console.log('EXISTS ERROR: ' + err.message,sha1)
       return deadRecord
     })
 }
