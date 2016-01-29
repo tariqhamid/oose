@@ -5,6 +5,7 @@ var cp = require('child_process')
 var fs = require('graceful-fs')
 var mime = require('mime')
 var path = require('path')
+var ProgressBar = require('progress')
 
 var cradle = require('../../helpers/couchdb')
 
@@ -65,13 +66,26 @@ module.exports = function(done){
   cmd.on('close',function(code){
     if(code > 0) return done(new Error('Find failed with code ' + code))
     debug('finished find, splitting and starting processing')
+    var fileCount = 0
+    var progress
     P.try(function(){
-      return buffer
+      var lines = buffer
         .split('\n')
         .filter(function(item){return '' !== item})
         .map(function(val){
           return path.resolve(val)
         })
+      fileCount = lines.length
+      progress = new ProgressBar(
+        '  scanning [:bar] :current/:total :percent :rate/fps :etas',
+        {
+          total: fileCount,
+          width: 50,
+          complete: '=',
+          incomplete: '-'
+        }
+      )
+      return lines
     })
     .map(function(filePath){
       filePath = path.posix.resolve(filePath)
@@ -128,6 +142,9 @@ module.exports = function(done){
             console.log(err.stack)
             console.log(err)
             console.log(sha1,'insertion FAILED',err.message)
+          })
+          .finally(function(){
+            progress.tick(1)
           })
       }
     },{concurrency: config.store.inventoryConcurrency})
