@@ -244,6 +244,9 @@ exports.retrieve = function(req,res){
         error: 'Failed to check content existence: ' + err.message
       })
     })
+    .catch(function(err){
+      console.log('Unhandled error on content retrieve ' + err.message)
+    })
     .finally(function(){
       return fs.unlinkAsync(tmpfile)
         .catch(function(){})
@@ -296,6 +299,9 @@ exports.put = function(req,res){
       res.status(500)
       res.json({error: err.message})
     })
+    .catch(function(err){
+      console.log('Unhandled error on content put ' + err.message)
+    })
 }
 
 
@@ -333,6 +339,9 @@ exports.detail = function(req,res){
       redis.incr(redis.schema.counterError('prism','content:detail'))
       res.status(500)
       res.json({error: err.message})
+    })
+    .catch(function(err){
+      console.log('Unhandled error on content detail ' + err.message)
     })
 }
 
@@ -411,6 +420,9 @@ exports.download = function(req,res){
     .catch(UserError,function(err){
       redis.incr(redis.schema.counterError('prism','content:download'))
       res.json({error: err.message})
+    })
+    .catch(function(err){
+      console.log('Unhandled error on content download ' + err.message)
     })
 }
 
@@ -530,6 +542,9 @@ exports.purchase = function(req,res){
       redis.incr(redis.schema.counterError('prism','content:purchase'))
       res.json({error: err})
     })
+    .catch(function(err){
+      console.log('Unhandled error on content purchase ' + err.message)
+    })
 }
 
 
@@ -606,6 +621,9 @@ exports.deliver = function(req,res){
       redis.incr(redis.schema.counterError('prism','content:deliver'))
       res.status(500)
       res.json({error: err.message})
+    })
+    .catch(function(err){
+      console.log('Unhandled error on content deliver ' + err.message)
     })
 }
 
