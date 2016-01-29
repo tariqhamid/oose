@@ -114,6 +114,15 @@ exports.contentExists = function(sha1){
   var existsKey = cradle.schema.inventory(sha1)
   var count = 0
   debug(existsKey,'contentExists received')
+  var deadRecord = {
+    hash: sha1,
+    mimeType: null,
+    mimeExtension: null,
+    relativePath: null,
+    exists: false,
+    count: 0,
+    map: []
+  }
   return cradle.db.allAsync({startkey: existsKey, endkey: existsKey + '\uffff'})
     .map(
       function(row){
@@ -129,15 +138,7 @@ exports.contentExists = function(sha1){
     .then(function(inventoryList){
       //debug(existsKey,'records',result)
       if(!count){
-        return {
-          hash: sha1,
-          mimeType: null,
-          mimeExtension: null,
-          relativePath: null,
-          exists: false,
-          count: 0,
-          map: []
-        }
+        return deadRecord
       } else {
         return P.try(function(){
           return inventoryList
@@ -172,5 +173,6 @@ exports.contentExists = function(sha1){
     })
     .catch(function(err){
       console.log('EXISTS ERROR: ' + err.message)
+      return deadRecord
     })
 }
