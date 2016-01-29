@@ -78,6 +78,7 @@ module.exports = function(done){
           return path.resolve(val)
         })
       fileCount = lines.length
+      console.log('Parsed find result into ' + fileCount + ' files')
       progress = new ProgressBar(
         '  scanning [:bar] :current/:total :percent :rate/fps :etas',
         {
