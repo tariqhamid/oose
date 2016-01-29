@@ -116,7 +116,7 @@ module.exports = function(done){
         //since nodes
         var inventoryKey = cradle.schema.inventory(
           sha1,config.store.prism,config.store.name)
-        cradle.db.getAsync(inventoryKey)
+        return cradle.db.getAsync(inventoryKey)
           .then(
             function(doc){
               debug(sha1,'inventory record exists',doc)
