@@ -152,7 +152,6 @@ module.exports = function(done){
       }
     },{concurrency: config.store.inventoryConcurrency})
     .then(function(){
-      console.log('map ended')
       done(null,counter)
     })
     .catch(function(err){
