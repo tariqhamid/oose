@@ -586,24 +586,29 @@ exports.deliver = function(req,res){
       '/' + tokenPath + '.' + purchase.ext + (query ? '?' + query : '')
   }
   cradle.db.getAsync(purchaseKey)
-    .then(function(result){
-      if(!result) throw new NotFoundError('Purchase not found')
-      purchase = result
-      //if(purchase.ip !== req.ip) throw new UserError('Invalid request')
-      var validReferrer = false
-      var referrer = req.get('Referrer')
-      if(!referrer || 'string' !== typeof referrer)
-        throw new UserError('Invalid request')
-      for(var i = 0; i < purchase.referrer.length; i++){
-        if(referrer.match(purchase.referrer[i])){
-          validReferrer = true
-          break
+    .then(
+      function(result){
+        if(!result) throw new NotFoundError('Purchase not found')
+        purchase = result
+        //if(purchase.ip !== req.ip) throw new UserError('Invalid request')
+        var validReferrer = false
+        var referrer = req.get('Referrer')
+        if(!referrer || 'string' !== typeof referrer)
+          throw new UserError('Invalid request')
+        for(var i = 0; i < purchase.referrer.length; i++){
+          if(referrer.match(purchase.referrer[i])){
+            validReferrer = true
+            break
+          }
         }
+        if(!validReferrer) throw new UserError('Invalid request')
+        //we have a purchase so now... we need to pick a store....
+        return storeBalance.winnerFromExists(token,purchase.inventory,[],true)
+      },
+      function(){
+        throw new NotFoundError('Purchase not found')
       }
-      if(!validReferrer) throw new UserError('Invalid request')
-      //we have a purchase so now... we need to pick a store....
-      return storeBalance.winnerFromExists(token,purchase.inventory,[],true)
-    })
+    )
     .then(function(result){
       res.redirect(302,makeUrl(req,result,purchase))
     })
