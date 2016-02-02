@@ -436,7 +436,7 @@ exports.purchase = function(req,res){
   redis.incr(redis.schema.counter('prism','content:purchase'))
   var ip = req.body.ip || req.ip || '127.0.0.1'
   //var start = +new Date()
-  var hash = req.body.hash || req.body.hash || ''
+  var hash = (req.body.hash || req.body.hash || '').trim()
   var hashType = hasher.identify(hash)
   var ext = req.body.ext
   var referrer = req.body.referrer
