@@ -84,19 +84,6 @@ var sendToPrism = function(tmpfile,hash,extension){
 
 
 /**
- * Rewrite file extensions that are commonly confused with our naming scheme
- * we do not want to force anything on our users so it is best to rewrite these
- * and it is a list we compile over time.
- * @param {string} ext
- * @return {string}
- */
-var extensionRewrite = function(ext){
-  ext = ext.replace('jpg','jpeg')
-  return ext
-}
-
-
-/**
  * Upload file
  * @param {object} req
  * @param {object} res
@@ -642,7 +629,8 @@ exports.contentStatic = function(req,res){
   redis.incr(redis.schema.counter('prism','content:static'))
   var hash = req.params.hash || req.params.sha1 || 'sha1'
   var filename = req.params.filename
-  var ext = extensionRewrite(path.extname(filename).replace('.',''))
+  //default based on the request
+  var ext = path.extname(filename).replace(/^\./,'')
   prismBalance.contentExists(hash)
     .then(function(result){
       if(!result.exists) throw new NotFoundError('Content does not exist')
@@ -651,6 +639,9 @@ exports.contentStatic = function(req,res){
       return storeBalance.winnerFromExists(hash,result,[],true)
     })
     .then(function(result){
+      //set the extension based on the chosen winners relative path, this will
+      //actually be accurate
+      ext = path.extname(result.relativePath).replace(/^\./,'')
       var proto = 'https' === req.get('X-Forwarded-Protocol') ? 'https' : 'http'
       var url = proto + '://' + result.name +
         '.' + config.domain + '/static/' + hashFile.toRelativePath(hash,ext)
