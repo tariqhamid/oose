@@ -30,7 +30,7 @@ if(require.main === module){
           maxConnections: config.store.workers.maxConnections
         }
       )
-      inventory = infant.parent('./inventory')
+      //inventory = infant.parent('./inventory')
       purchase = infant.parent('./purchase')
       //check if our needed folders exist
       P.try(function(){
@@ -48,7 +48,7 @@ if(require.main === module){
           //fire everything up
           return P.all([
             cluster.startAsync(),
-            inventory.startAsync(),
+            //inventory.startAsync(),
             purchase.startAsync()
           ])
         })
@@ -107,7 +107,11 @@ if(require.main === module){
         })
         .then(function(){
           if(!cluster) return
-          return cluster.stopAsync()
+          return P.all([
+            cluster.stopAsync(),
+            //inventory.stopAsync(),
+            purchase.stopAsync()
+          ])
         })
         .then(function(){
           console.log('Store shutdown complete')
