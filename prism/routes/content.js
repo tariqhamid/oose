@@ -135,7 +135,9 @@ exports.upload = function(req,res){
           )
       })
         .then(function(){
+          var hashType = hasher.identify(sniff.hash)
           files[key].hash = sniff.hash
+          files[key][hashType] = sniff.hash
           files[key].hashType = hasher.identify(sniff.hash)
           debug(sniff.hash,'upload received')
           //do a content lookup and see if this exists yet
@@ -219,10 +221,12 @@ exports.retrieve = function(req,res){
     })
     .then(function(){
       redis.incr(redis.schema.counter('prism','content:filesUploaded'))
-      res.json({
+      var response = {
         hash: hash,
         extension: extension
-      })
+      }
+      response[hashType] = hash
+      res.json(response)
     })
     .catch(UserError,NetworkError,function(err){
       redis.incr(redis.schema.counterError('prism','content:retrieve'))
