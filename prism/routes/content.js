@@ -312,7 +312,7 @@ exports.put = function(req,res){
  */
 exports.detail = function(req,res){
   redis.incr(redis.schema.counter('prism','content:detail'))
-  var hash = req.body.hash
+  var hash = req.body.hash || req.body.sha1 || ''
   var record = {}
   var singular = !(hash instanceof Array)
   if(singular) hash = [hash]
@@ -364,7 +364,7 @@ exports.exists = function(req,res){
  */
 exports.download = function(req,res){
   redis.incr(redis.schema.counter('prism','content:download'))
-  var hash = req.body.hash || req.body.hash || ''
+  var hash = req.body.hash || req.body.sha1 || ''
   var winner, inventory
   prismBalance.contentExists(hash)
     .then(function(result){
@@ -640,7 +640,7 @@ exports.deliver = function(req,res){
  */
 exports.contentStatic = function(req,res){
   redis.incr(redis.schema.counter('prism','content:static'))
-  var hash = req.params.hash || req.params.hash || 'sha1'
+  var hash = req.params.hash || req.params.sha1 || 'sha1'
   var filename = req.params.filename
   var ext = extensionRewrite(path.extname(filename).replace('.',''))
   prismBalance.contentExists(hash)
