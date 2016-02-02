@@ -16,7 +16,7 @@ exports.prismList = function(){
   return cradle.db.allAsync({startkey: prismKey, endkey: prismKey + '\uffff'})
     .then(function(rows){
       var ids = []
-      for (var i=0 ; i<rows.length;i++) ids.push(rows[i].id)
+      for(var i=0; i < rows.length;i++) ids.push(rows[i].id)
       return cradle.db.getAsync(ids)
     })
     .map(function(row){
@@ -105,15 +105,24 @@ exports.winner = function(token,prismList,skip,allowFull){
 
 
 /**
- * Check existence of a SHA1 (cached)
- * @param {string} sha1
+ * Check existence of a hash (cached)
+ * @param {string} hash
  * @return {P}
  */
-exports.contentExists = function(sha1){
+exports.contentExists = function(hash){
   redis.incr(redis.schema.counter('prism','prismBalance:contentExists'))
-  var existsKey = cradle.schema.inventory(sha1)
+  var existsKey = cradle.schema.inventory(hash)
   var count = 0
   debug(existsKey,'contentExists received')
+  var deadRecord = {
+    hash: hash,
+    mimeType: null,
+    mimeExtension: null,
+    relativePath: null,
+    exists: false,
+    count: 0,
+    map: []
+  }
   return cradle.db.allAsync({startkey: existsKey, endkey: existsKey + '\uffff'})
     .map(
       function(row){
@@ -129,15 +138,7 @@ exports.contentExists = function(sha1){
     .then(function(inventoryList){
       //debug(existsKey,'records',result)
       if(!count){
-        return {
-          hash: sha1,
-          mimeType: null,
-          mimeExtension: null,
-          relativePath: null,
-          exists: false,
-          count: 0,
-          map: []
-        }
+        return deadRecord
       } else {
         return P.try(function(){
           return inventoryList
@@ -169,5 +170,9 @@ exports.contentExists = function(sha1){
             return record
           })
       }
+    })
+    .catch(function(err){
+      console.log('EXISTS ERROR: ' + err.message,hash)
+      return deadRecord
     })
 }

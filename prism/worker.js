@@ -85,7 +85,7 @@ app.post('/content/exists',auth,routes.content.exists)
 app.put('/content/put/:file',auth,routes.content.put)
 
 //static content
-app.get('/static/:sha1/:filename',routes.content.contentStatic)
+app.get('/static/:hash/:filename',routes.content.contentStatic)
 
 
 //main content retrieval route

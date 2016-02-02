@@ -15,7 +15,7 @@ var cradle = require('../../helpers/couchdb')
 var content = oose.mock.content
 var purchasePath = require('../../helpers/purchasePath')
 var redis = require('../../helpers/redis')
-var sha1File = require('../../helpers/hashFile')
+var hashFile = require('../../helpers/hashFile')
 
 var NetworkError = oose.NetworkError
 var UserError = oose.UserError
@@ -706,7 +706,7 @@ exports.contentStatic = function(prism,localAddress,ext){
         expect(host[0]).to.match(/^store\d{1}$/)
         expect(host[1]).to.equal(prism.domain)
         expect(uri.pathname).to.equal(
-          '/static/' + sha1File.toRelativePath(content.hash,ext)
+          '/static/' + hashFile.toRelativePath(content.hash,ext)
         )
       })
   }

@@ -66,14 +66,14 @@ CouchShema.prototype.purchase = function(token){
 
 /**
  * Inventory
- * @param {string} sha1
+ * @param {string} hash
  * @param {string} prism
  * @param {string} store
  * @return {string}
  */
-CouchShema.prototype.inventory = function(sha1,prism,store){
+CouchShema.prototype.inventory = function(hash,prism,store){
   return this.applyPrefix(
-    'inventory:' + (sha1 || '') +
+    'inventory:' + (hash || '') +
     (prism ? ':' + prism : '') +
     (store ? ':' + store : '')
   )

@@ -93,11 +93,11 @@ RedisSchema.prototype.storeEntry = function(store){
 
 /**
  * Content existence cache
- * @param {string} sha1
+ * @param {string} hash
  * @return {string}
  */
-RedisSchema.prototype.contentExists = function(sha1){
-  return this.applyPrefix('contentExists:' + sha1)
+RedisSchema.prototype.contentExists = function(hash){
+  return this.applyPrefix('contentExists:' + hash)
 }
 
 
@@ -142,22 +142,22 @@ RedisSchema.prototype.purchase = function(token){
 
 /**
  * Purchase Cache by User Session
- * @param {string} sha1
+ * @param {string} hash
  * @param {string} sessionToken
  * @return {string}
  */
-RedisSchema.prototype.purchaseCache = function(sha1,sessionToken){
-  return this.applyPrefix('purchase:cache:' + sha1 + ':' + sessionToken)
+RedisSchema.prototype.purchaseCache = function(hash,sessionToken){
+  return this.applyPrefix('purchase:cache:' + hash + ':' + sessionToken)
 }
 
 
 /**
  * Inventory
- * @param {string} sha1
+ * @param {string} hash
  * @return {string}
  */
-RedisSchema.prototype.inventory = function(sha1){
-  return this.applyPrefix('inventory:' + sha1)
+RedisSchema.prototype.inventory = function(hash){
+  return this.applyPrefix('inventory:' + hash)
 }
 
 

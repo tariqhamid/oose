@@ -30,12 +30,12 @@ program
   .option('-b, --below <n>','Files below this count will be analyzed')
   .option('-B, --block-size <n>','Number of files to analyze at once')
   .option('-d, --desired <n>','Desired clone count')
-  .option('-D, --detail <s>','SHA1 of file to get details about')
-  .option('-i, --input <s>','List of SHA1s line separated ' +
+  .option('-D, --detail <s>','Hash of file to get details about')
+  .option('-i, --input <s>','List of Hashes line separated ' +
   'to analyze, use - for stdin')
   .option('-p, --pretend','Dont actually make and clones just analyze')
   .option('-r, --remove','Remove target files')
-  .option('-s, --sha1 <s>','SHA1 of file to check')
+  .option('-s, --sha1 <s>','Hash of file to check')
   .parse(process.argv)
 
 //existence options
@@ -62,7 +62,7 @@ var analyzeFiles = function(progress,fileList){
     return prism.postAsync({
       url: prism.url('/content/exists'),
       json: {
-        sha1: fileBlock,
+        hash: fileBlock,
         tryCount: existsTryCount,
         timeout: existsTimeout
       }
@@ -70,7 +70,7 @@ var analyzeFiles = function(progress,fileList){
       .spread(prism.validateResponse())
       .spread(function(res,body){
         var keys = Object.keys(body)
-        var compileResult = function(sha1,count){
+        var compileResult = function(hash,count){
           var add = 0
           var remove = 0
           if(
@@ -85,13 +85,13 @@ var analyzeFiles = function(progress,fileList){
             }
           }
           return {
-            sha1: sha1,
-            ext: body[sha1].ext || '',
-            exists: body[sha1].exists,
-            count: body[sha1].count,
+            hash: hash,
+            ext: body[hash].ext || '',
+            exists: body[hash].exists,
+            count: body[hash].count,
             add: add,
             remove: remove,
-            map: body[sha1].map
+            map: body[hash].map
           }
         }
         for(var i = 0; i < keys.length; i++){
@@ -101,9 +101,9 @@ var analyzeFiles = function(progress,fileList){
       })
       .catch(prism.handleNetworkError)
       .catch(UserError,NetworkError,function(){
-        files.forEach(function(sha1){
-          files[sha1] = {
-            sha1: sha1,
+        files.forEach(function(hash){
+          files[hash] = {
+            hash: hash,
             exists: false,
             count: 0,
             add: 0,
@@ -254,7 +254,7 @@ var removeClones = function(file,storeList){
       return storeClient.postAsync({
         url: storeClient.url('/content/remove'),
         json: {
-          sha1: file.hash + '.' + file.ext
+          hash: file.hash + '.' + file.ext
         }
       })
         .spread(storeClient.validateResponse())
@@ -282,21 +282,21 @@ var processFile = function(file,storeList){
     })
 }
 
-var relativePath = function(sha1,ext){
+var relativePath = function(hash,ext){
   var result = ''
-  for(var i = 0; i < sha1.length; i++){
+  for(var i = 0; i < hash.length; i++){
     if(0 === i % 2) result = result + '/'
-    result = result + sha1.charAt(i)
+    result = result + hash.charAt(i)
   }
   result = result + '.' + ext
   return result
 }
 
-var contentDetail = function(sha1){
+var contentDetail = function(hash){
   return prism.postAsync({
     url: prism.url('/content/exists'),
     json: {
-      sha1: sha1,
+      hash: hash,
       tryCount: existsTryCount,
       timeout: existsTimeout
     }
@@ -305,7 +305,7 @@ var contentDetail = function(sha1){
     .spread(function(res,body){
       var table = new Table()
       table.push(
-        {SHA1: clc.yellow(body.hash)},
+        {HASH: clc.yellow(body.hash)},
         {'File Extension': clc.cyan(body.ext)},
         {'Relative Path': clc.yellow(relativePath(body.hash,body.ext))},
         {Exists: body.exists ? clc.green('Yes') : clc.red('No')},
@@ -437,8 +437,8 @@ P.try(function(){
         return Object.keys(files)
       })
   })
-  .each(function(sha1){
-    var file = files[sha1]
+  .each(function(hash){
+    var file = files[hash]
     if(file.add > 0 || file.remove > 0){
       console.log('--------------------')
       console.log(file.hash + ' starting to process changes')

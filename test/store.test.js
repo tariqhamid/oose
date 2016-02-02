@@ -8,7 +8,7 @@ var oose = require('oose-sdk')
 var path = require('path')
 var promisePipe = require('promisepipe')
 var rimrafPromise = require('rimraf-promise')
-var sha1stream = require('sha1-stream')
+var hashStream = require('sha1-stream')
 
 var api = require('../helpers/api')
 
@@ -125,7 +125,7 @@ describe('store',function(){
         })
     })
     it('should download content',function(){
-      var sniff = sha1stream.createStream()
+      var sniff = hashStream.createStream()
       return promisePipe(
         client.post({
           url: client.url('/content/download'),

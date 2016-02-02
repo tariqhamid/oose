@@ -103,24 +103,24 @@ module.exports = function(done){
         fs.symlinkSync(filePath,linkPath)
       }
       var ext = relativePath.match(/\.(.+)$/)[0]
-      var sha1 = relativePath.replace(/[\\\/]/g,'').replace(/\..+$/,'')
+      var hash = relativePath.replace(/[\\\/]/g,'').replace(/\..+$/,'')
       //skip invalid inventory entries
-      if(!sha1.match(/^[a-f0-9]{40}$/i)){
+      if(!hash.match(/^[a-f0-9]{40}$/i)){
         counter.invalid++
-        debug(sha1,'invalid, resuming stream')
+        debug(hash,'invalid, resuming stream')
       }
       //otherwise try and insert them into inventory if they are not already
       //there
       else {
         counter.valid++
-        debug(sha1,'inventory scan found',ext,relativePath,linkPath)
+        debug(hash,'inventory scan found',ext,relativePath,linkPath)
         //since nodes
         var inventoryKey = cradle.schema.inventory(
-          sha1,config.store.prism,config.store.name)
+          hash,config.store.prism,config.store.name)
         return cradle.db.getAsync(inventoryKey)
           .then(
             function(doc){
-              debug(sha1,'inventory record exists',doc)
+              debug(hash,'inventory record exists',doc)
             },
             function(err){
               //make sure we only catch 404s and let others bubble
@@ -128,23 +128,23 @@ module.exports = function(done){
               var doc = {
                 store: config.store.name,
                 prism: config.store.prism,
-                sha1: sha1,
+                hash: hash,
                 mimeExtension: ext,
                 mimeType: mime.lookup(ext),
                 relativePath: relativePath
               }
-              debug(sha1,'creating inventory record',doc)
+              debug(hash,'creating inventory record',doc)
               counter.created++
               return cradle.db.saveAsync(inventoryKey,doc)
             }
           )
           .then(function(){
-            debug(sha1,'inventory updated')
+            debug(hash,'inventory updated')
           })
           .catch(function(err){
             console.log(err.stack)
             console.log(err)
-            console.log(sha1,'insertion FAILED',err.message)
+            console.log(hash,'insertion FAILED',err.message)
           })
           .finally(function(){
             progress.tick(1)

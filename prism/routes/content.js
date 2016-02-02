@@ -244,6 +244,9 @@ exports.retrieve = function(req,res){
         error: 'Failed to check content existence: ' + err.message
       })
     })
+    .catch(function(err){
+      console.log('Unhandled error on content retrieve ' + err.message)
+    })
     .finally(function(){
       return fs.unlinkAsync(tmpfile)
         .catch(function(){})
@@ -296,6 +299,9 @@ exports.put = function(req,res){
       res.status(500)
       res.json({error: err.message})
     })
+    .catch(function(err){
+      console.log('Unhandled error on content put ' + err.message)
+    })
 }
 
 
@@ -306,14 +312,14 @@ exports.put = function(req,res){
  */
 exports.detail = function(req,res){
   redis.incr(redis.schema.counter('prism','content:detail'))
-  var sha1 = req.body.hash
+  var hash = req.body.hash
   var record = {}
-  var singular = !(sha1 instanceof Array)
-  if(singular) sha1 = [sha1]
+  var singular = !(hash instanceof Array)
+  if(singular) hash = [hash]
   //try to query the cache for all of the entries
   //however pass false so it does not do a hard lookup
   P.try(function(){
-    return sha1
+    return hash
   })
     .map(function(hash){
       return prismBalance.contentExists(hash)
@@ -324,7 +330,7 @@ exports.detail = function(req,res){
     .then(function(){
       //backwards compatability
       if(singular){
-        res.json(record[sha1[0]])
+        res.json(record[hash[0]])
       } else {
         res.json(record)
       }
@@ -333,6 +339,9 @@ exports.detail = function(req,res){
       redis.incr(redis.schema.counterError('prism','content:detail'))
       res.status(500)
       res.json({error: err.message})
+    })
+    .catch(function(err){
+      console.log('Unhandled error on content detail ' + err.message)
     })
 }
 
@@ -355,7 +364,7 @@ exports.exists = function(req,res){
  */
 exports.download = function(req,res){
   redis.incr(redis.schema.counter('prism','content:download'))
-  var hash = req.body.hash || req.body.sha1 || ''
+  var hash = req.body.hash || req.body.hash || ''
   var winner, inventory
   prismBalance.contentExists(hash)
     .then(function(result){
@@ -412,6 +421,9 @@ exports.download = function(req,res){
       redis.incr(redis.schema.counterError('prism','content:download'))
       res.json({error: err.message})
     })
+    .catch(function(err){
+      console.log('Unhandled error on content download ' + err.message)
+    })
 }
 
 
@@ -424,7 +436,7 @@ exports.purchase = function(req,res){
   redis.incr(redis.schema.counter('prism','content:purchase'))
   var ip = req.body.ip || req.ip || '127.0.0.1'
   //var start = +new Date()
-  var hash = req.body.hash || req.body.sha1 || ''
+  var hash = req.body.hash || req.body.hash || ''
   var hashType = hasher.identify(hash)
   var ext = req.body.ext
   var referrer = req.body.referrer
@@ -432,7 +444,7 @@ exports.purchase = function(req,res){
   var token, inventory, purchase
   P.try(function(){
     if(!hashFile.validate(hash))
-      throw new UserError('Invalid SHA1 passed for purchase')
+      throw new UserError('Invalid HASH passed for purchase')
     return prismBalance.contentExists(hash)
   })
     .then(function(result){
@@ -509,7 +521,7 @@ exports.purchase = function(req,res){
       /*console.log(
         'Purchase',
         purchase.token,
-        purchase.sha1,
+        purchase.hash,
         purchase.ext,
         ' + ' + duration + ' ms',
         purchase.referrer.join(',')
@@ -529,6 +541,9 @@ exports.purchase = function(req,res){
     .catch(UserError,function(err){
       redis.incr(redis.schema.counterError('prism','content:purchase'))
       res.json({error: err})
+    })
+    .catch(function(err){
+      console.log('Unhandled error on content purchase ' + err.message)
     })
 }
 
@@ -607,6 +622,9 @@ exports.deliver = function(req,res){
       res.status(500)
       res.json({error: err.message})
     })
+    .catch(function(err){
+      console.log('Unhandled error on content deliver ' + err.message)
+    })
 }
 
 
@@ -617,7 +635,7 @@ exports.deliver = function(req,res){
  */
 exports.contentStatic = function(req,res){
   redis.incr(redis.schema.counter('prism','content:static'))
-  var hash = req.params.hash || req.params.sha1 || 'sha1'
+  var hash = req.params.hash || req.params.hash || 'sha1'
   var filename = req.params.filename
   var ext = extensionRewrite(path.extname(filename).replace('.',''))
   prismBalance.contentExists(hash)
