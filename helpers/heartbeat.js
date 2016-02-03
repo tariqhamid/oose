@@ -226,7 +226,7 @@ var Heartbeat = function(type,name,port){
   var createInterval = function(){
     interval = setInterval(function(){
       return checkSystem()
-    },config.heartbeat.frequency || 10000)
+    },+config.heartbeat.frequency || 10000)
   }
 
   //this will start the heartbeat automatically
