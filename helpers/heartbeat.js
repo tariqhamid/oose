@@ -17,6 +17,7 @@ var config = require('../config')
 var debug = null
 var instance = null
 var interval = null
+var voteLog = {}
 
 
 
@@ -113,10 +114,11 @@ var Heartbeat = function(type,name,port){
     //var downHost = extend({},host)
     var key = (host.type === 'prism') ?
       cradle.schema.prism(host.name) : cradle.schema.store(host.prism,host.name)
-    debug('DOWNVOTING: '+key)
-    var downKey = cradle.schema.downVote(
-      crypto.createHash('md5').update(key).digest('hex'))
-    var voteLog = null
+
+    var downKey = cradle.schema.downVote(host.name)
+    var myDownKey = cradle.schema.downVote(host.name, name)
+    debug('DOWNVOTING: '+key )
+    var currentVoteLog = null
     var hostInfo = null
     //if(downHost.request) delete(downHost.request)
     return cradle.db.getAsync(key)
@@ -124,21 +126,26 @@ var Heartbeat = function(type,name,port){
         //got the node
         if(!(node.available && node.active)) throw new Error('Already down')
         hostInfo = node
-        return cradle.db.getAsync(downKey)
+        return cradle.db.allAsync({startkey: downKey, endkey: downKey + '\uffff'})
       }).then(function(vL){
-        voteLog = vL
-        if(voteLog[key]) throw new Error('Already recorded')
-        voteLog[key] = true
-        return cradle.db.saveAsync(downKey,voteLog._rev,voteLog)
+        currentVoteLog = vL
+        for(var i=0; i< vL.length ; i++) {
+          if(vL[i].key == myDownKey) {
+            debug('Already recorded')
+            return false
+          }
+        }
+        return cradle.db.saveAsync(myDownKey,{date:Date.now()})
       },function(err){
+        if(!err.headers)throw err
         if(404 !== err.headers.status) throw err
-        voteLog = {}
-        voteLog[key] = true
-        return cradle.db.saveAsync(downKey,voteLog)
-      }).then(function(vL){
-        voteLog = vL
+        currentVoteLog = []
+        return cradle.db.saveAsync(myDownKey,{date:Date.now()})
+      }).then(function(myVote){
+        if(myVote !== false)
+          currentVoteLog.push(myVote)
         var count = pingList.length
-        var votes = Object.keys(voteLog).length
+        var votes = currentVoteLog.length
         if(count === 0 || votes < (count/2))throw new Error('Ok, got it')
         hostInfo.available = false
         return cradle.db.saveAsync(key,hostInfo._rev,hostInfo)
@@ -155,14 +162,17 @@ var Heartbeat = function(type,name,port){
     return host.request.postAsync(host.request.url('/ping')+'')
       .spread(function(res,body){
         if(body && body.pong && 'pong' === body.pong){
+          voteLog[host.name] = 0
           return true
         }else{
-          return downVote(host)
+          voteLog[host.name] = (voteLog[host.name] !== undefined) ? voteLog[host.name] + 1 : 1
+          return (voteLog[host.name] > config.heartbeat.retries)? downVote(host) : true
         }
       })
       .catch(function(err){
         debug(err)
-        return downVote(host)
+        voteLog[host.name] = (voteLog[host.name] !== undefined) ? voteLog[host.name] + 1 : 1
+        return (voteLog[host.name] > config.heartbeat.retries)? downVote(host) : true
       })
   }
 
