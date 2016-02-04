@@ -151,7 +151,11 @@ var Heartbeat = function(type,name,port){
         return cradle.db.saveAsync(key,hostInfo._rev,hostInfo)
       }).then(function(){
         //Delete the vote log, it has served its purpose
-        return cradle.db.removeAsync(downKey,voteLog._rev)
+        var promises = []
+        //Added reflect() to avoid a race condition.
+        for(var i = 0 ; i<currentVoteLog.length ; i++)
+          promises.push(cradle.db.removeAsync(currentVoteLog[i].key,currentVoteLog[i]._rev).reflect())
+        return P.all(promises)
       }).catch(function(err){
         debug(err.message)
       })
@@ -195,11 +199,22 @@ var Heartbeat = function(type,name,port){
     debug('Marking myself up')
     var key = (type === 'prism') ?
       cradle.schema.prism(prismName) : cradle.schema.store(prismName,name)
+    var downKey = cradle.schema.downVote(name)    //The key used to track downvotes against me :(
     return cradle.db.getAsync(key)
       .then(function(node){
         node.available = true
         node.active = true
         return cradle.db.saveAsync(key,node._rev,node)
+      }).then(function(){
+        //Time to delete the downvote log
+        return cradle.db.allAsync({startkey: downKey, endkey: downKey + '\uffff'})
+      }).then(function(votelog){
+        //Delete the vote log, it has served its purpose
+        var promises = []
+        //Added reflect() to avoid a race condition.
+        for(var i = 0; i < votelog.length; i++)
+          promises.push(cradle.db.removeAsync(votelog[i].key,votelog[i]._rev).reflect())
+        return P.all(promises)
       }).catch(function(err){
         debug(err.mesage)
       })
