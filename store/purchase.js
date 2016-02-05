@@ -3,10 +3,10 @@ var P = require('bluebird')
 var debug = require('debug')('oose:store:purchase')
 var fs = require('graceful-fs')
 var infant = require('infant')
-var path = require('path')
 
 var config = require('../config')
 var cradle = require('../helpers/couchdb')
+var purchasePath = require('../helpers/purchasePath')
 
 var interval
 

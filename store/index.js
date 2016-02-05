@@ -30,8 +30,8 @@ if(require.main === module){
           maxConnections: config.store.workers.maxConnections
         }
       )
-      inventory = infant.parent('./inventory')
-      purchase = infant.parent('./purchase')
+      //inventory = infant.parent('./inventory')
+      //purchase = infant.parent('./purchase')
       //check if our needed folders exist
       P.try(function(){
         var promises = []
@@ -47,9 +47,9 @@ if(require.main === module){
         .then(function(){
           //fire everything up
           return P.all([
-            cluster.startAsync(),
-            inventory.startAsync(),
-            purchase.startAsync()
+            cluster.startAsync()
+            //inventory.startAsync(),
+            //purchase.startAsync()
           ])
         })
         .then(function(){
@@ -108,9 +108,9 @@ if(require.main === module){
         .then(function(){
           if(!cluster) return
           return P.all([
-            cluster.stopAsync(),
-            inventory.stopAsync(),
-            purchase.stopAsync()
+            cluster.stopAsync()
+            //inventory.stopAsync(),
+            //purchase.stopAsync()
           ])
         })
         .then(function(){
