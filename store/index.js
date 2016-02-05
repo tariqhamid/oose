@@ -69,7 +69,7 @@ if(require.main === module){
           },
           //if we dont exist lets make sure thats why and create ourselves
           function(err){
-            if(404 !== err.headers.status) throw err
+            if(!err.headers || 404 !== err.headers.status) throw err
             return cradle.db.saveAsync(storeKey,{
               prism: config.store.prism,
               name: config.store.name,
