@@ -48,7 +48,7 @@ if(require.main === module){
           //fire everything up
           return P.all([
             cluster.startAsync(),
-            //inventory.startAsync(),
+            inventory.startAsync(),
             purchase.startAsync()
           ])
         })
@@ -109,7 +109,7 @@ if(require.main === module){
           if(!cluster) return
           return P.all([
             cluster.stopAsync(),
-            //inventory.stopAsync(),
+            inventory.stopAsync(),
             purchase.stopAsync()
           ])
         })

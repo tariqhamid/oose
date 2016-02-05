@@ -85,6 +85,7 @@ if(require.main === module){
       clearInterval(interval)
       debug('cleared inventory interval')
       process.nextTick(done)
+      process.exit(0)
     }
   )
 }

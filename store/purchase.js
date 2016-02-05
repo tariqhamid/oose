@@ -163,10 +163,10 @@ if(require.main === module){
     function(done){
       //setup the interval for collection from master
       debug('set purchase interval')
-      //interval = setInterval(runInterval,config.store.purchaseFrequency)
+      interval = setInterval(runInterval,config.store.purchaseFrequency)
       //do initial scan at startup
       debug('doing purchase prune')
-      //runInterval()
+      runInterval()
       //return now as we do not want to wait on the first scan it can be
       //lengthy
       process.nextTick(done)
