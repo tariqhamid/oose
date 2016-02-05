@@ -30,7 +30,7 @@ if(require.main === module){
           maxConnections: config.store.workers.maxConnections
         }
       )
-      //inventory = infant.parent('./inventory')
+      inventory = infant.parent('./inventory')
       purchase = infant.parent('./purchase')
       //check if our needed folders exist
       P.try(function(){
