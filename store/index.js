@@ -9,8 +9,6 @@ var config = require('../config')
 var cradle = require('../helpers/couchdb')
 
 var cluster
-var inventory
-var purchase
 var storeKey = cradle.schema.store(config.store.prism,config.store.name)
 
 //make some promises
@@ -30,8 +28,6 @@ if(require.main === module){
           maxConnections: config.store.workers.maxConnections
         }
       )
-      //inventory = infant.parent('./inventory')
-      //purchase = infant.parent('./purchase')
       //check if our needed folders exist
       P.try(function(){
         var promises = []
@@ -45,12 +41,7 @@ if(require.main === module){
         return P.all(promises)
       })
         .then(function(){
-          //fire everything up
-          return P.all([
-            cluster.startAsync()
-            //inventory.startAsync(),
-            //purchase.startAsync()
-          ])
+          return cluster.startAsync()
         })
         .then(function(){
           //now register ourselves or mark ourselves available
@@ -107,11 +98,7 @@ if(require.main === module){
         })
         .then(function(){
           if(!cluster) return
-          return P.all([
-            cluster.stopAsync()
-            //inventory.stopAsync(),
-            //purchase.stopAsync()
-          ])
+          return cluster.stopAsync()
         })
         .then(function(){
           console.log('Store shutdown complete')

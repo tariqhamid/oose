@@ -5,7 +5,7 @@ var mime = require('mime')
 var path = require('path')
 var readdirp = require('readdirp')
 
-var cradle = require('../../helpers/couchdb')
+var cradle = require('../couchdb')
 
 var config = require('../../config')
 

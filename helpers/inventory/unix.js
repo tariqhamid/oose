@@ -7,7 +7,7 @@ var mime = require('mime')
 var path = require('path')
 var ProgressBar = require('progress')
 
-var cradle = require('../../helpers/couchdb')
+var cradle = require('../couchdb')
 
 var config = require('../../config')
 

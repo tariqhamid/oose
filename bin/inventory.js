@@ -18,11 +18,11 @@ P.promisifyAll(fs)
 var scanInventory
 if(os.platform().match(/(darwin|linux|freebsd|sunos)/i)){
   //this is the high performance unix driver that uses find
-  scanInventory = require('./inventory/unix.js')
+  scanInventory = require('../helpers/inventory/unix.js')
 } else {
   //the native drive will work everywhere and is perfect for small to mid
   //size installations and development
-  scanInventory = require('./inventory/native.js')
+  scanInventory = require('../helpers/inventory/native.js')
 }
 
 //make the function a promise
