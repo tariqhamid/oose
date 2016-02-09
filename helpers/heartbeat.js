@@ -267,6 +267,9 @@ var Heartbeat = function(type,name,port){
  * @return {instance}
  */
 exports.getInstance = function(type,name,port){
+  if (!type || !name) {
+    throw new Error ("Missing type or name to start a heartbeat instance.")
+  }
   if(!instance){
     debug = require('debug')('oose:ping:'+type)
     instance = new Heartbeat(type,name,port)

@@ -22,7 +22,7 @@ exports.prismList = function(){
     .map(function(row){
       return row.doc
     }).filter(function(doc){
-      return doc.available && doc.active
+      return doc.name && doc.available && doc.active
     })
 }
 

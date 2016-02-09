@@ -28,7 +28,7 @@ exports.storeList = function(prism){
     })
     .filter(function(doc){
       debug(storeKey,'got store',doc)
-      return doc.available && doc.active
+      return doc.name && doc.available && doc.active
     })
 }
 
