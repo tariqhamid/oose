@@ -10,6 +10,55 @@ var redis = require('../helpers/redis')
  * Get list of prisms and cache the result
  * @return {P}
  */
+exports.peerList = function(){
+  redis.incr(redis.schema.counter('prism','prismBalance:peerList'))
+  var prismKey = cradle.schema.prism()
+  var storeKey = cradle.schema.store()
+  return P.all([
+    function(){
+      return cradle.db.allAsync({
+          startkey: prismKey,
+          endkey: prismKey + '\uffff'
+        })
+        .then(function(rows){
+          var ids = []
+          for(var i=0; i < rows.length;i++) ids.push(rows[i].id)
+          return cradle.db.getAsync(ids)
+        })
+        .map(function(row){
+          row.doc.type = 'prism'
+          return row.doc
+        })
+    },
+    function(){
+      return cradle.db.allAsync({
+        startkey: storeKey,
+        endkey: storeKey + '\uffff'
+      })
+        .then(function(rows){
+          var ids = []
+          for(var i=0; i < rows.length;i++) ids.push(rows[i].id)
+          return cradle.db.getAsync(ids)
+        })
+        .map(function(row){
+          row.doc.type = 'store'
+          return row.doc
+        })
+    }
+  ])
+    .then(function(result){
+      var peers = []
+      peers = result[0].concat(peers)
+      peers = result[1].concat(peers)
+      return peers
+    })
+}
+
+
+/**
+ * Get list of prisms and cache the result
+ * @return {P}
+ */
 exports.prismList = function(){
   redis.incr(redis.schema.counter('prism','prismBalance:prismList'))
   var prismKey = cradle.schema.prism()

@@ -28,8 +28,9 @@ config.$load({
   //heartbeat
   heartbeat: {
     enabled: false,
-    retries : 3,
-    frequency: 10000 //10 seconds
+    retries: 3,
+    frequency: 10000, //ms static frequency; duration and shift added to this
+    votePruneFrequency: 60000 //ms
   },
   //databases
   redis: {
