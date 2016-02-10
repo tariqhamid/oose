@@ -219,7 +219,7 @@ var runVotePrune = function(systemKey,systemType){
       return cradle.db.getAsync(vote.id)
     })
     .filter(function(vote){
-      debug('filtering vote',vote,
+      debug('filtering vote',vote.id,
         (
           vote.systemKey === systemKey &&
           vote.systemType === systemType &&
