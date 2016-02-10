@@ -55,7 +55,6 @@ var prunePurchases = function(done){
     done(err)
   })
   dirstream.on('data',function(entry){
-    dirstream.pause()
     debug('got entry',entry)
     var token = entry.path.replace(/[\/\\]*/,'')
     debug(token,'got token')
@@ -121,9 +120,6 @@ var prunePurchases = function(done){
         console.log(err.stack)
         console.log(err)
         console.log(token,'ERROR: ',err)
-      })
-      .finally(function(){
-        dirstream.resume()
       })
   })
   dirstream.on('end',function(){
