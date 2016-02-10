@@ -59,7 +59,7 @@ var prunePurchases = function(done){
   dirstream.on('data',function(entry){
     dirstream.pause()
     debug('got entry',entry)
-    var token = entry.relativePath.replace(/[\/\\]*/,'')
+    var token = entry.path.replace(/[\/\\]*/,'')
     debug(token,'got token')
     //okay so we get the purchase and if it does not exist we just remove
     //the entry, if it does exist we check the date and if the date is out
