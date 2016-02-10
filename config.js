@@ -33,7 +33,7 @@ config.$load({
     frequency: 10000, //ms static frequency; duration and shift added to this
     votePruneFrequency: 5000, //ms
     voteLife: 10000, //ms vote hold down time (no pings during this window)
-    pingResponseTimeout: 500 //ms
+    pingResponseTimeout: 1000 //ms
   },
   //databases
   redis: {
