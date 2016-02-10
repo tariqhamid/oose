@@ -150,7 +150,7 @@ var runHeartbeat = function(systemKey){
       console.log(err)
     })
     .finally(function(){
-      var duration = startTime - +(new Date())
+      var duration = +(new Date()) - startTime
       var delay = duration +
         (random.integer(0,5) * 1000) +
         config.heartbeat.frequency
@@ -171,6 +171,7 @@ var runVotePrune = function(systemKey){
   //get votes we cast
   var downVoteKey = cradle.schema.downVote()
   var currentTimestamp = +(new Date())
+  debug('Starting vote prune')
   return cradle.db.allAsync({
     startkey: downVoteKey,
     endkey: downVoteKey + '\uffff'
@@ -188,6 +189,7 @@ var runVotePrune = function(systemKey){
       console.log('vote prune error: ',err)
     })
     .finally(function(){
+      debug('Vote prune complete')
       pruneTimeout = setTimeout(function(){
         runVotePrune(systemKey)
       },+config.heartbeat.votePruneFrequency || 60000)
