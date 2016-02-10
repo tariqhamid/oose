@@ -64,6 +64,13 @@ From there follow the debug filtering rules defined
 
 ## Changelog
 
+### 2.0.2
+
+* Improve inventory system
+* Extract purchase and inventory to script level
+* Rebuilt heartbeat system
+* Updated dependencies
+
 ### 2.0.1
 
 * Add inventory driver system

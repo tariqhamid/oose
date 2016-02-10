@@ -380,6 +380,14 @@ if(require.main === module){
       if(!program.key && !program.type){
         program.key = config.heartbeat.systemKey
         program.type = config.heartbeat.systemType
+        if(!program.key && config.prism.enabled){
+          program.key = config.prism.name
+          program.type = 'prism'
+        }
+        if(!program.key && config.store.enabled){
+          program.key = config.store.name
+          program.type = 'prism'
+        }
       }
       //do a sanity check we need both
       if(!program.key)
