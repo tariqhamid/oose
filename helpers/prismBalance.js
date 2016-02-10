@@ -22,6 +22,7 @@ exports.peerList = function(){
           endkey: prismKey + '\uffff'
         })
         .then(function(rows){
+          debug('Peer list prism result',rows)
           var ids = []
           for(var i=0; i < rows.length;i++) ids.push(rows[i].id)
           return cradle.db.getAsync(ids)
@@ -37,6 +38,7 @@ exports.peerList = function(){
         endkey: storeKey + '\uffff'
       })
         .then(function(rows){
+          debug('Peer list store result',rows)
           var ids = []
           for(var i=0; i < rows.length;i++) ids.push(rows[i].id)
           return cradle.db.getAsync(ids)
