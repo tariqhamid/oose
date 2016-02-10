@@ -345,6 +345,7 @@ exports.start = function(systemKey,systemType,done){
     systemKey = config.heartbeat.systemKey
     systemType = config.heartbeat.systemType
   }
+  debug('setting up to start',systemKey,systemType,done)
   if(!systemKey)
     throw new Error('System key has not been set, heartbeat not started')
   if(!systemType)
