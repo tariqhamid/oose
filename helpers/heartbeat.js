@@ -361,12 +361,11 @@ exports.stop = function(done){
   clearTimeout(heartbeatTimeout)
   clearTimeout(pruneTimeout)
   process.nextTick(done)
-  process.exit(0)
 }
 
 if(require.main === module){
   infant.child(
-    'oose:' + config.store.name + ':heartbeat',
+    'oose:' + config.heartbeat.systemKey + ':heartbeat',
     function(done){
       var program = require('commander')
       program.version(config.version)
@@ -386,6 +385,8 @@ if(require.main === module){
         throw new Error('Cant start invalid system type')
       exports.start(program.key,program.type,done)
     },
-    exports.stop
+    function(done){
+      exports.stop(done)
+    }
   )
 }
