@@ -340,11 +340,6 @@ var markMeUp = function(systemKey,systemType){
  * @param {function} done
  */
 exports.start = function(systemKey,systemType,done){
-  if('function' === typeof systemKey){
-    done = systemKey
-    systemKey = config.heartbeat.systemKey
-    systemType = config.heartbeat.systemType
-  }
   console.log('Setting up to start heartbeat',systemKey,systemType,done)
   if(!systemKey)
     throw new Error('System key has not been set, heartbeat not started')
@@ -378,6 +373,12 @@ if(require.main === module){
         .option('-k --key <key>','System key for heartbeat eg: om101 or store1')
         .option('-t --type <type>','System type either prism or store')
         .parse(process.argv)
+      //try to look these up if none passed
+      if(!program.key && !program.type){
+        program.key = config.heartbeat.systemKey
+        program.type = config.heartbeat.systemType
+      }
+      //do a sanity check we need both
       if(!program.key)
         throw new Error('Cant start invalid system key')
       if(!program.type)
