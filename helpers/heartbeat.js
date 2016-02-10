@@ -140,6 +140,32 @@ var runHeartbeat = function(systemKey,systemType){
       return true
     }
   }
+  /**
+   * Restore peer to operational status
+   * @param {object} peer
+   * @return {P}
+   */
+  var restorePeer = function(peer){
+    return cradle.db.getAsync(peer._id)
+      .then(function(result){
+        result.available = true
+        return cradle.db.saveAsync(result,result._rev)
+      })
+      .then(function(){
+        //remove down votes
+        var downKey = cradle.schema.downVote(peer.name)
+        return cradle.db.allAsync({
+          startkey: downKey,
+          endkey: downKey + '\uffff'
+        })
+      })
+      .map(function(vote){
+        return cradle.db.removeAsync(vote._id,vote._rev)
+      })
+      .catch(function(err){
+        console.log('Failed to restore peer',err)
+      })
+  }
   prismBalance.peerList()
     .then(function(result){
       peerCount = result.length
@@ -168,10 +194,11 @@ var runHeartbeat = function(systemKey,systemType){
       if(!peer.active) return true
       //if we already have a downvote the peer should not be contacted
       if(peer.existingDownVote) return true
-      peer.request = 'prism' === peer.type ? api.prism(peer) : api.store(peer)
+      var peerRequest = 'prism' === peer.type ?
+        api.prism(peer) : api.store(peer)
       //make the ping request
-      return peer.request.postAsync({
-        url: peer.request.url('/ping') + '',
+      return peerRequest.postAsync({
+        url: peerRequest.url('/ping') + '',
         timeout: config.heartbeat.pingResponseTimeout || 1000
       })
         .spread(function(res,body){
@@ -181,13 +208,17 @@ var runHeartbeat = function(systemKey,systemType){
             //and file an up vote
             debug('Cleared vote log',peer.name)
             voteLog[peer.name] = 0
+            //if this peer is not available this should be where it gets its
+            //votes cleared and returned to an available status
+            if(peer.active && !peer.available)
+              return restorePeer(peer)
           } else {
-            handlePingFailure('Got a bad response',peer)
+            return handlePingFailure('Got a bad response',peer)
           }
         })
         .catch(function(err){
           console.log('Ping Error ' + peer.name,err.message)
-          handlePingFailure(err.message,peer)
+          return handlePingFailure(err.message,peer)
         })
     })
     .catch(function(err){
