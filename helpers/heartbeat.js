@@ -123,7 +123,10 @@ var runHeartbeat = function(systemKey){
       debug('Setting up to ping peer',peer.name,peer.host + ':' + peer.port)
       peer.request = 'prism' === peer.type ? api.prism(peer) : api.store(peer)
       //make the ping request
-      return peer.request.postAsync(peer.request.url('/ping') + '')
+      return peer.request.postAsync({
+        url: peer.request.url('/ping') + '',
+        timeout: config.heartbeat.pingResponseTimeout || 1000
+      })
         .spread(function(res,body){
           debug('Ping response',peer.name,body)
           if(body && body.pong && 'pong' === body.pong){
