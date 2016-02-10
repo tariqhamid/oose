@@ -48,8 +48,8 @@ exports.peerList = function(){
   ])
     .then(function(result){
       var peers = []
-      peers = result[0].concat(peers)
-      peers = result[1].concat(peers)
+      peers = peers.concat(result[0] || [])
+      peers = peers.concat(result[1] || [])
       return peers
     })
 }
