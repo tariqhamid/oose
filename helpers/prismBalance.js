@@ -14,6 +14,7 @@ exports.peerList = function(){
   redis.incr(redis.schema.counter('prism','prismBalance:peerList'))
   var prismKey = cradle.schema.prism()
   var storeKey = cradle.schema.store()
+  debug('Querying for peer list')
   return P.all([
     (function(){
       return cradle.db.allAsync({
@@ -47,6 +48,7 @@ exports.peerList = function(){
     }())
   ])
     .then(function(result){
+      debug('Peer list results',result)
       var peers = []
       peers = peers.concat(result[0] || [])
       peers = peers.concat(result[1] || [])
