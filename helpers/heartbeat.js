@@ -150,10 +150,16 @@ var runHeartbeat = function(systemKey,systemType){
       //check for down votes for this peer from us
       var downKey = cradle.schema.downVote(peer.name,systemKey)
       return cradle.db.getAsync(downKey)
-        .then(function(result){
-          peer.existingDownVote = result
-          return peer
-        })
+        .then(
+          function(result){
+            peer.existingDownVote = result
+            return peer
+          },
+          function(){
+            peer.existingDownVote = false
+            return peer
+          }
+        )
     })
     .map(function(peer){
       //setup the ping handler
