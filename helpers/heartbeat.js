@@ -202,6 +202,9 @@ var runVotePrune = function(systemKey,systemType){
     startkey: downVoteKey,
     endkey: downVoteKey + '\uffff'
   })
+    .map(function(vote){
+      return cradle.db.getAsync(vote.id)
+    })
     .filter(function(vote){
       debug('filtering vote',vote,
         (
