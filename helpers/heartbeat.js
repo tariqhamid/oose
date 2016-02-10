@@ -165,7 +165,7 @@ var runHeartbeat = function(systemKey,systemType){
       //setup the ping handler
       debug('Setting up to ping peer',peer.name,peer.host + ':' + peer.port)
       //check if the peer is eligible for ping
-      if(!peer.active || !peer.available) return true
+      if(!peer.active) return true
       //if we already have a downvote the peer should not be contacted
       if(peer.existingDownVote) return true
       peer.request = 'prism' === peer.type ? api.prism(peer) : api.store(peer)
