@@ -40,7 +40,7 @@ CouchShema.prototype.prism = function(name){
  * @return {string}
  */
 CouchShema.prototype.store = function(prism,name){
-  return this.applyPrefix('store:' + prism + (name ? ':' + name : ''))
+  return this.applyPrefix('store:' + (prism || '') + (name ? ':' + name : ''))
 }
 
 
@@ -52,7 +52,7 @@ CouchShema.prototype.store = function(prism,name){
  */
 CouchShema.prototype.downVote = function(castee, caster){
   var ending = caster ? ':' + caster : ''
-  return this.applyPrefix('downvote:' + castee + ending)
+  return this.applyPrefix('downvote:' + (castee || '') + ending)
 }
 
 
