@@ -5,7 +5,6 @@ var fs = require('graceful-fs')
 var infant = require('infant')
 var os = require('os')
 var prettyBytes = require('pretty-bytes')
-var random = require('random-js')()
 
 var config = require('../config')
 
@@ -31,8 +30,9 @@ var scanInventoryAsync = P.promisify(scanInventory)
 
 /**
  * Run the inventory scan
+ * @param {function} done
  */
-var runInterval = function(){
+var runInterval = function(done){
   console.log('Starting to examine store inventory')
   var scanStart = +new Date()
   var scanEnd = scanStart + 1000
@@ -60,8 +60,10 @@ var runInterval = function(){
     .finally(function(){
       //register the next run semi randomly to try and percolate the inventory
       //scans to run apart from each other to stop the mini dos on g322
-      var timeToNextRun = (duration * random.integer(1,50)) * 1000
-      setTimeout(runInterval,timeToNextRun)
+      //var timeToNextRun = (duration * random.integer(1,50)) * 1000
+      //setTimeout(runInterval,timeToNextRun)
+      done()
+      process.exit()
     })
 }
 
@@ -69,18 +71,8 @@ if(require.main === module){
   infant.child(
     'oose:' + config.store.name + ':inventory',
     function(done){
-      //setup the interval for collection from master
-      debug('set inventory interval')
-      //do initial scan at startup
-      var startupDelay = (1000 * random.integer(300,3600))
-      debug('setting timeout initial inventory scan for ' +
-        (startupDelay / 1000))
-      setTimeout(runInterval,startupDelay)
       //do immediate scan
-      //runInterval()
-      //return now as we do not want to wait on the first scan it can be
-      //lengthy
-      process.nextTick(done)
+      runInterval(done)
     },
     function(done){
       clearInterval(interval)
