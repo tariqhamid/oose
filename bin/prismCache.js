@@ -11,16 +11,10 @@ var prism = api.prism(config.prism)
 
 var commandList = [
   'all',
-  'exists',
-  'purchase',
   'session',
   'stats',
-  'masterUp',
-  'prismList',
-  'storeList',
   'prismHits',
-  'storeHits',
-  'storeEntry'
+  'storeHits'
 ]
 
 program
