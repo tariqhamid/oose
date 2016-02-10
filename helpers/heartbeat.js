@@ -150,7 +150,7 @@ var runHeartbeat = function(systemKey,systemType){
     return cradle.db.getAsync(peer._id)
       .then(function(result){
         result.available = true
-        return cradle.db.saveAsync(result,result._rev)
+        return cradle.db.saveAsync(result._id,result._rev,result)
       })
       .then(function(){
         //remove down votes
