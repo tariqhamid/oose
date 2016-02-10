@@ -93,7 +93,11 @@ var downVote = function(peer,systemKey,peerCount){
       return cradle.db.saveAsync(key,peer._rev,peer)
     })
     .catch(function(err){
-      console.log(err)
+      if('Ok, got it' === err.message){
+        debug('Vote already cast',peer.name)
+      } else {
+        console.log(err)
+      }
     })
 }
 
@@ -112,6 +116,24 @@ var runHeartbeat = function(systemKey){
   var startTime = +(new Date())
   var peerCount = 0
   debug('Getting peer list for heartbeat ping')
+
+
+  /**
+   * Help handle ping failure
+   * @param {object} peer
+   * @return {P}
+   */
+  var handlePingFailure = function(peer){
+    debug('Adding to vote log',peer.name)
+    voteLog[peer.name] = (voteLog[peer.name] !== undefined) ?
+    voteLog[peer.name] + 1 : 1
+    if(voteLog[peer.name] > config.heartbeat.retries){
+      debug('Vote log high water reached, down voting',peer.name)
+      return downVote(peer,systemKey,peerCount)
+    } else {
+      return true
+    }
+  }
   prismBalance.peerList()
     .then(function(result){
       peerCount = result.length
@@ -135,18 +157,12 @@ var runHeartbeat = function(systemKey){
             debug('Cleared vote log',peer.name)
             voteLog[peer.name] = 0
           } else {
-            debug('Adding to vote log',peer.name)
-            voteLog[peer.name] = (voteLog[peer.name] !== undefined) ?
-              voteLog[peer.name] + 1 : 1
-            if(voteLog[peer.name] > config.heartbeat.retries){
-              debug('Vote log high water reached, down voting',peer.name)
-              return downVote(peer,systemKey,peerCount)
-            }
+            handlePingFailure(peer)
           }
         })
         .catch(function(err){
-          console.log('Ping Error: ',err)
-          return downVote(peer,systemKey,peerCount)
+          console.log('Ping Error ' + peer.name,err.message)
+          handlePingFailure(peer)
         })
     })
     .catch(function(err){
