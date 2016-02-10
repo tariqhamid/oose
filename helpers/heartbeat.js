@@ -361,6 +361,7 @@ exports.stop = function(done){
   clearTimeout(heartbeatTimeout)
   clearTimeout(pruneTimeout)
   process.nextTick(done)
+  process.exit(0)
 }
 
 if(require.main === module){
