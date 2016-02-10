@@ -31,7 +31,7 @@ config.$load({
     systemType: null,
     retries: 3,
     frequency: 10000, //ms static frequency; duration and shift added to this
-    votePruneFrequency: 60000, //ms
+    votePruneFrequency: 5000, //ms
     pingResponseTimeout: 500
   },
   //databases

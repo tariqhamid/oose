@@ -196,12 +196,18 @@ var runVotePrune = function(systemKey){
   //get votes we cast
   var downVoteKey = cradle.schema.downVote()
   var currentTimestamp = +(new Date())
-  debug('Starting vote prune')
+  debug('Starting vote prune',downVoteKey,currentTimestamp)
   return cradle.db.allAsync({
     startkey: downVoteKey,
     endkey: downVoteKey + '\uffff'
   })
     .filter(function(vote){
+      debug('filtering vote',vote,
+        (
+          vote.systemKey === systemKey &&
+          ((vote.timestamp + config.heartbeat.voteLife) <= currentTimestamp)
+        )
+      )
       return (
         vote.systemKey === systemKey &&
         ((vote.timestamp + config.heartbeat.voteLife) <= currentTimestamp)

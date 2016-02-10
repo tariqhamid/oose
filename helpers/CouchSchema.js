@@ -50,7 +50,7 @@ CouchShema.prototype.store = function(prism,name){
  * @param {string} caster
  * @return {string}
  */
-CouchShema.prototype.downVote = function(castee, caster){
+CouchShema.prototype.downVote = function(castee,caster){
   var ending = caster ? ':' + caster : ''
   return this.applyPrefix('downvote:' + (castee || '') + ending)
 }
