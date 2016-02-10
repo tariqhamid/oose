@@ -549,15 +549,16 @@ exports.deliver = function(req,res){
   var token = req.params.token
   var tokenPath = purchasePath.tokenToRelativePath(token)
   //var filename = req.params.filename
+  var cacheValid = false
   var purchaseKey = cradle.schema.purchase(token)
-  var purchase
   /**
    * Make a content URL
    * @param {object} req
    * @param {object} store
+   * @param {object} purchase
    * @return {string}
    */
-  var makeUrl = function(req,store){
+  var makeUrl = function(req,store,purchase){
     var query = req.url.indexOf('?') >= 0 ?
       req.url.substr(req.url.indexOf('?')+1) : null
     var proto = 'https' === req.get('X-Forwarded-Protocol') ? 'https' : 'http'
@@ -576,40 +577,93 @@ exports.deliver = function(req,res){
     return proto + '://' + store.name + '.' + config.domain +
       '/' + tokenPath + '.' + purchase.ext + (query ? '?' + query : '')
   }
-  cradle.db.getAsync(purchaseKey)
-    .then(
-      function(result){
-        if(!result) throw new NotFoundError('Purchase not found')
-        purchase = result
-        //if(purchase.ip !== req.ip) throw new UserError('Invalid request')
-        var validReferrer = false
-        var referrer = req.get('Referrer')
-        if(!referrer || 'string' !== typeof referrer)
-          throw new UserError('Invalid request')
-        for(var i = 0; i < purchase.referrer.length; i++){
-          if(referrer.match(purchase.referrer[i])){
-            validReferrer = true
-            break
-          }
-        }
-        if(!validReferrer) throw new UserError('Invalid request')
-        //we have a purchase so now... we need to pick a store....
-        return storeBalance.winnerFromExists(token,purchase.inventory,[],true)
-      },
-      function(){
-        throw new NotFoundError('Purchase not found')
+  /**
+   * Validate request
+   * @param {object} purchase
+   * @return {object}
+   */
+  var validateRequest = function(purchase){
+    var result = {
+      valid: true,
+      reason: null
+    }
+    //if(purchase.ip !== req.ip){
+    //  result.valid = false
+    //  result.reason = 'Invalid request'
+    //}
+    var validReferrer = false
+    var referrer = req.get('Referrer')
+    if(!referrer || 'string' !== typeof referrer){
+      result.valid = false
+      result.reason = 'Invalid request'
+    }
+    for(var i = 0; i < purchase.referrer.length; i++){
+      if(referrer.match(purchase.referrer[i])){
+        validReferrer = true
+        break
       }
-    )
+    }
+    if(!validReferrer){
+      result.valid = false
+      result.reason = 'Invalid request'
+    }
+    return result
+  }
+  //try to get our purchase record from cache
+  redis.getAsync(purchaseKey)
     .then(function(result){
-      res.redirect(302,makeUrl(req,result,purchase))
+      if(result){
+        try {
+          result = JSON.parse(result)
+          cacheValid = true
+        } catch(e){
+          cacheValid = false
+        }
+      }
+      if(cacheValid){
+        return result
+      }
+      else{
+        //hard look up of purchase
+        return cradle.db.getAsync(purchaseKey)
+          .then(
+            function(result){
+              if(!result) throw new NotFoundError('Purchase not found')
+              //store new cache here
+              return redis.saveAsync(purchaseKey,JSON.stringify(result))
+                .then(function(){
+                  return redis.expireAsync(
+                    purchaseKey,
+                    (+config.prism.purchaseCacheLife || 30)
+                  )
+                })
+            },
+            function(){
+              throw new NotFoundError('Purchase not found')
+            }
+          )
+      }
+    })
+    .then(function(purchase){
+      //okay so now we have the purchase record and reading it from cache like
+      //we wanted, now we do validation and winner selection like normal
+      var validation = validateRequest(purchase)
+      if(!validation.valid) throw new UserError(validation.reason)
+      //we have a purchase so now... we need to pick a store....
+      return storeBalance.winnerFromExists(token,purchase.inventory,[],true)
+        .then(function(winner){
+          res.redirect(302,makeUrl(req,winner,purchase))
+        })
     })
     .catch(SyntaxError,function(err){
-      redis.incr(redis.schema.counterError('prism','content:deliver:syntax'))
+      redis.incr(
+        redis.schema.counterError('prism','content:deliver:syntax'))
       res.status(500)
       res.json({error: 'Failed to parse purchase: ' + err.message})
     })
     .catch(NotFoundError,function(err){
-      redis.incr(redis.schema.counterError('prism','content:deliver:notFound'))
+      redis.incr(
+        redis.schema.counterError('prism','content:deliver:notFound'))
       res.status(404)
       res.json({error: err.message})
     })

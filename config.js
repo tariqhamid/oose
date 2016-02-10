@@ -113,7 +113,9 @@ config.$load({
       'ts',
       'webm',
       'wmv'
-    ]
+    ],
+    existsCacheLife: 30, //seconds
+    purchaseCacheLife: 30 //seconds
   },
   //storage system
   store: {

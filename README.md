@@ -70,6 +70,8 @@ From there follow the debug filtering rules defined
 * Extract purchase and inventory to script level
 * Rebuilt heartbeat system
 * Updated dependencies
+* Add bubble cache to purchases
+* Add bubble cache to content existence
 
 ### 2.0.1
 
