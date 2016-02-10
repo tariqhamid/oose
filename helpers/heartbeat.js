@@ -91,7 +91,7 @@ var downVote = function(peer,reason,systemKey,systemType,peerCount){
         currentVoteLog.push(myVote)
       var count = peerCount
       var votes = currentVoteLog.length
-      if(count === 0 || votes < (count/2))
+      if(count === 0 || votes < (count / 2))
         throw new Error('Ok, got it')
       peer.available = false
       return cradle.db.saveAsync(key,peer._rev,peer)
@@ -217,6 +217,19 @@ var runVotePrune = function(systemKey,systemType){
   var downVoteKey = cradle.schema.downVote()
   var currentTimestamp = +(new Date())
   debug('Starting vote prune',downVoteKey,currentTimestamp)
+
+
+  /**
+   * Validate vote record
+   * @param {string} vote
+   * @return {boolean}
+   */
+  var validateVote = function(vote){
+    var voteExpiresAfter = +(+vote.timestamp + config.heartbeat.voteLife)
+    if(vote.systemKey !== systemKey) return false
+    if(vote.systemType !== systemType) return false
+    return (voteExpiresAfter <= currentTimestamp)
+  }
   return cradle.db.allAsync({
     startkey: downVoteKey,
     endkey: downVoteKey + '\uffff'
@@ -225,18 +238,8 @@ var runVotePrune = function(systemKey,systemType){
       return cradle.db.getAsync(vote.id)
     })
     .filter(function(vote){
-      debug('filtering vote',vote.id,
-        (
-          vote.systemKey === systemKey &&
-          vote.systemType === systemType &&
-          ((vote.timestamp + config.heartbeat.voteLife) <= currentTimestamp)
-        )
-      )
-      return (
-        vote.systemKey === systemKey &&
-        vote.systemType === systemType &&
-        ((vote.timestamp + config.heartbeat.voteLife) <= currentTimestamp)
-      )
+      debug('filtering vote',vote.id,validateVote(vote))
+      return validateVote(vote)
     })
     .map(function(vote){
       debug('Pruning vote',vote._id)
