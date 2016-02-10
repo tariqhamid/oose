@@ -630,7 +630,7 @@ exports.deliver = function(req,res){
             function(result){
               if(!result) throw new NotFoundError('Purchase not found')
               //store new cache here
-              return redis.saveAsync(purchaseKey,JSON.stringify(result))
+              return redis.setAsync(purchaseKey,JSON.stringify(result))
                 .then(function(){
                   return redis.expireAsync(
                     purchaseKey,
