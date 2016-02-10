@@ -226,8 +226,8 @@ var runVotePrune = function(systemKey,systemType){
    */
   var validateVote = function(vote){
     var voteExpiresAfter = +(+vote.timestamp + config.heartbeat.voteLife)
-    if(vote.systemKey !== systemKey) return false
-    if(vote.systemType !== systemType) return false
+    if(vote.systemKey && vote.systemKey !== systemKey) return false
+    if(vote.systemType && vote.systemType !== systemType) return false
     return (voteExpiresAfter <= currentTimestamp)
   }
   return cradle.db.allAsync({
