@@ -190,9 +190,10 @@ var runHeartbeat = function(systemKey,systemType){
 /**
  * Prune votes cast by this system
  * @param {string} systemKey
+ * @param {string} systemType
  * @return {P}
  */
-var runVotePrune = function(systemKey){
+var runVotePrune = function(systemKey,systemType){
   //get votes we cast
   var downVoteKey = cradle.schema.downVote()
   var currentTimestamp = +(new Date())
@@ -205,11 +206,13 @@ var runVotePrune = function(systemKey){
       debug('filtering vote',vote,
         (
           vote.systemKey === systemKey &&
+          vote.systemType === systemType &&
           ((vote.timestamp + config.heartbeat.voteLife) <= currentTimestamp)
         )
       )
       return (
         vote.systemKey === systemKey &&
+        vote.systemType === systemType &&
         ((vote.timestamp + config.heartbeat.voteLife) <= currentTimestamp)
       )
     })
@@ -223,7 +226,7 @@ var runVotePrune = function(systemKey){
     .finally(function(){
       debug('Vote prune complete')
       pruneTimeout = setTimeout(function(){
-        runVotePrune(systemKey)
+        runVotePrune(systemKey,systemType)
       },+config.heartbeat.votePruneFrequency || 60000)
     })
 }
