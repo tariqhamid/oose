@@ -115,17 +115,17 @@ var runHeartbeat = function(systemKey){
   prismBalance.peerList()
     .then(function(result){
       peerCount = result.length
-      debug('Found peers',result.length,result)
+      debug('Found peers',result.length)
       return result
     })
     .map(function(peer){
       //setup the ping handler
-      debug('Setting up to ping peer',peer)
+      debug('Setting up to ping peer',peer.name,peer.host + ':' + peer.port)
       peer.request = 'prism' === peer.type ? api.prism(peer) : api.store(peer)
       //make the ping request
       return peer.request.postAsync(peer.request.url('/ping') + '')
         .spread(function(res,body){
-          debug('Ping response',peer,body)
+          debug('Ping response',peer.name,body)
           if(body && body.pong && 'pong' === body.pong){
             //success, so do nothing i think or check if its down
             //and file an up vote
