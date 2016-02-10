@@ -147,8 +147,21 @@ var runHeartbeat = function(systemKey,systemType){
       return result
     })
     .map(function(peer){
+      //check for down votes for this peer from us
+      var downKey = cradle.schema.downVote(peer.name,systemKey)
+      return cradle.db.getAsync(downKey)
+        .then(function(result){
+          peer.existingDownVote = result
+          return peer
+        })
+    })
+    .map(function(peer){
       //setup the ping handler
       debug('Setting up to ping peer',peer.name,peer.host + ':' + peer.port)
+      //check if the peer is eligible for ping
+      if(!peer.active || !peer.available) return true
+      //if we already have a downvote the peer should not be contacted
+      if(peer.existingDownVote) return true
       peer.request = 'prism' === peer.type ? api.prism(peer) : api.store(peer)
       //make the ping request
       return peer.request.postAsync({
