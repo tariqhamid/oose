@@ -130,7 +130,7 @@ var prunePurchases = function(done){
   dirstream.on('end',function(){
     //prune folders
     pruneFolders.forEach(function(folder){
-      fs.unlinkSync(folder.fullPath)
+      fs.rmdirSync(folder.fullPath)
     })
     done(null,counter)
   })
