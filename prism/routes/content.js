@@ -620,7 +620,7 @@ exports.deliver = function(req,res){
           cacheValid = false
         }
       }
-      if(cacheValid){
+      if(result && cacheValid){
         return result
       }
       else{
@@ -636,6 +636,9 @@ exports.deliver = function(req,res){
                     purchaseKey,
                     (+config.prism.purchaseCacheLife || 30)
                   )
+                })
+                .then(function(){
+                  return result
                 })
             },
             function(){
