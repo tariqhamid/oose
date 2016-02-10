@@ -115,7 +115,7 @@ var runHeartbeat = function(systemKey){
   prismBalance.peerList()
     .then(function(result){
       peerCount = result.length
-      debug('Found peers',result.length)
+      debug('Found peers',result.length,result)
       return result
     })
     .map(function(peer){

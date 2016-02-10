@@ -15,7 +15,7 @@ exports.peerList = function(){
   var prismKey = cradle.schema.prism()
   var storeKey = cradle.schema.store()
   return P.all([
-    function(){
+    (function(){
       return cradle.db.allAsync({
           startkey: prismKey,
           endkey: prismKey + '\uffff'
@@ -29,8 +29,8 @@ exports.peerList = function(){
           row.doc.type = 'prism'
           return row.doc
         })
-    },
-    function(){
+    }()),
+    (function(){
       return cradle.db.allAsync({
         startkey: storeKey,
         endkey: storeKey + '\uffff'
@@ -44,7 +44,7 @@ exports.peerList = function(){
           row.doc.type = 'store'
           return row.doc
         })
-    }
+    }())
   ])
     .then(function(result){
       var peers = []
