@@ -1,5 +1,6 @@
 'use strict';
 var debug = require('debug')('oose:hb')
+var infant = require('infant')
 var random = require('random-js')()
 
 var api = require('../helpers/api')
@@ -188,24 +189,41 @@ var runVotePrune = function(systemKey){
 /**
  * Mark this system up
  * @param {string} systemKey
+ * @param {string} systemType
  * @return {P}
  */
-var markMeUp = function(systemKey){
+var markMeUp = function(systemKey,systemType){
   debug('Marking myself up')
-  var key = getPeerKey()
+  var key = getPeerKey({
+    name: systemKey,
+    type: systemType
+  })
   var downKey = cradle.schema.downVote(systemKey)
+  debug('Getting peer information')
   return cradle.db.getAsync(key)
-    .then(function(peer){
-      peer.available = true
-      peer.active = true
-      return cradle.db.saveAsync(key,peer._rev,peer)
-    })
+    .then(
+      function(peer){
+        debug('Got peer information back',peer)
+        peer.available = true
+        peer.active = true
+        return cradle.db.saveAsync(key,peer._rev,peer)
+      },
+      function(err){
+        debug('Got an error getting peer information',err)
+        throw new Error('Could not get peer information, cannot mark myself up')
+      }
+    )
     .then(function(){
       //Time to delete the downvote log
+      debug('About to get down votes',downKey)
       return cradle.db.allAsync({startkey: downKey, endkey: downKey + '\uffff'})
     })
     .map(function(log){
+      debug('Removing downvote',log)
       return cradle.db.removeAsync(log.key,log._rev)
+    })
+    .then(function(result){
+      debug('finished marking myself up',result)
     })
     .catch(function(err){
       console.log('markMeUp error: ',err)
@@ -216,15 +234,15 @@ var markMeUp = function(systemKey){
 /**
  * Start Heartbeat
  * @param {string} systemKey
+ * @param {string} systemType
  * @param {function} done
  */
-exports.start = function(systemKey,done){
+exports.start = function(systemKey,systemType,done){
   heartbeatTimeout = setTimeout(function(){
-    markMeUp(systemKey)
     runHeartbeat(systemKey)
-    runVotePrune(systemKey)
   },1000)
-  process.nextTick(done)
+  runVotePrune(systemKey,systemType)
+  markMeUp(systemKey,systemType,done)
 }
 
 
@@ -236,4 +254,24 @@ exports.stop = function(done){
   clearTimeout(heartbeatTimeout)
   clearTimeout(pruneTimeout)
   process.nextTick(done)
+}
+
+if(require.main === module){
+  infant.child(
+    'oose:' + config.store.name + ':heartbeat',
+    function(done){
+      var program = require('commander')
+      program.version(config.version)
+        .description('OOSE Heartbeat')
+        .option('-k --key <key>','System key for heartbeat eg: om101 or store1')
+        .option('-t --type <type>','System type either prism or store')
+        .parse(process.argv)
+      if(!program.key)
+        throw new Error('Cant start invalid system key')
+      if(!program.type)
+        throw new Error('Cant start invalid system type')
+      exports.start(program.key,program.type,done)
+    },
+    exports.stop
+  )
 }
