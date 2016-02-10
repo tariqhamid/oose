@@ -111,26 +111,34 @@ var runHeartbeat = function(systemKey){
   // 5) expire down votes from this peer
   var startTime = +(new Date())
   var peerCount = 0
+  debug('Getting peer list for heartbeat ping')
   prismBalance.peerList()
     .then(function(result){
       peerCount = result.length
+      debug('Found peers',result.length)
       return result
     })
     .map(function(peer){
       //setup the ping handler
-      peer.request = api[peer.type](peer)
+      debug('Setting up to ping peer',peer)
+      peer.request = 'prism' === peer.type ? api.prism(peer) : api.store(peer)
       //make the ping request
       return peer.request.postAsync(peer.request.url('/ping') + '')
         .spread(function(res,body){
+          debug('Ping response',peer,body)
           if(body && body.pong && 'pong' === body.pong){
             //success, so do nothing i think or check if its down
             //and file an up vote
+            debug('Cleared vote log',peer.name)
             voteLog[peer.name] = 0
           } else {
+            debug('Adding to vote log',peer.name)
             voteLog[peer.name] = (voteLog[peer.name] !== undefined) ?
               voteLog[peer.name] + 1 : 1
-            if(voteLog[peer.name] > config.heartbeat.retries)
+            if(voteLog[peer.name] > config.heartbeat.retries){
+              debug('Vote log high water reached, down voting',peer.name)
               return downVote(peer,systemKey,peerCount)
+            }
           }
         })
         .catch(function(err){
@@ -146,6 +154,7 @@ var runHeartbeat = function(systemKey){
       var delay = duration +
         (random.integer(0,5) * 1000) +
         config.heartbeat.frequency
+      debug('Setting next heart beat run',duration,delay)
       heartbeatTimeout = setTimeout(function(){
         runHeartbeat()
       },delay)
