@@ -18,6 +18,7 @@ var prunePurchases = function(done){
     done(new Error('Root folder doesnt exist'))
 
   var purchaseFolder = path.resolve(root + '/purchased')
+  var pruneFolders = []
 
   if(!fs.existsSync(purchaseFolder))
     done(new Error('Purchase folder doesnt exist'))
@@ -55,7 +56,11 @@ var prunePurchases = function(done){
     done(err)
   })
   dirstream.on('data',function(entry){
-    debug('got entry',entry)
+    if(entry.stat.isDirectory()){
+      pruneFolders.push(entry)
+      return
+    }
+    debug('got entry',entry.fullPath)
     var token = entry.path.replace(/[\/\\]*/,'')
     debug(token,'got token')
     //okay so we get the purchase and if it does not exist we just remove
@@ -123,6 +128,10 @@ var prunePurchases = function(done){
       })
   })
   dirstream.on('end',function(){
+    //prune folders
+    pruneFolders.forEach(function(folder){
+      fs.unlinkSync(folder.fullPath)
+    })
     done(null,counter)
   })
 }
