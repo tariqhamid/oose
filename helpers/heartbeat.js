@@ -319,7 +319,7 @@ exports.start = function(systemKey,systemType,done){
   if(!systemType)
     throw new Error('System type has not been set, heartbeat not started')
   heartbeatTimeout = setTimeout(function(){
-    runHeartbeat(systemKey)
+    runHeartbeat(systemKey,systemType)
   },1000)
   runVotePrune(systemKey,systemType)
   markMeUp(systemKey,systemType,done)
