@@ -297,10 +297,15 @@ var runVotePrune = function(systemKey,systemType){
       debug('filtering vote',vote.id,validateVote(vote))
       return validateVote(vote)
     })
-    .map(function(vote){
-      debug('Pruning vote',vote._id)
-      return cradle.db.removeAsync(vote._id,vote._rev)
-    })
+    .map(
+      function(vote){
+        debug('Pruning vote',vote._id)
+        return cradle.db.removeAsync(vote._id,vote._rev)
+      },
+      function(err){
+        if(!err.headers || 404 !== err.headers.status) throw err
+      }
+    )
     .catch(function(err){
       console.log('vote prune error: ',err)
     })
