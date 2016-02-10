@@ -4,7 +4,7 @@ var debug = require('debug')('oose:store:purchase')
 var fs = require('graceful-fs')
 var infant = require('infant')
 var path = require('path')
-var readdirp = require('readdirp')
+var readdirp = require('readdirp-walk')
 
 var config = require('../config')
 var cradle = require('../helpers/couchdb')
@@ -126,7 +126,7 @@ var prunePurchases = function(done){
         dirstream.resume()
       })
   })
-  dirstream.on('close',function(){
+  dirstream.on('end',function(){
     done(null,counter)
   })
 }
