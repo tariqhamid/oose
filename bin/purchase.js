@@ -9,8 +9,6 @@ var readdirp = require('readdirp')
 var config = require('../config')
 var cradle = require('../helpers/couchdb')
 
-var interval
-
 //make some promises
 P.promisifyAll(fs)
 
@@ -138,8 +136,9 @@ var prunePurchasesAsync = P.promisify(prunePurchases)
 
 /**
  * Run the interval
+ * @param {function} done
  */
-var runInterval = function(){
+var runInterval = function(done){
   console.log('Starting to prune purchases')
   prunePurchasesAsync()
     .then(function(counter){
@@ -158,6 +157,7 @@ var runInterval = function(){
       console.log(err.stack)
       console.log('Purchase prune error: ' + err.message)
     })
+    .finally(done)
 }
 
 if(require.main === module){
@@ -165,18 +165,9 @@ if(require.main === module){
     'oose:' + config.store.name + ':purchase',
     function(done){
       //setup the interval for collection from master
-      debug('set purchase interval')
-      interval = setInterval(runInterval,config.store.purchaseFrequency)
-      //do initial scan at startup
-      debug('doing purchase prune')
-      runInterval()
-      //return now as we do not want to wait on the first scan it can be
-      //lengthy
-      process.nextTick(done)
+      runInterval(done)
     },
     function(done){
-      clearInterval(interval)
-      debug('cleared purchase interval')
       process.nextTick(done)
     }
   )

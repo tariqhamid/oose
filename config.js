@@ -128,8 +128,7 @@ config.$load({
       count: 1,
       maxConnections: 10000
     },
-    inventoryConcurrency: 64,
-    purchaseFrequency: 300000 //5 minutes
+    inventoryConcurrency: 64
   }
 })
 
