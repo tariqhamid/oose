@@ -238,6 +238,15 @@ var markMeUp = function(systemKey,systemType){
  * @param {function} done
  */
 exports.start = function(systemKey,systemType,done){
+  if('function' === typeof systemKey){
+    done = systemKey
+    systemKey = config.hearbeat.systemKey
+    systemType = config.heartbeat.systemType
+  }
+  if(!systemKey)
+    throw new Error('System key has not been set, heartbeat not started')
+  if(!systemType)
+    throw new Error('System type has not been set, heartbeat not started')
   heartbeatTimeout = setTimeout(function(){
     runHeartbeat(systemKey)
   },1000)

@@ -28,6 +28,8 @@ config.$load({
   //heartbeat
   heartbeat: {
     enabled: false,
+    systemKey: null,
+    systemType: null,
     retries: 3,
     frequency: 10000, //ms static frequency; duration and shift added to this
     votePruneFrequency: 60000 //ms

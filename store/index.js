@@ -9,6 +9,7 @@ var config = require('../config')
 var cradle = require('../helpers/couchdb')
 
 var cluster
+var heartbeat
 var storeKey = cradle.schema.store(config.store.prism,config.store.name)
 
 //make some promises
@@ -28,6 +29,7 @@ if(require.main === module){
           maxConnections: config.store.workers.maxConnections
         }
       )
+      heartbeat = infant.parent('../helpers/heartbeat')
       //check if our needed folders exist
       P.try(function(){
         var promises = []
@@ -41,7 +43,11 @@ if(require.main === module){
         return P.all(promises)
       })
         .then(function(){
-          return cluster.startAsync()
+          //start cluster and heartbeat system
+          return P.all([
+            cluster.startAsync(),
+            heartbeat.startAsync()
+          ])
         })
         .then(function(){
           //now register ourselves or mark ourselves available
@@ -74,11 +80,6 @@ if(require.main === module){
           }
         )
         .then(function(){
-          //start the heartbeat service
-          if(config.heartbeat.enabled){
-            require('../helpers/heartbeat')
-              .getInstance('store',config.store.name,config.store.port)
-          }
           console.log('Store startup complete')
           done()
         })
@@ -98,7 +99,10 @@ if(require.main === module){
         })
         .then(function(){
           if(!cluster) return
-          return cluster.stopAsync()
+          return P.all([
+            cluster.stopAsync(),
+            heartbeat.stopAsync()
+          ])
         })
         .then(function(){
           console.log('Store shutdown complete')
