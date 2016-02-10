@@ -38,7 +38,7 @@ exports.peerList = function(){
         endkey: storeKey + '\uffff'
       })
         .then(function(rows){
-          debug('Peer list store result',storekey,rows)
+          debug('Peer list store result',storeKey,rows)
           var ids = []
           for(var i=0; i < rows.length;i++) ids.push(rows[i].id)
           return cradle.db.getAsync(ids)
