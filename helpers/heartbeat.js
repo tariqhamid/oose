@@ -342,7 +342,7 @@ var markMeUp = function(systemKey,systemType){
 exports.start = function(systemKey,systemType,done){
   if('function' === typeof systemKey){
     done = systemKey
-    systemKey = config.hearbeat.systemKey
+    systemKey = config.heartbeat.systemKey
     systemType = config.heartbeat.systemType
   }
   if(!systemKey)
