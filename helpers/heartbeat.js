@@ -146,6 +146,7 @@ var runHeartbeat = function(systemKey,systemType){
    * @return {P}
    */
   var restorePeer = function(peer){
+    console.log('Restoring peer',peer)
     return cradle.db.getAsync(peer._id)
       .then(function(result){
         result.available = true
