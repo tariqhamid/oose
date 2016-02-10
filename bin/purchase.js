@@ -112,7 +112,7 @@ var prunePurchases = function(done){
           if(!err.headers || 404 !== err.headers.status) throw err
           //regular 404s we just drop our symlink
           debug(token,'purchase doesnt exist, removing ours')
-          return fs.unlinkAsync(entry.path)
+          return fs.unlinkAsync(entry.fullPath)
             .then(function(){
               counter.cleaned++
             })
