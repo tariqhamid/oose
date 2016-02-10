@@ -44,11 +44,13 @@ var getPeerKey = function(peer){
 /**
  * Down vote a peer
  * @param {object} peer
+ * @param {string} reason
  * @param {string} systemKey
+ * @param {string} systemType
  * @param {integer} peerCount
  * @return {P}
  */
-var downVote = function(peer,systemKey,peerCount){
+var downVote = function(peer,reason,systemKey,systemType,peerCount){
   //setup keys
   var key = getPeerKey(peer)
   var downKey = cradle.schema.downVote(peer.name)
@@ -59,6 +61,8 @@ var downVote = function(peer,systemKey,peerCount){
     return cradle.db.saveAsync(myDownKey,{
       peer: peer,
       systemKey: systemKey,
+      systemType: systemType,
+      reason: reason,
       timestamp: +(new Date())
     })
   }
@@ -105,8 +109,9 @@ var downVote = function(peer,systemKey,peerCount){
 /**
  * Run the heartbeat from this peer
  * @param {string} systemKey
+ * @param {string} systemType
  */
-var runHeartbeat = function(systemKey){
+var runHeartbeat = function(systemKey,systemType){
   //steps to a successful heartbeat run
   // 1) collect list of peers to ping (including ourselves)
   // 2) ping all of those peers
@@ -120,16 +125,17 @@ var runHeartbeat = function(systemKey){
 
   /**
    * Help handle ping failure
+   * @param {string} reason
    * @param {object} peer
    * @return {P}
    */
-  var handlePingFailure = function(peer){
+  var handlePingFailure = function(reason,peer){
     debug('Adding to vote log',peer.name)
     voteLog[peer.name] = (voteLog[peer.name] !== undefined) ?
     voteLog[peer.name] + 1 : 1
     if(voteLog[peer.name] > config.heartbeat.retries){
       debug('Vote log high water reached, down voting',peer.name)
-      return downVote(peer,systemKey,peerCount)
+      return downVote(peer,reason,systemKey,systemType,peerCount)
     } else {
       return true
     }
@@ -157,12 +163,12 @@ var runHeartbeat = function(systemKey){
             debug('Cleared vote log',peer.name)
             voteLog[peer.name] = 0
           } else {
-            handlePingFailure(peer)
+            handlePingFailure('Got a bad response',peer)
           }
         })
         .catch(function(err){
           console.log('Ping Error ' + peer.name,err.message)
-          handlePingFailure(peer)
+          handlePingFailure(err.message,peer)
         })
     })
     .catch(function(err){
@@ -175,7 +181,7 @@ var runHeartbeat = function(systemKey){
         config.heartbeat.frequency
       debug('Setting next heart beat run',duration,delay)
       heartbeatTimeout = setTimeout(function(){
-        runHeartbeat()
+        runHeartbeat(systemKey,systemType)
       },delay)
     })
 }
@@ -202,6 +208,7 @@ var runVotePrune = function(systemKey){
       )
     })
     .map(function(vote){
+      debug('Pruning vote',vote._id)
       return cradle.db.removeAsync(vote._id,vote._rev)
     })
     .catch(function(err){
