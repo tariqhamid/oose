@@ -358,9 +358,12 @@ exports.start = function(systemKey,systemType,done){
  * @param {function} done
  */
 exports.stop = function(done){
+  console.log('Stopping heartbeat')
   clearTimeout(heartbeatTimeout)
   clearTimeout(pruneTimeout)
   process.nextTick(done)
+  console.log('Heartbeat stop')
+  process.exit()
 }
 
 if(require.main === module){
