@@ -34,6 +34,7 @@ var prunePurchases = function(done){
     valid: 0,
     expired: 0,
     deleted: 0,
+    folder: 0,
     skipped: 0,
     cleaned: 0
   }
@@ -129,10 +130,21 @@ var prunePurchases = function(done){
   })
   dirstream.on('end',function(){
     //prune folders
+    var promises = []
     pruneFolders.forEach(function(folder){
-      fs.rmdirSync(folder.fullPath)
+      promises.push(
+        fs.rmdirAsync(folder.fullPath)
+          .then(function(){
+            counter.folder++
+          })
+          .catch(function(){
+            counter.skipped++
+          })
+      )
     })
-    done(null,counter)
+    P.all(promises).then(function(){
+      done(null,counter)
+    })
   })
 }
 
