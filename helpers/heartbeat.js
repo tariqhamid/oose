@@ -1,4 +1,5 @@
 'use strict';
+var program = require('commander')
 var debug = require('debug')('oose:hb')
 var infant = require('infant')
 var random = require('random-js')()
@@ -27,6 +28,29 @@ var config = require('../config')
 var heartbeatTimeout = null
 var pruneTimeout = null
 var voteLog = {}
+
+//setup our identity
+var setupProgram = function(){
+  program.version(config.version)
+    .description('OOSE Heartbeat')
+    .option('-k --key <key>','System key for heartbeat eg: om101 or store1')
+    .option('-t --type <type>','System type either prism or store')
+    .parse(process.argv)
+  //try to look these up if none passed
+  if(!program.key && !program.type){
+    program.key = config.heartbeat.systemKey
+    program.type = config.heartbeat.systemType
+    if(!program.key && config.prism.enabled){
+      program.key = config.prism.name
+      program.type = 'prism'
+    }
+    if(!program.key && config.store.enabled){
+      program.key = config.store.name
+      program.type = 'prism'
+    }
+  }
+}
+setupProgram()
 
 
 /**
@@ -369,27 +393,8 @@ exports.stop = function(done){
 
 if(require.main === module){
   infant.child(
-    'oose:' + config.heartbeat.systemKey + ':heartbeat',
+    'oose:' + program.key + ':heartbeat',
     function(done){
-      var program = require('commander')
-      program.version(config.version)
-        .description('OOSE Heartbeat')
-        .option('-k --key <key>','System key for heartbeat eg: om101 or store1')
-        .option('-t --type <type>','System type either prism or store')
-        .parse(process.argv)
-      //try to look these up if none passed
-      if(!program.key && !program.type){
-        program.key = config.heartbeat.systemKey
-        program.type = config.heartbeat.systemType
-        if(!program.key && config.prism.enabled){
-          program.key = config.prism.name
-          program.type = 'prism'
-        }
-        if(!program.key && config.store.enabled){
-          program.key = config.store.name
-          program.type = 'prism'
-        }
-      }
       //do a sanity check we need both
       if(!program.key)
         throw new Error('Cant start invalid system key')
