@@ -57,14 +57,12 @@ var prunePurchases = function(done){
   })
   dirstream.on('error',function(err){
     console.log('readdirp error',err)
-    done(err)
   })
   var entryList = []
   dirstream.on('data',function(entry){
     if(entry.stat.isDirectory()){
       pruneFolders.push(entry.fullPath)
-    }
-    else{
+    } else {
       entryList.push(entry)
     }
   })
@@ -72,7 +70,7 @@ var prunePurchases = function(done){
     progress = new ProgressBar(
       '  pruning [:bar] :current/:total :percent :rate/pps :etas',
       {
-        total: entryList.count,
+        total: entryList.length,
         width: 50,
         complete: '=',
         incomplete: '-'
@@ -157,7 +155,7 @@ var prunePurchases = function(done){
         progress = new ProgressBar(
           '  folders [:bar] :current/:total :percent :rate/pps :etas',
           {
-            total: pruneFolders.count,
+            total: pruneFolders.length,
             width: 50,
             complete: '=',
             incomplete: '-'
