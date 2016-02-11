@@ -59,7 +59,7 @@ var prunePurchases = function(done){
   })
   dirstream.on('data',function(entry){
     if(entry.stat.isDirectory()){
-      pruneFolders.push(entry)
+      pruneFolders.push(entry.fullPath)
       return
     }
     debug('got entry',entry.fullPath)
@@ -139,7 +139,7 @@ var prunePurchases = function(done){
     var promises = []
     pruneFolders.forEach(function(folder){
       promises.push(
-        fs.rmdirAsync(folder.fullPath)
+        fs.rmdirAsync(folder)
           .then(function(){
             counter.folder++
           })
