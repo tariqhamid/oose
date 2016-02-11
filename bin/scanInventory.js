@@ -69,7 +69,7 @@ var runInterval = function(done){
 
 if(require.main === module){
   infant.child(
-    'oose:' + config.store.name + ':inventory',
+    'oose:' + config.store.name + ':scanInventory',
     function(done){
       //do immediate scan
       runInterval(done)
