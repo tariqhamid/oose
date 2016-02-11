@@ -52,8 +52,9 @@ var verifyInventoryAsync = function(){
         }
       )
       return P.try(function(){return result})
-        .map(function(record){
+        .map(function(result){
           progress.tick()
+          var record = result.value
           var filePath = path.posix.resolve(contentFolder,record.relativePath)
           //check if file path exists
           if(fs.existsSync(filePath)){
