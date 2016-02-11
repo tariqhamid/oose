@@ -9,8 +9,7 @@ var config = require('../config')
 var cradle = require('../helpers/couchdb')
 
 var cluster
-var inventory
-var purchase
+var heartbeat
 var storeKey = cradle.schema.store(config.store.prism,config.store.name)
 
 //make some promises
@@ -30,8 +29,7 @@ if(require.main === module){
           maxConnections: config.store.workers.maxConnections
         }
       )
-      inventory = infant.parent('./inventory')
-      purchase = infant.parent('./purchase')
+      heartbeat = infant.parent('../helpers/heartbeat')
       //check if our needed folders exist
       P.try(function(){
         var promises = []
@@ -45,11 +43,10 @@ if(require.main === module){
         return P.all(promises)
       })
         .then(function(){
-          //fire everything up
+          //start cluster and heartbeat system
           return P.all([
             cluster.startAsync(),
-            inventory.startAsync(),
-            purchase.startAsync()
+            heartbeat.startAsync()
           ])
         })
         .then(function(){
@@ -69,7 +66,7 @@ if(require.main === module){
           },
           //if we dont exist lets make sure thats why and create ourselves
           function(err){
-            if(404 !== err.headers.status) throw err
+            if(!err.headers || 404 !== err.headers.status) throw err
             return cradle.db.saveAsync(storeKey,{
               prism: config.store.prism,
               name: config.store.name,
@@ -83,11 +80,6 @@ if(require.main === module){
           }
         )
         .then(function(){
-          //start the heartbeat service
-          if(config.heartbeat.enabled){
-            require('../helpers/heartbeat')
-              .getInstance('store',config.store.name,config.store.port)
-          }
           console.log('Store startup complete')
           done()
         })
@@ -107,7 +99,10 @@ if(require.main === module){
         })
         .then(function(){
           if(!cluster) return
-          return cluster.stopAsync()
+          return P.all([
+            cluster.stopAsync(),
+            heartbeat.stopAsync()
+          ])
         })
         .then(function(){
           console.log('Store shutdown complete')

@@ -27,8 +27,13 @@ config.$load({
   },
   //heartbeat
   heartbeat: {
-    enabled: false,
-    frequency: 10000 //10 seconds
+    systemKey: null,
+    systemType: null,
+    retries: 3,
+    frequency: 2500, //ms static frequency; duration and shift added to this
+    votePruneFrequency: 5000, //ms
+    voteLife: 10000, //ms vote hold down time (no pings during this window)
+    pingResponseTimeout: 1500 //ms
   },
   //databases
   redis: {
@@ -108,7 +113,9 @@ config.$load({
       'ts',
       'webm',
       'wmv'
-    ]
+    ],
+    existsCacheLife: 30, //seconds
+    purchaseCacheLife: 30 //seconds
   },
   //storage system
   store: {
@@ -124,7 +131,7 @@ config.$load({
       maxConnections: 10000
     },
     inventoryConcurrency: 64,
-    purchaseFrequency: 300000 //5 minutes
+    inventoryThrottle: 100 //ms between requests
   }
 })
 

@@ -2,8 +2,61 @@
 var P = require('bluebird')
 var debug = require('debug')('oose:prismBalance')
 
+var config = require('../config')
 var cradle = require('../helpers/couchdb')
 var redis = require('../helpers/redis')
+
+
+/**
+ * Get list of prisms and cache the result
+ * @return {P}
+ */
+exports.peerList = function(){
+  redis.incr(redis.schema.counter('prism','prismBalance:peerList'))
+  var prismKey = cradle.schema.prism()
+  var storeKey = cradle.schema.store()
+  debug('Querying for peer list')
+  return P.all([
+    (function(){
+      return cradle.db.allAsync({
+          startkey: prismKey,
+          endkey: prismKey + '\uffff'
+        })
+        .then(function(rows){
+          var ids = []
+          for(var i=0; i < rows.length;i++) ids.push(rows[i].id)
+          return cradle.db.getAsync(ids)
+        })
+        .map(function(row){
+          row.doc.type = 'prism'
+          return row.doc
+        })
+    }()),
+    (function(){
+      return cradle.db.allAsync({
+        startkey: storeKey,
+        endkey: storeKey + '\uffff'
+      })
+        .then(function(rows){
+          var ids = []
+          for(var i=0; i < rows.length;i++) ids.push(rows[i].id)
+          return cradle.db.getAsync(ids)
+        })
+        .map(function(row){
+          row.doc.type = 'store'
+          return row.doc
+        })
+    }())
+  ])
+    .then(function(result){
+      debug('Peer list result',
+        'prism',result[0].length,'store',result[1].length)
+      var peers = []
+      peers = peers.concat(result[0] || [])
+      peers = peers.concat(result[1] || [])
+      return peers
+    })
+}
 
 
 /**
@@ -22,7 +75,7 @@ exports.prismList = function(){
     .map(function(row){
       return row.doc
     }).filter(function(doc){
-      return doc.available && doc.active
+      return doc.name && doc.available && doc.active
     })
 }
 
@@ -112,7 +165,9 @@ exports.winner = function(token,prismList,skip,allowFull){
 exports.contentExists = function(hash){
   redis.incr(redis.schema.counter('prism','prismBalance:contentExists'))
   var existsKey = cradle.schema.inventory(hash)
+  var existsRecord = {}
   var count = 0
+  var cacheValid = false
   debug(existsKey,'contentExists received')
   var deadRecord = {
     hash: hash,
@@ -123,56 +178,86 @@ exports.contentExists = function(hash){
     count: 0,
     map: []
   }
-  return cradle.db.allAsync({startkey: existsKey, endkey: existsKey + '\uffff'})
-    .map(
-      function(row){
-        debug(existsKey,'got record',row)
-        count++
-        return cradle.db.getAsync(row.key)
-      },
-      function(err){
-        if(404 !== err.headers.status) throw err
-        count = 0
+  return redis.getAsync(existsKey)
+    .then(function(result){
+      if(result){
+        try {
+          result = JSON.parse(result)
+          cacheValid = true
+        } catch(e){
+          cacheValid = false
+        }
       }
-    )
-    .then(function(inventoryList){
-      //debug(existsKey,'records',result)
-      if(!count){
-        return deadRecord
+      if(cacheValid){
+        return result
       } else {
-        return P.try(function(){
-          return inventoryList
+        return cradle.db.allAsync({
+          startkey: existsKey,
+          endkey: existsKey + '\uffff'
         })
-          .map(function(row){
-            debug(existsKey,'got inventory list record',row)
-            return P.all([
-              cradle.db.getAsync(cradle.schema.prism(row.prism)),
-              cradle.db.getAsync(cradle.schema.store(row.prism,row.store))
-            ])
-          })
-          .filter(function(row){
-            return !!row[0].available && !!row[1].available
+          .map(
+            function(row){
+              debug(existsKey,'got record',row)
+              count++
+              return cradle.db.getAsync(row.key)
+            },
+            function(err){
+              if(404 !== err.headers.status) throw err
+              count = 0
+            }
+          )
+          .then(function(inventoryList){
+            //debug(existsKey,'records',result)
+            if(!count){
+              return deadRecord
+            } else {
+              return P.try(function(){
+                  return inventoryList
+                })
+                .map(function(row){
+                  debug(existsKey,'got inventory list record',row)
+                  return P.all([
+                    cradle.db.getAsync(cradle.schema.prism(row.prism)),
+                    cradle.db.getAsync(cradle.schema.store(row.prism,row.store))
+                  ])
+                })
+                .filter(function(row){
+                  return !!row[0].available && !!row[1].available
+                })
+                .then(function(result){
+                  var map = result.map(function(val){
+                    return val[0].name + ':' + val[1].name
+                  })
+                  var record = {
+                    hash: inventoryList[0].hash,
+                    mimeType: inventoryList[0].mimeType,
+                    mimeExtension: inventoryList[0].mimeExtension,
+                    relativePath: inventoryList[0].relativePath,
+                    count: map.length,
+                    exists: true,
+                    map: map
+                  }
+                  debug(existsKey,'inventory record',record)
+                  return record
+                })
+            }
           })
           .then(function(result){
-            var map = result.map(function(val){
-              return val[0].name + ':' + val[1].name
-            })
-            var record = {
-              hash: inventoryList[0].hash,
-              mimeType: inventoryList[0].mimeType,
-              mimeExtension: inventoryList[0].mimeExtension,
-              relativePath: inventoryList[0].relativePath,
-              count: map.length,
-              exists: true,
-              map: map
-            }
-            debug(existsKey,'inventory record',record)
-            return record
+            existsRecord = result
+            return redis.setAsync(existsKey,JSON.stringify(existsRecord))
+              .then(function(){
+                return redis.expireAsync(
+                  existsKey,+config.prism.existsCacheLife || 30
+                )
+              })
+          })
+          .then(function(){
+            return existsRecord
+          })
+          .catch(function(err){
+            console.log('EXISTS ERROR: ' + err.message,hash)
+            return deadRecord
           })
       }
-    })
-    .catch(function(err){
-      console.log('EXISTS ERROR: ' + err.message,hash)
-      return deadRecord
     })
 }

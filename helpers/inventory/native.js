@@ -1,11 +1,12 @@
 'use strict';
+var P = require('bluebird')
 var debug = require('debug')('oose:store:inventory')
 var fs = require('graceful-fs')
 var mime = require('mime')
 var path = require('path')
 var readdirp = require('readdirp')
 
-var cradle = require('../../helpers/couchdb')
+var cradle = require('../couchdb')
 
 var config = require('../../config')
 
@@ -38,6 +39,20 @@ module.exports = function(done){
     updated: 0,
     bytes: 0,
     repaired: 0
+  }
+
+
+  /**
+   * Sleep with a promise
+   * @param {number} sleepTime
+   * @return {P}
+   */
+  var miniSleep = function(sleepTime){
+    return new P(function(resolve){
+      setTimeout(function(){
+        resolve()
+      },+sleepTime)
+    })
   }
   debug('starting to scan',contentFolder)
   var stream = readdirp({root: contentFolder, fileFilter: '*.*'})
@@ -94,6 +109,8 @@ module.exports = function(done){
         )
         .then(function(){
           debug(hash,'inventory updated')
+          //throttle the inventory
+          return miniSleep(config.store.inventoryThrottle)
         })
         .catch(function(err){
           console.log(err.stack)

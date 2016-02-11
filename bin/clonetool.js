@@ -11,8 +11,9 @@ var ProgressBar = require('progress')
 var promisePipe = require('promisepipe')
 var random = require('random-js')()
 
-var NetworkError = oose.NetworkError
 var UserError = oose.UserError
+
+var prismBalance = require('../helpers/prismBalance')
 
 var config = require('../config')
 
@@ -59,58 +60,26 @@ var analyzeFiles = function(progress,fileList){
   var blockSize = program.blockSize || 100
   var blockCount = Math.ceil(fileCount / blockSize)
   var analyzeBlock = function(fileBlock){
-    return prism.postAsync({
-      url: prism.url('/content/exists'),
-      json: {
-        hash: fileBlock,
-        tryCount: existsTryCount,
-        timeout: existsTimeout
-      }
-    })
-      .spread(prism.validateResponse())
-      .spread(function(res,body){
-        var keys = Object.keys(body)
-        var compileResult = function(hash,count){
-          var add = 0
-          var remove = 0
-          if(
-            (null !== above && count > above) ||
-            (null !== below && count < below) ||
-            (null !== at && count === at)
-          ){
-            if(desired > count){
-              add = desired - count
-            } else if(desired < count) {
-              remove = count - desired
-            }
+    return prismBalance.contentExists(fileBlock)
+      .map(function(record){
+        //do clone math now
+        record.add = 0
+        record.remove = 0
+        if(
+          (null !== above && record.count > above) ||
+          (null !== below && record.count < below) ||
+          (null !== at && record.count === at)
+        )
+        {
+          if(desired > record.count){
+            record.add = desired - record.count
           }
-          return {
-            hash: hash,
-            ext: body[hash].ext || '',
-            exists: body[hash].exists,
-            count: body[hash].count,
-            add: add,
-            remove: remove,
-            map: body[hash].map
+          else if(desired < record.count){
+            record.remove = record.count - desired
           }
         }
-        for(var i = 0; i < keys.length; i++){
-          files[keys[i]] = compileResult(keys[i],+body[keys[i]].count)
-        }
-        return body
-      })
-      .catch(prism.handleNetworkError)
-      .catch(UserError,NetworkError,function(){
-        files.forEach(function(hash){
-          files[hash] = {
-            hash: hash,
-            exists: false,
-            count: 0,
-            add: 0,
-            remove: 0,
-            map: {}
-          }
-        })
+        //compile our record
+        return record
       })
       .finally(function(){
         progress.tick(fileBlock.length)

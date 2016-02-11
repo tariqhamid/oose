@@ -2,10 +2,11 @@
 var P = require('bluebird')
 var infant = require('infant')
 
-var cluster
 var config = require('../config')
 var cradle = require('../helpers/couchdb')
 
+var cluster
+var heartbeat
 var prismKey = cradle.schema.prism(config.prism.name)
 
 //make some promises
@@ -24,7 +25,11 @@ if(require.main === module){
           maxConnections: config.prism.workers.maxConnections
         }
       )
-      cluster.startAsync()
+      heartbeat = infant.parent('../helpers/heartbeat')
+      P.all([
+        cluster.startAsync(),
+        heartbeat.startAsync()
+      ])
         .then(function(){
           //now register ourselves or mark ourselves available
           return cradle.db.getAsync(prismKey)
@@ -54,11 +59,6 @@ if(require.main === module){
           }
         )
         .then(function(){
-          //start the Heartbeat service
-          if(config.heartbeat.enabled){
-            require('../helpers/heartbeat')
-              .getInstance('prism',config.prism.name,config.prism.port)
-          }
           console.log('Prism startup complete')
           done()
         })
@@ -78,7 +78,10 @@ if(require.main === module){
         })
         .then(function(){
           if(!cluster) return
-          return cluster.stopAsync()
+          return P.all([
+            cluster.stopAsync(),
+            heartbeat.stopAsync()
+          ])
         })
         .then(function(){
           console.log('Prism shutdown complete')
