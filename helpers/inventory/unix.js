@@ -46,6 +46,20 @@ module.exports = function(done){
     bytesReceived: 0,
     repaired: 0
   }
+
+
+  /**
+   * Sleep with a promise
+   * @param {number} sleepTime
+   * @return {P}
+   */
+  var miniSleep = function(sleepTime){
+    return new P(function(resolve){
+      setTimeout(function(){
+        resolve()
+      },+sleepTime)
+    })
+  }
   debug('starting to scan',contentFolder)
   var buffer = ''
   var cmd = cp.spawn(
@@ -140,6 +154,8 @@ module.exports = function(done){
           )
           .then(function(){
             debug(hash,'inventory updated')
+            //sleep the inventory scan
+            return miniSleep(config.store.inventoryThrottle)
           })
           .catch(function(err){
             console.log(err.stack)
