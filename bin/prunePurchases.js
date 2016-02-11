@@ -14,6 +14,7 @@ var cradle = require('../helpers/couchdb')
 P.promisifyAll(fs)
 
 var prunePurchases = function(done){
+  process.exit()
   var root = path.resolve(config.root)
   if(!fs.existsSync(root))
     done(new Error('Root folder doesnt exist'))
