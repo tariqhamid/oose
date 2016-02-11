@@ -131,7 +131,8 @@ config.$load({
       maxConnections: 10000
     },
     inventoryConcurrency: 64,
-    inventoryThrottle: 100 //ms between requests
+    inventoryThrottle: 100, //ms between requests
+    purchasePruneConcurrency: 64
   }
 })
 

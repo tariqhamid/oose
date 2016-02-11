@@ -47,7 +47,8 @@ var prunePurchases = function(done){
       '!favicon*',
       '!index*',
       '!oose_*'
-    ]
+    ],
+    concurrency: (+config.store.purchasePruneConcurrency || 32)
   })
   dirstream.on('warn',function(err){
     console.log('readdirp warning',err)
@@ -79,6 +80,7 @@ var prunePurchases = function(done){
           if(!doc.expired && (expirationDate > now)){
             counter.valid++
             debug(token,'valid')
+            console.log('.')
           }
           //this purchase has expired but has yet to be marked expired
           //so we expire it and calculate the final expiration date
@@ -88,6 +90,7 @@ var prunePurchases = function(done){
             doc.expired = true
             doc.afterlifeExpirationDate =
               (+new Date() + config.purchase.afterlife)
+            console.log('e')
             return cradle.db.saveAsync(cradle.schema.purchase(token),doc)
           }
           //now we have a doc that is expired when we encounter these
@@ -100,6 +103,7 @@ var prunePurchases = function(done){
             if(afterlifeExpirationDate < now){
               debug(token,'afterlife expired, deleting')
               counter.deleted++
+              console.log('x')
               return cradle.db.removeAsync(purchaseKey,doc._rev)
             }
           }
@@ -117,6 +121,7 @@ var prunePurchases = function(done){
           debug(token,'purchase doesnt exist, removing ours')
           return fs.unlinkAsync(entry.fullPath)
             .then(function(){
+              console.log('c')
               counter.cleaned++
             })
         }
