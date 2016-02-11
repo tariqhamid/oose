@@ -89,7 +89,7 @@ var prunePurchases = function(done){
         //interval then we delete it, this will cause the rest of the cluster
         //to prune it
         var purchaseKey = cradle.schema.purchase(token)
-        cradle.db.getAsync(purchaseKey)
+        return cradle.db.getAsync(purchaseKey)
           .then(
             function(doc){
               var expirationDate = +new Date(doc.expirationDate)
