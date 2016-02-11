@@ -132,7 +132,7 @@ config.$load({
     },
     inventoryConcurrency: 64,
     inventoryThrottle: 100, //ms between requests
-    purchasePruneConcurrency: 64
+    purchasePruneConcurrency: 512
   }
 })
 
