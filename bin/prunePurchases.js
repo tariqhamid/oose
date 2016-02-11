@@ -4,6 +4,7 @@ var debug = require('debug')('oose:store:purchase')
 var fs = require('graceful-fs')
 var infant = require('infant')
 var path = require('path')
+var ProgressBar = require('progress')
 var readdirp = require('readdirp-walk')
 
 var config = require('../config')
@@ -38,6 +39,7 @@ var prunePurchases = function(done){
     skipped: 0,
     cleaned: 0
   }
+  var progress
   debug('Starting to prune purchases')
   debug('Purchase folder: ' + purchaseFolder)
   var dirstream = readdirp({
@@ -57,100 +59,131 @@ var prunePurchases = function(done){
     console.log('readdirp error',err)
     done(err)
   })
+  var entryList = []
   dirstream.on('data',function(entry){
     if(entry.stat.isDirectory()){
       pruneFolders.push(entry.fullPath)
-      return
     }
-    debug('got entry',entry.fullPath)
-    var token = entry.path.replace(/[\/\\]*/,'')
-    debug(token,'got token')
-    //okay so we get the purchase and if it does not exist we just remove
-    //the entry, if it does exist we check the date and if the date is out
-    //we set it to expired, if it is already expired for the afterlife
-    //interval then we delete it, this will cause the rest of the cluster
-    //to prune it
-    var purchaseKey = cradle.schema.purchase(token)
-    cradle.db.getAsync(purchaseKey)
-      .then(
-        function(doc){
-          var expirationDate = +new Date(doc.expirationDate)
-          var now = +new Date()
-          //this is a valid purchase leave it alone
-          if(!doc.expired && (expirationDate > now)){
-            counter.valid++
-            debug(token,'valid')
-            process.stdout.write('.')
-          }
-          //this purchase has expired but has yet to be marked expired
-          //so we expire it and calculate the final expiration date
-          else if(!doc.expired && (expirationDate <= now)){
-            debug(token,'expired')
-            counter.expired++
-            doc.expired = true
-            doc.afterlifeExpirationDate =
-              (+new Date() + config.purchase.afterlife)
-            process.stdout.write('e')
-            return cradle.db.saveAsync(cradle.schema.purchase(token),doc)
-          }
-          //now we have a doc that is expired when we encounter these
-          //and the afterlifeExpiration has also passed, we go ahead and
-          //prune the purchase out of the database, once this happens on
-          //the next prune cycle the purchase link will finally be removed
-          else if(doc.expired){
-            var afterlifeExpirationDate =
-              +new Date(doc.afterlifeExpirationDate)
-            if(afterlifeExpirationDate < now){
-              debug(token,'afterlife expired, deleting')
-              counter.deleted++
-              process.stdout.write('x')
-              return cradle.db.removeAsync(purchaseKey,doc._rev)
-            }
-          }
-          //finally if nothing matches we throw an error
-          else {
-            var err = new Error('Unknown purchase rule hit ' + doc.toJSON())
-            err.doc = doc
-            throw err
-          }
-        },
-        function(err){
-          //throw errors we dont know about
-          if(!err.headers || 404 !== err.headers.status) throw err
-          //regular 404s we just drop our symlink
-          debug(token,'purchase doesnt exist, removing ours')
-          return fs.unlinkAsync(entry.fullPath)
-            .then(function(){
-              process.stdout.write('c')
-              counter.cleaned++
-            })
-        }
-      )
-      .catch(function(err){
-        counter.error++
-        process.stdout.write('!')
-        console.log(err.stack)
-        console.log(err)
-        console.log(token,'ERROR: ',err)
-      })
+    else{
+      entryList.push(entry)
+    }
   })
   dirstream.on('end',function(){
-    //prune folders
-    var promises = []
-    pruneFolders.forEach(function(folder){
-      promises.push(
-        fs.rmdirAsync(folder)
+    progress = new ProgressBar(
+      '  pruning [:bar] :current/:total :percent :rate/pps :etas',
+      {
+        total: entryList.count,
+        width: 50,
+        complete: '=',
+        incomplete: '-'
+      }
+    )
+    P.try(function(){
+      return entryList
+    })
+      .map(function(entry){
+        debug('got entry',entry.fullPath)
+        var token = entry.path.replace(/[\/\\]*/,'')
+        debug(token,'got token')
+        //okay so we get the purchase and if it does not exist we just remove
+        //the entry, if it does exist we check the date and if the date is out
+        //we set it to expired, if it is already expired for the afterlife
+        //interval then we delete it, this will cause the rest of the cluster
+        //to prune it
+        var purchaseKey = cradle.schema.purchase(token)
+        cradle.db.getAsync(purchaseKey)
+          .then(
+            function(doc){
+              var expirationDate = +new Date(doc.expirationDate)
+              var now = +new Date()
+              //this is a valid purchase leave it alone
+              if(!doc.expired && (expirationDate > now)){
+                counter.valid++
+                debug(token,'valid')
+              }
+              //this purchase has expired but has yet to be marked expired
+              //so we expire it and calculate the final expiration date
+              else if(!doc.expired && (expirationDate <= now)){
+                debug(token,'expired')
+                counter.expired++
+                doc.expired = true
+                doc.afterlifeExpirationDate =
+                  (+new Date() + config.purchase.afterlife)
+                return cradle.db.saveAsync(cradle.schema.purchase(token),doc)
+              }
+              //now we have a doc that is expired when we encounter these
+              //and the afterlifeExpiration has also passed, we go ahead and
+              //prune the purchase out of the database, once this happens on
+              //the next prune cycle the purchase link will finally be removed
+              else if(doc.expired){
+                var afterlifeExpirationDate =
+                  +new Date(doc.afterlifeExpirationDate)
+                if(afterlifeExpirationDate < now){
+                  debug(token,'afterlife expired, deleting')
+                  counter.deleted++
+                  return cradle.db.removeAsync(purchaseKey,doc._rev)
+                }
+              }
+              //finally if nothing matches we throw an error
+              else{
+                var err = new Error('Unknown purchase rule hit ' + doc.toJSON())
+                err.doc = doc
+                throw err
+              }
+            },
+            function(err){
+              //throw errors we dont know about
+              if(!err.headers || 404 !== err.headers.status) throw err
+              //regular 404s we just drop our symlink
+              debug(token,'purchase doesnt exist, removing ours')
+              return fs.unlinkAsync(entry.fullPath)
+                .then(function(){
+                  counter.cleaned++
+                })
+            }
+          )
+          .catch(function(err){
+            counter.error++
+            console.log(err.stack)
+            console.log(err)
+            console.log(token,'ERROR: ',err)
+          })
+          .finally(function(){
+            progress.tick()
+          })
+      },{concurrency: (+config.store.purchasePruneConcurrency || 32)})
+      //prune folders
+      .then(function(){
+        progress = new ProgressBar(
+          '  folders [:bar] :current/:total :percent :rate/pps :etas',
+          {
+            total: pruneFolders.count,
+            width: 50,
+            complete: '=',
+            incomplete: '-'
+          }
+        )
+        return pruneFolders
+      })
+      .map(function(folder){
+        return fs.rmdirAsync(folder)
           .then(function(){
             counter.folder++
           })
           .catch(function(){
             counter.skipped++
           })
-      )
-    })
-    P.all(promises).then(function(){
-      done(null,counter)
-    })
+          .finally(function(){
+            progress.tick()
+          })
+      },{concurrency: (+config.store.purchasePruneConcurrency || 32)})
+      .then(function(){
+        done(null,counter)
+      })
+      .catch(function(err){
+        console.log(err.stack)
+        done(err)
+      })
   })
 }
 
