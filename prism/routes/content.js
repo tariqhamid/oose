@@ -597,6 +597,7 @@ exports.deliver = function(req,res){
       result.valid = false
       result.reason = 'Invalid request'
     }
+    if(!result.valid) return result
     for(var i = 0; i < purchase.referrer.length; i++){
       if(referrer.match(purchase.referrer[i])){
         validReferrer = true
@@ -676,6 +677,7 @@ exports.deliver = function(req,res){
       res.json({error: err.message})
     })
     .catch(function(err){
+      console.log(err.stack)
       console.log('Unhandled error on content deliver ' + err.message)
     })
 }
