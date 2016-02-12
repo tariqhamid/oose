@@ -24,18 +24,22 @@ var runInterval = function(done){
       debug('purchase result; purchases: ',result.length)
       //this gives us the purchase keys and to my understanding we just have
       //to update these to deleted now
-      result.forEach(function(purchase){
+      var purchase = {}
+      for(var i = 0; i < result.length; i++){
+        purchase = result[i]
+        console.log(purchase)
         purchases.push({
           _id: purchase.id,
           _rev: purchase.value.rev,
           _deleted: true
         })
-      })
+      }
       debug('saving deletion of purchases',purchases[0],purchases.length)
       //now we just use cradle to save the purchases
       cradle.db.saveAsync(purchases)
     })
-    .then(function(){
+    .then(function(result){
+      console.log(result)
       debug('purchase deletion complete')
       done()
     })
