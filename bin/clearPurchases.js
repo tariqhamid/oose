@@ -45,8 +45,8 @@ var runInterval = function(done){
       //to update these to deleted now
       result.forEach(function(purchase){
         purchases.push({
-          _id: purchase._id,
-          _rev: purchase._rev,
+          _id: purchase.id,
+          _rev: purchase.value._rev,
           _deleted: true
         })
       })
