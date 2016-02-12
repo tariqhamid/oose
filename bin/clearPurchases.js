@@ -1,12 +1,9 @@
 'use strict';
 var debug = require('debug')('oose:clearPurchases')
 var infant = require('infant')
-var ProgressBar = require('progress')
 
 //var config = require('../config')
 var cradle = require('../helpers/couchdb')
-
-var progress
 
 
 /**
@@ -25,28 +22,12 @@ var runInterval = function(done){
   })
     .then(function(result){
       debug('purchase result; purchases: ',result.length)
-      progress = new ProgressBar(
-        '  purging [:bar] :current/:total :percent :rate/pps :etas',
-        {
-          total: result.length,
-          width: 50,
-          complete: '=',
-          incomplete: '-'
-        }
-      )
-      debug('getting purchase information')
-      //now we have to get all the documents and consume even more memory
-      return cradle.db.getAsync(result)
-    })
-    .then(function(result){
-      debug('purchase information received: ', result.length)
-      //now the result we have is the official list of documents
       //this gives us the purchase keys and to my understanding we just have
       //to update these to deleted now
       result.forEach(function(purchase){
         purchases.push({
           _id: purchase.id,
-          _rev: purchase.value._rev,
+          _rev: purchase.value.rev,
           _deleted: true
         })
       })
