@@ -75,7 +75,7 @@ var prunePurchases = function(done){
     })
       .map(function(entry){
         debug('got entry',entry.fullPath)
-        var token = entry.path.replace(/[\/\\]*/,'')
+        var token = entry.path.replace(/[\/\\]+/g,'')
         debug(token,'got token')
         //here we need to validate the token or ignore this
         if(60 !== entry.name.replace(/\..+$/,'').length){
