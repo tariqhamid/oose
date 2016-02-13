@@ -291,21 +291,17 @@ var runVotePrune = function(systemKey,systemType){
     endkey: downVoteKey + '\uffff'
   })
     .map(function(vote){
-      return cradle.db.getAsync(vote.id)
+      return cradle.db.getAsync(vote.id).reflect()
     })
     .filter(function(vote){
+      if(!vote) return false
       debug('filtering vote',vote.id,validateVote(vote))
       return validateVote(vote)
     })
-    .map(
-      function(vote){
-        debug('Pruning vote',vote._id)
-        return cradle.db.removeAsync(vote._id,vote._rev)
-      },
-      function(err){
-        if(!err.headers || 404 !== err.headers.status) throw err
-      }
-    )
+    .map(function(vote){
+      debug('Pruning vote',vote._id)
+      return cradle.db.removeAsync(vote._id,vote._rev).reflect()
+    })
     .catch(function(err){
       console.log('vote prune error: ',err)
     })
@@ -352,7 +348,7 @@ var markMeUp = function(systemKey,systemType){
     })
     .map(function(log){
       debug('Removing downvote',log)
-      return cradle.db.removeAsync(log.key,log._rev)
+      return cradle.db.removeAsync(log.key,log._rev).reflect()
     })
     .then(function(result){
       debug('finished marking myself up',result)
