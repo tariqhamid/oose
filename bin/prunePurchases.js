@@ -78,7 +78,7 @@ var prunePurchases = function(done){
         var token = entry.path.replace(/[\/\\]+/g,'').replace(/\..+$/,'')
         debug(token,'got token')
         //here we need to validate the token or ignore this
-        if(60 !== entry.name.replace(/\..+$/,'').length){
+        if(64 !== token.length){
           debug(token,'not a valid purchase token')
           counter.skipped++
           return
@@ -173,7 +173,8 @@ var prunePurchases = function(done){
           .then(function(){
             counter.folder++
           })
-          .catch(function(){
+          .catch(function(err){
+            debug('folder not empty skipped',err.message)
             counter.skipped++
           })
           .finally(function(){
