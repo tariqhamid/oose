@@ -31,28 +31,7 @@ if(require.main === module){
       )
       heartbeat = infant.parent('../helpers/heartbeat')
       //check if our needed folders exist
-      P.try(function(){
-        var promises = []
-        var rootFolder = path.resolve(config.root)
-        var contentFolder = path.resolve(rootFolder + '/content')
-        var purchaseFolder = path.resolve(rootFolder + '/purchased')
-        if(!fs.existsSync(contentFolder))
-          promises.push(mkdirp(contentFolder))
-        if(!fs.existsSync(purchaseFolder))
-          promises.push(mkdirp(purchaseFolder))
-        return P.all(promises)
-      })
-        .then(function(){
-          //start cluster and heartbeat system
-          return P.all([
-            cluster.startAsync(),
-            heartbeat.startAsync()
-          ])
-        })
-        .then(function(){
-          //now register ourselves or mark ourselves available
-          return cradle.db.getAsync(storeKey)
-        })
+      cradle.db.getAsync(storeKey)
         .then(
           //if we exist lets mark ourselves available
           function(doc){
@@ -67,6 +46,7 @@ if(require.main === module){
           //if we dont exist lets make sure thats why and create ourselves
           function(err){
             if(!err.headers || 404 !== err.headers.status) throw err
+            //now register ourselves or mark ourselves available
             return cradle.db.saveAsync(storeKey,{
               prism: config.store.prism,
               name: config.store.name,
@@ -79,6 +59,24 @@ if(require.main === module){
             })
           }
         )
+        .then(function(){
+          var promises = []
+          var rootFolder = path.resolve(config.root)
+          var contentFolder = path.resolve(rootFolder + '/content')
+          var purchaseFolder = path.resolve(rootFolder + '/purchased')
+          if(!fs.existsSync(contentFolder))
+            promises.push(mkdirp(contentFolder))
+          if(!fs.existsSync(purchaseFolder))
+            promises.push(mkdirp(purchaseFolder))
+          return P.all(promises)
+        })
+        .then(function(){
+          //start cluster and heartbeat system
+          return P.all([
+            cluster.startAsync(),
+            heartbeat.startAsync()
+          ])
+        })
         .then(function(){
           console.log('Store startup complete')
           done()
