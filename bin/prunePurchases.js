@@ -14,7 +14,6 @@ var cradle = require('../helpers/couchdb')
 P.promisifyAll(fs)
 
 var prunePurchases = function(done){
-  process.exit()
   var root = path.resolve(config.root)
   if(!fs.existsSync(root))
     done(new Error('Root folder doesnt exist'))
@@ -93,7 +92,7 @@ var prunePurchases = function(done){
         return cradle.db.getAsync(purchaseKey)
           .then(
             function(doc){
-              var expirationDate = +new Date(doc.expirationDate)
+              var expirationDate = +doc.expirationDate
               var now = +new Date()
               //this is a valid purchase leave it alone
               if(!doc.expired && (expirationDate > now)){
@@ -108,23 +107,22 @@ var prunePurchases = function(done){
                 doc.expired = true
                 doc.afterlifeExpirationDate =
                   (+new Date() + config.purchase.afterlife)
-                return cradle.db.saveAsync(cradle.schema.purchase(token),doc)
+                return cradle.db.saveAsync(doc._id,doc._rev,doc)
               }
               //now we have a doc that is expired when we encounter these
               //and the afterlifeExpiration has also passed, we go ahead and
               //prune the purchase out of the database, once this happens on
               //the next prune cycle the purchase link will finally be removed
               else if(doc.expired){
-                var afterlifeExpirationDate =
-                  +new Date(doc.afterlifeExpirationDate)
-                if(afterlifeExpirationDate < now){
+                var afterlifeExpirationDate = +doc.afterlifeExpirationDate
+                if(afterlifeExpirationDate <= now){
                   debug(token,'afterlife expired, deleting')
                   counter.deleted++
-                  return cradle.db.removeAsync(purchaseKey,doc._rev)
+                  return cradle.db.removeAsync(doc._id,doc._rev)
                 }
               }
               //finally if nothing matches we throw an error
-              else{
+              else {
                 var err = new Error('Unknown purchase rule hit ' + doc.toJSON())
                 err.doc = doc
                 throw err
@@ -134,7 +132,7 @@ var prunePurchases = function(done){
               //throw errors we dont know about
               if(!err.headers || 404 !== err.headers.status) throw err
               //regular 404s we just drop our symlink
-              debug(token,'purchase doesnt exist, removing ours')
+              debug(token,'purchase does not exist, removing ours')
               return fs.unlinkAsync(entry.fullPath)
                 .then(function(){
                   counter.cleaned++

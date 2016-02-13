@@ -497,7 +497,7 @@ exports.purchase = function(req,res){
         hash: hash,
         hashType: hashType,
         life: life,
-        expirationDate: new Date((+new Date() + life)).toJSON(),
+        expirationDate: +(+new Date() + life),
         token: token,
         sessionToken: req.session.token,
         inventory: inventory,

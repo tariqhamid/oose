@@ -26,14 +26,7 @@ if(require.main === module){
         }
       )
       heartbeat = infant.parent('../helpers/heartbeat')
-      P.all([
-        cluster.startAsync(),
-        heartbeat.startAsync()
-      ])
-        .then(function(){
-          //now register ourselves or mark ourselves available
-          return cradle.db.getAsync(prismKey)
-        })
+      cradle.db.getAsync(prismKey)
         .then(
           //if we exist lets mark ourselves available
           function(doc){
@@ -47,6 +40,7 @@ if(require.main === module){
           //if we dont exist lets make sure thats why and create ourselves
           function(err){
             if(404 !== err.headers.status) throw err
+            //now register ourselves or mark ourselves available
             return cradle.db.saveAsync(prismKey,{
               name: config.prism.name,
               host: config.prism.host,
@@ -58,6 +52,12 @@ if(require.main === module){
             })
           }
         )
+        .then(function(){
+          return P.all([
+            cluster.startAsync(),
+            heartbeat.startAsync()
+          ])
+        })
         .then(function(){
           console.log('Prism startup complete')
           done()
