@@ -27,20 +27,22 @@ var runInterval = function(done){
       var purchase = {}
       for(var i = 0; i < result.length; i++){
         purchase = result[i]
-        console.log(purchase)
         purchases.push({
           _id: purchase.id,
           _rev: purchase.value.rev,
           _deleted: true
         })
       }
-      debug('saving deletion of purchases',purchases[0],purchases.length)
+      debug('saving deletion of purchases',purchases.length,purchases[0])
       //now we just use cradle to save the purchases
-      cradle.db.saveAsync(purchases)
+      return cradle.db.saveAsync(purchases)
     })
     .then(function(result){
-      console.log(result)
-      debug('purchase deletion complete')
+      var deleted = 0
+      result.forEach(function(row){
+        if(row.ok) deleted++
+      })
+      console.log('Deletion complete, ' + deleted + ' records removed')
       done()
     })
     .catch(function(err){
