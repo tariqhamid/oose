@@ -44,12 +44,6 @@ var prunePurchases = function(done){
   debug('Purchase folder: ' + purchaseFolder)
   var dirstream = readdirp({
     root: purchaseFolder,
-    fileFilter: [
-      '!crossdomain*',
-      '!favicon*',
-      '!index*',
-      '!oose_*'
-    ],
     concurrency: (+config.store.purchasePruneConcurrency || 32)
   })
   dirstream.on('warn',function(err){
@@ -83,6 +77,12 @@ var prunePurchases = function(done){
         debug('got entry',entry.fullPath)
         var token = entry.path.replace(/[\/\\]*/,'')
         debug(token,'got token')
+        //here we need to validate the token or ignore this
+        if(60 !== entry.name.replace(/\..+$/,'').length){
+          debug(token,'not a valid purchase token')
+          counter.skipped++
+          return
+        }
         //okay so we get the purchase and if it does not exist we just remove
         //the entry, if it does exist we check the date and if the date is out
         //we set it to expired, if it is already expired for the afterlife
@@ -152,7 +152,7 @@ var prunePurchases = function(done){
       //prune folders
       .then(function(){
         progress = new ProgressBar(
-          '  folders [:bar] :current/:total :percent :rate/pps :etas',
+          '  folders [:bar] :current/:total :percent :rate/fps :etas',
           {
             total: pruneFolders.length,
             width: 50,
@@ -163,6 +163,12 @@ var prunePurchases = function(done){
         return pruneFolders
       })
       .map(function(folder){
+        var folderName = path.basename(folder)
+        if(4 !== folderName.length){
+          debug(folderName,'invalid folder, skipped')
+          counter.skipped++
+          return
+        }
         return fs.rmdirAsync(folder)
           .then(function(){
             counter.folder++
