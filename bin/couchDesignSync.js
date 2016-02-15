@@ -37,62 +37,8 @@ var runInterval = function(done){
       map: function(doc){
         emit([doc.hash],doc)
       }
-    },
-    byMimeType: {
-      map: function(doc){
-        emit([doc.mimeType],doc)
-      }
-    },
-    byMimeExtension: {
-      map: function(doc){
-        emit([doc.mimeExtension],doc)
-      }
     }
   })
-    .then(function(){
-      return cradle.db.saveAsync('_design/purchase',{
-        byExpirationDate: {
-          map: function(doc){
-            emit([doc.expirationDate],doc)
-          }
-        },
-        byExt: {
-          map: function(doc){
-            emit([doc.ext],doc)
-          }
-        },
-        byHash: {
-          map: function(doc){
-            emit([doc.hash],doc)
-          }
-        },
-        byHashType: {
-          map: function(doc){
-            emit([doc.hashType],doc)
-          }
-        },
-        byIP: {
-          map: function(doc){
-            emit([doc.ip],doc)
-          }
-        },
-        byLife: {
-          map: function(doc){
-            emit([doc.life],doc)
-          }
-        },
-        bySessionToken: {
-          map: function(doc){
-            emit([doc.sessionToken],doc)
-          }
-        },
-        byToken: {
-          map: function(doc){
-            emit([doc.token],doc)
-          }
-        }
-      })
-    })
     .then(function(){
       done()
     })
