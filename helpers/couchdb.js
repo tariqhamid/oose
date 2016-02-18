@@ -29,7 +29,7 @@ client.db = P.promisifyAll(client.database(config.couchdb.database))
 
 /**
  * Add schema to helper
- * @type {CouchShema}
+ * @type {CouchSchema}
  */
 client.schema = new CouchSchema(config.couchdb.prefix)
 
