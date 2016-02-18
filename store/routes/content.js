@@ -73,7 +73,7 @@ exports.put = function(req,res){
     .then(function(){
       //get existing existence record and add to it or create one
       debug(inventoryKey,'getting inventory record')
-      return cradle.db.getAsync(inventoryKey)
+      return cradle.inventory.getAsync(inventoryKey)
     })
     .then(
       //record exists, extend it
@@ -94,7 +94,7 @@ exports.put = function(req,res){
           )
         }
         debug(inventoryKey,'creating inventory record',inventory)
-        return cradle.db.saveAsync(inventoryKey,inventory)
+        return cradle.inventory.saveAsync(inventoryKey,inventory)
       }
     )
     .then(function(){
@@ -176,7 +176,7 @@ exports.remove = function(req,res){
     req.body.hash,config.store.prism,config.store.name)
   P.all([
       hashFile.remove(req.body.hash),
-      cradle.db.removeAsync(inventoryKey)
+      cradle.inventory.removeAsync(inventoryKey)
   ])
     .then(function(){
       res.json({success: 'File removed'})
@@ -204,7 +204,7 @@ exports.send = function(req,res){
   var storeClient = null
   var store = {}
   var details = {}
-  cradle.db.getAsync(storeKey)
+  cradle.inventory.getAsync(storeKey)
     .then(
       function(result){
         store = result

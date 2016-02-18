@@ -131,7 +131,7 @@ module.exports = function(done){
         //since nodes
         var inventoryKey = cradle.schema.inventory(
           hash,config.store.prism,config.store.name)
-        return cradle.db.getAsync(inventoryKey)
+        return cradle.inventory.getAsync(inventoryKey)
           .then(
             function(doc){
               debug(hash,'inventory record exists',doc)
@@ -149,7 +149,7 @@ module.exports = function(done){
               }
               debug(hash,'creating inventory record',doc)
               counter.created++
-              return cradle.db.saveAsync(inventoryKey,doc)
+              return cradle.inventory.saveAsync(inventoryKey,doc)
             }
           )
           .then(function(){

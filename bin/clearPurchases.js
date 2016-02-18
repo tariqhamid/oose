@@ -16,7 +16,7 @@ var runInterval = function(done){
   var purchaseKey = cradle.schema.purchase()
   var purchases = []
   debug('requesting purchases',purchaseKey)
-  cradle.db.allAsync({
+  cradle.purchase.allAsync({
     startkey: purchaseKey,
     endkey: purchaseKey + '\uffff'
   })
@@ -35,7 +35,7 @@ var runInterval = function(done){
       }
       debug('saving deletion of purchases',purchases.length,purchases[0])
       //now we just use cradle to save the purchases
-      return cradle.db.saveAsync(purchases)
+      return cradle.purchase.saveAsync(purchases)
     })
     .then(function(result){
       var deleted = 0

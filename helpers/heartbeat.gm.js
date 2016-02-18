@@ -119,12 +119,12 @@ var Heartbeat = function(type,name,port){
     var currentVoteLog = null
     var hostInfo = null
     //if(downHost.request) delete(downHost.request)
-    return cradle.db.getAsync(key)
+    return cradle.heartbeat.getAsync(key)
       .then(function(node){
         //got the node
         if(!(node.available && node.active)) throw new Error('Already down')
         hostInfo = node
-        return cradle.db.allAsync({startkey: downKey, endkey: downKey + '\uffff'})
+        return cradle.heartbeat.allAsync({startkey: downKey, endkey: downKey + '\uffff'})
       }).then(function(vL){
         currentVoteLog = vL
         for(var i=0; i< vL.length ; i++) {
@@ -133,12 +133,12 @@ var Heartbeat = function(type,name,port){
             return false
           }
         }
-        return cradle.db.saveAsync(myDownKey,{date:Date.now()})
+        return cradle.heartbeat.saveAsync(myDownKey,{date:Date.now()})
       },function(err){
         if(!err.headers)throw err
         if(404 !== err.headers.status) throw err
         currentVoteLog = []
-        return cradle.db.saveAsync(myDownKey,{date:Date.now()})
+        return cradle.heartbeat.saveAsync(myDownKey,{date:Date.now()})
       }).then(function(myVote){
         if(myVote !== false)
           currentVoteLog.push(myVote)
@@ -146,13 +146,13 @@ var Heartbeat = function(type,name,port){
         var votes = currentVoteLog.length
         if(count === 0 || votes < (count/2))throw new Error('Ok, got it')
         hostInfo.available = false
-        return cradle.db.saveAsync(key,hostInfo._rev,hostInfo)
+        return cradle.heartbeat.saveAsync(key,hostInfo._rev,hostInfo)
       }).then(function(){
         //Delete the vote log, it has served its purpose
         var promises = []
         //Added reflect() to avoid a race condition.
         for(var i = 0 ; i<currentVoteLog.length ; i++)
-          promises.push(cradle.db.removeAsync(currentVoteLog[i].key,currentVoteLog[i]._rev).reflect())
+          promises.push(cradle.heartbeat.removeAsync(currentVoteLog[i].key,currentVoteLog[i]._rev).reflect())
         return P.all(promises)
       }).catch(function(err){
         debug(err.message)
@@ -198,20 +198,20 @@ var Heartbeat = function(type,name,port){
     var key = (type === 'prism') ?
       cradle.schema.prism(prismName) : cradle.schema.store(prismName,name)
     var downKey = cradle.schema.downVote(name)    //The key used to track downvotes against me :(
-    return cradle.db.getAsync(key)
+    return cradle.heartbeat.getAsync(key)
       .then(function(node){
         node.available = true
         node.active = true
-        return cradle.db.saveAsync(key,node._rev,node)
+        return cradle.heartbeat.saveAsync(key,node._rev,node)
       }).then(function(){
         //Time to delete the downvote log
-        return cradle.db.allAsync({startkey: downKey, endkey: downKey + '\uffff'})
+        return cradle.heartbeat.allAsync({startkey: downKey, endkey: downKey + '\uffff'})
       }).then(function(votelog){
         //Delete the vote log, it has served its purpose
         var promises = []
         //Added reflect() to avoid a race condition.
         for(var i = 0; i < votelog.length; i++)
-          promises.push(cradle.db.removeAsync(votelog[i].key,votelog[i]._rev).reflect())
+          promises.push(cradle.heartbeat.removeAsync(votelog[i].key,votelog[i]._rev).reflect())
         return P.all(promises)
       }).catch(function(err){
         debug(err.mesage)

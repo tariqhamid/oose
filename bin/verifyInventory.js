@@ -36,7 +36,7 @@ var verifyInventoryAsync = function(){
     valid: 0
   }
   debug('starting to verify',contentFolder)
-  return cradle.db.viewAsync('inventory/byStore',{
+  return cradle.inventory.viewAsync('inventory/byStore',{
     startkey: [config.store.name],
     endkey: [config.store.name,'\uffff']
   })
@@ -61,7 +61,7 @@ var verifyInventoryAsync = function(){
             counter.valid++
           } else {
             counter.invalid++
-            return cradle.db.removeAsync(record._id,record._rev)
+            return cradle.inventory.removeAsync(record._id,record._rev)
               .catch(function(){
                 counter.warning++
               })

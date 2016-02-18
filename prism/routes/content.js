@@ -451,7 +451,7 @@ exports.purchase = function(req,res){
         },
         function(){
           token = purchasePath.generateToken()
-          return cradle.db.getAsync(cradle.schema.purchase(token))
+          return cradle.purchase.getAsync(cradle.schema.purchase(token))
             .then(
               function(result){
                 tokenExists = result
@@ -505,7 +505,7 @@ exports.purchase = function(req,res){
         ip: ip,
         referrer: referrer
       }
-      return cradle.db.saveAsync(cradle.schema.purchase(token),purchase)
+      return cradle.purchase.saveAsync(cradle.schema.purchase(token),purchase)
     })
     .then(function(){
       //var duration = (+new Date()) - start
@@ -626,7 +626,7 @@ exports.deliver = function(req,res){
       }
       else{
         //hard look up of purchase
-        return cradle.db.getAsync(purchaseKey)
+        return cradle.purchase.getAsync(purchaseKey)
           .then(
             function(result){
               if(!result) throw new NotFoundError('Purchase not found')
@@ -740,7 +740,7 @@ exports.purchaseRemove = function(req,res){
   var token = req.body.token
   var purchaseKey = cradle.schema.purchase(token)
   var purchase
-  cradle.db.getAsync(purchaseKey)
+  cradle.purchase.getAsync(purchaseKey)
     .then(
       function(result){
         purchase = result
@@ -759,7 +759,7 @@ exports.purchaseRemove = function(req,res){
       })
     })
     .then(function(){
-      return cradle.db.removeAsync(purchaseKey)
+      return cradle.purchase.removeAsync(purchaseKey)
     })
     .then(function(){
       res.json({token: token, count: 1, success: 'Purchase removed'})
