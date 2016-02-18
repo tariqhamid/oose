@@ -7,7 +7,7 @@
  * @param {string} prefix
  * @constructor
  */
-var CouchShema = function(prefix){
+var CouchSchema = function(prefix){
   if(!prefix) prefix = 'oose'
   this.prefix = prefix
 }
@@ -18,7 +18,7 @@ var CouchShema = function(prefix){
  * @param {string} key
  * @return {string}
  */
-CouchShema.prototype.applyPrefix = function(key){
+CouchSchema.prototype.applyPrefix = function(key){
   return this.prefix + ':' + (key || '')
 }
 
@@ -28,7 +28,7 @@ CouchShema.prototype.applyPrefix = function(key){
  * @param {string} name
  * @return {string}
  */
-CouchShema.prototype.prism = function(name){
+CouchSchema.prototype.prism = function(name){
   return this.applyPrefix('prism:' + (name || ''))
 }
 
@@ -39,7 +39,7 @@ CouchShema.prototype.prism = function(name){
  * @param {string} name
  * @return {string}
  */
-CouchShema.prototype.store = function(prism,name){
+CouchSchema.prototype.store = function(prism,name){
   return this.applyPrefix('store:' + (prism || '') + (name ? ':' + name : ''))
 }
 
@@ -50,7 +50,7 @@ CouchShema.prototype.store = function(prism,name){
  * @param {string} caster
  * @return {string}
  */
-CouchShema.prototype.downVote = function(castee,caster){
+CouchSchema.prototype.downVote = function(castee,caster){
   var ending = caster ? ':' + caster : ''
   return this.applyPrefix('downvote:' + (castee || '') + ending)
 }
@@ -61,7 +61,7 @@ CouchShema.prototype.downVote = function(castee,caster){
  * @param {string} token
  * @return {string}
  */
-CouchShema.prototype.purchase = function(token){
+CouchSchema.prototype.purchase = function(token){
   return this.applyPrefix('purchase:' + (token || ''))
 }
 
@@ -73,7 +73,7 @@ CouchShema.prototype.purchase = function(token){
  * @param {string} store
  * @return {string}
  */
-CouchShema.prototype.inventory = function(hash,prism,store){
+CouchSchema.prototype.inventory = function(hash,prism,store){
   return this.applyPrefix(
     'inventory:' + (hash || '') +
     (prism ? ':' + prism : '') +
@@ -84,6 +84,6 @@ CouchShema.prototype.inventory = function(hash,prism,store){
 
 /**
  * Export Object
- * @type {CouchShema}
+ * @type {CouchSchema}
  */
-module.exports = CouchShema
+module.exports = CouchSchema

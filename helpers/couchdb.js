@@ -54,7 +54,7 @@ client.heartbeat = P.promisifyAll(
 
 /**
  * Add schema to helper
- * @type {CouchShema}
+ * @type {CouchSchema}
  */
 client.schema = new CouchSchema(config.couchdb.prefix)
 

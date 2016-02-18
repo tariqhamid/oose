@@ -95,7 +95,7 @@ client.removeKeysPattern = function(pattern){
 
 /**
  * Add schema to helper
- * @type {CouchShema}
+ * @type {RedisSchema}
  */
 client.schema = new RedisSchema(config.redis.prefix)
 
