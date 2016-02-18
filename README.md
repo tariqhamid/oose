@@ -68,6 +68,7 @@ From there follow the debug filtering rules defined
 
 * Organize data into separate couchdb databases for better performance
 reliability and debugging.
+* Add Heartbeat startup delay.
 
 ### 2.0.3
 

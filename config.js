@@ -30,6 +30,7 @@ config.$load({
     systemKey: null,
     systemType: null,
     retries: 3,
+    startDelay: 30000, //ms default: 30 second start delay
     frequency: 2500, //ms static frequency; duration and shift added to this
     votePruneFrequency: 5000, //ms
     voteLife: 10000, //ms vote hold down time (no pings during this window)
