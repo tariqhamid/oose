@@ -8,7 +8,7 @@
  * @constructor
  */
 var CouchSchema = function(prefix){
-  if(!prefix) prefix = 'oose'
+  if(!prefix) prefix = ''
   this.prefix = prefix
 }
 
@@ -19,6 +19,7 @@ var CouchSchema = function(prefix){
  * @return {string}
  */
 CouchSchema.prototype.applyPrefix = function(key){
+  if(!this.prefix) return '' + key
   return this.prefix + ':' + (key || '')
 }
 
@@ -52,7 +53,7 @@ CouchSchema.prototype.store = function(prism,name){
  */
 CouchSchema.prototype.downVote = function(castee,caster){
   var ending = caster ? ':' + caster : ''
-  return this.applyPrefix('downvote:' + (castee || '') + ending)
+  return this.applyPrefix('down:' + (castee || '') + ending)
 }
 
 
@@ -62,7 +63,7 @@ CouchSchema.prototype.downVote = function(castee,caster){
  * @return {string}
  */
 CouchSchema.prototype.purchase = function(token){
-  return this.applyPrefix('purchase:' + (token || ''))
+  return this.applyPrefix(token || '')
 }
 
 
@@ -75,7 +76,7 @@ CouchSchema.prototype.purchase = function(token){
  */
 CouchSchema.prototype.inventory = function(hash,prism,store){
   return this.applyPrefix(
-    'inventory:' + (hash || '') +
+    (hash || '') +
     (prism ? ':' + prism : '') +
     (store ? ':' + store : '')
   )

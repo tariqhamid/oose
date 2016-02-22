@@ -45,6 +45,14 @@ client.purchase = P.promisifyAll(
 
 
 /**
+ * Legacy OOSE DB
+ * @type {object}
+ */
+client.oose = P.promisifyAll(
+  client.database(config.couchdb.database))
+
+
+/**
  * Setup the Heartbeat DB
  * @type {object}
  */

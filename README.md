@@ -64,6 +64,11 @@ From there follow the debug filtering rules defined
 
 ## Changelog
 
+### 2.1.0
+
+* Add CouchDB migration script from 2.0.x
+* Change CouchDB key structure to save disk space.
+
 ### 2.0.4
 
 * Organize data into separate couchdb databases for better performance
