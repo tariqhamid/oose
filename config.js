@@ -47,7 +47,7 @@ config.$load({
   couchdb: {
     host: '127.0.0.1',
     port: '5984',
-    prefix: 'oose',
+    prefix: '',
     database: 'oose',
     options: {
       secure: false,
