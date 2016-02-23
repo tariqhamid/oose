@@ -119,7 +119,7 @@ var downVote = function(peer,reason,systemKey,systemType,peerCount){
       if(count === 0 || votes < (count / 2))
         throw new Error('Ok, got it')
       peer.available = false
-      return cradle.heartbeat.saveAsync(key,peer._rev,peer)
+      return cradle.peer.saveAsync(key,peer._rev,peer)
     })
     .catch(function(err){
       if('Ok, got it' === err.message){
@@ -172,10 +172,10 @@ var runHeartbeat = function(systemKey,systemType){
    */
   var restorePeer = function(peer){
     console.log('Restoring peer',peer)
-    return cradle.heartbeat.getAsync(peer._id)
+    return cradle.peer.getAsync(peer._id)
       .then(function(result){
         result.available = true
-        return cradle.heartbeat.saveAsync(result._id,result._rev,result)
+        return cradle.peer.saveAsync(result._id,result._rev,result)
       })
       .then(function(){
         //remove down votes
@@ -329,13 +329,13 @@ var markMeUp = function(systemKey,systemType){
   })
   var downKey = cradle.schema.downVote(systemKey)
   debug('Getting peer information')
-  return cradle.heartbeat.getAsync(key)
+  return cradle.peer.getAsync(key)
     .then(
       function(peer){
         debug('Got peer information back',peer)
         peer.available = true
         peer.active = true
-        return cradle.heartbeat.saveAsync(key,peer._rev,peer)
+        return cradle.peer.saveAsync(key,peer._rev,peer)
       },
       function(err){
         debug('Got an error getting peer information',err)
