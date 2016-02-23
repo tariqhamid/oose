@@ -73,10 +73,9 @@ var migrateStores = function(){
         })
         .catch(function(err){
           console.log(err.stack)
-          counter.err++
+          counter.error++
         })
         .finally(function(){
-          counter++
           progress.tick()
         })
     },{concurrency: concurrency.store})
@@ -126,10 +125,9 @@ var migratePrisms = function(){
         })
         .catch(function(err){
           console.log(err.stack)
-          counter.err++
+          counter.error++
         })
         .finally(function(){
-          counter++
           progress.tick()
         })
     },{concurrency: concurrency.prism})
@@ -184,10 +182,9 @@ var migrateInventory = function(){
         })
         .catch(function(err){
           console.log(err.stack)
-          counter.err++
+          counter.error++
         })
         .finally(function(){
-          counter++
           progress.tick()
         })
     },{concurrency: concurrency.inventory})
@@ -238,10 +235,9 @@ var migratePurchases = function(){
         })
         .catch(function(err){
           console.log(err.stack)
-          counter.err++
+          counter.error++
         })
         .finally(function(){
-          counter++
           progress.tick()
         })
     },{concurrency: concurrency.purchase})
