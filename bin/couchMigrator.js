@@ -40,9 +40,9 @@ var migrateStores = function(){
   var progress
   debug('requesting stores',storeKey)
   return cradle.oose.allAsync({
-      startkey: storeKey,
-      endkey: storeKey + '\uffff'
-    })
+    startkey: storeKey,
+    endkey: storeKey + '\uffff'
+  })
     .then(function(result){
       count.store = result.length
       debug('store result; records: ',count.store)
@@ -67,6 +67,13 @@ var migrateStores = function(){
           record._id = newKey
           delete record._rev
           return cradle.peer.saveAsync(newKey,record)
+        })
+        .then(function(){
+          counter.moved++
+        })
+        .catch(function(err){
+          console.log(err.stack)
+          counter.err++
         })
         .finally(function(){
           counter++
@@ -113,6 +120,13 @@ var migratePrisms = function(){
           record._id = newKey
           delete record._rev
           return cradle.peer.saveAsync(newKey,record)
+        })
+        .then(function(){
+          counter.moved++
+        })
+        .catch(function(err){
+          console.log(err.stack)
+          counter.err++
         })
         .finally(function(){
           counter++
