@@ -34,6 +34,8 @@ var setupProgram = function(){
   program.version(config.version)
     .description('OOSE Heartbeat')
     .option('-k --key <key>','System key for heartbeat eg: om101 or store1')
+    .option('-p --prism <name>',
+      'When type is store the parent prism name is needed here')
     .option('-t --type <type>','System type either prism or store')
     .parse(process.argv)
   //try to look these up if none passed
@@ -45,7 +47,8 @@ var setupProgram = function(){
       program.type = 'prism'
     }
     if(!program.key && config.store.enabled){
-      program.key = config.store.prism + ':' + config.store.name
+      program.key = config.store.name
+      program.prism = config.store.prism || ''
       program.type = 'store'
     }
   }
@@ -318,13 +321,15 @@ var runVotePrune = function(systemKey,systemType){
 /**
  * Mark this system up
  * @param {string} systemKey
+ * @param {string} systemPrism
  * @param {string} systemType
  * @return {P}
  */
-var markMeUp = function(systemKey,systemType){
+var markMeUp = function(systemKey,systemPrism,systemType){
   debug('Marking myself up')
   var key = getPeerKey({
     name: systemKey,
+    prism: systemPrism,
     type: systemType
   })
   var downKey = cradle.schema.downVote(systemKey)
@@ -364,10 +369,11 @@ var markMeUp = function(systemKey,systemType){
 /**
  * Start Heartbeat
  * @param {string} systemKey
+ * @param {string} systemPrism
  * @param {string} systemType
  * @param {function} done
  */
-exports.start = function(systemKey,systemType,done){
+exports.start = function(systemKey,systemPrism,systemType,done){
   console.log('Setting up to start heartbeat',systemKey,systemType)
   if(!systemKey)
     throw new Error('System key has not been set, heartbeat not started')
@@ -377,7 +383,7 @@ exports.start = function(systemKey,systemType,done){
     runHeartbeat(systemKey,systemType)
   },+(+config.heartbeat.startDelay || 5000))
   runVotePrune(systemKey,systemType)
-  markMeUp(systemKey,systemType,done)
+  markMeUp(systemKey,systemPrism,systemType,done)
 }
 
 
@@ -403,7 +409,7 @@ if(require.main === module){
         throw new Error('Cant start invalid system key')
       if(!program.type)
         throw new Error('Cant start invalid system type')
-      exports.start(program.key,program.type,done)
+      exports.start(program.key,program.prism,program.type,done)
     },
     function(done){
       exports.stop(done)
