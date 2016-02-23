@@ -34,28 +34,29 @@ var counter = {
 
 
 /**
- * Migrate Store Peers
+ * Migrate Items
+ * @param {string} name
+ * @param {string} itemKey
+ * @param {string} dbName
+ * @param {function} keyFunc
+ * @param {function} filterFunc
  * @return {P}
  */
-var migrateStores = function(){
-  console.log('Starting to migrate stores')
-  var storeKey = 'oose:store:'
-  var count = {}
+var migrateItems = function(name,itemKey,dbName,keyFunc,filterFunc){
+  console.log('Starting to migrate ' + name + ' records')
   var progress
-  debug('requesting stores',storeKey)
+  debug('requesting ' + name,itemKey)
   return cradle.oose.allAsync({
-    startkey: storeKey,
-    endkey: storeKey + '\uffff'
+    startkey: itemKey,
+    endkey: itemKey + '\uffff'
   })
     .then(function(result){
-      count.store = result.length
-      debug('store result; records: ',count.store)
       //this gives us the inventory keys and now we must select all the docs
       //and place them into the new database, so we will setup a progress bar
       progress = new ProgressBar(
-        '  peer:store [:bar] :current/:total :percent :rate/rps :etas',
+        name + ' [:bar] :current/:total :percent :rate/rps :etas',
         {
-          total: count.store,
+          total: result.length,
           width: 50,
           complete: '=',
           incomplete: '-'
@@ -64,178 +65,36 @@ var migrateStores = function(){
       return result
     })
     .map(function(row){
+      if('function' === typeof filterFunc && false === filterFunc(row)){
+        throw new Error('skipped')
+      }
       return cradle.oose.getAsync(row.id)
         .then(function(record){
           //we need the new row
-          var newKey = cradle.schema.store(record.prism,record.name)
+          var newKey = keyFunc(record)
           record._id = newKey
           delete record._rev
           return new P(function(resolve){
-            cradle.peer.head(newKey,function(err,res,code){
+            cradle[dbName].head(newKey,function(err,res,code){
               if(200 === code){
                 counter.exists++
                 resolve(true)
               } else {
-                resolve(cradle.peer.saveAsync(newKey,record))
+                counter.moved++
+                resolve(cradle[dbName].saveAsync(newKey,record))
               }
             })
           })
         })
         .then(
-          function(){
-            counter.moved++
-          },
+          function(){},
           function(err){
             if(err.message.match(/conflict/i)) counter.exists++
             else throw err
           }
         )
         .catch(function(err){
-          console.log(err.stack)
-          counter.error++
-        })
-        .finally(function(){
-          progress.tick()
-        })
-    },{concurrency: concurrency.store})
-}
-
-
-/**
- * Migrate Prism Peers
- * @return {P}
- */
-var migratePrisms = function(){
-  console.log('Starting to migrate prisms')
-  var prismKey = 'oose:prism:'
-  var count = {}
-  var progress
-  debug('requesting prisms',prismKey)
-  return cradle.oose.allAsync({
-      startkey: prismKey,
-      endkey: prismKey + '\uffff'
-    })
-    .then(function(result){
-      count.prism = result.length
-      debug('prism result; records: ',count.prism)
-      //this gives us the inventory keys and now we must select all the docs
-      //and place them into the new database, so we will setup a progress bar
-      progress = new ProgressBar(
-        '  peer:prism [:bar] :current/:total :percent :rate/rps :etas',
-        {
-          total: count.prism,
-          width: 50,
-          complete: '=',
-          incomplete: '-'
-        }
-      )
-      return result
-    })
-    .map(function(row){
-      return cradle.oose.getAsync(row.id)
-        .then(function(record){
-          //we need the new row
-          var newKey = cradle.schema.prism(record.name)
-          record._id = newKey
-          delete record._rev
-          return new P(function(resolve){
-            cradle.peer.head(newKey,function(err,res,code){
-              if(200 === code){
-                counter.exists++
-                resolve(true)
-              } else {
-                resolve(cradle.peer.saveAsync(newKey,record))
-              }
-            })
-          })
-        })
-        .then(
-          function(){
-            counter.moved++
-          },
-          function(err){
-            if(err.message.match(/conflict/i)) counter.exists++
-            else throw err
-          }
-        )
-        .catch(function(err){
-          console.log(err.stack)
-          counter.error++
-        })
-        .finally(function(){
-          progress.tick()
-        })
-    },{concurrency: concurrency.prism})
-}
-
-
-/**
- * Migrate inventory records
- * @return {P}
- */
-var migrateInventory = function(){
-  console.log('Starting to migrate inventory')
-  var inventoryKey = 'oose:inventory:'
-  var count = {}
-  var progress
-  debug('requesting inventory',inventoryKey)
-  return cradle.oose.allAsync({
-      startkey: inventoryKey,
-      endkey: inventoryKey + '\uffff'
-    })
-    .then(function(result){
-      count.inventory = result.length
-      debug('inventory result; records: ',count.inventory)
-      //this gives us the inventory keys and now we must select all the docs
-      //and place them into the new database, so we will setup a progress bar
-      progress = new ProgressBar(
-        '  inventory [:bar] :current/:total :percent :rate/rps :etas',
-        {
-          total: count.inventory,
-          width: 50,
-          complete: '=',
-          incomplete: '-'
-        }
-      )
-      return result
-    })
-    .map(function(row){
-      return cradle.oose.getAsync(row.key)
-        .then(function(record){
-          if(!record.hash){
-            counter.skipped++
-            throw new Error('skipped')
-          }
-          //we need the new row
-          var newKey = cradle.schema.inventory(
-            record.hash,
-            record.prism,
-            record.store
-          )
-          record._id = newKey
-          delete record._rev
-          return new P(function(resolve){
-            cradle.peer.head(newKey,function(err,res,code){
-              if(200 === code){
-                counter.exists++
-                resolve(true)
-              } else {
-                resolve(cradle.peer.saveAsync(newKey,record))
-              }
-            })
-          })
-        })
-        .then(
-          function(){
-            counter.moved++
-          },
-          function(err){
-            if(err.message.match(/conflict/i)) counter.exists++
-            else throw err
-          }
-        )
-        .catch(function(err){
-          if(err.message !== 'skipped'){
+          if('skipped' !== err.message){
             console.log(err.stack)
             counter.error++
           }
@@ -243,81 +102,7 @@ var migrateInventory = function(){
         .finally(function(){
           progress.tick()
         })
-    },{concurrency: concurrency.inventory})
-}
-
-
-/**
- * Migrate purchase records
- * @return {P}
- */
-var migratePurchases = function(){
-  console.log('Starting to migrate purchases')
-  var purchaseKey = 'oose:purchase:'
-  var count = {}
-  var progress
-  debug('requesting inventory',purchaseKey)
-  return cradle.oose.allAsync({
-      startkey: purchaseKey,
-      endkey: purchaseKey + '\uffff'
-    })
-    .then(function(result){
-      count.purchase = result.length
-      debug('purchase result; records: ',count.purchase)
-      //this gives us the inventory keys and now we must select all the docs
-      //and place them into the new database, so we will setup a progress bar
-      progress = new ProgressBar(
-        '  purchases [:bar] :current/:total :percent :rate/rps :etas',
-        {
-          total: count.purchase,
-          width: 50,
-          complete: '=',
-          incomplete: '-'
-        }
-      )
-      return result
-    })
-    .map(function(row){
-      return cradle.oose.getAsync(row.key)
-        .then(function(record){
-          if(!record.hash){
-            counter.skipped++
-            throw new Error('skipped')
-          }
-          //we need the new row
-          var newKey = cradle.schema.purchase(record.token)
-          record._id = newKey
-          delete record._rev
-          return new P(function(resolve){
-            cradle.peer.head(newKey,function(err,res,code){
-              if(200 === code){
-                counter.exists++
-                resolve(true)
-              } else {
-                resolve(cradle.peer.saveAsync(newKey,record))
-              }
-            })
-          })
-        })
-        .then(
-          function(){
-            counter.moved++
-          },
-          function(err){
-            if(err.message.match(/conflict/i)) counter.exists++
-            else throw err
-          }
-        )
-        .catch(function(err){
-          if(err.message !== 'skipped'){
-            console.log(err.stack)
-            counter.error++
-          }
-        })
-        .finally(function(){
-          progress.tick()
-        })
-    },{concurrency: concurrency.purchase})
+    },{concurrency: concurrency[name]})
 }
 
 
@@ -327,15 +112,37 @@ var migratePurchases = function(){
  */
 var runInterval = function(done){
   //first lets get all the purchases
-  migrateStores()
+  migrateItems(
+    'store',
+    'oose:store:',
+    function(record){return cradle.schema.store(record.prism,record.name)}
+  )
     .then(function(){
-      return migratePrisms()
+      return migrateItems(
+        'prism',
+        'oose:prism:',
+        function(record){return cradle.schema.prism(record.name)}
+      )
     })
     .then(function(){
-      return migrateInventory()
+      return migrateItems(
+        'inventory',
+        'oose:inventory:',
+        function(record){
+          return cradle.schema.inventory(record.hash,record.store)
+        },
+        function(record){return (record.hash)}
+      )
     })
     .then(function(){
-      return migratePurchases()
+      return migrateItems(
+        'purchase',
+        'oose:purchase:',
+        function(record){
+          return cradle.schema.purchase(record.token)
+        },
+        function(record){return (record.token)}
+      )
     })
     .then(function(){
       console.log(
