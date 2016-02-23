@@ -46,7 +46,7 @@ var setupProgram = function(){
     }
     if(!program.key && config.store.enabled){
       program.key = config.store.name
-      program.type = 'prism'
+      program.type = 'store'
     }
   }
 }
