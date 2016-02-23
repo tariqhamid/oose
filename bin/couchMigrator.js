@@ -68,7 +68,14 @@ var migrateStores = function(){
           var newKey = cradle.schema.store(record.prism,record.name)
           record._id = newKey
           delete record._rev
-          return cradle.peer.saveAsync(newKey,record)
+          return cradle.peer.getAsync(newKey)
+            .then(function(result){
+              if(!result){
+                counter.exists++
+                return true
+              }
+              return cradle.peer.saveAsync(newKey,record)
+            })
         })
         .then(
           function(){
@@ -127,7 +134,14 @@ var migratePrisms = function(){
           var newKey = cradle.schema.prism(record.name)
           record._id = newKey
           delete record._rev
-          return cradle.peer.saveAsync(newKey,record)
+          return cradle.peer.getAsync(newKey)
+            .then(function(result){
+              if(!result){
+                counter.exists++
+                return true
+              }
+              return cradle.peer.saveAsync(newKey,record)
+            })
         })
         .then(
           function(){
@@ -191,7 +205,14 @@ var migrateInventory = function(){
           )
           record._id = newKey
           delete record._rev
-          return cradle.inventory.saveAsync(newKey,record)
+          return cradle.peer.getAsync(newKey)
+            .then(function(result){
+              if(!result){
+                counter.exists++
+                return true
+              }
+              return cradle.peer.saveAsync(newKey,record)
+            })
         })
         .then(
           function(){
@@ -251,7 +272,14 @@ var migratePurchases = function(){
           var newKey = cradle.schema.purchase(record.token)
           record._id = newKey
           delete record._rev
-          return cradle.purchase.saveAsync(newKey,record)
+          return cradle.peer.getAsync(newKey)
+            .then(function(result){
+              if(!result){
+                counter.exists++
+                return true
+              }
+              return cradle.peer.saveAsync(newKey,record)
+            })
         })
         .then(
           function(){
