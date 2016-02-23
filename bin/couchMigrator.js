@@ -6,7 +6,7 @@ var jSONStream = require('json-stream')
 var ObjectManage = require('object-manage')
 var ProgressBar = require('progress')
 
-//var config = require('../config')
+var config = require('../config')
 var cradle = require('../helpers/couchdb')
 
 
@@ -53,7 +53,7 @@ var migrateItems = function(name,itemKey,dbName,keyFunc,filterFunc){
     var result = new ObjectManage()
     var readStream = cradle.rawRequest(
       {
-        path: '_all_docs',
+        path: config.couchdb.database + '/_all_docs',
         query: {
           startKey: itemKey,
           endKey: itemKey + '\uffff'
