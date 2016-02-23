@@ -70,18 +70,15 @@ var migrateStores = function(){
           record._id = newKey
           delete record._rev
           return new P(function(resolve){
-            cradle.peer.head(newKey,function(err,opt1,opt2){
-              console.log(err,opt1,opt2)
-              resolve()
+            cradle.peer.head(newKey,function(err,res,code){
+              if(200 === code){
+                counter.exists++
+                resolve(true)
+              } else {
+                resolve(cradle.peer.saveAsync(newKey,record))
+              }
             })
           })
-            .then(function(res,code){
-              if(code === '404'){
-                counter.exists++
-                return true
-              }
-              return cradle.peer.saveAsync(newKey,record)
-            })
         })
         .then(
           function(){
@@ -140,14 +137,16 @@ var migratePrisms = function(){
           var newKey = cradle.schema.prism(record.name)
           record._id = newKey
           delete record._rev
-          return cradle.peer.headAsync(newKey)
-            .then(function(res,code){
-              if(code === '404'){
+          return new P(function(resolve){
+            cradle.peer.head(newKey,function(err,res,code){
+              if(200 === code){
                 counter.exists++
-                return true
+                resolve(true)
+              } else {
+                resolve(cradle.peer.saveAsync(newKey,record))
               }
-              return cradle.peer.saveAsync(newKey,record)
             })
+          })
         })
         .then(
           function(){
@@ -211,14 +210,16 @@ var migrateInventory = function(){
           )
           record._id = newKey
           delete record._rev
-          return cradle.inventory.headAsync(newKey)
-            .then(function(res,code){
-              if(code === '404'){
+          return new P(function(resolve){
+            cradle.peer.head(newKey,function(err,res,code){
+              if(200 === code){
                 counter.exists++
-                return true
+                resolve(true)
+              } else {
+                resolve(cradle.peer.saveAsync(newKey,record))
               }
-              return cradle.inventory.saveAsync(newKey,record)
             })
+          })
         })
         .then(
           function(){
@@ -278,14 +279,16 @@ var migratePurchases = function(){
           var newKey = cradle.schema.purchase(record.token)
           record._id = newKey
           delete record._rev
-          return cradle.purchase.headAsync(newKey)
-            .then(function(res,code){
-              if(code === '404'){
+          return new P(function(resolve){
+            cradle.peer.head(newKey,function(err,res,code){
+              if(200 === code){
                 counter.exists++
-                return true
+                resolve(true)
+              } else {
+                resolve(cradle.peer.saveAsync(newKey,record))
               }
-              return cradle.purchase.saveAsync(newKey,record)
             })
+          })
         })
         .then(
           function(){
