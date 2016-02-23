@@ -3,7 +3,6 @@ var P = require('bluebird')
 var debug = require('debug')('oose:clearPurchases')
 var infant = require('infant')
 var jSONStream = require('json-stream')
-var ObjectManage = require('object-manage')
 var ProgressBar = require('progress')
 
 var config = require('../config')
@@ -50,7 +49,7 @@ var migrateItems = function(name,itemKey,dbName,keyFunc,filterFunc){
     var progress
     debug('requesting ' + name,itemKey)
     var writeStream = jSONStream()
-    var result = new ObjectManage()
+    var result = []
     var readStream = cradle.rawRequest(
       {
         path: config.couchdb.database + '/_all_docs',
@@ -62,8 +61,7 @@ var migrateItems = function(name,itemKey,dbName,keyFunc,filterFunc){
       1
     )
     writeStream.on('data',function(chunk){
-      console.dir(chunk)
-      result.$load(chunk)
+      result.push(chunk.id)
     })
     writeStream.on('end',function(){
       //this gives us the inventory keys and now we must select all the docs
