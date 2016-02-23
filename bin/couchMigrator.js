@@ -182,6 +182,7 @@ var migrateInventory = function(){
     .map(function(row){
       return cradle.oose.getAsync(row.key)
         .then(function(record){
+          if(!record.hash) return false
           //we need the new row
           var newKey = cradle.schema.inventory(
             record.hash,
@@ -245,6 +246,7 @@ var migratePurchases = function(){
     .map(function(row){
       return cradle.oose.getAsync(row.key)
         .then(function(record){
+          if(!record.token) return false
           //we need the new row
           var newKey = cradle.schema.purchase(record.token)
           record._id = newKey
