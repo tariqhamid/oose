@@ -25,6 +25,7 @@ var concurrency = {
  */
 var counter = {
   moved: 0,
+  exists: 0,
   warning: 0,
   error: 0
 }
@@ -68,9 +69,15 @@ var migrateStores = function(){
           delete record._rev
           return cradle.peer.saveAsync(newKey,record)
         })
-        .then(function(){
-          counter.moved++
-        })
+        .then(
+          function(){
+            counter.moved++
+          },
+          function(err){
+            if(err.message.match(/conflict/i)) counter.exists++
+            else throw err
+          }
+        )
         .catch(function(err){
           console.log(err.stack)
           counter.error++
@@ -120,9 +127,15 @@ var migratePrisms = function(){
           delete record._rev
           return cradle.peer.saveAsync(newKey,record)
         })
-        .then(function(){
-          counter.moved++
-        })
+        .then(
+          function(){
+            counter.moved++
+          },
+          function(err){
+            if(err.message.match(/conflict/i)) counter.exists++
+            else throw err
+          }
+        )
         .catch(function(err){
           console.log(err.stack)
           counter.error++
@@ -177,9 +190,15 @@ var migrateInventory = function(){
           delete record._rev
           return cradle.inventory.saveAsync(newKey,record)
         })
-        .then(function(){
-          counter.moved++
-        })
+        .then(
+          function(){
+            counter.moved++
+          },
+          function(err){
+            if(err.message.match(/conflict/i)) counter.exists++
+            else throw err
+          }
+        )
         .catch(function(err){
           console.log(err.stack)
           counter.error++
@@ -230,9 +249,15 @@ var migratePurchases = function(){
           delete record._rev
           return cradle.purchase.saveAsync(newKey,record)
         })
-        .then(function(){
-          counter.moved++
-        })
+        .then(
+          function(){
+            counter.moved++
+          },
+          function(err){
+            if(err.message.match(/conflict/i)) counter.exists++
+            else throw err
+          }
+        )
         .catch(function(err){
           console.log(err.stack)
           counter.error++
@@ -264,6 +289,7 @@ var runInterval = function(done){
       console.log(
         'Migration complete, ' +
         counter.moved + ' moved ' +
+        counter.exists + ' already exist ' +
         counter.warning + ' warn ' +
         counter.error + ' error '
       )
