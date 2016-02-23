@@ -65,7 +65,7 @@ var migrateStores = function(){
       return cradle.oose.getAsync(row.id)
         .then(function(record){
           //we need the new row
-          var newKey = cradle.schema.store(record.prism,record.store)
+          var newKey = cradle.schema.store(record.prism,record.name)
           record._id = newKey
           delete record._rev
           return cradle.peer.saveAsync(newKey,record)
