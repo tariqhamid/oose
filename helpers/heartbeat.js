@@ -45,7 +45,7 @@ var setupProgram = function(){
       program.type = 'prism'
     }
     if(!program.key && config.store.enabled){
-      program.key = config.store.name
+      program.key = config.store.prism + ':' + config.store.name
       program.type = 'store'
     }
   }
