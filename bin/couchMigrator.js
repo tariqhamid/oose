@@ -27,6 +27,7 @@ var concurrency = {
 var counter = {
   moved: 0,
   exists: 0,
+  skipped: 0,
   warning: 0,
   error: 0
 }
@@ -201,7 +202,10 @@ var migrateInventory = function(){
     .map(function(row){
       return cradle.oose.getAsync(row.key)
         .then(function(record){
-          if(!record.hash) return false
+          if(!record.hash){
+            counter.skipped++
+            throw new Error('skipped')
+          }
           //we need the new row
           var newKey = cradle.schema.inventory(
             record.hash,
@@ -231,8 +235,10 @@ var migrateInventory = function(){
           }
         )
         .catch(function(err){
-          console.log(err.stack)
-          counter.error++
+          if(err.message !== 'skipped'){
+            console.log(err.stack)
+            counter.error++
+          }
         })
         .finally(function(){
           progress.tick()
@@ -274,7 +280,10 @@ var migratePurchases = function(){
     .map(function(row){
       return cradle.oose.getAsync(row.key)
         .then(function(record){
-          if(!record.token) return false
+          if(!record.hash){
+            counter.skipped++
+            throw new Error('skipped')
+          }
           //we need the new row
           var newKey = cradle.schema.purchase(record.token)
           record._id = newKey
@@ -300,8 +309,10 @@ var migratePurchases = function(){
           }
         )
         .catch(function(err){
-          console.log(err.stack)
-          counter.error++
+          if(err.message !== 'skipped'){
+            console.log(err.stack)
+            counter.error++
+          }
         })
         .finally(function(){
           progress.tick()
@@ -331,6 +342,7 @@ var runInterval = function(done){
         'Migration complete, ' +
         counter.moved + ' moved ' +
         counter.exists + ' already exist ' +
+        counter.skipped + ' skipped ' +
         counter.warning + ' warn ' +
         counter.error + ' error '
       )
