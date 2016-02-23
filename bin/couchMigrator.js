@@ -2,6 +2,8 @@
 var P = require('bluebird')
 var debug = require('debug')('oose:clearPurchases')
 var infant = require('infant')
+var jSONStream = require('json-stream')
+var ObjectManage = require('object-manage')
 var ProgressBar = require('progress')
 
 //var config = require('../config')
@@ -43,14 +45,27 @@ var counter = {
  * @return {P}
  */
 var migrateItems = function(name,itemKey,dbName,keyFunc,filterFunc){
-  console.log('Starting to migrate ' + name + ' records')
-  var progress
-  debug('requesting ' + name,itemKey)
-  return cradle.oose.allAsync({
-    startkey: itemKey,
-    endkey: itemKey + '\uffff'
-  })
-    .then(function(result){
+  return new P(function(resolve,reject){
+    console.log('Starting to migrate ' + name + ' records')
+    var progress
+    debug('requesting ' + name,itemKey)
+    var writeStream = jSONStream()
+    var result = new ObjectManage()
+    var readStream = cradle.rawRequest(
+      {
+        path: '_all_docs',
+        query: {
+          startKey: itemKey,
+          endKey: itemKey + '\uffff'
+        }
+      },
+      1
+    )
+    writeStream.on('data',function(chunk){
+      console.dir(chunk)
+      result.$load(chunk)
+    })
+    writeStream.on('end',function(){
       //this gives us the inventory keys and now we must select all the docs
       //and place them into the new database, so we will setup a progress bar
       progress = new ProgressBar(
@@ -62,47 +77,59 @@ var migrateItems = function(name,itemKey,dbName,keyFunc,filterFunc){
           incomplete: '-'
         }
       )
-      return result
-    })
-    .map(function(row){
-      if('function' === typeof filterFunc && false === filterFunc(row)){
-        throw new Error('skipped')
-      }
-      return cradle.oose.getAsync(row.id)
-        .then(function(record){
-          //we need the new row
-          var newKey = keyFunc(record)
-          record._id = newKey
-          delete record._rev
-          return new P(function(resolve){
-            cradle[dbName].head(newKey,function(err,res,code){
-              if(200 === code){
-                counter.exists++
-                resolve(true)
-              } else {
-                counter.moved++
-                resolve(cradle[dbName].saveAsync(newKey,record))
-              }
+      P.try(function(){
+        return result
+      })
+      .map(function(row){
+        if('function' === typeof filterFunc && false === filterFunc(row)){
+          throw new Error('skipped')
+        }
+        return cradle.oose.getAsync(row.id)
+          .then(function(record){
+            //we need the new row
+            var newKey = keyFunc(record)
+            record._id = newKey
+            delete record._rev
+            return new P(function(resolve){
+              cradle[dbName].head(newKey,function(err,res,code){
+                if(200 === code){
+                  counter.exists++
+                  resolve(true)
+                }
+                else{
+                  counter.moved++
+                  resolve(cradle[dbName].saveAsync(newKey,record))
+                }
+              })
             })
           })
-        })
-        .then(
-          function(){},
-          function(err){
-            if(err.message.match(/conflict/i)) counter.exists++
-            else throw err
-          }
-        )
-        .catch(function(err){
-          if('skipped' !== err.message){
-            console.log(err.stack)
-            counter.error++
-          }
-        })
-        .finally(function(){
-          progress.tick()
-        })
-    },{concurrency: concurrency[name]})
+          .then(
+            function(){
+            },
+            function(err){
+              if(err.message.match(/conflict/i)) counter.exists++
+              else throw err
+            }
+          )
+          .catch(function(err){
+            if('skipped' !== err.message){
+              console.log(err.stack)
+              counter.error++
+            }
+          })
+          .finally(function(){
+            progress.tick()
+          })
+      },{concurrency: concurrency[name]})
+      .then(function(){
+        resolve()
+      })
+      .catch(function(err){
+        reject(err)
+      })
+    })
+    readStream.pipe(writeStream)
+  })
 }
 
 
