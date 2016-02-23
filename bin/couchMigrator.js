@@ -1,4 +1,5 @@
 'use strict';
+var P = require('bluebird')
 var debug = require('debug')('oose:clearPurchases')
 var infant = require('infant')
 var ProgressBar = require('progress')
@@ -68,7 +69,12 @@ var migrateStores = function(){
           var newKey = cradle.schema.store(record.prism,record.name)
           record._id = newKey
           delete record._rev
-          return cradle.peer.headAsync(newKey)
+          return new P(function(resolve){
+            cradle.peer.head(newKey,function(err,opt1,opt2){
+              console.log(err,opt1,opt2)
+              resolve()
+            })
+          })
             .then(function(res,code){
               if(code === '404'){
                 counter.exists++
