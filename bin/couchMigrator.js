@@ -211,7 +211,7 @@ var migrateInventory = function(){
                 counter.exists++
                 return true
               }
-              return cradle.peer.saveAsync(newKey,record)
+              return cradle.inventory.saveAsync(newKey,record)
             })
         })
         .then(
@@ -278,7 +278,7 @@ var migratePurchases = function(){
                 counter.exists++
                 return true
               }
-              return cradle.peer.saveAsync(newKey,record)
+              return cradle.purchase.saveAsync(newKey,record)
             })
         })
         .then(
