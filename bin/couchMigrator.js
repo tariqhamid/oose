@@ -68,9 +68,9 @@ var migrateStores = function(){
           var newKey = cradle.schema.store(record.prism,record.name)
           record._id = newKey
           delete record._rev
-          return cradle.peer.getAsync(newKey)
-            .then(function(result){
-              if(!result){
+          return cradle.peer.headAsync(newKey)
+            .then(function(res,code){
+              if(code === '404'){
                 counter.exists++
                 return true
               }
@@ -134,9 +134,9 @@ var migratePrisms = function(){
           var newKey = cradle.schema.prism(record.name)
           record._id = newKey
           delete record._rev
-          return cradle.peer.getAsync(newKey)
-            .then(function(result){
-              if(!result){
+          return cradle.peer.headAsync(newKey)
+            .then(function(res,code){
+              if(code === '404'){
                 counter.exists++
                 return true
               }
@@ -205,9 +205,9 @@ var migrateInventory = function(){
           )
           record._id = newKey
           delete record._rev
-          return cradle.peer.getAsync(newKey)
-            .then(function(result){
-              if(!result){
+          return cradle.inventory.headAsync(newKey)
+            .then(function(res,code){
+              if(code === '404'){
                 counter.exists++
                 return true
               }
@@ -272,9 +272,9 @@ var migratePurchases = function(){
           var newKey = cradle.schema.purchase(record.token)
           record._id = newKey
           delete record._rev
-          return cradle.peer.getAsync(newKey)
-            .then(function(result){
-              if(!result){
+          return cradle.purchase.headAsync(newKey)
+            .then(function(res,code){
+              if(code === '404'){
                 counter.exists++
                 return true
               }
