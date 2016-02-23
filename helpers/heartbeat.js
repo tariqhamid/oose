@@ -328,7 +328,7 @@ var markMeUp = function(systemKey,systemType){
     type: systemType
   })
   var downKey = cradle.schema.downVote(systemKey)
-  debug('Getting peer information')
+  debug('Getting peer information',key)
   return cradle.peer.getAsync(key)
     .then(
       function(peer){
