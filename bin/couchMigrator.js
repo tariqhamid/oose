@@ -36,6 +36,7 @@ var counter = {
  * @return {P}
  */
 var migrateStores = function(){
+  console.log('Starting to migrate stores')
   var storeKey = 'oose:store:'
   var count = {}
   var progress
@@ -94,6 +95,7 @@ var migrateStores = function(){
  * @return {P}
  */
 var migratePrisms = function(){
+  console.log('Starting to migrate prisms')
   var prismKey = 'oose:prism:'
   var count = {}
   var progress
