@@ -63,9 +63,9 @@ var migrateStores = function(){
       return cradle.oose.getAsync(key)
         .then(function(record){
           //we need the new key
-          delete record._id
-          delete record._rev
           var newKey = cradle.schema.store(record.prism,record.store)
+          record._id = newKey
+          delete record._rev
           return cradle.peer.saveAsync(newKey,record)
         })
         .finally(function(){
@@ -109,9 +109,9 @@ var migratePrisms = function(){
       return cradle.oose.getAsync(key)
         .then(function(record){
           //we need the new key
-          delete record._id
-          delete record._rev
           var newKey = cradle.schema.store(record.name)
+          record._id = newKey
+          delete record._rev
           return cradle.peer.saveAsync(newKey,record)
         })
         .finally(function(){
@@ -156,13 +156,13 @@ var migrateInventory = function(){
       return cradle.oose.getAsync(key)
         .then(function(record){
           //we need the new key
-          delete record._id
-          delete record._rev
           var newKey = cradle.schema.inventory(
             record.hash,
             record.prism,
             record.store
           )
+          record._id = newKey
+          delete record._rev
           return cradle.inventory.saveAsync(newKey,record)
         })
         .then(function(){
@@ -214,9 +214,9 @@ var migratePurchases = function(){
       return cradle.oose.getAsync(key)
         .then(function(record){
           //we need the new key
-          delete record._id
-          delete record._rev
           var newKey = cradle.schema.purchase(record.token)
+          record._id = newKey
+          delete record._rev
           return cradle.purchase.saveAsync(newKey,record)
         })
         .then(function(){
