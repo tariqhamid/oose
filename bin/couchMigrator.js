@@ -132,7 +132,7 @@ var runInterval = function(done){
         'oose:inventory:',
         'inventory',
         function(record){
-          return cradle.schema.inventory(record.hash,record.store)
+          return cradle.schema.inventory(record.hash,record.prism,record.store)
         },
         function(record){return (record.hash)}
       )
