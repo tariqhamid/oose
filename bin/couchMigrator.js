@@ -115,12 +115,14 @@ var runInterval = function(done){
   migrateItems(
     'store',
     'oose:store:',
+    'peer',
     function(record){return cradle.schema.store(record.prism,record.name)}
   )
     .then(function(){
       return migrateItems(
         'prism',
         'oose:prism:',
+        'peer',
         function(record){return cradle.schema.prism(record.name)}
       )
     })
@@ -128,6 +130,7 @@ var runInterval = function(done){
       return migrateItems(
         'inventory',
         'oose:inventory:',
+        'inventory',
         function(record){
           return cradle.schema.inventory(record.hash,record.store)
         },
@@ -138,6 +141,7 @@ var runInterval = function(done){
       return migrateItems(
         'purchase',
         'oose:purchase:',
+        'inventory',
         function(record){
           return cradle.schema.purchase(record.token)
         },
