@@ -368,7 +368,7 @@ var markMeUp = function(systemKey,systemType){
  * @param {function} done
  */
 exports.start = function(systemKey,systemType,done){
-  console.log('Setting up to start heartbeat',systemKey,systemType,done)
+  console.log('Setting up to start heartbeat',systemKey,systemType)
   if(!systemKey)
     throw new Error('System key has not been set, heartbeat not started')
   if(!systemType)
