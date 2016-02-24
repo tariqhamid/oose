@@ -55,7 +55,9 @@ var migrateItems = function(name,itemKey,dbName,keyFunc,filterFunc){
       endkey: itemKey + '\uffff'
     }
     debug('creating read stream',readStreamOpts)
-    var readStream = cradle.oose.all(readStreamOpts)
+    var readStream = cradle.oose.all(readStreamOpts,function(err,stuff){
+      console.log(err,stuff)
+    })
     writeStream.on('data',function(chunk){
       result.push(chunk.id)
     })
