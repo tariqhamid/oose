@@ -59,7 +59,7 @@ var migrateItems = function(name,itemKey,dbName,keyFunc,filterFunc){
   var readStream = cradle.oose.all(readStreamOpts,function(){})
   readStream.on('data',function(chunk){
     readSize = readSize + chunk.length
-    process.stdout.write('Receiving from find ' +
+    process.stdout.write('Receiving from couch ' +
       (readSize / 1024).toFixed(0) + 'kb\r')
   })
   writeStream.on('data',function(chunk){
