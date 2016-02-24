@@ -26,7 +26,7 @@ if(require.main === module){
         }
       )
       heartbeat = infant.parent('../helpers/heartbeat')
-      cradle.db.getAsync(prismKey)
+      cradle.peer.getAsync(prismKey)
         .then(
           //if we exist lets mark ourselves available
           function(doc){
@@ -35,13 +35,13 @@ if(require.main === module){
             doc.port = config.prism.port
             doc.available = true
             doc.active = true
-            return cradle.db.saveAsync(prismKey,doc)
+            return cradle.peer.saveAsync(prismKey,doc)
           },
           //if we dont exist lets make sure thats why and create ourselves
           function(err){
             if(404 !== err.headers.status) throw err
             //now register ourselves or mark ourselves available
-            return cradle.db.saveAsync(prismKey,{
+            return cradle.peer.saveAsync(prismKey,{
               name: config.prism.name,
               host: config.prism.host,
               port: config.prism.port,
@@ -71,10 +71,10 @@ if(require.main === module){
     function(done){
       console.log('Beginning prism shutdown')
       //mark ourselves as down
-      cradle.db.getAsync(prismKey)
+      cradle.peer.getAsync(prismKey)
         .then(function(doc){
           doc.available = false
-          return cradle.db.saveAsync(prismKey,doc)
+          return cradle.peer.saveAsync(prismKey,doc)
         })
         .then(function(){
           if(!cluster) return

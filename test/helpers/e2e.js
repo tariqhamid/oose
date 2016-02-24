@@ -163,38 +163,38 @@ exports.before = function(that){
     })
     .then(function(){
       var key = cradle.schema.inventory()
-      return cradle.db.allAsync({startkey: key, endkey: key + '\uffff'})
+      return cradle.inventory.allAsync({startkey: key, endkey: key + '\uffff'})
     })
     .map(function(row){
-      return cradle.db.removeAsync(row.key)
+      return cradle.inventory.removeAsync(row.key)
     })
     .then(function(){
       var key = cradle.schema.purchase()
-      return cradle.db.allAsync({startkey: key, endkey: key + '\uffff'})
+      return cradle.purchase.allAsync({startkey: key, endkey: key + '\uffff'})
     })
     .map(function(row){
-      return cradle.db.removeAsync(row.key)
+      return cradle.purchase.removeAsync(row.key)
     })
     .then(function(){
       var key = cradle.schema.prism()
-      return cradle.db.allAsync({startkey: key, endkey: key + '\uffff'})
+      return cradle.peer.allAsync({startkey: key, endkey: key + '\uffff'})
     })
     .map(function(row){
-      return cradle.db.removeAsync(row.key)
+      return cradle.peer.removeAsync(row.key)
     })
     .then(function(){
       var key = cradle.schema.store()
-      return cradle.db.allAsync({startkey: key, endkey: key + '\uffff'})
+      return cradle.store.allAsync({startkey: key, endkey: key + '\uffff'})
     })
     .map(function(row){
-      return cradle.db.removeAsync(row.key)
+      return cradle.store.removeAsync(row.key)
     })
     .then(function(){
       var key = cradle.schema.downVote()
-      return cradle.db.allAsync({startkey: key, endkey: key + '\uffff'})
+      return cradle.heartbeat.allAsync({startkey: key, endkey: key + '\uffff'})
     })
     .map(function(row){
-      return cradle.db.removeAsync(row.key)
+      return cradle.heartbeat.removeAsync(row.key)
     })
     .then(function(){
       return P.all([

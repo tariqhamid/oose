@@ -21,15 +21,40 @@ P.promisifyAll(client)
 
 
 /**
- * Setup the DB access
+ * Setup the Peer DB
  * @type {object}
  */
-client.db = P.promisifyAll(client.database(config.couchdb.database))
+client.peer = P.promisifyAll(
+  client.database(config.couchdb.database + '-peer'))
+
+
+/**
+ * Setup the Inventory DB
+ * @type {object}
+ */
+client.inventory = P.promisifyAll(
+  client.database(config.couchdb.database + '-inventory'))
+
+
+/**
+ * Setup the Purchase DB
+ * @type {object}
+ */
+client.purchase = P.promisifyAll(
+  client.database(config.couchdb.database + '-purchase'))
+
+
+/**
+ * Setup the Heartbeat DB
+ * @type {object}
+ */
+client.heartbeat = P.promisifyAll(
+  client.database(config.couchdb.database + '-heartbeat'))
 
 
 /**
  * Add schema to helper
- * @type {CouchShema}
+ * @type {CouchSchema}
  */
 client.schema = new CouchSchema(config.couchdb.prefix)
 

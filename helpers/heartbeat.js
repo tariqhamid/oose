@@ -82,7 +82,7 @@ var downVote = function(peer,reason,systemKey,systemType,peerCount){
   var currentVoteLog = null
   debug('DOWN VOTE: ' + key)
   var createDownVote = function(){
-    return cradle.db.saveAsync(myDownKey,{
+    return cradle.heartbeat.saveAsync(myDownKey,{
       peer: peer,
       systemKey: systemKey,
       systemType: systemType,
@@ -91,7 +91,8 @@ var downVote = function(peer,reason,systemKey,systemType,peerCount){
     })
   }
   //get down votes that have already been set for this host
-  return cradle.db.allAsync({startkey: downKey, endkey: downKey + '\uffff'})
+  return cradle.heartbeat.allAsync(
+    {startkey: downKey, endkey: downKey + '\uffff'})
     .then(
       function(log){
         currentVoteLog = log
@@ -118,7 +119,7 @@ var downVote = function(peer,reason,systemKey,systemType,peerCount){
       if(count === 0 || votes < (count / 2))
         throw new Error('Ok, got it')
       peer.available = false
-      return cradle.db.saveAsync(key,peer._rev,peer)
+      return cradle.heartbeat.saveAsync(key,peer._rev,peer)
     })
     .catch(function(err){
       if('Ok, got it' === err.message){
@@ -171,21 +172,21 @@ var runHeartbeat = function(systemKey,systemType){
    */
   var restorePeer = function(peer){
     console.log('Restoring peer',peer)
-    return cradle.db.getAsync(peer._id)
+    return cradle.heartbeat.getAsync(peer._id)
       .then(function(result){
         result.available = true
-        return cradle.db.saveAsync(result._id,result._rev,result)
+        return cradle.heartbeat.saveAsync(result._id,result._rev,result)
       })
       .then(function(){
         //remove down votes
         var downKey = cradle.schema.downVote(peer.name)
-        return cradle.db.allAsync({
+        return cradle.heartbeat.allAsync({
           startkey: downKey,
           endkey: downKey + '\uffff'
         })
       })
       .map(function(vote){
-        return cradle.db.removeAsync(vote._id,vote._rev)
+        return cradle.heartbeat.removeAsync(vote._id,vote._rev)
       })
       .catch(function(err){
         console.log('Failed to restore peer',err)
@@ -200,7 +201,7 @@ var runHeartbeat = function(systemKey,systemType){
     .map(function(peer){
       //check for down votes for this peer from us
       var downKey = cradle.schema.downVote(peer.name,systemKey)
-      return cradle.db.getAsync(downKey)
+      return cradle.heartbeat.getAsync(downKey)
         .then(
           function(result){
             peer.existingDownVote = result
@@ -286,12 +287,12 @@ var runVotePrune = function(systemKey,systemType){
     if(vote.systemType && vote.systemType !== systemType) return false
     return (voteExpiresAfter <= currentTimestamp)
   }
-  return cradle.db.allAsync({
+  return cradle.heartbeat.allAsync({
     startkey: downVoteKey,
     endkey: downVoteKey + '\uffff'
   })
     .map(function(vote){
-      return cradle.db.getAsync(vote.id).reflect()
+      return cradle.heartbeat.getAsync(vote.id).reflect()
     })
     .filter(function(vote){
       if(!vote) return false
@@ -300,7 +301,7 @@ var runVotePrune = function(systemKey,systemType){
     })
     .map(function(vote){
       debug('Pruning vote',vote._id)
-      return cradle.db.removeAsync(vote._id,vote._rev).reflect()
+      return cradle.heartbeat.removeAsync(vote._id,vote._rev).reflect()
     })
     .catch(function(err){
       console.log('vote prune error: ',err)
@@ -328,13 +329,13 @@ var markMeUp = function(systemKey,systemType){
   })
   var downKey = cradle.schema.downVote(systemKey)
   debug('Getting peer information')
-  return cradle.db.getAsync(key)
+  return cradle.heartbeat.getAsync(key)
     .then(
       function(peer){
         debug('Got peer information back',peer)
         peer.available = true
         peer.active = true
-        return cradle.db.saveAsync(key,peer._rev,peer)
+        return cradle.heartbeat.saveAsync(key,peer._rev,peer)
       },
       function(err){
         debug('Got an error getting peer information',err)
@@ -344,11 +345,12 @@ var markMeUp = function(systemKey,systemType){
     .then(function(){
       //Time to delete the downvote log
       debug('About to get down votes',downKey)
-      return cradle.db.allAsync({startkey: downKey, endkey: downKey + '\uffff'})
+      return cradle.heartbeat.allAsync(
+        {startkey: downKey, endkey: downKey + '\uffff'})
     })
     .map(function(log){
       debug('Removing downvote',log)
-      return cradle.db.removeAsync(log.key,log._rev).reflect()
+      return cradle.heartbeat.removeAsync(log.key,log._rev).reflect()
     })
     .then(function(result){
       debug('finished marking myself up',result)
@@ -373,7 +375,7 @@ exports.start = function(systemKey,systemType,done){
     throw new Error('System type has not been set, heartbeat not started')
   heartbeatTimeout = setTimeout(function(){
     runHeartbeat(systemKey,systemType)
-  },1000)
+  },+(+config.heartbeat.startDelay || 5000))
   runVotePrune(systemKey,systemType)
   markMeUp(systemKey,systemType,done)
 }

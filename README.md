@@ -64,6 +64,12 @@ From there follow the debug filtering rules defined
 
 ## Changelog
 
+### 2.0.4
+
+* Organize data into separate couchdb databases for better performance
+reliability and debugging.
+* Add Heartbeat startup delay.
+
 ### 2.0.3
 
 * Improve inventory system

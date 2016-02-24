@@ -17,11 +17,11 @@ exports.storeList = function(prism){
   redis.incr(redis.schema.counter('prism','storeBalance:storeList'))
   var storeKey = cradle.schema.store(prism)
   debug(storeKey,'getting store list')
-  return cradle.db.allAsync({startkey: storeKey, endkey: storeKey + '\uffff'})
+  return cradle.peer.allAsync({startkey: storeKey, endkey: storeKey + '\uffff'})
     .then(function(rows){
       var ids = []
       for (var i=0; i < rows.length; i++) ids.push(rows[i].id)
-      return cradle.db.getAsync(ids)
+      return cradle.peer.getAsync(ids)
     })
     .map(function(row){
       return row.doc
@@ -60,7 +60,7 @@ exports.populateStores = function(stores){
     return stores
   })
     .map(function(store){
-      return cradle.db.getAsync(cradle.schema.store(store))
+      return cradle.peer.getAsync(cradle.schema.store(store))
     })
     .then(function(results){
       return results

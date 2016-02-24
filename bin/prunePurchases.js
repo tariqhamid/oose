@@ -89,7 +89,7 @@ var prunePurchases = function(done){
         //interval then we delete it, this will cause the rest of the cluster
         //to prune it
         var purchaseKey = cradle.schema.purchase(token)
-        return cradle.db.getAsync(purchaseKey)
+        return cradle.purchase.getAsync(purchaseKey)
           .then(
             function(doc){
               var expirationDate = +doc.expirationDate
@@ -107,7 +107,7 @@ var prunePurchases = function(done){
                 doc.expired = true
                 doc.afterlifeExpirationDate =
                   (+new Date() + config.purchase.afterlife)
-                return cradle.db.saveAsync(doc._id,doc._rev,doc)
+                return cradle.purchase.saveAsync(doc._id,doc._rev,doc)
               }
               //now we have a doc that is expired when we encounter these
               //and the afterlifeExpiration has also passed, we go ahead and
@@ -118,7 +118,7 @@ var prunePurchases = function(done){
                 if(afterlifeExpirationDate <= now){
                   debug(token,'afterlife expired, deleting')
                   counter.deleted++
-                  return cradle.db.removeAsync(doc._id,doc._rev)
+                  return cradle.purchase.removeAsync(doc._id,doc._rev)
                 }
               }
               //finally if nothing matches we throw an error

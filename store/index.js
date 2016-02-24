@@ -31,7 +31,7 @@ if(require.main === module){
       )
       heartbeat = infant.parent('../helpers/heartbeat')
       //check if our needed folders exist
-      cradle.db.getAsync(storeKey)
+      cradle.peer.getAsync(storeKey)
         .then(
           //if we exist lets mark ourselves available
           function(doc){
@@ -41,13 +41,13 @@ if(require.main === module){
             doc.port = config.store.port
             doc.available = true
             doc.active = true
-            return cradle.db.saveAsync(storeKey,doc)
+            return cradle.peer.saveAsync(storeKey,doc)
           },
           //if we dont exist lets make sure thats why and create ourselves
           function(err){
             if(!err.headers || 404 !== err.headers.status) throw err
             //now register ourselves or mark ourselves available
-            return cradle.db.saveAsync(storeKey,{
+            return cradle.peer.saveAsync(storeKey,{
               prism: config.store.prism,
               name: config.store.name,
               host: config.store.host,
@@ -90,10 +90,10 @@ if(require.main === module){
     function(done){
       console.log('Beginning store shutdown')
       //mark ourselves as down
-      cradle.db.getAsync(storeKey)
+      cradle.peer.getAsync(storeKey)
         .then(function(doc){
           doc.available = false
-          return cradle.db.saveAsync(storeKey,doc)
+          return cradle.peer.saveAsync(storeKey,doc)
         })
         .then(function(){
           if(!cluster) return

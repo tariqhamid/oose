@@ -22,7 +22,7 @@ var emit = function(){}
  */
 var runInterval = function(done){
   console.log('Starting create couch designs')
-  cradle.db.saveAsync('_design/inventory',{
+  cradle.inventory.saveAsync('_design/inventory',{
     byStore: {
       map: function(doc){
         emit([doc.store],doc)
