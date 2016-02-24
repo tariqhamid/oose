@@ -172,7 +172,7 @@ var runInterval = function(done){
       return migrateItems(
         'purchase',
         'oose:purchase:',
-        'inventory',
+        'purchase',
         function(record){
           return cradle.schema.purchase(record.token)
         },
