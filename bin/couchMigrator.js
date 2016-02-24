@@ -51,12 +51,11 @@ var migrateItems = function(name,itemKey,dbName,keyFunc,filterFunc){
     var writeStream = jSONStream()
     var result = []
     var readStreamOpts = {
-      path: '_all_docs',
       startkey: itemKey,
       endkey: itemKey + '\uffff'
     }
     debug('creating read stream',readStreamOpts)
-    var readStream = cradle.oose.query(readStreamOpts)
+    var readStream = cradle.oose.all(readStreamOpts)
     writeStream.on('data',function(chunk){
       result.push(chunk.id)
     })
