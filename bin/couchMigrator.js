@@ -50,18 +50,26 @@ var migrateItems = function(name,itemKey,dbName,keyFunc,filterFunc){
   debug('requesting ' + name,itemKey)
   var writeStream = jSONStream()
   var result = []
+  var readSize = 0
   var readStreamOpts = {
     startkey: itemKey,
     endkey: itemKey + '\uffff'
   }
   debug('creating read stream',readStreamOpts)
   var readStream = cradle.oose.all(readStreamOpts,function(){})
+  readStream.on('data',function(chunk){
+    readSize = readSize + chunk.length
+    process.stdout.write('Receiving from find ' +
+      (readSize / 1024).toFixed(0) + 'kb\r')
+  })
   writeStream.on('data',function(chunk){
     if(-1 === result.indexOf(chunk.id)) result.push(chunk.id)
   })
   return promisePipe(readStream,writeStream)
     .then(function(){
       debug('write ended',result.length)
+      //clear to a new line now that the data print is done
+      process.stdout.write('\n')
       //this gives us the inventory keys and now we must select all the docs
       //and place them into the new database, so we will setup a progress bar
       progress = new ProgressBar(
