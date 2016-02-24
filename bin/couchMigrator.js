@@ -59,6 +59,9 @@ var migrateItems = function(name,itemKey,dbName,keyFunc,filterFunc){
     }
     debug('creating read stream',readStreamOpts)
     var readStream = cradle.rawRequest(readStreamOpts)
+    readStream.on('data',function(chunk){
+      console.log(chunk)
+    })
     writeStream.on('data',function(chunk){
       console.log(chunk)
       result.push(chunk.id)
