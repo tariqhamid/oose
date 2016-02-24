@@ -63,7 +63,7 @@ var migrateItems = function(name,itemKey,dbName,keyFunc,filterFunc){
       result.push(chunk.id)
     })
     writeStream.on('finish',function(){
-      debug('write ended',result.length)
+      debug('write ended',result.length,result)
       //this gives us the inventory keys and now we must select all the docs
       //and place them into the new database, so we will setup a progress bar
       progress = new ProgressBar(
@@ -82,7 +82,7 @@ var migrateItems = function(name,itemKey,dbName,keyFunc,filterFunc){
         if('function' === typeof filterFunc && false === filterFunc(row)){
           throw new Error('skipped')
         }
-        return cradle.oose.getAsync(row.id)
+        return cradle.oose.getAsync(row)
           .then(function(record){
             //we need the new row
             var newKey = keyFunc(record)
@@ -152,6 +152,9 @@ var runInterval = function(done){
       )
     })
     .then(function(){
+      throw new Error('break')
+    })
+    .then(function(){
       return migrateItems(
         'inventory',
         'oose:inventory:',
@@ -159,7 +162,7 @@ var runInterval = function(done){
         function(record){
           return cradle.schema.inventory(record.hash,record.prism,record.store)
         },
-        function(record){return (record.hash)}
+        function(record){return (record.length > 0)}
       )
     })
     .then(function(){
@@ -170,7 +173,7 @@ var runInterval = function(done){
         function(record){
           return cradle.schema.purchase(record.token)
         },
-        function(record){return (record.token)}
+        function(record){return (record.length > 0)}
       )
     })
     .then(function(){
