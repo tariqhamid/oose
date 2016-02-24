@@ -63,7 +63,7 @@ var migrateItems = function(name,itemKey,dbName,keyFunc,filterFunc){
     writeStream.on('data',function(chunk){
       result.push(chunk.id)
     })
-    writeStream.on('end',function(){
+    writeStream.on('finish',function(){
       debug('write ended',result.length)
       //this gives us the inventory keys and now we must select all the docs
       //and place them into the new database, so we will setup a progress bar
