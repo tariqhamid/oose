@@ -1,12 +1,14 @@
 'use strict';
 var P = require('bluebird')
 var debug = require('debug')('oose:clearPurchases')
+var eventStream = require('event-stream')
 var infant = require('infant')
-var shastream = require('sha1-stream')
+var JSONStream = require('JSONStream')
 var ProgressBar = require('progress')
 var promisePipe = require('promisepipe')
+var request = require('request')
 
-//var config = require('../config')
+var config = require('../config')
 var cradle = require('../helpers/couchdb')
 
 
@@ -17,8 +19,8 @@ var cradle = require('../helpers/couchdb')
 var concurrency = {
   store: 4,
   prism: 4,
-  inventory: 32,
-  purchase: 64
+  inventory: 256,
+  purchase: 256
 }
 
 
@@ -51,21 +53,28 @@ var migrateItems = function(name,itemKey,dbName,keyFunc,filterFunc){
   var result = []
   var readSize = 0
   var readStreamOpts = {
-    startkey: itemKey,
-    endkey: itemKey + '\uffff'
+    url: 'http://' +
+      config.couchdb.options.auth.username + ':' +
+      config.couchdb.options.auth.password + '@' +
+      config.couchdb.host + ':' +
+      config.couchdb.port + '/' +
+      config.couchdb.database + '/_all_docs?' +
+      'startkey=' + encodeURIComponent('"' + itemKey + '"') + '&' +
+      'endkey=' + encodeURIComponent('"' + itemKey + '\uffff' + '"')
   }
   debug('creating read stream',readStreamOpts)
-  var writeStream = shastream.createStream()
-  var readStream = cradle.oose.all(readStreamOpts,function(){})
+  var writeStream = JSONStream.parse('rows.*')
+  var readStream = request.get(readStreamOpts)
+  var chunkFunc = function(data){
+    result.push(data.id)
+  }
   readStream.on('data',function(chunk){
-    result.push(chunk.toString())
     readSize = readSize + chunk.length
     process.stdout.write('Receiving from couch ' +
       (readSize / 1024).toFixed(0) + 'kb\r')
   })
-  return promisePipe(readStream,writeStream)
+  return promisePipe(readStream,writeStream,eventStream.mapSync(chunkFunc))
     .then(function(){
-      result = JSON.parse(result)
       debug('write ended',result.length)
       //clear to a new line now that the data print is done
       process.stdout.write('\n')
