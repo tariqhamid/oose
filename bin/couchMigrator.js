@@ -142,9 +142,6 @@ var runInterval = function(done){
       )
     })
     .then(function(){
-      throw new Error('break')
-    })
-    .then(function(){
       return migrateItems(
         'inventory',
         'oose:inventory:',
