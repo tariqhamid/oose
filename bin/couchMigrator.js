@@ -4,6 +4,7 @@ var debug = require('debug')('oose:clearPurchases')
 var infant = require('infant')
 var jSONStream = require('json-stream')
 var ProgressBar = require('progress')
+var promisePipe = require('promisepipe')
 
 //var config = require('../config')
 var cradle = require('../helpers/couchdb')
@@ -44,18 +45,22 @@ var counter = {
  * @return {P}
  */
 var migrateItems = function(name,itemKey,dbName,keyFunc,filterFunc){
-  return new P(function(resolve,reject){
-    console.log('Starting to migrate ' + name + ' records')
-    var progress
-    debug('requesting ' + name,itemKey)
-    var writeStream = jSONStream()
-    var result = []
-    var readStreamOpts = {
-      startkey: itemKey,
-      endkey: itemKey + '\uffff'
-    }
-    debug('creating read stream',readStreamOpts)
-    var readStream = cradle.oose.all(readStreamOpts,function(){
+  console.log('Starting to migrate ' + name + ' records')
+  var progress
+  debug('requesting ' + name,itemKey)
+  var writeStream = jSONStream()
+  var result = []
+  var readStreamOpts = {
+    startkey: itemKey,
+    endkey: itemKey + '\uffff'
+  }
+  debug('creating read stream',readStreamOpts)
+  var readStream = cradle.oose.all(readStreamOpts)
+  writeStream.on('data',function(chunk){
+    result.push(chunk.id)
+  })
+  return promisePipe(readStream,writeStream)
+    .then(function(){
       debug('write ended',result.length,result)
       //this gives us the inventory keys and now we must select all the docs
       //and place them into the new database, so we will setup a progress bar
@@ -68,7 +73,7 @@ var migrateItems = function(name,itemKey,dbName,keyFunc,filterFunc){
           incomplete: '-'
         }
       )
-      P.try(function(){
+      return P.try(function(){
         return result
       })
       .map(function(row){
@@ -111,19 +116,8 @@ var migrateItems = function(name,itemKey,dbName,keyFunc,filterFunc){
           .finally(function(){
             progress.tick()
           })
-      },{concurrency: concurrency[name]})
-      .then(function(){
-        resolve()
-      })
-      .catch(function(err){
-        reject(err)
-      })
+        },{concurrency: concurrency[name]})
     })
-    writeStream.on('data',function(chunk){
-      result.push(chunk.id)
-    })
-    readStream.pipe(writeStream)
-  })
 }
 
 
