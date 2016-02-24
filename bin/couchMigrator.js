@@ -52,10 +52,8 @@ var migrateItems = function(name,itemKey,dbName,keyFunc,filterFunc){
     var result = []
     var readStreamOpts = {
       path: '_all_docs',
-      query: {
-        startkey: itemKey,
-        endkey: itemKey + '\uffff'
-      }
+      startkey: itemKey,
+      endkey: itemKey + '\uffff'
     }
     debug('creating read stream',readStreamOpts)
     var readStream = cradle.oose.query(readStreamOpts)
