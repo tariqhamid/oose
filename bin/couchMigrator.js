@@ -59,7 +59,8 @@ var migrateItems = function(name,itemKey,dbName,keyFunc,filterFunc){
     }
     debug('creating read stream',readStreamOpts)
     var readStream = cradle.rawRequest(readStreamOpts)
-    readStream.setEncoding('utf-8')
+    console.log(readStream)
+    readStream.setEncoding('utf8')
     readStream.on('data',function(chunk){
       console.log(chunk)
     })
