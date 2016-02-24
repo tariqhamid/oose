@@ -61,6 +61,7 @@ var migrateItems = function(name,itemKey,dbName,keyFunc,filterFunc){
       1
     )
     writeStream.on('data',function(chunk){
+      console.dir(chunk)
       result.push(chunk.id)
     })
     writeStream.on('finish',function(){
