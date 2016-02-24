@@ -2,7 +2,7 @@
 var P = require('bluebird')
 var debug = require('debug')('oose:clearPurchases')
 var infant = require('infant')
-var jSONStream = require('json-stream')
+var shastream = require('sha1-stream')
 var ProgressBar = require('progress')
 var promisePipe = require('promisepipe')
 
@@ -48,7 +48,6 @@ var migrateItems = function(name,itemKey,dbName,keyFunc,filterFunc){
   console.log('Starting to migrate ' + name + ' records')
   var progress
   debug('requesting ' + name,itemKey)
-  var writeStream = jSONStream()
   var result = []
   var readSize = 0
   var readStreamOpts = {
@@ -56,17 +55,17 @@ var migrateItems = function(name,itemKey,dbName,keyFunc,filterFunc){
     endkey: itemKey + '\uffff'
   }
   debug('creating read stream',readStreamOpts)
+  var writeStream = shastream.createStream()
   var readStream = cradle.oose.all(readStreamOpts,function(){})
   readStream.on('data',function(chunk){
+    result.push(chunk.toString())
     readSize = readSize + chunk.length
     process.stdout.write('Receiving from couch ' +
       (readSize / 1024).toFixed(0) + 'kb\r')
   })
-  writeStream.on('data',function(chunk){
-    if(-1 === result.indexOf(chunk.id)) result.push(chunk.id)
-  })
   return promisePipe(readStream,writeStream)
     .then(function(){
+      result = JSON.parse(result)
       debug('write ended',result.length)
       //clear to a new line now that the data print is done
       process.stdout.write('\n')
