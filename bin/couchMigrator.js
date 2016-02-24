@@ -5,7 +5,7 @@ var infant = require('infant')
 var jSONStream = require('json-stream')
 var ProgressBar = require('progress')
 
-var config = require('../config')
+//var config = require('../config')
 var cradle = require('../helpers/couchdb')
 
 
@@ -55,11 +55,7 @@ var migrateItems = function(name,itemKey,dbName,keyFunc,filterFunc){
       endkey: itemKey + '\uffff'
     }
     debug('creating read stream',readStreamOpts)
-    var readStream = cradle.oose.all(readStreamOpts)
-    writeStream.on('data',function(chunk){
-      result.push(chunk.id)
-    })
-    writeStream.on('finish',function(){
+    var readStream = cradle.oose.all(readStreamOpts,function(){
       debug('write ended',result.length,result)
       //this gives us the inventory keys and now we must select all the docs
       //and place them into the new database, so we will setup a progress bar
