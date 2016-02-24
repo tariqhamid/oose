@@ -119,6 +119,9 @@ var migrateItems = function(name,itemKey,dbName,keyFunc,filterFunc){
         reject(err)
       })
     })
+    writeStream.on('data',function(chunk){
+      result.push(chunk.id)
+    })
     readStream.pipe(writeStream)
   })
 }
