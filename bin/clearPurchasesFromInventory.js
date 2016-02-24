@@ -15,7 +15,7 @@ var runInterval = function(done){
   //first lets get all the purchases
   var purchases = []
   debug('requesting purchases')
-  cradle.inventory.view('purchase/purchase')
+  cradle.inventory.viewAsync('purchase/purchase')
     .then(function(result){
       debug('purchase result; purchases: ',result.length)
       //this gives us the purchase keys and to my understanding we just have
