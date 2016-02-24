@@ -51,21 +51,15 @@ var migrateItems = function(name,itemKey,dbName,keyFunc,filterFunc){
     var writeStream = jSONStream()
     var result = []
     var readStreamOpts = {
-      path: config.couchdb.database + '/_all_docs',
+      path: '_all_docs',
       query: {
         startkey: itemKey,
         endkey: itemKey + '\uffff'
       }
     }
     debug('creating read stream',readStreamOpts)
-    var readStream = cradle.rawRequest(readStreamOpts)
-    console.log(readStream)
-    readStream.setEncoding('utf8')
-    readStream.on('data',function(chunk){
-      console.log(chunk)
-    })
+    var readStream = cradle.query(readStreamOpts)
     writeStream.on('data',function(chunk){
-      console.log(chunk)
       result.push(chunk.id)
     })
     writeStream.on('finish',function(){
