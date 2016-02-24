@@ -53,8 +53,8 @@ var migrateItems = function(name,itemKey,dbName,keyFunc,filterFunc){
     var readStreamOpts = {
       path: config.couchdb.database + '/_all_docs',
       query: {
-        startKey: itemKey,
-        endKey: itemKey + '\uffff'
+        startkey: itemKey,
+        endkey: itemKey + '\uffff'
       }
     }
     debug('creating read stream',readStreamOpts)
