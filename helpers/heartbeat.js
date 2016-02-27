@@ -323,9 +323,11 @@ var runVotePrune = function(systemKey,systemType){
  * @param {string} systemKey
  * @param {string} systemPrism
  * @param {string} systemType
+ * @param {function} done
  * @return {P}
  */
-var markMeUp = function(systemKey,systemPrism,systemType){
+var markMeUp = function(systemKey,systemPrism,systemType,done){
+  if('function' !== typeof done) done = function(){}
   debug('Marking myself up')
   var key = getPeerKey({
     name: systemKey,
@@ -359,6 +361,7 @@ var markMeUp = function(systemKey,systemPrism,systemType){
     })
     .then(function(result){
       debug('finished marking myself up',result)
+      done(null,result)
     })
     .catch(function(err){
       console.log('markMeUp error: ',err)
@@ -393,11 +396,10 @@ exports.start = function(systemKey,systemPrism,systemType,done){
  */
 exports.stop = function(done){
   console.log('Stopping heartbeat')
-  clearTimeout(heartbeatTimeout)
-  clearTimeout(pruneTimeout)
-  process.nextTick(done)
-  console.log('Heartbeat stop')
-  process.exit()
+  if(heartbeatTimeout) clearTimeout(heartbeatTimeout)
+  if(pruneTimeout) clearTimeout(pruneTimeout)
+  console.log('Heartbeat stopped')
+  done()
 }
 
 if(require.main === module){

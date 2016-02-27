@@ -103,6 +103,7 @@ if(require.main === module){
           ])
         })
         .then(function(){
+          heartbeat.cp.kill(9)
           console.log('Store shutdown complete')
           done()
         })
