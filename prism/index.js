@@ -84,7 +84,7 @@ if(require.main === module){
           ])
         })
         .then(function(){
-          heartbeat.cp.kill(9)
+          heartbeat.cp.kill('SIGKILL')
           console.log('Prism shutdown complete')
           done()
         })
