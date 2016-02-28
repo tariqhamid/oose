@@ -463,7 +463,7 @@ P.try(function(){
   .then(function(){
     fileList = fileStream.toString().split('\n')
     fileList = fileList.filter(function(a){
-      return a.match(/^[0-9a-f]{40}$/i)
+      return a.match(hasher.hashExpressions[hasher.identify(a)])
     })
     fileCount = fileList.length
     var progress = new ProgressBar(
@@ -476,6 +476,7 @@ P.try(function(){
       }
     )
     console.log('Found ' + fileCount + ' file(s) to be analyzed')
+    console.log(fileList)
     return analyzeFiles(progress,fileList)
   })
   .then(function(result){
