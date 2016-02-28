@@ -1,18 +1,22 @@
 'use strict';
 var P = require('bluebird')
 var clc = require('cli-color')
+var cp = require('child_process')
+var debug = require('debug')('clonetool')
 var Table = require('cli-table')
 var program = require('commander')
 var fs = require('graceful-fs')
 var MemoryStream = require('memory-stream')
 var ObjectManage = require('object-manage')
 var oose = require('oose-sdk')
+var path = require('path')
 var ProgressBar = require('progress')
 var promisePipe = require('promisepipe')
 var random = require('random-js')()
 
 var UserError = oose.UserError
 
+var hasher = require('../helpers/hasher')
 var prismBalance = require('../helpers/prismBalance')
 
 var config = require('../config')
@@ -36,7 +40,8 @@ program
   'to analyze, use - for stdin')
   .option('-p, --pretend','Dont actually make and clones just analyze')
   .option('-r, --remove','Remove target files')
-  .option('-s, --sha1 <s>','Hash of file to check')
+  .option('-H, --hash <hash>','Hash of file to check')
+  .option('-f, --folder <folder>','Folder to scan')
   .parse(process.argv)
 
 //existence options
@@ -299,6 +304,120 @@ var contentDetail = function(hash){
     })
 }
 
+
+/**
+ * Scan folder for files to check
+ * @param {string} folderPath
+ * @param {Stream} fileStream
+ * @return {P}
+ */
+var folderScan = function(folderPath,fileStream){
+  var root = path.resolve(folderPath)
+  var contentFolder = root
+  var hashList = []
+  if(!fs.existsSync(root))
+    throw new Error('Scan folder does not exist')
+
+
+  /**
+   * Stat counters
+   * @type {object}
+   */
+  var counter = {
+    warning: 0,
+    error: 0,
+    invalid: 0,
+    valid: 0,
+    bytes: 0,
+    bytesReceived: 0
+  }
+
+  debug('starting to scan',contentFolder)
+  return new P(function(resolve,reject){
+    var buffer = ''
+    var cmd = cp.spawn(
+      'find',
+      [contentFolder,'-type','f'],
+      {
+        cwd: '/',
+        maxBuffer: 4294967296,
+        stdio: ['pipe','pipe',process.stderr]
+      }
+    )
+    cmd.stdout.on('data',function(chunk){
+      counter.bytesReceived = counter.bytesReceived + chunk.length
+      process.stdout.write('Receiving from find ' +
+        (counter.bytesReceived / 1024).toFixed(0) + 'kb\r')
+      buffer = buffer + '' + chunk.toString()
+    })
+    cmd.on('close',function(code){
+      //clear to a new line now that the data print is done
+      process.stdout.write('\n')
+      if(code > 0) return reject(new Error('Find failed with code ' + code))
+      debug('finished find, splitting and starting processing')
+      var fileCount = 0
+      var progress
+      P.try(function(){
+        var lines = buffer
+          .split('\n')
+          .filter(function(item){return '' !== item})
+          .map(function(val){
+            return path.resolve(val)
+          })
+        fileCount = lines.length
+        console.log('Parsed find result into ' + fileCount + ' files')
+        progress = new ProgressBar(
+          '  scanning [:bar] :current/:total :percent :rate/fps :etas',
+          {
+            total: fileCount,
+            width: 50,
+            complete: '=',
+            incomplete: '-'
+          }
+        )
+        return lines
+      })
+        .map(function(filePath){
+          filePath = path.posix.resolve(filePath)
+          debug('got a hit',filePath)
+          var relativePath = path.posix.relative(contentFolder,filePath)
+          var stat = fs.statSync(filePath)
+          counter.bytes += stat.size
+          var ext = relativePath.match(/\.(.+)$/)[0]
+          var hash = relativePath.replace(/[\\\/]/g,'').replace(/\..+$/,'')
+          var hashType = hasher.identify(hash)
+          //skip invalid inventory entries
+          progress.tick()
+          if(!hash.match(hasher.hashExpressions[hashType])){
+            counter.invalid++
+            debug(hash,hashType,'invalid hash')
+          }
+          //otherwise try and insert them into inventory if they are not already
+          //there
+          else {
+            counter.valid++
+            debug(hash,'inventory scan found',ext,relativePath)
+            fileStream.write(hash + '\n')
+            hashList.push({
+              hashType: hashType,
+              hash: hash,
+              ext: ext,
+              relativePath: relativePath
+            })
+          }
+        },{concurrency: config.store.inventoryConcurrency})
+        .then(function(){
+          debug('folder scan complete',counter,hashList)
+          resolve(counter,hashList)
+        })
+        .catch(function(err){
+          console.log('file process error',err)
+          reject(err)
+        })
+    })
+  })
+}
+
 var files = {}
 var fileStream = new MemoryStream()
 var fileList = []
@@ -333,6 +452,8 @@ P.try(function(){
   //get file list together
   if(program.hash){
     fileStream.write(program.hash)
+  } else if(program.folder){
+    return folderScan(program.folder,fileStream)
   } else if('-' === program.input){
     return promisePipe(process.stdin,fileStream)
   } else {
