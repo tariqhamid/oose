@@ -431,7 +431,7 @@ P.try(function(){
     return contentDetail(program.detail)
   }
   //do some validation
-  if(!program.hash && !program.input){
+  if(!program.hash && !program.input && !program.folder){
     throw new UserError('No file list or file provided')
   }
   //set the desired to the default of 2 if not set
