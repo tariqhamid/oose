@@ -488,12 +488,12 @@ exports.purchase = function(req,res){
     .then(function(){
       //now create our purchase object
       purchase = {
-        hash: hash,
-        life: life,
-        expirationDate: +(+new Date() + life),
-        token: token,
-        ext: ext,
-        referrer: referrer
+        hash: '' + hash,
+        life: '' + life,
+        expirationDate: '' + (+new Date() + life),
+        token: '' + token,
+        ext: '' + ext,
+        referrer: '' + referrer.join(',')
       }
       return purchasedb.hmsetAsync(purchasedb.schema.purchase(token),purchase)
     })
@@ -541,6 +541,7 @@ exports.deliver = function(req,res){
   //var filename = req.params.filename
   var cacheValid = false
   var purchaseKey = purchasedb.schema.purchase(token)
+  var purchaseCacheKey = redis.schema.purchaseCache(token)
   /**
    * Make a content URL
    * @param {object} req
@@ -601,7 +602,7 @@ exports.deliver = function(req,res){
     return result
   }
   //try to get our purchase record from cache
-  redis.getAsync(purchaseKey)
+  redis.getAsync(purchaseCacheKey)
     .then(function(result){
       if(result){
         try {
@@ -616,18 +617,19 @@ exports.deliver = function(req,res){
       }
       else{
         //hard look up of purchase
-        return purchasedb.hgetAllAsync(purchaseKey)
+        return purchasedb.hgetallAsync(purchaseKey)
           .then(
             function(result){
               if(!result) throw new NotFoundError('Purchase not found')
               return prismBalance.contentExists(result.hash)
                 .then(function(existsResult){
                   result.inventory = existsResult
+                  return result
                   //store new cache here
-                  return redis.setAsync(purchaseKey,JSON.stringify(result))
+                  return redis.setAsync(purchaseCacheKey,JSON.stringify(result))
                     .then(function(){
                       return redis.expireAsync(
-                        purchaseKey,
+                        purchaseCacheKey,
                         (+config.prism.purchaseCacheLife || 30)
                       )
                     })
@@ -645,6 +647,7 @@ exports.deliver = function(req,res){
     .then(function(purchase){
       //okay so now we have the purchase record and reading it from cache like
       //we wanted, now we do validation and winner selection like normal
+      purchase.referrer = purchase.referrer.split(',')
       var validation = validateRequest(purchase)
       if(!validation.valid) throw new UserError(validation.reason)
       //we have a purchase so now... we need to pick a store....
@@ -684,24 +687,26 @@ exports.deliver = function(req,res){
  */
 exports.contentStatic = function(req,res){
   redis.incr(redis.schema.counter('prism','content:static'))
-  var hash = req.params.hash || req.params.sha1 || 'sha1'
+  var hash = req.params.hash || req.params.sha1 || ''
   var filename = req.params.filename
   //default based on the request
   var ext = path.extname(filename).replace(/^\./,'')
+  var existsRecord
   prismBalance.contentExists(hash)
     .then(function(result){
       if(!result.exists) throw new NotFoundError('Content does not exist')
       if(config.prism.denyStaticTypes.indexOf(ext) >= 0)
         throw new UserError('Invalid static file type')
+      existsRecord = result
       return storeBalance.winnerFromExists(hash,result,[],true)
     })
     .then(function(result){
       //set the extension based on the chosen winners relative path, this will
       //actually be accurate
-      ext = path.extname(result.relativePath).replace(/^\./,'')
+      ext = path.extname(existsRecord.relativePath).replace(/^\./,'')
       var proto = 'https' === req.get('X-Forwarded-Protocol') ? 'https' : 'http'
       var url = proto + '://' + result.name +
-        '.' + config.domain + '/static/' + hashFile.toRelativePath(hash,ext)
+        '.' + config.domain + '/static/' + existsRecord.relativePath
       res.redirect(302,url)
     })
     .catch(NetworkError,function(err){
@@ -734,7 +739,7 @@ exports.purchaseRemove = function(req,res){
   var token = req.body.token
   var purchaseKey = purchasedb.schema.purchase(token)
   var purchase
-  purchasedb.hgetAllAsync(purchaseKey)
+  purchasedb.hgetallAsync(purchaseKey)
     .then(function(result){
         purchase = result
         return prismBalance.contentExists(purchase.hash)

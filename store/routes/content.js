@@ -200,11 +200,12 @@ exports.remove = function(req,res){
  */
 exports.send = function(req,res){
   var file = req.body.file
-  var storeKey = cradle.schema.store(req.body.store)
+  var nameParts = req.body.store.split(':')
+  var storeKey = cradle.schema.store(nameParts[0],nameParts[1])
   var storeClient = null
   var store = {}
   var details = {}
-  cradle.inventory.getAsync(storeKey)
+  cradle.peer.getAsync(storeKey)
     .then(
       function(result){
         store = result

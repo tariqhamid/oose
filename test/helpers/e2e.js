@@ -667,9 +667,10 @@ exports.contentPurchase = function(prism){
         localAddress: '127.0.0.1'
       })
       .spread(function(res,body){
+        body.referrer = body.referrer.split(',')
         expect(body.token.length).to.equal(64)
         expect(body.ext).to.equal('txt')
-        expect(body.life).to.equal(7200000)
+        expect(body.life).to.equal('7200000')
         expect(body.hash).to.equal(content.hash)
         expect(body.referrer).to.be.an('array')
         expect(body.referrer[0]).to.equal('localhost')

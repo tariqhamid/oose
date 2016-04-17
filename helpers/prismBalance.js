@@ -245,12 +245,15 @@ exports.contentExists = function(hash){
           })
           .then(function(result){
             existsRecord = result
-            return redis.setAsync(existsKey,JSON.stringify(existsRecord))
-              .then(function(){
-                return redis.expireAsync(
-                  existsKey,+config.prism.existsCacheLife || 30
-                )
-              })
+            //only record cache if record exists
+            if(true === existsRecord.exists){
+              return redis.setAsync(existsKey,JSON.stringify(existsRecord))
+                .then(function(){
+                  return redis.expireAsync(
+                    existsKey,+config.prism.existsCacheLife || 30
+                  )
+                })
+            }
           })
           .then(function(){
             return existsRecord
