@@ -64,6 +64,14 @@ From there follow the debug filtering rules defined
 
 ## Changelog
 
+### 2.2.0
+
+* Purchases are once again stored in redis, but this time pointing at a single
+HA redis instance.
+* Drop bloat from the purchase record.
+* Prototype for clone scaling on demand for load reactivity.
+* Bump dependencies.
+
 ### 2.1.0
 
 * Add CouchDB migration script from 2.0.x
