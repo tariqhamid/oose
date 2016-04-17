@@ -13,6 +13,7 @@ var url = require('url')
 var api = require('../../helpers/api')
 var cradle = require('../../helpers/couchdb')
 var content = oose.mock.content
+var purchasedb = require('../../helpers/purchasedb')
 var purchasePath = require('../../helpers/purchasePath')
 var redis = require('../../helpers/redis')
 var hashFile = require('../../helpers/hashFile')
@@ -169,11 +170,7 @@ exports.before = function(that){
       return cradle.inventory.removeAsync(row.key)
     })
     .then(function(){
-      var key = cradle.schema.purchase()
-      return cradle.purchase.allAsync({startkey: key, endkey: key + '\uffff'})
-    })
-    .map(function(row){
-      return cradle.purchase.removeAsync(row.key)
+      return purchasedb.flushallAsync();
     })
     .then(function(){
       var key = cradle.schema.prism()
@@ -184,10 +181,10 @@ exports.before = function(that){
     })
     .then(function(){
       var key = cradle.schema.store()
-      return cradle.store.allAsync({startkey: key, endkey: key + '\uffff'})
+      return cradle.peer.allAsync({startkey: key, endkey: key + '\uffff'})
     })
     .map(function(row){
-      return cradle.store.removeAsync(row.key)
+      return cradle.peer.removeAsync(row.key)
     })
     .then(function(){
       var key = cradle.schema.downVote()

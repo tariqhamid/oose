@@ -37,14 +37,6 @@ client.inventory = P.promisifyAll(
 
 
 /**
- * Setup the Purchase DB
- * @type {object}
- */
-client.purchase = P.promisifyAll(
-  client.database(config.couchdb.database + '-purchase'))
-
-
-/**
  * Legacy OOSE DB
  * @type {object}
  */
