@@ -21,7 +21,7 @@ echo "Your management IP is $mgmtip"
 echo "Installing software"
 apt-get -y install iptables iptables-persistent
 
-echo -n "Flusing existing Tables... "
+echo -n "Flushing existing Tables... "
 iptables -F
 iptables -t nat -F
 echo "done"
@@ -72,7 +72,7 @@ iptables -A INPUT -i "$pubeth" -p tcp -m multiport --dports 5970,5971,5972 -m st
 iptables -A OUTPUT -o "$pubeth"  -p tcp -m multiport --sports 5970,5971,5972 -m state --state ESTABLISHED -j ACCEPT
 echo "done"
 
-echo -n "Allow Outound OOSE... "
+echo -n "Allow Outbound OOSE... "
 iptables -A OUTPUT -o "$pubeth" -p tcp -m multiport --dports 5970,5971,5972 -m state --state NEW,ESTABLISHED -j ACCEPT
 iptables -A INPUT -i "$pubeth" -p tcp -m multiport --sports 5970,5971,5972 -m state --state ESTABLISHED -j ACCEPT
 echo "done"
@@ -82,7 +82,7 @@ iptables -A INPUT -i "$pubeth" -p tcp --dport 5984 -m state --state NEW,ESTABLIS
 iptables -A OUTPUT -o "$pubeth"  -p tcp --sport 5984 -m state --state ESTABLISHED -j ACCEPT
 echo "done"
 
-echo -n "Allow Outound CouchDB... "
+echo -n "Allow Outbound CouchDB... "
 iptables -A OUTPUT -o "$pubeth" -p tcp --dport 5984 -m state --state NEW,ESTABLISHED -j ACCEPT
 iptables -A INPUT -i "$pubeth" -p tcp --sport 5984 -m state --state ESTABLISHED -j ACCEPT
 echo "done"
@@ -92,7 +92,7 @@ iptables -A INPUT -i "$pubeth" -p tcp --dport 6379 -m state --state NEW,ESTABLIS
 iptables -A OUTPUT -o "$pubeth"  -p tcp --sport 6379 -m state --state ESTABLISHED -j ACCEPT
 echo "done"
 
-echo -n "Allow Outound Redis... "
+echo -n "Allow Outbound Redis... "
 iptables -A OUTPUT -o "$pubeth" -p tcp --dport 6379 -m state --state NEW,ESTABLISHED -j ACCEPT
 iptables -A INPUT -i "$pubeth" -p tcp --sport 6379 -m state --state ESTABLISHED -j ACCEPT
 echo "done"
