@@ -87,6 +87,16 @@ iptables -A OUTPUT -o "$pubeth" -p tcp --dport 5984 -m state --state NEW,ESTABLI
 iptables -A INPUT -i "$pubeth" -p tcp --sport 5984 -m state --state ESTABLISHED -j ACCEPT
 echo "done"
 
+echo -n "Allow Inbound Redis... "
+iptables -A INPUT -i "$pubeth" -p tcp --dport 6379 -m state --state NEW,ESTABLISHED -j ACCEPT
+iptables -A OUTPUT -o "$pubeth"  -p tcp --sport 6379 -m state --state ESTABLISHED -j ACCEPT
+echo "done"
+
+echo -n "Allow Outound Redis... "
+iptables -A OUTPUT -o "$pubeth" -p tcp --dport 6379 -m state --state NEW,ESTABLISHED -j ACCEPT
+iptables -A INPUT -i "$pubeth" -p tcp --sport 6379 -m state --state ESTABLISHED -j ACCEPT
+echo "done"
+
 echo -n "Allow Inbound Zabbix... "
 iptables -A INPUT -i "$pubeth" -p tcp --dport 10050 -m state --state NEW,ESTABLISHED -j ACCEPT
 iptables -A OUTPUT -o "$pubeth" -p tcp --sport 10050 -m state --state ESTABLISHED -j ACCEPT
