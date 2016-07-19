@@ -190,7 +190,7 @@ var runHeartbeat = function(systemKey,systemType){
       })
       .map(function(vote){
         return cradle.heartbeat.removeAsync(vote._id,vote._rev)
-      })
+      },{concurrency: config.heartbeat.concurrency})
       .catch(function(err){
         console.log('Failed to restore peer',err)
       })
@@ -215,7 +215,7 @@ var runHeartbeat = function(systemKey,systemType){
             return peer
           }
         )
-    })
+    },{concurrency: config.heartbeat.concurrency})
     .map(function(peer){
       //setup the ping handler
       debug('Setting up to ping peer',peer.name,peer.host + ':' + peer.port)
@@ -249,7 +249,7 @@ var runHeartbeat = function(systemKey,systemType){
           console.log('Ping Error ' + peer.name,err.message)
           return handlePingFailure(err.message,peer)
         })
-    })
+    },{concurrency: config.heartbeat.concurrency})
     .catch(function(err){
       console.log(err)
     })
@@ -296,7 +296,7 @@ var runVotePrune = function(systemKey,systemType){
   })
     .map(function(vote){
       return cradle.heartbeat.getAsync(vote.id).reflect()
-    })
+    },{concurrency: config.heartbeat.concurrency})
     .filter(function(vote){
       if(!vote) return false
       debug('filtering vote',vote.id,validateVote(vote))
@@ -305,7 +305,7 @@ var runVotePrune = function(systemKey,systemType){
     .map(function(vote){
       debug('Pruning vote',vote._id)
       return cradle.heartbeat.removeAsync(vote._id,vote._rev).reflect()
-    })
+    },{concurrency: config.heartbeat.concurrency})
     .catch(function(err){
       console.log('vote prune error: ',err)
     })
@@ -358,7 +358,7 @@ var markMeUp = function(systemKey,systemPrism,systemType,done){
     .map(function(log){
       debug('Removing downvote',log)
       return cradle.heartbeat.removeAsync(log.key,log._rev).reflect()
-    })
+    },{concurrency: config.heartbeat.concurrency})
     .then(function(result){
       debug('finished marking myself up',result)
       done(null,result)

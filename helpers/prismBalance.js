@@ -74,7 +74,8 @@ exports.prismList = function(){
     })
     .map(function(row){
       return row.doc
-    }).filter(function(doc){
+    })
+    .filter(function(doc){
       return doc.name && doc.available && doc.active
     })
 }
@@ -195,17 +196,15 @@ exports.contentExists = function(hash){
           startkey: existsKey,
           endkey: existsKey + '\uffff'
         })
-          .map(
-            function(row){
-              debug(existsKey,'got record',row)
-              count++
-              return cradle.inventory.getAsync(row.key)
-            },
-            function(err){
-              if(404 !== err.headers.status) throw err
-              count = 0
-            }
-          )
+          .map(function(row){
+            debug(existsKey,'got record',row)
+            count++
+            return cradle.inventory.getAsync(row.key)
+              .catch(function(err){
+                if(404 !== err.headers.status) throw err
+                count = 0
+              })
+          })
           .then(function(inventoryList){
             //debug(existsKey,'records',result)
             if(!count){
