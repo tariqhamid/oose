@@ -236,7 +236,8 @@ exports.retrieve = function(req,res){
       })
     })
     .catch(function(err){
-      console.log('Unhandled error on content retrieve ' + err.message)
+      console.log(err.stack)
+      console.log('Unhandled error on content retrieve ' + err.message,err)
     })
     .finally(function(){
       return fs.unlinkAsync(tmpfile)
