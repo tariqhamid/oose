@@ -29,13 +29,13 @@ config.$load({
   heartbeat: {
     systemKey: null,
     systemType: null,
-    retries: 3,
-    concurrency: 4, //number of simultaneous connections and queries
-    startDelay: 30000, //ms default: 30 second start delay
-    frequency: 2500, //ms static frequency; duration and shift added to this
-    votePruneFrequency: 5000, //ms
-    voteLife: 10000, //ms vote hold down time (no pings during this window)
-    pingResponseTimeout: 1500 //ms
+    retries: 8,
+    concurrency: 8, //number of simultaneous connections and queries
+    startDelay: 60000, //ms default: 30 second start delay
+    frequency: 5000, //ms static frequency; duration and shift added to this
+    votePruneFrequency: 60000, //ms
+    voteLife: 60000, //ms vote hold down time (no pings during this window)
+    pingResponseTimeout: 2000 //ms
   },
   //databases
   redis: {
