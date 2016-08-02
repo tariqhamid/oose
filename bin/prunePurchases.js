@@ -8,7 +8,7 @@ var ProgressBar = require('progress')
 var readdirp = require('readdirp-walk')
 
 var config = require('../config')
-var cradle = require('../helpers/couchdb')
+var purchasedb = require('../helpers/purchasedb')
 
 //make some promises
 P.promisifyAll(fs)
@@ -88,49 +88,56 @@ var prunePurchases = function(done){
         //we set it to expired, if it is already expired for the afterlife
         //interval then we delete it, this will cause the rest of the cluster
         //to prune it
-        var purchaseKey = cradle.schema.purchase(token)
-        return cradle.db.getAsync(purchaseKey)
-          .then(
-            function(doc){
-              var expirationDate = +doc.expirationDate
-              var now = +new Date()
-              //this is a valid purchase leave it alone
-              if(!doc.expired && (expirationDate > now)){
-                counter.valid++
-                debug(token,'valid')
-              }
-              //this purchase has expired but has yet to be marked expired
-              //so we expire it and calculate the final expiration date
-              else if(!doc.expired && (expirationDate <= now)){
-                debug(token,'expired')
-                counter.expired++
-                doc.expired = true
-                doc.afterlifeExpirationDate =
-                  (+new Date() + config.purchase.afterlife)
-                return cradle.db.saveAsync(doc._id,doc._rev,doc)
-              }
-              //now we have a doc that is expired when we encounter these
-              //and the afterlifeExpiration has also passed, we go ahead and
-              //prune the purchase out of the database, once this happens on
-              //the next prune cycle the purchase link will finally be removed
-              else if(doc.expired){
-                var afterlifeExpirationDate = +doc.afterlifeExpirationDate
-                if(afterlifeExpirationDate <= now){
-                  debug(token,'afterlife expired, deleting')
-                  counter.deleted++
-                  return cradle.db.removeAsync(doc._id,doc._rev)
-                }
-              }
-              //finally if nothing matches we throw an error
-              else {
-                var err = new Error('Unknown purchase rule hit ' + doc.toJSON())
-                err.doc = doc
-                throw err
-              }
-            },
-            function(err){
-              //throw errors we dont know about
-              if(!err.headers || 404 !== err.headers.status) throw err
+        var purchaseKey = purchasedb.schema.purchase(token)
+        return purchasedb.existsAsync(purchaseKey)
+          .then(function(purchaseKeyExists){
+            if(purchaseKeyExists){
+              return purchasedb.hgetallAsync(purchaseKey)
+                .then(
+                  function(doc){
+                    var expirationDate = +doc.expirationDate
+                    var now = +new Date()
+                    //this is a valid purchase leave it alone
+                    if(!doc.expired && (expirationDate > now)){
+                      counter.valid++
+                      debug(token,'valid')
+                    }
+                    //this purchase has expired but has yet to be marked expired
+                    //so we expire it and calculate the final expiration date
+                    else if(!doc.expired && (expirationDate <= now)){
+                      debug(token,'expired')
+                      counter.expired++
+                      doc.expired = true
+                      doc.afterlifeExpirationDate =
+                        (+new Date() + config.purchase.afterlife)
+                      return P.all([
+                        //set the updated purchase record
+                        purchasedb.hmsetAsync(purchaseKey,doc),
+                        //actually expire the purchase record
+                        purchasedb.expireAsyncAsync(
+                          purchaseKey,
+                          config.purchase.afterlife / 1000
+                        )
+                      ])
+                    }
+                    //now we have a doc that is expired when we encounter these
+                    //and the afterlifeExpiration has also passed, we go ahead
+                    //and prune the purchase out of the database, once this
+                    //happens on the next prune cycle the purchase link will
+                    //finally be removed
+                    else if(doc.expired){
+                      counter.archived++
+                    }
+                    //finally if nothing matches we throw an error
+                    else {
+                      var err = new Error(
+                        'Unknown purchase rule hit ' + doc.toJSON())
+                      err.doc = doc
+                      throw err
+                    }
+                  }
+                )
+            } else {
               //regular 404s we just drop our symlink
               debug(token,'purchase does not exist, removing ours')
               return fs.unlinkAsync(entry.fullPath)
@@ -138,7 +145,7 @@ var prunePurchases = function(done){
                   counter.cleaned++
                 })
             }
-          )
+          })
           .catch(function(err){
             counter.error++
             console.log(err.stack)

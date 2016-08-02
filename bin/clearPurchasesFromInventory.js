@@ -11,15 +11,11 @@ var cradle = require('../helpers/couchdb')
  * @param {function} done
  */
 var runInterval = function(done){
-  console.log('Starting to clear purchases')
+  console.log('Starting to clear purchases from inventory')
   //first lets get all the purchases
-  var purchaseKey = cradle.schema.purchase()
   var purchases = []
-  debug('requesting purchases',purchaseKey)
-  cradle.purchase.allAsync({
-    startkey: purchaseKey,
-    endkey: purchaseKey + '\uffff'
-  })
+  debug('requesting purchases')
+  cradle.inventory.viewAsync('purchase/purchase')
     .then(function(result){
       debug('purchase result; purchases: ',result.length)
       //this gives us the purchase keys and to my understanding we just have
@@ -35,7 +31,7 @@ var runInterval = function(done){
       }
       debug('saving deletion of purchases',purchases.length,purchases[0])
       //now we just use cradle to save the purchases
-      return cradle.purchase.saveAsync(purchases)
+      return cradle.inventory.saveAsync(purchases)
     })
     .then(function(result){
       var deleted = 0

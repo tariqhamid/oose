@@ -18,14 +18,14 @@ exports.peerList = function(){
   debug('Querying for peer list')
   return P.all([
     (function(){
-      return cradle.db.allAsync({
+      return cradle.peer.allAsync({
           startkey: prismKey,
           endkey: prismKey + '\uffff'
         })
         .then(function(rows){
           var ids = []
           for(var i=0; i < rows.length;i++) ids.push(rows[i].id)
-          return cradle.db.getAsync(ids)
+          return cradle.peer.getAsync(ids)
         })
         .map(function(row){
           row.doc.type = 'prism'
@@ -33,14 +33,14 @@ exports.peerList = function(){
         })
     }()),
     (function(){
-      return cradle.db.allAsync({
+      return cradle.peer.allAsync({
         startkey: storeKey,
         endkey: storeKey + '\uffff'
       })
         .then(function(rows){
           var ids = []
           for(var i=0; i < rows.length;i++) ids.push(rows[i].id)
-          return cradle.db.getAsync(ids)
+          return cradle.peer.getAsync(ids)
         })
         .map(function(row){
           row.doc.type = 'store'
@@ -66,15 +66,16 @@ exports.peerList = function(){
 exports.prismList = function(){
   redis.incr(redis.schema.counter('prism','prismBalance:prismList'))
   var prismKey = cradle.schema.prism()
-  return cradle.db.allAsync({startkey: prismKey, endkey: prismKey + '\uffff'})
+  return cradle.peer.allAsync({startkey: prismKey, endkey: prismKey + '\uffff'})
     .then(function(rows){
       var ids = []
       for(var i=0; i < rows.length;i++) ids.push(rows[i].id)
-      return cradle.db.getAsync(ids)
+      return cradle.peer.getAsync(ids)
     })
     .map(function(row){
       return row.doc
-    }).filter(function(doc){
+    })
+    .filter(function(doc){
       return doc.name && doc.available && doc.active
     })
 }
@@ -88,9 +89,9 @@ exports.prismList = function(){
 exports.storeListByPrism = function(prism){
   redis.incr(redis.schema.counter('prism','prismBalance:storeListByPrism'))
   var storeKey = cradle.schema.store(prism)
-  return cradle.db.all({startkey: storeKey, endkey: storeKey + '\uffff'})
+  return cradle.peer.all({startkey: storeKey, endkey: storeKey + '\uffff'})
     .map(function(row){
-      return cradle.db.getAsync(row.key)
+      return cradle.peer.getAsync(row.key)
     })
     .filter(function(row){
       return row.available && row.active
@@ -191,21 +192,19 @@ exports.contentExists = function(hash){
       if(cacheValid){
         return result
       } else {
-        return cradle.db.allAsync({
+        return cradle.inventory.allAsync({
           startkey: existsKey,
           endkey: existsKey + '\uffff'
         })
-          .map(
-            function(row){
-              debug(existsKey,'got record',row)
-              count++
-              return cradle.db.getAsync(row.key)
-            },
-            function(err){
-              if(404 !== err.headers.status) throw err
-              count = 0
-            }
-          )
+          .map(function(row){
+            debug(existsKey,'got record',row)
+            count++
+            return cradle.inventory.getAsync(row.key)
+              .catch(function(err){
+                if(404 !== err.headers.status) throw err
+                count = 0
+              })
+          })
           .then(function(inventoryList){
             //debug(existsKey,'records',result)
             if(!count){
@@ -217,8 +216,9 @@ exports.contentExists = function(hash){
                 .map(function(row){
                   debug(existsKey,'got inventory list record',row)
                   return P.all([
-                    cradle.db.getAsync(cradle.schema.prism(row.prism)),
-                    cradle.db.getAsync(cradle.schema.store(row.prism,row.store))
+                    cradle.peer.getAsync(cradle.schema.prism(row.prism)),
+                    cradle.peer.getAsync(
+                      cradle.schema.store(row.prism,row.store))
                   ])
                 })
                 .filter(function(row){
@@ -244,12 +244,15 @@ exports.contentExists = function(hash){
           })
           .then(function(result){
             existsRecord = result
-            return redis.setAsync(existsKey,JSON.stringify(existsRecord))
-              .then(function(){
-                return redis.expireAsync(
-                  existsKey,+config.prism.existsCacheLife || 30
-                )
-              })
+            //only record cache if record exists
+            if(true === existsRecord.exists){
+              return redis.setAsync(existsKey,JSON.stringify(existsRecord))
+                .then(function(){
+                  return redis.expireAsync(
+                    existsKey,+config.prism.existsCacheLife || 30
+                  )
+                })
+            }
           })
           .then(function(){
             return existsRecord

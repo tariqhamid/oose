@@ -12,11 +12,11 @@ var hashStream = require('sha1-stream')
 var temp = require('temp')
 
 var api = require('../../helpers/api')
-var cradle = require('../../helpers/couchdb')
 var NetworkError = oose.NetworkError
 var NotFoundError = oose.NotFoundError
 var prismBalance = require('../../helpers/prismBalance')
 var promiseWhile = require('../../helpers/promiseWhile')
+var purchasedb = require('../../helpers/purchasedb')
 var purchasePath = require('../../helpers/purchasePath')
 var redis = require('../../helpers/redis')
 var hasher = require('../../helpers/hasher')
@@ -28,6 +28,7 @@ var config = require('../../config')
 
 //make some promises
 P.promisifyAll(temp)
+P.promisifyAll(purchasedb)
 
 var nullFunction = function(){}
 
@@ -425,7 +426,6 @@ exports.download = function(req,res){
  */
 exports.purchase = function(req,res){
   redis.incr(redis.schema.counter('prism','content:purchase'))
-  var ip = req.body.ip || req.ip || '127.0.0.1'
   //var start = +new Date()
   var hash = (req.body.hash || req.body.sha1 || '').trim()
   var hashType = hasher.identify(hash)
@@ -451,16 +451,10 @@ exports.purchase = function(req,res){
         },
         function(){
           token = purchasePath.generateToken()
-          return cradle.db.getAsync(cradle.schema.purchase(token))
-            .then(
-              function(result){
-                tokenExists = result
-              },
-              function(err){
-                if(404 !== err.headers.status) throw err
-                tokenExists = false
-              }
-            )
+          return purchasedb.existsAsync(purchasedb.schema.purchase(token))
+            .then(function(result){
+              tokenExists = result
+            })
         }
       )
     })
@@ -494,18 +488,14 @@ exports.purchase = function(req,res){
     .then(function(){
       //now create our purchase object
       purchase = {
-        hash: hash,
-        hashType: hashType,
-        life: life,
-        expirationDate: +(+new Date() + life),
-        token: token,
-        sessionToken: req.session.token,
-        inventory: inventory,
-        ext: ext,
-        ip: ip,
-        referrer: referrer
+        hash: '' + hash,
+        life: '' + life,
+        expirationDate: '' + (+new Date() + life),
+        token: '' + token,
+        ext: '' + ext,
+        referrer: '' + referrer.join(',')
       }
-      return cradle.db.saveAsync(cradle.schema.purchase(token),purchase)
+      return purchasedb.hmsetAsync(purchasedb.schema.purchase(token),purchase)
     })
     .then(function(){
       //var duration = (+new Date()) - start
@@ -550,7 +540,8 @@ exports.deliver = function(req,res){
   var tokenPath = purchasePath.tokenToRelativePath(token)
   //var filename = req.params.filename
   var cacheValid = false
-  var purchaseKey = cradle.schema.purchase(token)
+  var purchaseKey = purchasedb.schema.purchase(token)
+  var purchaseCacheKey = redis.schema.purchaseCache(token)
   /**
    * Make a content URL
    * @param {object} req
@@ -611,7 +602,7 @@ exports.deliver = function(req,res){
     return result
   }
   //try to get our purchase record from cache
-  redis.getAsync(purchaseKey)
+  redis.getAsync(purchaseCacheKey)
     .then(function(result){
       if(result){
         try {
@@ -626,20 +617,25 @@ exports.deliver = function(req,res){
       }
       else{
         //hard look up of purchase
-        return cradle.db.getAsync(purchaseKey)
+        return purchasedb.hgetallAsync(purchaseKey)
           .then(
             function(result){
               if(!result) throw new NotFoundError('Purchase not found')
-              //store new cache here
-              return redis.setAsync(purchaseKey,JSON.stringify(result))
-                .then(function(){
-                  return redis.expireAsync(
-                    purchaseKey,
-                    (+config.prism.purchaseCacheLife || 30)
-                  )
-                })
-                .then(function(){
+              return prismBalance.contentExists(result.hash)
+                .then(function(existsResult){
+                  result.inventory = existsResult
                   return result
+                  //store new cache here
+                  return redis.setAsync(purchaseCacheKey,JSON.stringify(result))
+                    .then(function(){
+                      return redis.expireAsync(
+                        purchaseCacheKey,
+                        (+config.prism.purchaseCacheLife || 30)
+                      )
+                    })
+                    .then(function(){
+                      return result
+                    })
                 })
             },
             function(){
@@ -651,6 +647,7 @@ exports.deliver = function(req,res){
     .then(function(purchase){
       //okay so now we have the purchase record and reading it from cache like
       //we wanted, now we do validation and winner selection like normal
+      purchase.referrer = purchase.referrer.split(',')
       var validation = validateRequest(purchase)
       if(!validation.valid) throw new UserError(validation.reason)
       //we have a purchase so now... we need to pick a store....
@@ -690,24 +687,26 @@ exports.deliver = function(req,res){
  */
 exports.contentStatic = function(req,res){
   redis.incr(redis.schema.counter('prism','content:static'))
-  var hash = req.params.hash || req.params.sha1 || 'sha1'
+  var hash = req.params.hash || req.params.sha1 || ''
   var filename = req.params.filename
   //default based on the request
   var ext = path.extname(filename).replace(/^\./,'')
+  var existsRecord
   prismBalance.contentExists(hash)
     .then(function(result){
       if(!result.exists) throw new NotFoundError('Content does not exist')
       if(config.prism.denyStaticTypes.indexOf(ext) >= 0)
         throw new UserError('Invalid static file type')
+      existsRecord = result
       return storeBalance.winnerFromExists(hash,result,[],true)
     })
     .then(function(result){
       //set the extension based on the chosen winners relative path, this will
       //actually be accurate
-      ext = path.extname(result.relativePath).replace(/^\./,'')
+      ext = path.extname(existsRecord.relativePath).replace(/^\./,'')
       var proto = 'https' === req.get('X-Forwarded-Protocol') ? 'https' : 'http'
       var url = proto + '://' + result.name +
-        '.' + config.domain + '/static/' + hashFile.toRelativePath(hash,ext)
+        '.' + config.domain + '/static/' + existsRecord.relativePath
       res.redirect(302,url)
     })
     .catch(NetworkError,function(err){
@@ -738,19 +737,17 @@ exports.contentStatic = function(req,res){
 exports.purchaseRemove = function(req,res){
   redis.incr(redis.schema.counter('prism','content:purchaseRemove'))
   var token = req.body.token
-  var purchaseKey = cradle.schema.purchase(token)
+  var purchaseKey = purchasedb.schema.purchase(token)
   var purchase
-  cradle.db.getAsync(purchaseKey)
-    .then(
-      function(result){
+  purchasedb.hgetallAsync(purchaseKey)
+    .then(function(result){
         purchase = result
-        return storeBalance.populateStores(purchase.inventory.map)
-      },
-      function(err){
-        if(404 !== err.headers.status) throw err
-        res.json({token: token, count: 0, success: 'Purchase removed'})
-      }
-    )
+        return prismBalance.contentExists(purchase.hash)
+    })
+    .then(function(existResult){
+      purchase.inventory = existResult
+      return storeBalance.populateStores(purchase.inventory.map)
+    })
     .each(function(store){
       var client = api.store(store)
       return client.postAsync({
@@ -759,7 +756,7 @@ exports.purchaseRemove = function(req,res){
       })
     })
     .then(function(){
-      return cradle.db.removeAsync(purchaseKey)
+      return purchasedb.delAsync(purchaseKey)
     })
     .then(function(){
       res.json({token: token, count: 1, success: 'Purchase removed'})

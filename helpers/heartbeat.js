@@ -34,6 +34,8 @@ var setupProgram = function(){
   program.version(config.version)
     .description('OOSE Heartbeat')
     .option('-k --key <key>','System key for heartbeat eg: om101 or store1')
+    .option('-p --prism <name>',
+      'When type is store the parent prism name is needed here')
     .option('-t --type <type>','System type either prism or store')
     .parse(process.argv)
   //try to look these up if none passed
@@ -46,7 +48,8 @@ var setupProgram = function(){
     }
     if(!program.key && config.store.enabled){
       program.key = config.store.name
-      program.type = 'prism'
+      program.prism = config.store.prism || ''
+      program.type = 'store'
     }
   }
 }
@@ -82,7 +85,7 @@ var downVote = function(peer,reason,systemKey,systemType,peerCount){
   var currentVoteLog = null
   debug('DOWN VOTE: ' + key)
   var createDownVote = function(){
-    return cradle.db.saveAsync(myDownKey,{
+    return cradle.heartbeat.saveAsync(myDownKey,{
       peer: peer,
       systemKey: systemKey,
       systemType: systemType,
@@ -91,7 +94,8 @@ var downVote = function(peer,reason,systemKey,systemType,peerCount){
     })
   }
   //get down votes that have already been set for this host
-  return cradle.db.allAsync({startkey: downKey, endkey: downKey + '\uffff'})
+  return cradle.heartbeat.allAsync(
+    {startkey: downKey, endkey: downKey + '\uffff'})
     .then(
       function(log){
         currentVoteLog = log
@@ -118,7 +122,7 @@ var downVote = function(peer,reason,systemKey,systemType,peerCount){
       if(count === 0 || votes < (count / 2))
         throw new Error('Ok, got it')
       peer.available = false
-      return cradle.db.saveAsync(key,peer._rev,peer)
+      return cradle.peer.saveAsync(key,peer._rev,peer)
     })
     .catch(function(err){
       if('Ok, got it' === err.message){
@@ -171,22 +175,22 @@ var runHeartbeat = function(systemKey,systemType){
    */
   var restorePeer = function(peer){
     console.log('Restoring peer',peer)
-    return cradle.db.getAsync(peer._id)
+    return cradle.peer.getAsync(peer._id)
       .then(function(result){
         result.available = true
-        return cradle.db.saveAsync(result._id,result._rev,result)
+        return cradle.peer.saveAsync(result._id,result._rev,result)
       })
       .then(function(){
         //remove down votes
         var downKey = cradle.schema.downVote(peer.name)
-        return cradle.db.allAsync({
+        return cradle.heartbeat.allAsync({
           startkey: downKey,
           endkey: downKey + '\uffff'
         })
       })
       .map(function(vote){
-        return cradle.db.removeAsync(vote._id,vote._rev)
-      })
+        return cradle.heartbeat.removeAsync(vote._id,vote._rev)
+      },{concurrency: config.heartbeat.concurrency})
       .catch(function(err){
         console.log('Failed to restore peer',err)
       })
@@ -200,7 +204,7 @@ var runHeartbeat = function(systemKey,systemType){
     .map(function(peer){
       //check for down votes for this peer from us
       var downKey = cradle.schema.downVote(peer.name,systemKey)
-      return cradle.db.getAsync(downKey)
+      return cradle.heartbeat.getAsync(downKey)
         .then(
           function(result){
             peer.existingDownVote = result
@@ -211,7 +215,7 @@ var runHeartbeat = function(systemKey,systemType){
             return peer
           }
         )
-    })
+    },{concurrency: config.heartbeat.concurrency})
     .map(function(peer){
       //setup the ping handler
       debug('Setting up to ping peer',peer.name,peer.host + ':' + peer.port)
@@ -245,7 +249,7 @@ var runHeartbeat = function(systemKey,systemType){
           console.log('Ping Error ' + peer.name,err.message)
           return handlePingFailure(err.message,peer)
         })
-    })
+    },{concurrency: config.heartbeat.concurrency})
     .catch(function(err){
       console.log(err)
     })
@@ -286,26 +290,22 @@ var runVotePrune = function(systemKey,systemType){
     if(vote.systemType && vote.systemType !== systemType) return false
     return (voteExpiresAfter <= currentTimestamp)
   }
-  return cradle.db.allAsync({
+  return cradle.heartbeat.allAsync({
     startkey: downVoteKey,
     endkey: downVoteKey + '\uffff'
   })
     .map(function(vote){
-      return cradle.db.getAsync(vote.id)
-    })
+      return cradle.heartbeat.getAsync(vote.id).reflect()
+    },{concurrency: config.heartbeat.concurrency})
     .filter(function(vote){
+      if(!vote) return false
       debug('filtering vote',vote.id,validateVote(vote))
       return validateVote(vote)
     })
-    .map(
-      function(vote){
-        debug('Pruning vote',vote._id)
-        return cradle.db.removeAsync(vote._id,vote._rev)
-      },
-      function(err){
-        if(!err.headers || 404 !== err.headers.status) throw err
-      }
-    )
+    .map(function(vote){
+      debug('Pruning vote',vote._id)
+      return cradle.heartbeat.removeAsync(vote._id,vote._rev).reflect()
+    },{concurrency: config.heartbeat.concurrency})
     .catch(function(err){
       console.log('vote prune error: ',err)
     })
@@ -321,24 +321,28 @@ var runVotePrune = function(systemKey,systemType){
 /**
  * Mark this system up
  * @param {string} systemKey
+ * @param {string} systemPrism
  * @param {string} systemType
+ * @param {function} done
  * @return {P}
  */
-var markMeUp = function(systemKey,systemType){
+var markMeUp = function(systemKey,systemPrism,systemType,done){
+  if('function' !== typeof done) done = function(){}
   debug('Marking myself up')
   var key = getPeerKey({
     name: systemKey,
+    prism: systemPrism,
     type: systemType
   })
   var downKey = cradle.schema.downVote(systemKey)
-  debug('Getting peer information')
-  return cradle.db.getAsync(key)
+  debug('Getting peer information',key)
+  return cradle.peer.getAsync(key)
     .then(
       function(peer){
         debug('Got peer information back',peer)
         peer.available = true
         peer.active = true
-        return cradle.db.saveAsync(key,peer._rev,peer)
+        return cradle.peer.saveAsync(key,peer._rev,peer)
       },
       function(err){
         debug('Got an error getting peer information',err)
@@ -348,14 +352,16 @@ var markMeUp = function(systemKey,systemType){
     .then(function(){
       //Time to delete the downvote log
       debug('About to get down votes',downKey)
-      return cradle.db.allAsync({startkey: downKey, endkey: downKey + '\uffff'})
+      return cradle.heartbeat.allAsync(
+        {startkey: downKey, endkey: downKey + '\uffff'})
     })
     .map(function(log){
       debug('Removing downvote',log)
-      return cradle.db.removeAsync(log.key,log._rev)
-    })
+      return cradle.heartbeat.removeAsync(log.key,log._rev).reflect()
+    },{concurrency: config.heartbeat.concurrency})
     .then(function(result){
       debug('finished marking myself up',result)
+      done(null,result)
     })
     .catch(function(err){
       console.log('markMeUp error: ',err)
@@ -366,20 +372,21 @@ var markMeUp = function(systemKey,systemType){
 /**
  * Start Heartbeat
  * @param {string} systemKey
+ * @param {string} systemPrism
  * @param {string} systemType
  * @param {function} done
  */
-exports.start = function(systemKey,systemType,done){
-  console.log('Setting up to start heartbeat',systemKey,systemType,done)
+exports.start = function(systemKey,systemPrism,systemType,done){
+  console.log('Setting up to start heartbeat',systemKey,systemType)
   if(!systemKey)
     throw new Error('System key has not been set, heartbeat not started')
   if(!systemType)
     throw new Error('System type has not been set, heartbeat not started')
   heartbeatTimeout = setTimeout(function(){
     runHeartbeat(systemKey,systemType)
-  },1000)
+  },+(+config.heartbeat.startDelay || 5000))
   runVotePrune(systemKey,systemType)
-  markMeUp(systemKey,systemType,done)
+  markMeUp(systemKey,systemPrism,systemType,done)
 }
 
 
@@ -389,11 +396,10 @@ exports.start = function(systemKey,systemType,done){
  */
 exports.stop = function(done){
   console.log('Stopping heartbeat')
-  clearTimeout(heartbeatTimeout)
-  clearTimeout(pruneTimeout)
-  process.nextTick(done)
-  console.log('Heartbeat stop')
-  process.exit()
+  if(heartbeatTimeout) clearTimeout(heartbeatTimeout)
+  if(pruneTimeout) clearTimeout(pruneTimeout)
+  console.log('Heartbeat stopped')
+  done()
 }
 
 if(require.main === module){
@@ -405,7 +411,7 @@ if(require.main === module){
         throw new Error('Cant start invalid system key')
       if(!program.type)
         throw new Error('Cant start invalid system type')
-      exports.start(program.key,program.type,done)
+      exports.start(program.key,program.prism,program.type,done)
     },
     function(done){
       exports.stop(done)

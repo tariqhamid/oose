@@ -7,8 +7,8 @@
  * @param {string} prefix
  * @constructor
  */
-var CouchShema = function(prefix){
-  if(!prefix) prefix = 'oose'
+var CouchSchema = function(prefix){
+  if(!prefix) prefix = ''
   this.prefix = prefix
 }
 
@@ -18,7 +18,8 @@ var CouchShema = function(prefix){
  * @param {string} key
  * @return {string}
  */
-CouchShema.prototype.applyPrefix = function(key){
+CouchSchema.prototype.applyPrefix = function(key){
+  if(!this.prefix) return '' + key
   return this.prefix + ':' + (key || '')
 }
 
@@ -28,7 +29,7 @@ CouchShema.prototype.applyPrefix = function(key){
  * @param {string} name
  * @return {string}
  */
-CouchShema.prototype.prism = function(name){
+CouchSchema.prototype.prism = function(name){
   return this.applyPrefix('prism:' + (name || ''))
 }
 
@@ -39,7 +40,7 @@ CouchShema.prototype.prism = function(name){
  * @param {string} name
  * @return {string}
  */
-CouchShema.prototype.store = function(prism,name){
+CouchSchema.prototype.store = function(prism,name){
   return this.applyPrefix('store:' + (prism || '') + (name ? ':' + name : ''))
 }
 
@@ -50,9 +51,9 @@ CouchShema.prototype.store = function(prism,name){
  * @param {string} caster
  * @return {string}
  */
-CouchShema.prototype.downVote = function(castee,caster){
+CouchSchema.prototype.downVote = function(castee,caster){
   var ending = caster ? ':' + caster : ''
-  return this.applyPrefix('downvote:' + (castee || '') + ending)
+  return this.applyPrefix('down:' + (castee || '') + ending)
 }
 
 
@@ -61,8 +62,8 @@ CouchShema.prototype.downVote = function(castee,caster){
  * @param {string} token
  * @return {string}
  */
-CouchShema.prototype.purchase = function(token){
-  return this.applyPrefix('purchase:' + (token || ''))
+CouchSchema.prototype.purchase = function(token){
+  return this.applyPrefix(token || '')
 }
 
 
@@ -73,9 +74,9 @@ CouchShema.prototype.purchase = function(token){
  * @param {string} store
  * @return {string}
  */
-CouchShema.prototype.inventory = function(hash,prism,store){
+CouchSchema.prototype.inventory = function(hash,prism,store){
   return this.applyPrefix(
-    'inventory:' + (hash || '') +
+    (hash || '') +
     (prism ? ':' + prism : '') +
     (store ? ':' + store : '')
   )
@@ -84,6 +85,6 @@ CouchShema.prototype.inventory = function(hash,prism,store){
 
 /**
  * Export Object
- * @type {CouchShema}
+ * @type {CouchSchema}
  */
-module.exports = CouchShema
+module.exports = CouchSchema
