@@ -82,7 +82,7 @@ exports.put = function(req,res){
       },
       //record does not exist, create it
       function(err){
-        if(404 !== err.headers.status) throw err
+        if(!err || !err.headers || 404 !== err.headers.status) throw err
         var inventory = {
           prism: config.store.prism,
           store: config.store.name,
