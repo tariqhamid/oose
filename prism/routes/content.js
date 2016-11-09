@@ -17,7 +17,6 @@ var NotFoundError = oose.NotFoundError
 var prismBalance = require('../../helpers/prismBalance')
 var promiseWhile = require('../../helpers/promiseWhile')
 var purchasedb = require('../../helpers/purchasedb')
-var purchasePath = require('../../helpers/purchasePath')
 var redis = require('../../helpers/redis')
 var hasher = require('../../helpers/hasher')
 var hashFile = require('../../helpers/hashFile')
@@ -29,8 +28,6 @@ var config = require('../../config')
 //make some promises
 P.promisifyAll(temp)
 P.promisifyAll(purchasedb)
-
-var nullFunction = function(){}
 
 
 /**
@@ -428,7 +425,6 @@ exports.purchase = function(req,res){
   redis.incr(redis.schema.counter('prism','content:purchase'))
   //var start = +new Date()
   var hash = (req.body.hash || req.body.sha1 || '').trim()
-  var hashType = hasher.identify(hash)
   var ext = req.body.ext
   var referrer = req.body.referrer
   var life = req.body.life || config.purchase.life
@@ -450,40 +446,13 @@ exports.purchase = function(req,res){
           return !!tokenExists
         },
         function(){
-          token = purchasePath.generateToken()
-          return purchasedb.existsAsync(purchasedb.schema.purchase(token))
+          token = purchasedb.generate()
+          return purchasedb.exists(token)
             .then(function(result){
               tokenExists = result
             })
         }
       )
-    })
-    .then(function(){
-      //now we know our token so register it on the store instances
-      //this means iterating the existence map
-      return storeBalance.populateStores(inventory.map)
-    })
-    .each(function(store){
-      var client = api.store(store)
-      return client
-        .postAsync({
-          url: client.url('/purchase/remove'),
-          json: {token: token}
-        })
-        .spread(function(){
-          return client.postAsync({
-            url: client.url('/purchase/create'),
-            json: {
-              hash: hash,
-              hashType: hashType,
-              ext: ext,
-              token: token,
-              life: life
-            }
-          })
-        })
-        .catch(client.handleNetworkError)
-        .catch(NetworkError,nullFunction)
     })
     .then(function(){
       //now create our purchase object
@@ -495,7 +464,7 @@ exports.purchase = function(req,res){
         ext: '' + ext,
         referrer: '' + referrer.join(',')
       }
-      return purchasedb.hmsetAsync(purchasedb.schema.purchase(token),purchase)
+      return purchasedb.create(token,purchase)
     })
     .then(function(){
       //var duration = (+new Date()) - start
@@ -537,10 +506,8 @@ exports.purchase = function(req,res){
 exports.deliver = function(req,res){
   redis.incr(redis.schema.counter('prism','content:deliver'))
   var token = req.params.token
-  var tokenPath = purchasePath.tokenToRelativePath(token)
   //var filename = req.params.filename
   var cacheValid = false
-  var purchaseKey = purchasedb.schema.purchase(token)
   var purchaseCacheKey = redis.schema.purchaseCache(token)
   /**
    * Make a content URL
@@ -566,7 +533,7 @@ exports.deliver = function(req,res){
       else query = query + '&start=0'
     }
     return proto + '://' + store.name + '.' + config.domain +
-      '/' + tokenPath + '.' + purchase.ext + (query ? '?' + query : '')
+      '/' + token + '.' + purchase.ext + (query ? '?' + query : '')
   }
   /**
    * Validate request
@@ -617,14 +584,14 @@ exports.deliver = function(req,res){
       }
       else{
         //hard look up of purchase
-        return purchasedb.hgetallAsync(purchaseKey)
+        return purchasedb.get(token)
           .then(
             function(result){
               if(!result) throw new NotFoundError('Purchase not found')
               return prismBalance.contentExists(result.hash)
                 .then(function(existsResult){
                   result.inventory = existsResult
-                  return result
+                  //return result
                   //store new cache here
                   return redis.setAsync(purchaseCacheKey,JSON.stringify(result))
                     .then(function(){
@@ -737,28 +704,13 @@ exports.contentStatic = function(req,res){
 exports.purchaseRemove = function(req,res){
   redis.incr(redis.schema.counter('prism','content:purchaseRemove'))
   var token = req.body.token
-  var purchaseKey = purchasedb.schema.purchase(token)
-  var purchase
-  purchasedb.hgetallAsync(purchaseKey)
-    .then(function(result){
-        purchase = result
-        return prismBalance.contentExists(purchase.hash)
-    })
-    .then(function(existResult){
-      purchase.inventory = existResult
-      return storeBalance.populateStores(purchase.inventory.map)
-    })
-    .each(function(store){
-      var client = api.store(store)
-      return client.postAsync({
-        url: client.url('/purchase/remove'),
-        json: {token: token}
-      })
-    })
-    .then(function(){
-      return purchasedb.delAsync(purchaseKey)
-    })
+  purchasedb.remove(token)
     .then(function(){
       res.json({token: token, count: 1, success: 'Purchase removed'})
+    })
+    .catch(UserError,function(err){
+      redis.incr(redis.schema.counterError('prism','content:purchaseRemove'))
+      res.status(500)
+      res.json({error: err.message})
     })
 }

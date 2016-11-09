@@ -55,10 +55,3 @@ exports.stats = function(req,res){
  * @type {object}
  */
 exports.content = require('./content')
-
-
-/**
- * Purchase routes
- * @type {object}
- */
-exports.purchase = require('./purchase')

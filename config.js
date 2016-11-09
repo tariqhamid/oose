@@ -124,7 +124,25 @@ config.$load({
       'wmv'
     ],
     existsCacheLife: 30, //seconds
-    purchaseCacheLife: 30 //seconds
+    purchaseCacheLife: 30, //seconds
+    purchaseZone: 'a',
+    purchaseZoneCouch: {}
+    /*
+    purchaseZoneCouch: {
+      'a': {
+        host: '192.168.100.100',
+        port: '5984'
+      },
+      'b': {
+        host: '192.168.100.101',
+        port: '5984'
+      },
+     'c': {
+        host: '192.168.100.102',
+        port: '5984'
+      }
+    }
+    */
   },
   //storage system
   store: {
