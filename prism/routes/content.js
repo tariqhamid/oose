@@ -579,8 +579,7 @@ exports.deliver = function(req,res){
       }
       if(result && cacheValid){
         return result
-      }
-      else{
+      } else {
         //hard look up of purchase
         return purchasedb.get(token)
           .then(
@@ -589,8 +588,9 @@ exports.deliver = function(req,res){
               return prismBalance.contentExists(result.hash)
                 .then(function(existsResult){
                   result.inventory = existsResult
-                  //return result
+                  return result
                   //store new cache here
+                  /*
                   return redis.setAsync(purchaseCacheKey,JSON.stringify(result))
                     .then(function(){
                       return redis.expireAsync(
@@ -601,6 +601,7 @@ exports.deliver = function(req,res){
                     .then(function(){
                       return result
                     })
+                  */
                 })
             },
             function(){
