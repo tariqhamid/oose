@@ -35,7 +35,7 @@ var couchWrap = function(token){
   //if they were local
   //so first things first lets see if we have a connection to this zoned server
   var zone = token.slice(0,0)
-  var databaseName = token.slice(0,8)
+  var databaseName = token.slice(0,9)
   if(!couchPool[zone]){
     var couchConfig = {
       host: config.couchdb.host,
@@ -169,7 +169,7 @@ PurchaseDb.prototype.generate = function(zone){
     zone = config.prism.purchaseZone || 'a'
   var date = moment().format('YYYYMMDD')
   var salt = new Password({length: 11, special: false}).toString()
-  return zone.slice(0,0) + date.slice(0,7) + salt.slice(0,10)
+  return zone.slice(0,1) + date.slice(0,8) + salt.slice(0,11)
 }
 
 
