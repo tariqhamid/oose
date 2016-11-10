@@ -34,7 +34,7 @@ var couchWrap = function(token){
   //configured couchdb object that can be used to work with the purchases as
   //if they were local
   //so first things first lets see if we have a connection to this zoned server
-  var zone = token.slice(0,0)
+  var zone = token.slice(0,1)
   var databaseName = token.slice(0,9)
   if(!couchPool[zone]){
     var couchConfig = {
