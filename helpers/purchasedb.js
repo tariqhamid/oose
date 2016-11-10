@@ -37,10 +37,38 @@ var couchWrap = function(token){
   var zone = token.slice(0,0)
   var databaseName = token.slice(0,8)
   if(!couchPool[zone]){
+    var couchConfig = {
+      host: config.couchdb.host,
+      port: config.couchdb.port,
+      options: config.couchdb.options
+    }
+    if(config.prism.purchaseZoneCouch[zone]){
+      if(
+        config.prism.purchaseZoneCouch[zone] &&
+        config.prism.purchaseZoneCouch[zone].host
+      )
+      {
+        couchConfig.host = config.prism.purchaseZoneCouch[zone].host
+      }
+      if(
+        config.prism.purchaseZoneCouch[zone] &&
+        config.prism.purchaseZoneCouch[zone].port
+      )
+      {
+        couchConfig.port = config.prism.purchaseZoneCouch[zone].port
+      }
+      if(
+        config.prism.purchaseZoneCouch[zone] &&
+        config.prism.purchaseZoneCouch[zone].options
+      )
+      {
+        couchConfig.options = config.prism.purchaseZoneCouch[zone].options
+      }
+    }
     couchPool[zone] = new (cradle.Connection)(
-      config.prism.purchaseZoneCouch[zone].host || config.couchdb.host,
-      config.prism.purchaseZoneCouch[zone].port || config.couchdb.port,
-      config.prism.purchaseZoneCouch[zone].options || config.couchdb.options
+      couchConfig.host,
+      couchConfig.port,
+      couchConfig.options
     )
   }
   return couchPool.database('oose-purchase-' + databaseName)
