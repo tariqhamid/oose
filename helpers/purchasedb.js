@@ -89,6 +89,9 @@ PurchaseDb.prototype.exists = function(token){
     .then(function(result){
       return !!result
     })
+    .catch(function(){
+      return false
+    })
 }
 
 
