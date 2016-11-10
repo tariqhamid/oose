@@ -59,7 +59,7 @@ var couchWrap = function(token){
       couchConfig.options
     )
   }
-  return couchPool.database('oose-purchase-' + databaseName)
+  return couchPool[zone].database('oose-purchase-' + databaseName)
 }
 
 
