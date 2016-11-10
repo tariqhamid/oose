@@ -42,26 +42,14 @@ var couchWrap = function(token){
       port: config.couchdb.port,
       options: config.couchdb.options
     }
-    if(config.prism.purchaseZoneCouch[zone]){
-      if(
-        config.prism.purchaseZoneCouch[zone] &&
-        config.prism.purchaseZoneCouch[zone].host
-      )
-      {
+    if(config.prism.purchaseZoneCouch && config.prism.purchaseZoneCouch[zone]){
+      if(config.prism.purchaseZoneCouch[zone].host){
         couchConfig.host = config.prism.purchaseZoneCouch[zone].host
       }
-      if(
-        config.prism.purchaseZoneCouch[zone] &&
-        config.prism.purchaseZoneCouch[zone].port
-      )
-      {
+      if(config.prism.purchaseZoneCouch[zone].port){
         couchConfig.port = config.prism.purchaseZoneCouch[zone].port
       }
-      if(
-        config.prism.purchaseZoneCouch[zone] &&
-        config.prism.purchaseZoneCouch[zone].options
-      )
-      {
+      if(config.prism.purchaseZoneCouch[zone].options){
         couchConfig.options = config.prism.purchaseZoneCouch[zone].options
       }
     }
