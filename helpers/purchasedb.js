@@ -78,6 +78,7 @@ PurchaseDb.prototype.get = function(token){
   var couchdb = couchWrap(token)
   return couchdb.getAsync(token)
     .catch(function(err){
+      console.log(err)
       if(404 === err.headers.status && 'no_db_file' === err.reason){
         return couchdb.createAsync()
           .then(function(){
