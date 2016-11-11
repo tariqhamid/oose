@@ -79,7 +79,7 @@ PurchaseDb.prototype.get = function(token){
   return couchdb.getAsync(token)
     .catch(function(err){
       console.log('couch db create 1',err,err.statusCode,err.error)
-      if(404 === err.statusCode){
+      if(404 === err.headers.status && 'no_db_file' === err.reason){
         return couchdb.createAsync()
           .then(function(){
             return couchdb.getAsync(token)
@@ -116,8 +116,8 @@ PurchaseDb.prototype.create = function(token,params){
   var couchdb = couchWrap(token)
   return couchdb.saveAsync(token,params)
     .catch(function(err){
-      console.log('couch db create 2',err.statusCode,err.error)
-      if(404 === err.statusCode){
+      console.log('couch db create 1',err,err.statusCode,err.error)
+      if(404 === err.headers.status && 'no_db_file' === err.reason){
         return couchdb.createAsync()
           .then(function(){
             return couchdb.saveAsync(token,params)
@@ -145,8 +145,8 @@ PurchaseDb.prototype.update = function(token,params){
         that.create(token,params)
     })
     .catch(function(err){
-      console.log('couch db create 3',err.statusCode,err.error)
-      if(404 === err.statusCode){
+      console.log('couch db create 1',err,err.statusCode,err.error)
+      if(404 === err.headers.status && 'no_db_file' === err.reason){
         return couchdb.createAsync()
           .then(function(){
             return couchdb.saveAsync(token,params)
