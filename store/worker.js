@@ -42,7 +42,7 @@ app.get('/stats',routes.stats)
 app.post('/stats',routes.stats)
 
 //content purchase mapping
-app.get('/purchase/uri/:token/:filename',routes.purchase.uri)
+app.get('/purchase/uri/play/:token/:filename',routes.purchase.uri)
 
 //auth below this point
 app.use(basicAuth(config.store.username,config.store.password))
