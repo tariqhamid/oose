@@ -472,6 +472,7 @@ exports.purchase = function(req,res){
         ' + ' + duration + ' ms',
         purchase.referrer.join(',')
       )*/
+      purchase.token = token
       res.json(purchase)
     })
     .catch(NetworkError,function(err){
