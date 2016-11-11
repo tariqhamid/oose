@@ -78,7 +78,7 @@ PurchaseDb.prototype.get = function(token){
   var couchdb = couchWrap(token)
   return couchdb.getAsync(token)
     .catch(function(err){
-      console.log('couch db create 1',err.statusCode,err.error)
+      console.log('couch db create 1',err,err.statusCode,err.error)
       if(404 === err.statusCode){
         return couchdb.createAsync()
           .then(function(){
