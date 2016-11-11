@@ -75,12 +75,15 @@ var PurchaseDb = function(){
  */
 PurchaseDb.prototype.get = function(token){
   //get token
-  return couchWrap(token).getAsync(token)
+  var couchdb = couchWrap(token)
+  return couchdb.getAsync(token)
     .catch(function(err){
-      console.log(err)
-      if(404 === err.statusCode){
-        //do something
-      }
+      if(404 === err.statusCode && 'no_db_file' === err.error){
+        return couchdb.createAsync()
+          .then(function(){
+            return couchdb.getAsync(token)
+          })
+      } else throw err
     })
 }
 
@@ -109,7 +112,16 @@ PurchaseDb.prototype.exists = function(token){
  */
 PurchaseDb.prototype.create = function(token,params){
   //create purchase
-  return couchWrap(token).saveAsync(token,params)
+  var couchdb = couchWrap(token)
+  return couchdb.saveAsync(token,params)
+    .catch(function(err){
+      if(404 === err.statusCode && 'no_db_file' === err.error){
+        return couchdb.createAsync()
+          .then(function(){
+            return couchdb.saveAsync(token,params)
+          })
+      } else throw err
+    })
 }
 
 
@@ -122,12 +134,21 @@ PurchaseDb.prototype.create = function(token,params){
 PurchaseDb.prototype.update = function(token,params){
   //update purchase
   var that = this
+  var couchdb = couchWrap(token)
   return this.get(token)
     .then(function(result){
       if(result)
-        return couchWrap(token).saveAsync(token,result._rev,params)
+        return couchdb.saveAsync(token,result._rev,params)
       else
         that.create(token,params)
+    })
+    .catch(function(err){
+      if(404 === err.statusCode && 'no_db_file' === err.error){
+        return couchdb.createAsync()
+          .then(function(){
+            return couchdb.saveAsync(token,params)
+          })
+      } else throw err
     })
 }
 
