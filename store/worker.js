@@ -41,6 +41,9 @@ app.post('/ping',routes.ping)
 app.get('/stats',routes.stats)
 app.post('/stats',routes.stats)
 
+//content purchase mapping
+app.get('/purchase/uri/:token/:filename',routes.purchase.uri)
+
 //auth below this point
 app.use(basicAuth(config.store.username,config.store.password))
 
@@ -50,9 +53,6 @@ app.post('/content/download',routes.content.download)
 app.post('/content/exists',routes.content.exists)
 app.post('/content/remove',routes.content.remove)
 app.post('/content/send',routes.content.send)
-
-//content purchase mapping
-app.post('/purchase/uri',routes.purchase.uri)
 
 
 /**
