@@ -2,7 +2,7 @@
   "author": "Bryan Tong <contact@nullivex.com>",
   "name": "oose",
   "description": "Object Oriented Storage Engine",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "homepage": "http://www.oose.io/",
   "repository": {
     "type": "git",

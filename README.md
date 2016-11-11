@@ -64,6 +64,14 @@ From there follow the debug filtering rules defined
 
 ## Changelog
 
+### 2.3.0
+
+* Final revision to purchase system
+* Purchases are now stored in couch but in sharded databases
+* This drops the entire symlink functionality from the stores
+* Stores now rely on a lua shim to validate purchases
+* Store hook has been added to validate purchases and return valid URIs to Nginx
+
 ### 2.2.0
 
 * Purchases are once again stored in redis, but this time pointing at a single

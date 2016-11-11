@@ -76,6 +76,12 @@ var PurchaseDb = function(){
 PurchaseDb.prototype.get = function(token){
   //get token
   return couchWrap(token).getAsync(token)
+    .catch(function(err){
+      console.log(err)
+      if(404 === err.statusCode){
+        //do something
+      }
+    })
 }
 
 
