@@ -4,6 +4,7 @@ var hashFile = require('../../helpers/hashFile.js')
 
 var config = require('../../config')
 
+
 /**
  * Map a purchase token to a usable URI
  * @param {object} req
