@@ -78,7 +78,7 @@ PurchaseDb.prototype.get = function(token){
   var couchdb = couchWrap(token)
   return couchdb.getAsync(token)
     .catch(function(err){
-      console.log(err.statusCode,err.error)
+      console.log('couch db create 1',err.statusCode,err.error)
       if(404 === err.statusCode){
         return couchdb.createAsync()
           .then(function(){
@@ -116,7 +116,7 @@ PurchaseDb.prototype.create = function(token,params){
   var couchdb = couchWrap(token)
   return couchdb.saveAsync(token,params)
     .catch(function(err){
-      console.log(err.statusCode,err.error)
+      console.log('couch db create 2',err.statusCode,err.error)
       if(404 === err.statusCode){
         return couchdb.createAsync()
           .then(function(){
@@ -145,7 +145,7 @@ PurchaseDb.prototype.update = function(token,params){
         that.create(token,params)
     })
     .catch(function(err){
-      console.log(err.statusCode,err.error)
+      console.log('couch db create 3',err.statusCode,err.error)
       if(404 === err.statusCode){
         return couchdb.createAsync()
           .then(function(){
