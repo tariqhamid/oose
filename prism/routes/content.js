@@ -530,7 +530,7 @@ exports.deliver = function(req,res){
       else query = query + '&start=0'
     }
     return proto + '://' + store.name + '.' + config.domain +
-      '/' + token + '.' + purchase.ext + (query ? '?' + query : '')
+      '/' + token + '/video.' + purchase.ext + (query ? '?' + query : '')
   }
   /**
    * Validate request
