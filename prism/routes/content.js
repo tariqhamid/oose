@@ -456,11 +456,9 @@ exports.purchase = function(req,res){
       //now create our purchase object
       purchase = {
         hash: '' + hash,
-        life: '' + life,
-        expirationDate: '' + (+new Date() + life),
-        token: '' + token,
         ext: '' + ext,
-        referrer: '' + referrer.join(',')
+        referrer: '' + referrer.join(','),
+        expirationDate: '' + (+new Date() + life)
       }
       return purchasedb.create(token,purchase)
     })

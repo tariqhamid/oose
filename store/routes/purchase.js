@@ -16,10 +16,13 @@ exports.uri = function(req,res){
     var token = req.params.token
     purchasedb.get(token)
       .then(function(result){
-        if(result)
-          res.send('/../content/' + hashFile.toRelativePath(result.hash,result.ext))
-        else
+        if(result && result.expirationDate >= (+new Date())){
+          res.send(
+            '/../content/' + hashFile.toRelativePath(result.hash,result.ext)
+          )
+        } else{
           res.status(404).send('/404')
+        }
       })
   }
 }
