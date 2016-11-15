@@ -25,7 +25,7 @@ var runInterval = function(done){
         purchase = result[i]
         purchases.push({
           _id: purchase.id,
-          _rev: purchase.value.rev,
+          _rev: purchase.value._rev,
           _deleted: true
         })
       }

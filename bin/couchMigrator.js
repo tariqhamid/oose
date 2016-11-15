@@ -157,7 +157,7 @@ var runInterval = function(done){
         function(record){return cradle.schema.prism(record.name)}
       )
     })
-    .then(function(){
+    /*.then(function(){
       return migrateItems(
         'inventory',
         'oose:inventory:',
@@ -167,7 +167,7 @@ var runInterval = function(done){
         },
         function(record){return (record.length > 0)}
       )
-    })
+    })*/
     .then(function(){
       return migrateItems(
         'purchase',
