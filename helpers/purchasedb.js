@@ -79,7 +79,9 @@ PurchaseDb.prototype.get = function(token){
   return couchdb.getAsync(token)
     .catch(function(err){
       if(404 === err.headers.status &&
-        'Database does not exist.' === err.reason){
+        ('Database does not exist.' === err.reason ||
+        'no_db_file' === err.reason)
+      ){
         return couchdb.createAsync()
           .then(function(){
             return couchdb.getAsync(token)
@@ -117,7 +119,9 @@ PurchaseDb.prototype.create = function(token,params){
   return couchdb.saveAsync(token,params)
     .catch(function(err){
       if(404 === err.headers.status &&
-        'Database does not exist.' === err.reason){
+        ('Database does not exist.' === err.reason ||
+        'no_db_file' === err.reason)
+      ){
         return couchdb.createAsync()
           .then(function(){
             return couchdb.saveAsync(token,params)
@@ -146,7 +150,9 @@ PurchaseDb.prototype.update = function(token,params){
     })
     .catch(function(err){
       if(404 === err.headers.status &&
-        'Database does not exist.' === err.reason){
+        ('Database does not exist.' === err.reason ||
+        'no_db_file' === err.reason)
+      ){
         return couchdb.createAsync()
           .then(function(){
             return couchdb.saveAsync(token,params)
