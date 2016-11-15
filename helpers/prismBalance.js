@@ -258,6 +258,7 @@ exports.contentExists = function(hash){
             return existsRecord
           })
           .catch(function(err){
+            console.log(err,err.stack)
             console.log('EXISTS ERROR: ' + err.message,hash)
             return deadRecord
           })

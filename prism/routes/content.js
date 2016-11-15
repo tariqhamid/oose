@@ -202,10 +202,6 @@ exports.retrieve = function(req,res){
   var hash
   var writeStream = fs.createWriteStream(tmpfile)
   promisePipe(request(retrieveRequest),sniff,writeStream)
-    .then(
-      function(val){return val},
-      function(err){throw new UserError(err.message)}
-    )
     .then(function(){
       hash = sniff.hash
       //do a content lookup and see if this exists yet
@@ -227,6 +223,7 @@ exports.retrieve = function(req,res){
       res.json(response)
     })
     .catch(UserError,NetworkError,function(err){
+      console.log(err,err.stack)
       redis.incr(redis.schema.counterError('prism','content:retrieve'))
       res.status(500)
       res.json({
@@ -234,6 +231,7 @@ exports.retrieve = function(req,res){
       })
     })
     .catch(function(err){
+      console.log(err,err.stack)
       console.log('Unhandled error on content retrieve ' + err.message)
     })
     .finally(function(){
