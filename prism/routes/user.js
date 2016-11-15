@@ -26,6 +26,7 @@ exports.login = function(req,res){
   var sessionToken
   //make a login request to couch db
   if(!req.body.username || !req.body.password){
+    res.status(401)
     res.json({error: 'Invalid username or password'})
   } else {
     request({
@@ -42,7 +43,7 @@ exports.login = function(req,res){
       }
     })
       .then(function(result){
-        //i would think we are going to get a 403 for bad logins and then 200
+        //i would think we are going to get a 401 for bad logins and then 200
         //for good logins, we will find out
         if(200 !== result.statusCode)
           throw new Error('Invalid login response ' + result.statusCode)
@@ -85,7 +86,18 @@ exports.login = function(req,res){
       .catch(function(err){
         redis.incr(redis.schema.counterError('prism','user:login:invalid'))
         if(!err.message.match('invalid user or password')) throw err
+        res.status(500)
         res.json({error: 'Invalid username or password to master'})
+      })
+      .catch(function(err){
+        if(401 === err.statusCode){
+          res.status(401)
+          res.json({error: 'Invalid username or password'})
+        } else {
+          res.status(500)
+          res.json({error: 'Login failed with an error'})
+          console.log(err,err.stack)
+        }
       })
   }
 }
