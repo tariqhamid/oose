@@ -2,7 +2,10 @@
 var P = require('bluebird')
 var cradle = require('cradle')
 var moment = require('moment')
+var oose = require('oose')
 var Password = require('node-password').Password
+
+var UserError = oose.UserError
 
 var config = require('../config')
 
@@ -34,6 +37,8 @@ var couchWrap = function(token){
   //configured couchdb object that can be used to work with the purchases as
   //if they were local
   //so first things first lets see if we have a connection to this zoned server
+  if(!token.test(/^[a-z]{1}[0-9]{8}/))
+    return null
   var zone = token.slice(0,1)
   var databaseName = token.slice(0,9)
   if(!couchPool[zone]){
@@ -75,8 +80,12 @@ var PurchaseDb = function(){
  */
 PurchaseDb.prototype.get = function(token){
   //get token
-  var couchdb = couchWrap(token)
-  return couchdb.getAsync(token)
+  var couchdb
+  return P.try(function(){
+    couchdb = couchWrap(token)
+    if(!couchdb) throw new UserError('Could not validate purchase token')
+    return couchdb.getAsync(token)
+  })
     .catch(function(err){
       if(404 === err.headers.status &&
         ('Database does not exist.' === err.reason ||
@@ -115,8 +124,12 @@ PurchaseDb.prototype.exists = function(token){
  */
 PurchaseDb.prototype.create = function(token,params){
   //create purchase
-  var couchdb = couchWrap(token)
-  return couchdb.saveAsync(token,params)
+  var couchdb
+  return P.try(function(){
+    couchdb = couchWrap(token)
+    if(!couchdb) throw new UserError('Could not validate purchase token')
+    return couchdb.saveAsync(token,params)
+  })
     .catch(function(err){
       if(404 === err.headers.status &&
         ('Database does not exist.' === err.reason ||
@@ -140,8 +153,12 @@ PurchaseDb.prototype.create = function(token,params){
 PurchaseDb.prototype.update = function(token,params){
   //update purchase
   var that = this
-  var couchdb = couchWrap(token)
-  return this.get(token)
+  var couchdb
+  return P.try(function(){
+    couchdb = couchWrap(token)
+    if(!couchdb) throw new UserError('Could not validate purchase token')
+    return that.get(token)
+  })
     .then(function(result){
       if(result)
         return couchdb.saveAsync(token,result._rev,params)
