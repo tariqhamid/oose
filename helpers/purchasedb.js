@@ -2,7 +2,7 @@
 var P = require('bluebird')
 var cradle = require('cradle')
 var moment = require('moment')
-var oose = require('oose')
+var oose = require('oose-sdk')
 var Password = require('node-password').Password
 
 var UserError = oose.UserError
