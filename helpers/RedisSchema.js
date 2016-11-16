@@ -151,6 +151,16 @@ RedisSchema.prototype.purchaseCache = function(token){
 
 
 /**
+ * Purchase Cache by User Session
+ * @param {string} token
+ * @return {string}
+ */
+RedisSchema.prototype.purchaseCacheInternal = function(token){
+  return this.applyPrefix('purchase:cache:internal:' + token)
+}
+
+
+/**
  * Inventory
  * @param {string} hash
  * @return {string}
