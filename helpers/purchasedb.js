@@ -39,6 +39,10 @@ var couchWrap = function(token){
   //so first things first lets see if we have a connection to this zoned server
   if(!token.match(/^[a-z]{1}[0-9]{8}/))
     return null
+  var now = new Date()
+  var year = +token.slice(1,5)
+  if(year !== now.getFullYear() && year !== (now.getFullYear() -1))
+    return null
   var zone = token.slice(0,1)
   var databaseName = token.slice(0,9)
   if(!couchPool[zone]){
