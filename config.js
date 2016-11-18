@@ -129,10 +129,16 @@ config.$load({
     purchaseZoneCouch: {}
     /*
     purchaseZoneCouch: {
-      'a': {
-        host: '192.168.100.100',
-        port: '5984'
-      },
+      'a': [
+        {
+          host: '192.168.100.100',
+          port: '5984'
+        },
+        {
+          host: '192.168.100.101',
+          port: '5984'
+        }
+      ],
       'b': {
         host: '192.168.100.101',
         port: '5984'

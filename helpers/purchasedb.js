@@ -22,8 +22,31 @@ var couchdb = new (cradle.Connection)(
 //keep an object of couchdb connections based on the sharding configuration
 var couchPool = {}
 
+//keep an object of configurations relation to the pool
+var couchConfigs = {}
+
 //make some promises
 P.promisifyAll(couchdb)
+
+
+/**
+ * Get Zone from Token
+ * @param {string} token
+ * @return {string}
+ */
+var getZone = function(token){
+  return token.slice(0,1)
+}
+
+
+/**
+ * Get database name from token
+ * @param {string} token
+ * @return {string}
+ */
+var getDatabaseName = function(token){
+  return token.slice(0,9)
+}
 
 
 /**
@@ -43,15 +66,29 @@ var couchWrap = function(token){
   var year = +token.slice(1,5)
   if(year !== now.getFullYear() && year !== (now.getFullYear() -1))
     return null
-  var zone = token.slice(0,1)
-  var databaseName = token.slice(0,9)
+  var zone = getZone(token)
+  var databaseName = getDatabaseName(token)
   if(!couchPool[zone]){
     var couchConfig = {
       host: config.couchdb.host,
       port: config.couchdb.port,
       options: config.couchdb.options
     }
-    if(config.prism.purchaseZoneCouch && config.prism.purchaseZoneCouch[zone]){
+    if(config.prism.purchaseZoneCouch &&
+      config.prism.purchaseZoneCouch[zone] instanceof Array){
+      if(config.prism.purchaseZoneCouch[zone][0].host){
+        couchConfig.host = config.prism.purchaseZoneCouch[zone][0].host
+      }
+      if(config.prism.purchaseZoneCouch[zone][0].port){
+        couchConfig.port = config.prism.purchaseZoneCouch[zone][0].port
+      }
+      if(config.prism.purchaseZoneCouch[zone][0].options){
+        couchConfig.options = config.prism.purchaseZoneCouch[zone][0].options
+      }
+      //finally activate replication scaffold automation
+      couchConfig.secondary = config.prism.purchaseZoneCouch[zone][1]
+    } else if(config.prism.purchaseZoneCouch &&
+      'object' === typeof config.prism.purchaseZoneCouch[zone]){
       if(config.prism.purchaseZoneCouch[zone].host){
         couchConfig.host = config.prism.purchaseZoneCouch[zone].host
       }
@@ -62,6 +99,7 @@ var couchWrap = function(token){
         couchConfig.options = config.prism.purchaseZoneCouch[zone].options
       }
     }
+    couchConfigs[zone] = couchConfig
     couchPool[zone] = new (cradle.Connection)(
       couchConfig.host,
       couchConfig.port,
@@ -78,6 +116,83 @@ var PurchaseDb = function(){
 
 
 /**
+ * Create new database based on token and a no db file error
+ * @param {object} couchdb
+ * @param {string} token
+ * @return {P}
+ */
+PurchaseDb.prototype.createDatabase = function(couchdb,token){
+  //the couchdb object should already be wrapped and pointed at the correct zone
+  //next would involve create the database
+  return couchdb.createAsync()
+    .then(function(){
+      //next we need to create this database on the secondary which
+      //we need to look up by
+      var zone = getZone(token)
+      var databaseName = getDatabaseName(token)
+      if(couchConfigs[zone].secondary){
+        var couchdb2 = new (cradle.Connection)(
+          couchConfigs[zone].secondary.host,
+          couchConfigs[zone].secondary.port,
+          couchConfigs[zone].secondary.options
+        )
+        couchdb2.database('oose-purchase-' + databaseName)
+        return couchdb2.createAsync()
+          .then(function(){
+            //finally we need to establish replication
+            return P.all([
+              function(){
+                //from primary -> secondary
+                couchdb.database('_replicator')
+                return couchdb.saveAsync(
+                  'oose-purchase-' +
+                  couchConfigs[zone].host + '->' +
+                  couchConfigs[zone].secondary.host,
+                  {
+                    source: 'oose-purchase-' + databaseName,
+                    target: 'http://' + couchConfigs[zone].secondary.host +
+                      ':' + couchConfigs[zone].secondary.port + '/' +
+                      'oose-purchase-' + databaseName,
+                    continuous: true,
+                    use_checkpoints: true,
+                    checkpoint_interval: '30',
+                    owner: 'root'
+                  }
+                )
+                  .then(function(){
+                    couchdb.database('oose-purchase-' + databaseName)
+                  })
+              },
+              function(){
+                //from secondary -> primary
+                couchdb2.database('_replicator')
+                return couchdb2.saveAsync(
+                  'oose-purchase-' +
+                  couchConfigs[zone].secondary.host + '->' +
+                  couchConfigs[zone].host,
+                  {
+                    source: 'oose-purchase-' + databaseName,
+                    target: 'http://' + couchConfigs[zone].host + ':' +
+                      couchConfigs[zone].port + '/' +
+                      'oose-purchase-' + databaseName,
+                    continuous: true,
+                    use_checkpoints: true,
+                    checkpoint_interval: '30',
+                    owner: 'root'
+                  }
+                )
+                  .then(function(){
+                    couchdb2.database('oose-purchase-' + databaseName)
+                  })
+              }
+            ])
+          })
+      }
+    })
+}
+
+
+/**
  * Get purchase by token, will also be used for exists
  * @param {string} token
  * @return {promise}
@@ -85,6 +200,7 @@ var PurchaseDb = function(){
 PurchaseDb.prototype.get = function(token){
   //get token
   var couchdb
+  var that = this
   return P.try(function(){
     couchdb = couchWrap(token)
     if(!couchdb) throw new UserError('Could not validate purchase token')
@@ -96,7 +212,7 @@ PurchaseDb.prototype.get = function(token){
         ('Database does not exist.' === err.reason ||
         'no_db_file' === err.reason)
       ){
-        return couchdb.createAsync()
+        return that.createDatabase(couchdb,token)
           .then(function(){
             return couchdb.getAsync(token)
           })
@@ -130,6 +246,7 @@ PurchaseDb.prototype.exists = function(token){
 PurchaseDb.prototype.create = function(token,params){
   //create purchase
   var couchdb
+  var that
   return P.try(function(){
     couchdb = couchWrap(token)
     if(!couchdb) throw new UserError('Could not validate purchase token')
@@ -141,7 +258,7 @@ PurchaseDb.prototype.create = function(token,params){
         ('Database does not exist.' === err.reason ||
         'no_db_file' === err.reason)
       ){
-        return couchdb.createAsync()
+        return that.createDatabase(couchdb,token)
           .then(function(){
             return couchdb.saveAsync(token,params)
           })
@@ -177,7 +294,7 @@ PurchaseDb.prototype.update = function(token,params){
         ('Database does not exist.' === err.reason ||
         'no_db_file' === err.reason)
       ){
-        return couchdb.createAsync()
+        return that.createDatabase(couchdb,token)
           .then(function(){
             return couchdb.saveAsync(token,params)
           })
