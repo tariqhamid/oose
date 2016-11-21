@@ -1,5 +1,5 @@
 'use strict';
-var couchdb = require('../../helpers/couchdb')
+var cradle = require('../../helpers/couchdb')
 var purchasedb = require('../../helpers/purchasedb')
 var redis = require('../../helpers/redis.js')
 
@@ -25,7 +25,7 @@ exports.uri = function(req,res){
             .then(function(result){
               purchase = result
               //get inventory
-              return couchdb.getAsync(couchdb.schema.inventory(
+              return cradle.inventory.getAsync(cradle.schema.inventory(
                 purchase.hash,
                 config.store.prism,
                 config.store.name
