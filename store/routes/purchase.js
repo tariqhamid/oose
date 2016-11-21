@@ -1,7 +1,6 @@
 'use strict';
 var couchdb = require('../../helpers/couchdb')
 var purchasedb = require('../../helpers/purchasedb')
-var hashFile = require('../../helpers/hashFile.js')
 var redis = require('../../helpers/redis.js')
 
 var config = require('../../config')
