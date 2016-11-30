@@ -145,7 +145,7 @@ PurchaseDb.prototype.createDatabase = function(couchdb,token){
                 //from primary -> secondary
                 couchdb.database('_replicator')
                 return couchdb.saveAsync(
-                  'oose-purchase-' +
+                  'oose-purchase-' + databaseName + '-' +
                   couchConfigs[zone].host + '->' +
                   couchConfigs[zone].secondary.host,
                   {
@@ -167,7 +167,7 @@ PurchaseDb.prototype.createDatabase = function(couchdb,token){
                 //from secondary -> primary
                 couchdb2.database('_replicator')
                 return couchdb2.saveAsync(
-                  'oose-purchase-' +
+                  'oose-purchase-' + databaseName + '-' +
                   couchConfigs[zone].secondary.host + '->' +
                   couchConfigs[zone].host,
                   {
