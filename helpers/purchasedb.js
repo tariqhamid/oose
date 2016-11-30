@@ -68,8 +68,9 @@ var couchWrap = function(token){
     return null
   var zone = getZone(token)
   var databaseName = getDatabaseName(token)
-  if(!couchPool[zone]){
-    var couchConfig = {
+  var couchConfig = couchConfigs[zone]
+  if(!couchConfig){
+    couchConfig = {
       host: config.couchdb.host,
       port: config.couchdb.port,
       options: config.couchdb.options
@@ -100,12 +101,12 @@ var couchWrap = function(token){
       }
     }
     couchConfigs[zone] = couchConfig
-    couchPool[zone] = new (cradle.Connection)(
-      couchConfig.host,
-      couchConfig.port,
-      couchConfig.options
-    )
   }
+  couchPool[zone] = new (cradle.Connection)(
+    couchConfig.host,
+    couchConfig.port,
+    couchConfig.options
+  )
   return couchPool[zone].database('oose-purchase-' + databaseName)
 }
 
