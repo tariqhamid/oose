@@ -68,8 +68,9 @@ var couchWrap = function(token){
     return null
   var zone = getZone(token)
   var databaseName = getDatabaseName(token)
-  if(!couchPool[zone]){
-    var couchConfig = {
+  var couchConfig = couchConfigs[zone]
+  if(!couchConfig){
+    couchConfig = {
       host: config.couchdb.host,
       port: config.couchdb.port,
       options: config.couchdb.options
@@ -100,12 +101,12 @@ var couchWrap = function(token){
       }
     }
     couchConfigs[zone] = couchConfig
-    couchPool[zone] = new (cradle.Connection)(
-      couchConfig.host,
-      couchConfig.port,
-      couchConfig.options
-    )
   }
+  couchPool[zone] = new (cradle.Connection)(
+    couchConfig.host,
+    couchConfig.port,
+    couchConfig.options
+  )
   return couchPool[zone].database('oose-purchase-' + databaseName)
 }
 
@@ -130,64 +131,65 @@ PurchaseDb.prototype.createDatabase = function(couchdb,token){
       //we need to look up by
       var zone = getZone(token)
       var databaseName = getDatabaseName(token)
-      if(couchConfigs[zone].secondary){
-        var couchdb2 = new (cradle.Connection)(
-          couchConfigs[zone].secondary.host,
-          couchConfigs[zone].secondary.port,
-          couchConfigs[zone].secondary.options
-        )
-        couchdb2.database('oose-purchase-' + databaseName)
-        return couchdb2.createAsync()
-          .then(function(){
-            //finally we need to establish replication
-            return P.all([
-              function(){
-                //from primary -> secondary
-                couchdb.database('_replicator')
-                return couchdb.saveAsync(
-                  'oose-purchase-' + databaseName + '-' +
-                  couchConfigs[zone].host + '->' +
-                  couchConfigs[zone].secondary.host,
-                  {
-                    source: 'oose-purchase-' + databaseName,
-                    target: 'http://' + couchConfigs[zone].secondary.host +
-                      ':' + couchConfigs[zone].secondary.port + '/' +
-                      'oose-purchase-' + databaseName,
-                    continuous: true,
-                    use_checkpoints: true,
-                    checkpoint_interval: '30',
-                    owner: 'root'
-                  }
-                )
-                  .then(function(){
-                    couchdb.database('oose-purchase-' + databaseName)
-                  })
-              },
-              function(){
-                //from secondary -> primary
-                couchdb2.database('_replicator')
-                return couchdb2.saveAsync(
-                  'oose-purchase-' + databaseName + '-' +
-                  couchConfigs[zone].secondary.host + '->' +
-                  couchConfigs[zone].host,
-                  {
-                    source: 'oose-purchase-' + databaseName,
-                    target: 'http://' + couchConfigs[zone].host + ':' +
-                      couchConfigs[zone].port + '/' +
-                      'oose-purchase-' + databaseName,
-                    continuous: true,
-                    use_checkpoints: true,
-                    checkpoint_interval: '30',
-                    owner: 'root'
-                  }
-                )
-                  .then(function(){
-                    couchdb2.database('oose-purchase-' + databaseName)
-                  })
-              }
-            ])
-          })
+      if(!couchConfigs[zone].secondary){
+        return
       }
+      var couchdb2 = new (cradle.Connection)(
+        couchConfigs[zone].secondary.host,
+        couchConfigs[zone].secondary.port,
+        couchConfigs[zone].secondary.options
+      )
+      couchdb2.database('oose-purchase-' + databaseName)
+      return couchdb2.createAsync()
+        .then(function(){
+          //finally we need to establish replication
+          return P.all([
+            function(){
+              //from primary -> secondary
+              couchdb.database('_replicator')
+              return couchdb.saveAsync(
+                'oose-purchase-' +
+                couchConfigs[zone].host + '->' +
+                couchConfigs[zone].secondary.host,
+                {
+                  source: 'oose-purchase-' + databaseName,
+                  target: 'http://' + couchConfigs[zone].secondary.host +
+                    ':' + couchConfigs[zone].secondary.port + '/' +
+                    'oose-purchase-' + databaseName,
+                  continuous: true,
+                  use_checkpoints: true,
+                  checkpoint_interval: '30',
+                  owner: 'root'
+                }
+              )
+                .then(function(){
+                  couchdb.database('oose-purchase-' + databaseName)
+                })
+            },
+            function(){
+              //from secondary -> primary
+              couchdb2.database('_replicator')
+              return couchdb2.saveAsync(
+                'oose-purchase-' +
+                couchConfigs[zone].secondary.host + '->' +
+                couchConfigs[zone].host,
+                {
+                  source: 'oose-purchase-' + databaseName,
+                  target: 'http://' + couchConfigs[zone].host + ':' +
+                    couchConfigs[zone].port + '/' +
+                    'oose-purchase-' + databaseName,
+                  continuous: true,
+                  use_checkpoints: true,
+                  checkpoint_interval: '30',
+                  owner: 'root'
+                }
+              )
+                .then(function(){
+                  couchdb2.database('oose-purchase-' + databaseName)
+                })
+            }
+          ])
+        })
     })
 }
 
