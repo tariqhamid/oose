@@ -139,6 +139,7 @@ PurchaseDb.prototype.createDatabase = function(token){
         couchConfig.port,
         couchConfig.options
       )
+      P.promisifyAll(couchdb)
       couchdb.database('oose-purchase-' + databaseName)
       return couchdb.createAsync()
         .then(function(){
@@ -159,6 +160,7 @@ PurchaseDb.prototype.createDatabase = function(token){
                 replConfig.port,
                 replConfig.options
               )
+              P.promisifyAll(repldb)
               return P.all([
                 //from current to repl
                 function(){
@@ -232,7 +234,7 @@ PurchaseDb.prototype.get = function(token){
         ('Database does not exist.' === err.reason ||
         'no_db_file' === err.reason)
       ){
-        return that.createDatabase(couchdb,token)
+        return that.createDatabase(token)
           .then(function(){
             return couchdb.getAsync(token)
           })
@@ -278,7 +280,7 @@ PurchaseDb.prototype.create = function(token,params){
         ('Database does not exist.' === err.reason ||
         'no_db_file' === err.reason)
       ){
-        return that.createDatabase(couchdb,token)
+        return that.createDatabase(token)
           .then(function(){
             return couchdb.saveAsync(token,params)
           })
@@ -306,7 +308,7 @@ PurchaseDb.prototype.update = function(token,params){
       if(result)
         return couchdb.saveAsync(token,result._rev,params)
       else
-        that.create(token,params)
+        that.saveAsync(token,params)
     })
     .catch(function(err){
       if(!err.headers || !err.headers.status) throw err
@@ -314,7 +316,7 @@ PurchaseDb.prototype.update = function(token,params){
         ('Database does not exist.' === err.reason ||
         'no_db_file' === err.reason)
       ){
-        return that.createDatabase(couchdb,token)
+        return that.createDatabase(token)
           .then(function(){
             return couchdb.saveAsync(token,params)
           })
