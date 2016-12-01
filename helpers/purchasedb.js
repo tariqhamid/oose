@@ -133,7 +133,6 @@ var setupReplication = function(promises,databaseName,couchConfig,replConfig){
     replConfig.options
   )
   P.promisifyAll(repldb)
-  debug('scaffolded replication servers')
   promises.push(function(){
     return P.all([
       //from current to repl
@@ -261,7 +260,7 @@ PurchaseDb.prototype.get = function(token){
   return P.try(function(){
     debug(token,'get')
     couchdb = couchWrap(token)
-    debug(token,'couch wrapped',couchdb)
+    debug(token,'couch wrapped')
     if(!couchdb) throw new UserError('Could not validate purchase token')
     return couchdb.getAsync(token)
   })
