@@ -136,7 +136,7 @@ var setupReplication = function(promises,databaseName,couchConfig,replConfig){
   debug('couchdb creating oose-purchase-' + databaseName)
   repldb.database('oose-purchase-' + databaseName)
   couchdb.database('oose-purchase-' + databaseName)
-  return P.all([repldb.createAsync(),couchdb.createAsync()])
+  return P.all([couchdb.createAsync(),repldb.createAsync()])
     .then(function(){
       couchdb.database('_replicator')
       debug('saving replicator from couch to repl',couchConfig,replConfig)
