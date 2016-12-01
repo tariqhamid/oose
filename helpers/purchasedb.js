@@ -87,46 +87,11 @@ var pickCouchConfig = function(zone){
 
 
 /**
- * Wrap couch calls to enumerate
- * @param {string} token
- * @return {object}
- */
-var couchWrap = function(token){
-  //here need to enumerate couch servers and choose the right connection
-  //using the token to set the proper zone and database then returning the
-  //configured couchdb object that can be used to work with the purchases as
-  //if they were local
-  //so first things first lets see if we have a connection to this zoned server
-  if(!token.match(/^[a-z]{1}[0-9]{8}/))
-    return null
-  var now = new Date()
-  var year = +token.slice(1,5)
-  if(year !== now.getFullYear() && year !== (now.getFullYear() -1))
-    return null
-  var zone = getZone(token)
-  var databaseName = getDatabaseName(token)
-  var couchConfig = pickCouchConfig(zone)
-  if(!couchConfig) return null
-  couchPool[zone] = new (cradle.Connection)(
-    couchConfig.host,
-    couchConfig.port,
-    couchConfig.options
-  )
-  return couchPool[zone].database('oose-purchase-' + databaseName)
-}
-
-
-var PurchaseDb = function(){
-  //construct purchase db, couchdb is connectionless so not much to do here
-}
-
-
-/**
  * Create new database based on token and a no db file error
  * @param {string} token
  * @return {P}
  */
-PurchaseDb.prototype.createDatabase = function(token){
+var createDatabase = function(token){
   //the couchdb object should already be wrapped and pointed at the correct zone
   //next would involve create the database
   var databaseName = getDatabaseName(token)
@@ -215,6 +180,41 @@ PurchaseDb.prototype.createDatabase = function(token){
 
 
 /**
+ * Wrap couch calls to enumerate
+ * @param {string} token
+ * @return {object}
+ */
+var couchWrap = function(token){
+  //here need to enumerate couch servers and choose the right connection
+  //using the token to set the proper zone and database then returning the
+  //configured couchdb object that can be used to work with the purchases as
+  //if they were local
+  //so first things first lets see if we have a connection to this zoned server
+  if(!token.match(/^[a-z]{1}[0-9]{8}/))
+    return null
+  var now = new Date()
+  var year = +token.slice(1,5)
+  if(year !== now.getFullYear() && year !== (now.getFullYear() -1))
+    return null
+  var zone = getZone(token)
+  var databaseName = getDatabaseName(token)
+  var couchConfig = pickCouchConfig(zone)
+  if(!couchConfig) return null
+  couchPool[zone] = new (cradle.Connection)(
+    couchConfig.host,
+    couchConfig.port,
+    couchConfig.options
+  )
+  return couchPool[zone].database('oose-purchase-' + databaseName)
+}
+
+
+var PurchaseDb = function(){
+  //construct purchase db, couchdb is connectionless so not much to do here
+}
+
+
+/**
  * Get purchase by token, will also be used for exists
  * @param {string} token
  * @return {promise}
@@ -222,7 +222,6 @@ PurchaseDb.prototype.createDatabase = function(token){
 PurchaseDb.prototype.get = function(token){
   //get token
   var couchdb
-  var that = this
   return P.try(function(){
     couchdb = couchWrap(token)
     if(!couchdb) throw new UserError('Could not validate purchase token')
@@ -234,7 +233,7 @@ PurchaseDb.prototype.get = function(token){
         ('Database does not exist.' === err.reason ||
         'no_db_file' === err.reason)
       ){
-        return that.createDatabase(token)
+        return createDatabase(token)
           .then(function(){
             return couchdb.getAsync(token)
           })
@@ -268,7 +267,6 @@ PurchaseDb.prototype.exists = function(token){
 PurchaseDb.prototype.create = function(token,params){
   //create purchase
   var couchdb
-  var that
   return P.try(function(){
     couchdb = couchWrap(token)
     if(!couchdb) throw new UserError('Could not validate purchase token')
@@ -280,7 +278,7 @@ PurchaseDb.prototype.create = function(token,params){
         ('Database does not exist.' === err.reason ||
         'no_db_file' === err.reason)
       ){
-        return that.createDatabase(token)
+        return createDatabase(token)
           .then(function(){
             return couchdb.saveAsync(token,params)
           })
@@ -308,7 +306,7 @@ PurchaseDb.prototype.update = function(token,params){
       if(result)
         return couchdb.saveAsync(token,result._rev,params)
       else
-        that.saveAsync(token,params)
+        that.create(token,params)
     })
     .catch(function(err){
       if(!err.headers || !err.headers.status) throw err
@@ -316,7 +314,7 @@ PurchaseDb.prototype.update = function(token,params){
         ('Database does not exist.' === err.reason ||
         'no_db_file' === err.reason)
       ){
-        return that.createDatabase(token)
+        return createDatabase(token)
           .then(function(){
             return couchdb.saveAsync(token,params)
           })
@@ -335,7 +333,7 @@ PurchaseDb.prototype.remove = function(token){
   return this.get(token)
     .then(function(result){
       if(result)
-        return couchWrap(token,result._rev).removeAsync(token)
+        return couchWrap(token).removeAsync(token,result._rev)
       //otherwise it doesn't exist... cool
     })
 }
