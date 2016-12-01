@@ -1,10 +1,9 @@
 'use strict';
+var cradle = require('../../helpers/couchdb')
 var purchasedb = require('../../helpers/purchasedb')
-var hashFile = require('../../helpers/hashFile.js')
 var redis = require('../../helpers/redis.js')
 
-
-//var config = require('../../config')
+var config = require('../../config')
 
 
 /**
@@ -20,11 +19,24 @@ exports.uri = function(req,res){
       .then(function(result){
         if(!result){
           //build cache
+          var purchase = {}
+          var inventory = {}
           return purchasedb.get(token)
             .then(function(result){
-              if(result && result.expirationDate >= (+new Date())){
-                purchaseUri = '/../content/' +
-                  hashFile.toRelativePath(result.hash,result.ext)
+              purchase = result
+              //get inventory
+              return cradle.inventory.getAsync(cradle.schema.inventory(
+                purchase.hash,
+                config.store.prism,
+                config.store.name
+              ))
+            })
+            .then(function(result){
+              inventory = result
+              if(inventory && purchase &&
+                purchase.expirationDate >= (+new Date())
+              ){
+                purchaseUri = '/../content/' + inventory.relativePath
               } else{
                 purchaseUri = '/404'
               }
