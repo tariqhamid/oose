@@ -514,7 +514,10 @@ exports.deliver = function(req,res){
   var makeUrl = function(req,store,purchase){
     var query = req.url.indexOf('?') >= 0 ?
       req.url.substr(req.url.indexOf('?')+1) : null
-    var proto = 'https' === req.get('X-Forwarded-Protocol') ? 'https' : 'http'
+    var proto = req.protocol
+    if(req.get('X-Forwarded-Protocol')){
+      proto = 'https' === req.get('X-Forwarded-Protocol') ? 'https' : 'http'
+    }
     //add a start param regardless so nginx will act correctly on videos
     // which should not hurt other queries
     //instead of just adding this param whenever we want lets use the mime
