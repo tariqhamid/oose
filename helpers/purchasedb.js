@@ -136,7 +136,7 @@ var setupReplication = function(promises,databaseName,couchConfig,replConfig){
   promises.push(function(){
     return P.all([
       //from current to repl
-      function(){
+      (function(){
         debug('couchdb creating oose-purchase-' + databaseName)
         repldb.database('oose-purchase-' + databaseName)
         return repldb.createAsync()
@@ -160,9 +160,9 @@ var setupReplication = function(promises,databaseName,couchConfig,replConfig){
               }
             )
           })
-      },
+      })(),
       //from repl to current
-      function(){
+      (function(){
         debug('repldb creating oose-purchase-' + databaseName)
         repldb.database('oose-purchase-' + databaseName)
         return repldb.createAsync()
@@ -186,7 +186,7 @@ var setupReplication = function(promises,databaseName,couchConfig,replConfig){
               }
             )
           })
-      }
+      })()
     ])
   })
 }
