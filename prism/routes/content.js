@@ -488,7 +488,8 @@ exports.purchase = function(req,res){
       res.json({error: err})
     })
     .catch(function(err){
-      console.log('Unhandled error on content purchase ' + err.message)
+      console.log(
+        'Unhandled error on content purchase ' + err.message,err.stack)
     })
 }
 
