@@ -87,6 +87,86 @@ var pickCouchConfig = function(zone){
 
 
 /**
+ * Setup replication
+ * @param {array} promises
+ * @param {string} databaseName
+ * @param {object} couchConfig
+ * @param {object} replConfig
+ * @return {P}
+ */
+var setupReplication = function(promises,databaseName,couchConfig,replConfig){
+  //verify we are not the same server as currently being used
+  if(
+    replConfig.host === couchConfig.host &&
+    replConfig.port === couchConfig.port
+  )
+  {
+    return
+  }
+  var couchdb = new (cradle.Connection)(
+    couchConfig.host,
+    couchConfig.port,
+    couchConfig.options
+  )
+  P.promisifyAll(couchdb)
+  var repldb = new (cradle.Connection)(
+    replConfig.host,
+    replConfig.port,
+    replConfig.options
+  )
+  P.promisifyAll(repldb)
+  promises.push(function(){
+    return P.all([
+      //from current to repl
+      function(){
+        couchdb.database('_replicator')
+        return couchdb.saveAsync(
+          'oose-purchase-' + databaseName + '-' +
+          couchConfig.host + '->' +
+          replConfig.host,
+          {
+            source: 'oose-purchase-' + databaseName,
+            target: 'http://' + replConfig.host +
+            ':' + replConfig.port + '/' +
+            'oose-purchase-' + databaseName,
+            continuous: true,
+            use_checkpoints: true,
+            checkpoint_interval: '30',
+            owner: 'root'
+          }
+        )
+      },
+      //from repl to current
+      function(){
+        repldb.existsAsync('oose-purchase-' + databaseName)
+          .then(function(result){
+            if(!result) return repldb.createAsync()
+          })
+          .then(function(){
+            repldb.database('_replicator')
+            repldb.saveAsync(
+              'oose-purchase-' + databaseName + '-' +
+              replConfig.host + '->' +
+              couchConfig.host,
+              {
+                source: 'oose-purchase-' + databaseName,
+                target: 'http://' + couchConfig.host + ':' +
+                couchConfig.port + '/' +
+                'oose-purchase-' + databaseName,
+                continuous: true,
+                use_checkpoints: true,
+                checkpoint_interval: '30',
+                owner: 'root'
+              }
+            )
+          })
+      }
+    ])
+  })
+}
+
+
+/**
  * Create new database based on token and a no db file error
  * @param {string} token
  * @return {P}
@@ -111,66 +191,7 @@ var createDatabase = function(token){
           //create replication to everyone
           var promises = []
           couchConfigs[zone].forEach(function(replConfig){
-            //verify we are not the same server as currently being used
-            if(
-              replConfig.host === couchConfig.host &&
-              replConfig.port === couchConfig.port
-            )
-            {
-              return
-            }
-            promises.push(function(){
-              var repldb = new (cradle.Connection)(
-                replConfig.host,
-                replConfig.port,
-                replConfig.options
-              )
-              P.promisifyAll(repldb)
-              return P.all([
-                //from current to repl
-                function(){
-                  couchdb.database('_replicator')
-                  return couchdb.saveAsync(
-                    'oose-purchase-' + databaseName + '-' +
-                    couchConfig.host + '->' +
-                    replConfig.host,
-                    {
-                      source: 'oose-purchase-' + databaseName,
-                      target: 'http://' + replConfig.host +
-                      ':' + replConfig.port + '/' +
-                      'oose-purchase-' + databaseName,
-                      continuous: true,
-                      use_checkpoints: true,
-                      checkpoint_interval: '30',
-                      owner: 'root'
-                    }
-                  )
-                },
-                //from repl to current
-                function(){
-                  repldb.database('oose-purchase-' + databaseName)
-                  return repldb.createAsync()
-                    .then(function(){
-                      repldb.database('_replicator')
-                      repldb.saveAsync(
-                        'oose-purchase-' + databaseName + '-' +
-                        replConfig.host + '->' +
-                        couchConfig.host,
-                        {
-                          source: 'oose-purchase-' + databaseName,
-                          target: 'http://' + couchConfig.host + ':' +
-                          couchConfig.port + '/' +
-                          'oose-purchase-' + databaseName,
-                          continuous: true,
-                          use_checkpoints: true,
-                          checkpoint_interval: '30',
-                          owner: 'root'
-                        }
-                      )
-                    })
-                }
-              ])
-            })
+            setupReplication(promises,couchdb,couchConfig,replConfig)
           })
         })
     })
