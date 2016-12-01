@@ -133,62 +133,48 @@ var setupReplication = function(promises,databaseName,couchConfig,replConfig){
     replConfig.options
   )
   P.promisifyAll(repldb)
-  promises.push(function(){
-    return P.all([
-      //from current to repl
-      (function(){
-        debug('couchdb creating oose-purchase-' + databaseName)
-        repldb.database('oose-purchase-' + databaseName)
-        return repldb.createAsync()
-          .then(function(){
-            debug('couchdb database set to _replicator')
-            couchdb.database('_replicator')
-            debug('saving replicator from couch to repl',couchConfig,replConfig)
-            return couchdb.saveAsync(
-              'oose-purchase-' + databaseName + '-' +
-              couchConfig.host + '->' +
-              replConfig.host,
-              {
-                source: 'oose-purchase-' + databaseName,
-                target: 'http://' + replConfig.host +
-                ':' + replConfig.port + '/' +
-                'oose-purchase-' + databaseName,
-                continuous: true,
-                use_checkpoints: true,
-                checkpoint_interval: '30',
-                owner: 'root'
-              }
-            )
-          })
-      })(),
-      //from repl to current
-      (function(){
-        debug('repldb creating oose-purchase-' + databaseName)
-        repldb.database('oose-purchase-' + databaseName)
-        return repldb.createAsync()
-          .then(function(){
-            debug('repldb switching to db _replicator')
-            repldb.database('_replicator')
-            debug('saving replicator from repl to couch',replConfig,couchConfig)
-            repldb.saveAsync(
-              'oose-purchase-' + databaseName + '-' +
-              replConfig.host + '->' +
-              couchConfig.host,
-              {
-                source: 'oose-purchase-' + databaseName,
-                target: 'http://' + couchConfig.host + ':' +
-                couchConfig.port + '/' +
-                'oose-purchase-' + databaseName,
-                continuous: true,
-                use_checkpoints: true,
-                checkpoint_interval: '30',
-                owner: 'root'
-              }
-            )
-          })
-      })()
-    ])
-  })
+  debug('couchdb creating oose-purchase-' + databaseName)
+  repldb.database('oose-purchase-' + databaseName)
+  couchdb.database('oose-purchase-' + databaseName)
+  return P.all([repldb.createAsync(),couchdb.createAsync()])
+    .then(function(){
+      couchdb.database('_replicator')
+      debug('saving replicator from couch to repl',couchConfig,replConfig)
+      return couchdb.saveAsync(
+        'oose-purchase-' + databaseName + '-' +
+        couchConfig.host + '->' +
+        replConfig.host,
+        {
+          source: 'oose-purchase-' + databaseName,
+          target: 'http://' + replConfig.host +
+          ':' + replConfig.port + '/' +
+          'oose-purchase-' + databaseName,
+          continuous: true,
+          use_checkpoints: true,
+          checkpoint_interval: '30',
+          owner: 'root'
+        }
+      )
+    })
+    .then(function(){
+      repldb.database('_replicator')
+      debug('saving replicator from repl to couch',replConfig,couchConfig)
+      return repldb.saveAsync(
+        'oose-purchase-' + databaseName + '-' +
+        replConfig.host + '->' +
+        couchConfig.host,
+        {
+          source: 'oose-purchase-' + databaseName,
+          target: 'http://' + couchConfig.host + ':' +
+          couchConfig.port + '/' +
+          'oose-purchase-' + databaseName,
+          continuous: true,
+          use_checkpoints: true,
+          checkpoint_interval: '30',
+          owner: 'root'
+        }
+      )
+    })
 }
 
 
