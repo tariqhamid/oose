@@ -135,7 +135,18 @@ var setupReplication = function(databaseName,couchConfig,replConfig){
   debug('couchdb creating oose-purchase-' + databaseName)
   repldb = repldb.database('oose-purchase-' + databaseName)
   couchdb = couchdb.database('oose-purchase-' + databaseName)
-  return P.all([couchdb.createAsync(),repldb.createAsync()])
+  return P.all([
+    couchdb.createAsync()
+      .catch(function(err){
+        if(err && err.error && 'file_exists' === err.err) return true
+        else throw err
+      }),
+    repldb.createAsync()
+      .catch(function(err){
+        if(err && err.error && 'file_exists' === err.err) return true
+        else throw err
+      })
+    ])
     .then(function(){
       couchdb.database('_replicator')
       debug('saving replicator from couch to repl',couchConfig,replConfig)
@@ -192,6 +203,10 @@ var setupWithoutReplication = function(databaseName,couchConfig){
   P.promisifyAll(couchdb)
   couchdb = couchdb.database('oose-purchase-' + databaseName)
   return couchdb.createAsync()
+    .catch(function(err){
+      if(err && err.error && 'file_exists' === err.err) return true
+      else throw err
+    })
 }
 
 
