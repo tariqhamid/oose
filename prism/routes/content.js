@@ -668,7 +668,10 @@ exports.contentStatic = function(req,res){
       //set the extension based on the chosen winners relative path, this will
       //actually be accurate
       ext = path.extname(existsRecord.relativePath).replace(/^\./,'')
-      var proto = 'https' === req.get('X-Forwarded-Protocol') ? 'https' : 'http'
+      var proto = req.protocol
+      if(req.get('X-Forwarded-Protocol')){
+        proto = 'https' === req.get('X-Forwarded-Protocol') ? 'https' : 'http'
+      }
       var url = proto + '://' + result.name +
         '.' + config.domain + '/static/' + existsRecord.relativePath
       res.redirect(302,url)
