@@ -120,21 +120,21 @@ var setupReplication = function(databaseName,couchConfig,replConfig){
     debug('replConfig matches couchConfig returning')
     return
   }
-  var couchdb = new (cradle.Connection)(
+  var couchdbconn = new (cradle.Connection)(
     couchConfig.host,
     couchConfig.port,
     couchConfig.options
   )
-  P.promisifyAll(couchdb)
-  var repldb = new (cradle.Connection)(
+  P.promisifyAll(couchdbconn)
+  var repldbconn = new (cradle.Connection)(
     replConfig.host,
     replConfig.port,
     replConfig.options
   )
-  P.promisifyAll(repldb)
+  P.promisifyAll(repldbconn)
   debug('couchdb creating oose-purchase-' + databaseName)
-  repldb = repldb.database('oose-purchase-' + databaseName)
-  couchdb = couchdb.database('oose-purchase-' + databaseName)
+  var repldb = repldbconn.database('oose-purchase-' + databaseName)
+  var couchdb = couchdbconn.database('oose-purchase-' + databaseName)
   return P.all([
     couchdb.createAsync()
       .catch(function(err){
@@ -148,9 +148,9 @@ var setupReplication = function(databaseName,couchConfig,replConfig){
       })
     ])
     .then(function(){
-      couchdb.database('_replicator')
+      var replicator = couchdbconn.database('_replicator')
       debug('saving replicator from couch to repl',couchConfig,replConfig)
-      return couchdb.saveAsync(
+      return replicator.saveAsync(
         'oose-purchase-' + databaseName + '-' +
         couchConfig.host + '->' +
         replConfig.host,
@@ -167,9 +167,9 @@ var setupReplication = function(databaseName,couchConfig,replConfig){
       )
     })
     .then(function(){
-      repldb.database('_replicator')
+      var replicator = repldbconn.database('_replicator')
       debug('saving replicator from repl to couch',replConfig,couchConfig)
-      return repldb.saveAsync(
+      return replicator.saveAsync(
         'oose-purchase-' + databaseName + '-' +
         replConfig.host + '->' +
         couchConfig.host,
