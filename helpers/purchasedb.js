@@ -104,13 +104,12 @@ var pickCouchConfig = function(zone){
 
 /**
  * Setup replication
- * @param {array} promises
  * @param {string} databaseName
  * @param {object} couchConfig
  * @param {object} replConfig
  * @return {P}
  */
-var setupReplication = function(promises,databaseName,couchConfig,replConfig){
+var setupReplication = function(databaseName,couchConfig,replConfig){
   //verify we are not the same server as currently being used
   debug('setupReplication',databaseName,couchConfig,replConfig)
   if(
@@ -134,8 +133,8 @@ var setupReplication = function(promises,databaseName,couchConfig,replConfig){
   )
   P.promisifyAll(repldb)
   debug('couchdb creating oose-purchase-' + databaseName)
-  repldb.database('oose-purchase-' + databaseName)
-  couchdb.database('oose-purchase-' + databaseName)
+  repldb = repldb.database('oose-purchase-' + databaseName)
+  couchdb = couchdb.database('oose-purchase-' + databaseName)
   return P.all([couchdb.createAsync(),repldb.createAsync()])
     .then(function(){
       couchdb.database('_replicator')
@@ -179,6 +178,24 @@ var setupReplication = function(promises,databaseName,couchConfig,replConfig){
 
 
 /**
+ * Setup a new database without replication
+ * @param {string} databaseName
+ * @param {object} couchConfig
+ * @return {P}
+ */
+var setupWithoutReplication = function(databaseName,couchConfig){
+  var couchdb = new (cradle.Connection)(
+    couchConfig.host,
+    couchConfig.port,
+    couchConfig.options
+  )
+  P.promisifyAll(couchdb)
+  couchdb = couchdb.database('oose-purchase-' + databaseName)
+  return couchdb.createAsync()
+}
+
+
+/**
  * Create new database based on token and a no db file error
  * @param {string} token
  * @return {P}
@@ -190,11 +207,15 @@ var createDatabase = function(token){
   var zone = getZone(token)
   var promises = []
   debug('create database',token,zone,databaseName)
-  couchConfigs[zone].forEach(function(couchConfig){
-    couchConfigs[zone].forEach(function(replConfig){
-      setupReplication(promises,databaseName,couchConfig,replConfig)
+  if(couchConfigs && couchConfigs[zone] && couchConfigs[zone].length > 1){
+    couchConfigs[zone].forEach(function(couchConfig){
+      couchConfigs[zone].forEach(function(replConfig){
+        promises.push(setupReplication(databaseName,couchConfig,replConfig))
+      })
     })
-  })
+  } else {
+    promises.push(setupWithoutReplication(couchConfigs[zone][0]))
+  }
   debug('promises set for creation',databaseName,promises)
   return P.all(promises)
 }
