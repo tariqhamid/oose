@@ -272,6 +272,20 @@ var PurchaseDb = function(){
 
 
 /**
+ * Create database will also create replication optionally
+ * @param {string} token
+ * @param {boolean} setupReplication
+ * @return {P}
+ */
+PurchaseDb.prototype.createDatabase = function(token,setupReplication){
+  //create a database and wire up replication if needed
+  if(undefined === setupReplication) setupReplication = false
+  if(!token) throw new Error('token must be defined to create purchase db')
+  return createDatabase(token,setupReplication)
+}
+
+
+/**
  * Get purchase by token, will also be used for exists
  * @param {string} token
  * @return {promise}
@@ -289,21 +303,6 @@ PurchaseDb.prototype.get = function(token){
     .then(function(result){
       debug(token,'get result',result)
       return result
-    })
-    .catch(function(err){
-      debug(token,'get error',err)
-      if(!err.headers || !err.headers.status) throw err
-      else if(404 === err.headers.status &&
-        ('Database does not exist.' === err.reason ||
-        'no_db_file' === err.reason)
-      ){
-        debug(token,'creating database for get')
-        return createDatabase(token)
-          .then(function(){
-            debug(token,'database created reattempted get')
-            return couchdb.getAsync(token)
-          })
-      } else throw err
     })
 }
 
@@ -347,21 +346,6 @@ PurchaseDb.prototype.create = function(token,params){
       debug(token,'create result',result)
       return result
     })
-    .catch(function(err){
-      debug(token,'create error',err)
-      if(!err.headers || !err.headers.status) throw err
-      else if(404 === err.headers.status &&
-        ('Database does not exist.' === err.reason ||
-        'no_db_file' === err.reason)
-      ){
-        debug(token,'creating database for create',params)
-        return createDatabase(token)
-          .then(function(){
-            debug(token,'database created reattempt create',params)
-            return couchdb.saveAsync(token,params)
-          })
-      } else throw err
-    })
 }
 
 
@@ -390,21 +374,6 @@ PurchaseDb.prototype.update = function(token,params){
         debug(token,'doesnt exist, creating',result,params)
         that.create(token,params)
       }
-    })
-    .catch(function(err){
-      debug(token,'update error',err)
-      if(!err.headers || !err.headers.status) throw err
-      else if(404 === err.headers.status &&
-        ('Database does not exist.' === err.reason ||
-        'no_db_file' === err.reason)
-      ){
-        debug(token,'creating database for update',params)
-        return createDatabase(token)
-          .then(function(){
-            debug(token,'database created reattempted update',params)
-            return that.create(token,params)
-          })
-      } else throw err
     })
 }
 
