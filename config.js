@@ -175,7 +175,7 @@ if('travis' === process.env.TRAVIS){
 }
 
 //load global local overrides
-if(fs.existsSync('./config.local.js')){
+if(fs.existsSync(__dirname + '/config.local.js')){
   config.$load(require(__dirname + '/config.local.js'))
 }
 
