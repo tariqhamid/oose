@@ -107,6 +107,17 @@ var pickCouchConfig = function(zone){
  * @param {object} err
  * @return {boolean}
  */
+var suppressDocumentConflict = function(err){
+  if(err && err.error && 'conflict' === err.error) return true
+  else throw err
+}
+
+
+/**
+ * Suppress errors about database already existing
+ * @param {object} err
+ * @return {boolean}
+ */
 var suppressDatabaseExists = function(err){
   if(err && err.error && 'file_exists' === err.error) return true
   else throw err
@@ -170,6 +181,7 @@ var setupWithReplication = function(databaseName,couchConfig,replConfig){
           owner: 'root'
         }
       )
+        .catch(suppressDocumentConflict)
     })
     .then(function(){
       var replicator = repldbconn.database('_replicator')
@@ -189,6 +201,7 @@ var setupWithReplication = function(databaseName,couchConfig,replConfig){
           owner: 'root'
         }
       )
+        .catch(suppressDocumentConflict)
     })
 }
 
