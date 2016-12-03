@@ -103,13 +103,24 @@ var pickCouchConfig = function(zone){
 
 
 /**
+ * Suppress errors about database already existing
+ * @param {object} err
+ * @return {boolean}
+ */
+var suppressDatabaseExists = function(err){
+  if(err && err.error && 'file_exists' === err.error) return true
+  else throw err
+}
+
+
+/**
  * Setup replication
  * @param {string} databaseName
  * @param {object} couchConfig
  * @param {object} replConfig
  * @return {P}
  */
-var setupReplication = function(databaseName,couchConfig,replConfig){
+var setupWithReplication = function(databaseName,couchConfig,replConfig){
   //verify we are not the same server as currently being used
   debug('setupReplication',databaseName,couchConfig,replConfig)
   if(
@@ -137,16 +148,10 @@ var setupReplication = function(databaseName,couchConfig,replConfig){
   var couchdb = couchdbconn.database('oose-purchase-' + databaseName)
   return P.all([
     couchdb.createAsync()
-      .catch(function(err){
-        if(err && err.error && 'file_exists' === err.err) return true
-        else throw err
-      }),
+      .catch(suppressDatabaseExists),
     repldb.createAsync()
-      .catch(function(err){
-        if(err && err.error && 'file_exists' === err.err) return true
-        else throw err
-      })
-    ])
+      .catch(suppressDatabaseExists)
+  ])
     .then(function(){
       var replicator = couchdbconn.database('_replicator')
       debug('saving replicator from couch to repl',couchConfig,replConfig)
@@ -203,33 +208,39 @@ var setupWithoutReplication = function(databaseName,couchConfig){
   P.promisifyAll(couchdb)
   couchdb = couchdb.database('oose-purchase-' + databaseName)
   return couchdb.createAsync()
-    .catch(function(err){
-      if(err && err.error && 'file_exists' === err.err) return true
-      else throw err
-    })
 }
 
 
 /**
  * Create new database based on token and a no db file error
  * @param {string} token
+ * @param {boolean} setupReplication
  * @return {P}
  */
-var createDatabase = function(token){
+var createDatabase = function(token,setupReplication){
   //the couchdb object should already be wrapped and pointed at the correct zone
   //next would involve create the database
   var databaseName = getDatabaseName(token)
   var zone = getZone(token)
   var promises = []
   debug('create database',token,zone,databaseName)
-  if(couchConfigs && couchConfigs[zone] && couchConfigs[zone].length > 1){
-    couchConfigs[zone].forEach(function(couchConfig){
-      couchConfigs[zone].forEach(function(replConfig){
-        promises.push(setupReplication(databaseName,couchConfig,replConfig))
+  if(setupReplication){
+    if(couchConfigs && couchConfigs[zone] && couchConfigs[zone].length > 1){
+      couchConfigs[zone].forEach(function(couchConfig){
+        couchConfigs[zone].forEach(function(replConfig){
+          var promise = setupWithReplication(
+            databaseName,couchConfig,replConfig)
+          if(promise) promises.push(promise)
+        })
       })
-    })
+    } else {
+      if(couchConfigs && couchConfigs[zone] && couchConfigs[zone][0])
+        promises.push(setupWithoutReplication(couchConfigs[zone][0]))
+      else
+        promises.push(setupWithoutReplication(config.couchdb))
+    }
   } else {
-    promises.push(setupWithoutReplication(couchConfigs[zone][0]))
+    promises.push(setupWithoutReplication(config.couchdb))
   }
   debug('promises set for creation',databaseName,promises)
   return P.all(promises)
