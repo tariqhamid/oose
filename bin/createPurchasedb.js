@@ -20,7 +20,7 @@ var zone = program.zone || 'a'
 var token = program.token || (zone + moment().format('YYYYMMDD'))
 
 if(program.tomorrow && !program.token)
-  token = zone + moment('tomorrow').format('YYYYMMDD')
+  token = zone + moment().add(1,'d').format('YYYYMMDD')
 
 if(program.date && !program.token && !program.tomorrow)
   token = zone + program.date
