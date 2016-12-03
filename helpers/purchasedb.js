@@ -260,13 +260,16 @@ var createDatabase = function(token,setupReplication){
         })
       })
     } else {
-      if(couchConfigs && couchConfigs[zone] && couchConfigs[zone][0])
-        promises.push(setupWithoutReplication(couchConfigs[zone][0]))
-      else
-        promises.push(setupWithoutReplication(config.couchdb))
+      if(couchConfigs && couchConfigs[zone] && couchConfigs[zone][0]){
+        promises.push(
+          setupWithoutReplication(databaseName,couchConfigs[zone][0]
+        ))
+      } else {
+        promises.push(setupWithoutReplication(databaseName,config.couchdb))
+      }
     }
   } else {
-    promises.push(setupWithoutReplication(config.couchdb))
+    promises.push(setupWithoutReplication(databaseName,config.couchdb))
   }
   debug('promises set for creation',databaseName,promises)
   return P.all(promises)
