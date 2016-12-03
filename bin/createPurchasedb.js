@@ -19,11 +19,14 @@ program
 var zone = program.zone || 'a'
 var token = program.token || (zone + moment().format('YYYYMMDD'))
 
-if(program.tomorrow && !program.token)
+if(program.tomorrow)
   token = zone + moment().add(1,'d').format('YYYYMMDD')
 
-if(program.date && !program.token && !program.tomorrow)
+if(program.date)
   token = zone + program.date
+
+if(!token.match(/^[a-z]{1}[0-9]{8}$/))
+  throw new Error('Invalid database token')
 
 //now that we have the token we just add a random string
 token = token + new Password({length: 11, special: false}).toString()
