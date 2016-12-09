@@ -202,7 +202,6 @@ exports.contentExists = function(hash){
             return cradle.inventory.getAsync(row.key)
               .catch(function(err){
                 if(404 !== err.headers.status) throw err
-                count = 0
               })
           })
           .then(function(inventoryList){
@@ -216,13 +215,15 @@ exports.contentExists = function(hash){
                 .map(function(row){
                   debug(existsKey,'got inventory list record',row)
                   return P.all([
-                    cradle.peer.getAsync(cradle.schema.prism(row.prism)),
+                    cradle.peer.getAsync(cradle.schema.prism(row.prism))
+                      .catch(function(){return {available: false}}),
                     cradle.peer.getAsync(
                       cradle.schema.store(row.prism,row.store))
+                      .catch(function(){return {available: false}})
                   ])
                 })
                 .filter(function(row){
-                  return !!row[0].available && !!row[1].available
+                  return row[0].available && row[1].available
                 })
                 .then(function(result){
                   var map = result.map(function(val){
