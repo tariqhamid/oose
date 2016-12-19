@@ -226,11 +226,23 @@ exports.retrieve = function(req,res){
       console.log(err,err.stack)
       redis.incr(redis.schema.counterError('prism','content:retrieve'))
       res.status(500)
+      res.set({
+        'OOSE-Code': 500,
+        'OOSE-Reason': 'UserError|NetworkError',
+        'OOSE-Message': err.message
+      })
       res.json({
         error: 'Failed to check content existence: ' + err.message
       })
     })
     .catch(function(err){
+      res.status(501)
+      res.set({
+        'OOSE-Code': 501,
+        'OOSE-Reason': 'UnknownError',
+        'OOSE-Message': err.message
+      })
+      res.json({error: err.message})
       console.log(err,err.stack)
       console.log('Unhandled error on content retrieve ' + err.message)
     })
@@ -284,9 +296,21 @@ exports.put = function(req,res){
     })
     .catch(UserError,function(err){
       res.status(500)
+      res.set({
+        'OOSE-Code': 500,
+        'OOSE-Reason': 'UserError',
+        'OOSE-Message': err.message
+      })
       res.json({error: err.message})
     })
     .catch(function(err){
+      res.status(501)
+      res.set({
+        'OOSE-Code': 501,
+        'OOSE-Reason': 'UnknownError',
+        'OOSE-Message': err.message
+      })
+      res.json({error: err.message})
       console.log('Unhandled error on content put ' + err.message)
     })
 }
@@ -325,9 +349,21 @@ exports.detail = function(req,res){
     .catch(UserError,function(err){
       redis.incr(redis.schema.counterError('prism','content:detail'))
       res.status(500)
+      res.set({
+        'OOSE-Code': 500,
+        'OOSE-Reason': 'UserError',
+        'OOSE-Message': err.message
+      })
       res.json({error: err.message})
     })
     .catch(function(err){
+      res.status(501)
+      res.set({
+        'OOSE-Code': 501,
+        'OOSE-Reason': 'UnknownError',
+        'OOSE-Message': err.message
+      })
+      res.json({error: err.message})
       console.log('Unhandled error on content detail ' + err.message)
     })
 }
@@ -402,13 +438,31 @@ exports.download = function(req,res){
     .catch(NotFoundError,function(err){
       redis.incr(redis.schema.counterError('prism','content:download:notFound'))
       res.status(404)
+      res.set({
+        'OOSE-Code': 404,
+        'OOSE-Reason': 'NotFoundError',
+        'OOSE-Message': err.message
+      })
       res.json({error: err.message})
     })
     .catch(UserError,function(err){
       redis.incr(redis.schema.counterError('prism','content:download'))
+      res.set(500)
+      res.set({
+        'OOSE-Code': 500,
+        'OOSE-Reason': 'UserError',
+        'OOSE-Message': err.message
+      })
       res.json({error: err.message})
     })
     .catch(function(err){
+      res.status(501)
+      res.set({
+        'OOSE-Code': 501,
+        'OOSE-Reason': 'UnknownError',
+        'OOSE-Message': err.message
+      })
+      res.json({error: err.message})
       console.log('Unhandled error on content download ' + err.message)
     })
 }
@@ -441,7 +495,7 @@ exports.purchase = function(req,res){
       var tokenExists = true
       return promiseWhile(
         function(){
-          return !!tokenExists
+          return (tokenExists)
         },
         function(){
           token = purchasedb.generate()
@@ -476,20 +530,40 @@ exports.purchase = function(req,res){
     .catch(NetworkError,function(err){
       redis.incr(redis.schema.counterError('prism','content:purchase:network'))
       res.status(503)
+      res.set({
+        'OOSE-Code': 503,
+        'OOSE-Reason': 'NetworkError',
+        'OOSE-Message': err.message
+      })
       res.json({error: 'Failed to check existence: ' + err.message})
     })
     .catch(NotFoundError,function(err){
       redis.incr(redis.schema.counterError('prism','content:purchase:notFound'))
       res.status(404)
+      res.set({
+        'OOSE-Code': 404,
+        'OOSE-Reason': 'NotFoundError',
+        'OOSE-Message': err.message
+      })
       res.json({error: err})
     })
     .catch(UserError,function(err){
       redis.incr(redis.schema.counterError('prism','content:purchase'))
       res.status(500)
+      res.set({
+        'OOSE-Code': 500,
+        'OOSE-Reason': 'UserError',
+        'OOSE-Message': err.message
+      })
       res.json({error: err})
     })
     .catch(function(err){
       res.status(501)
+      res.set({
+        'OOSE-Code': 501,
+        'OOSE-Reason': 'UnknownError',
+        'OOSE-Message': err.message
+      })
       res.json({error: err.message})
       console.log(
         'Unhandled error on content purchase ' + err.message,err.stack)
@@ -627,22 +701,42 @@ exports.deliver = function(req,res){
       redis.incr(
         redis.schema.counterError('prism','content:deliver:syntax'))
       res.status(400)
+      res.set({
+        'OOSE-Code': 400,
+        'OOSE-Reason': 'SyntaxError',
+        'OOSE-Message': err.message
+      })
       res.json({error: 'Failed to parse purchase: ' + err.message})
     })
     .catch(NotFoundError,function(err){
       redis.incr(
         redis.schema.counterError('prism','content:deliver:notFound'))
       res.status(404)
+      res.set({
+        'OOSE-Code': 404,
+        'OOSE-Reason': 'NotFoundError',
+        'OOSE-Message': err.message
+      })
       res.json({error: err.message})
     })
     .catch(UserError,function(err){
       redis.incr(redis.schema.counterError('prism','content:deliver'))
       res.status(500)
+      res.set({
+        'OOSE-Code': 500,
+        'OOSE-Reason': 'UserError',
+        'OOSE-Message': err.message
+      })
       res.json({error: err.message})
     })
     .catch(function(err){
       res.status(501)
       res.json({error: err.message})
+      res.set({
+        'OOSE-Code': 501,
+        'OOSE-Reason': 'Unknown error',
+        'OOSE-Message': err.message
+      })
       console.log(err.stack)
       console.log('Unhandled error on content deliver ' + err.message)
     })
@@ -684,6 +778,11 @@ exports.contentStatic = function(req,res){
     .catch(NetworkError,function(err){
       redis.incr(redis.schema.counterError('prism','content:static:network'))
       res.status(503)
+      res.set({
+        'OOSE-Code': 503,
+        'OOSE-Reason': 'NetworkError',
+        'OOSE-Message': err.message
+      })
       res.json({
         error: 'Failed to check existence: ' + err.message
       })
@@ -691,11 +790,21 @@ exports.contentStatic = function(req,res){
     .catch(NotFoundError,function(err){
       redis.incr(redis.schema.counterError('prism','content:static:notFound'))
       res.status(404)
+      res.set({
+        'OOSE-Code': 404,
+        'OOSE-Reason': 'NotFoundError',
+        'OOSE-Message': err.message
+      })
       res.json({error: err.message})
     })
     .catch(UserError,function(err){
       redis.incr(redis.schema.counterError('prism','content:static'))
       res.status(500)
+      res.set({
+        'OOSE-Code': 500,
+        'OOSE-Reason': 'UserError',
+        'OOSE-Message': err.message
+      })
       res.json({error: err.message})
     })
 }
@@ -716,6 +825,11 @@ exports.purchaseRemove = function(req,res){
     .catch(UserError,function(err){
       redis.incr(redis.schema.counterError('prism','content:purchaseRemove'))
       res.status(500)
+      res.set({
+        'OOSE-Code': 500,
+        'OOSE-Reason': 'UserError',
+        'OOSE-Message': err.message
+      })
       res.json({error: err.message})
     })
 }
