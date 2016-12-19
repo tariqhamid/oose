@@ -475,7 +475,7 @@ exports.purchase = function(req,res){
     })
     .catch(NetworkError,function(err){
       redis.incr(redis.schema.counterError('prism','content:purchase:network'))
-      res.status(500)
+      res.status(503)
       res.json({error: 'Failed to check existence: ' + err.message})
     })
     .catch(NotFoundError,function(err){
@@ -485,9 +485,12 @@ exports.purchase = function(req,res){
     })
     .catch(UserError,function(err){
       redis.incr(redis.schema.counterError('prism','content:purchase'))
+      res.status(500)
       res.json({error: err})
     })
     .catch(function(err){
+      res.status(501)
+      res.json({error: err.message})
       console.log(
         'Unhandled error on content purchase ' + err.message,err.stack)
     })
@@ -552,7 +555,7 @@ exports.deliver = function(req,res){
     var referrer = req.get('Referrer')
     if(!referrer || 'string' !== typeof referrer){
       result.valid = false
-      result.reason = 'Invalid request'
+      result.reason = 'Invalid request (no referrer)'
     }
     if(!result.valid) return result
     for(var i = 0; i < purchase.referrer.length; i++){
@@ -563,7 +566,7 @@ exports.deliver = function(req,res){
     }
     if(!validReferrer){
       result.valid = false
-      result.reason = 'Invalid request'
+      result.reason = 'Invalid request (referrer fail)'
     }
     return result
   }
@@ -623,7 +626,7 @@ exports.deliver = function(req,res){
     .catch(SyntaxError,function(err){
       redis.incr(
         redis.schema.counterError('prism','content:deliver:syntax'))
-      res.status(500)
+      res.status(400)
       res.json({error: 'Failed to parse purchase: ' + err.message})
     })
     .catch(NotFoundError,function(err){
@@ -638,6 +641,8 @@ exports.deliver = function(req,res){
       res.json({error: err.message})
     })
     .catch(function(err){
+      res.status(501)
+      res.json({error: err.message})
       console.log(err.stack)
       console.log('Unhandled error on content deliver ' + err.message)
     })
@@ -678,7 +683,7 @@ exports.contentStatic = function(req,res){
     })
     .catch(NetworkError,function(err){
       redis.incr(redis.schema.counterError('prism','content:static:network'))
-      res.status(500)
+      res.status(503)
       res.json({
         error: 'Failed to check existence: ' + err.message
       })
