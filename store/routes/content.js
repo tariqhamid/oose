@@ -153,7 +153,7 @@ exports.exists = function(req,res){
       for(var i = 0; i < hash.length; i++){
         exists[hash[i]] = {
           exists: !!result[i],
-          ext: path.extname(result[i]).replace('.','')
+          ext: !!result[i] ? path.extname(result[i]).replace('.','') : ''
         }
       }
       if(singular){

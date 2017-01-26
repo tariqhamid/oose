@@ -93,8 +93,13 @@ describe('outage',function(){
             })
         })
         it('should still deliver content',e2e.contentDeliver(e2e.clconf.prism2))
-        it('should still download content',
-          e2e.contentDownload(e2e.clconf.prism2))
+        it('should still download content',function(){
+          return e2e.contentDownload(e2e.clconf.prism2)()
+            .catch(function(e){
+              console.log(e.message,e.stack)
+              process.exit()
+            })
+        })
       })
     })
     describe('store1 and store2 down',function(){

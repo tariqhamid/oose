@@ -201,7 +201,9 @@ exports.retrieve = function(req,res){
   })
   var hash
   var writeStream = fs.createWriteStream(tmpfile)
-  promisePipe(request(retrieveRequest),sniff,writeStream)
+  P.try(function(){
+    return promisePipe(request(retrieveRequest),sniff,writeStream)
+  })
     .then(function(){
       hash = sniff.hash
       //do a content lookup and see if this exists yet

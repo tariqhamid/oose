@@ -16,6 +16,8 @@ var random = require('random-js')()
 
 var UserError = oose.UserError
 
+var couchdb = require('../helpers/couchdb')
+
 var hasher = require('../helpers/hasher')
 var prismBalance = require('../helpers/prismBalance')
 

@@ -169,7 +169,7 @@ exports.before = function(that){
       return cradle.inventory.removeAsync(row.key)
     })
     .then(function(){
-      return purchasedb.flushallAsync();
+      //return purchasedb.flushallAsync();
     })
     .then(function(){
       var key = cradle.schema.prism()
@@ -396,7 +396,13 @@ exports.contentUpload = function(prism){
         localAddress: '127.0.0.1'
       })
       .spread(function(res,body){
-        expect(body.files.file.hash).to.equal(content.hash)
+        //we need to pause here
+        return new P(function(resolve){
+          setTimeout(function(){
+            expect(body.files.file.hash).to.equal(content.hash)
+            resolve()
+          },1000)
+        })
       })
   }
 }
@@ -416,7 +422,7 @@ exports.contentRetrieve = function(prism){
       res.sendFile(path.resolve(content.file))
     })
     P.promisifyAll(server)
-    return server.listenAsync(null,'127.0.0.1')
+    return server.listenAsync(25000,'127.0.0.1')
       .then(function(){
         var port = server.address().port
         return client
@@ -436,8 +442,13 @@ exports.contentRetrieve = function(prism){
         expect(body.hash).to.equal(content.hash)
         expect(body.extension).to.equal(content.ext)
       })
+      .catch(function(err){
+        console.log('Failed to setup retrieve',err.message,err.stack)
+        throw err
+      })
       .finally(function(){
         return server.closeAsync()
+          .catch(function(){})
       })
   }
 }
@@ -667,10 +678,10 @@ exports.contentPurchase = function(prism){
       })
       .spread(function(res,body){
         body.referrer = body.referrer.split(',')
-        expect(body.token.length).to.equal(64)
+        expect(body.token.length).to.equal(20)
         expect(body.ext).to.equal('txt')
-        expect(body.life).to.equal('7200000')
         expect(body.hash).to.equal(content.hash)
+        expect(+body.expirationDate).to.be.greaterThan((+new Date()))
         expect(body.referrer).to.be.an('array')
         expect(body.referrer[0]).to.equal('localhost')
         return body
@@ -754,6 +765,7 @@ exports.contentDownload = function(prism){
       localAddress: '127.0.0.1'
     })
       .spread(function(res,body){
+        console.log(res.headers,body)
         expect(body).to.equal(content.data)
       })
   }
