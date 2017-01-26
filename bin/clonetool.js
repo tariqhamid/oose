@@ -174,7 +174,7 @@ var addClones = function(file,storeList){
       return sendClient.postAsync({
         url: sendClient.url('/content/send'),
         json: {
-          file: file.hash + '.' + file.ext,
+          file: file.hash + '.' + file.mimeExtension,
           store: storeList[storeToWinner.store]
         }
       })
@@ -230,7 +230,7 @@ var removeClones = function(file,storeList){
       return storeClient.postAsync({
         url: storeClient.url('/content/remove'),
         json: {
-          hash: file.hash + '.' + file.ext
+          hash: file.hash + '.' + file.mimeExtension
         }
       })
         .spread(storeClient.validateResponse())
@@ -283,7 +283,8 @@ var contentDetail = function(hash){
       table.push(
         {HASH: clc.yellow(body.hash)},
         {'File Extension': clc.cyan(body.mimeExtension)},
-        {'Relative Path': clc.yellow(relativePath(body.hash,body.mimeExtension))},
+        {'Relative Path':
+          clc.yellow(relativePath(body.hash,body.mimeExtension))},
         {Exists: body.exists ? clc.green('Yes') : clc.red('No')},
         {'Clone Count': clc.green(body.count)}
       )
@@ -293,11 +294,10 @@ var contentDetail = function(hash){
       body.map.forEach(function(entry){
         var parts = entry.split(':')
         var prismName = parts[0]
-	var storeName = parts[1]
+        var storeName = parts[1]
         console.log('    ' + clc.cyan(prismName) + ':' + clc.green(storeName))
       })
-      console.log('\n Total: ' +
-        clc.yellow(body.count) + ' clone(s)\n')
+      console.log('\n Total: ' + clc.yellow(body.count) + ' clone(s)\n')
       process.exit()
     })
 }
