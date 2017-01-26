@@ -269,8 +269,8 @@ var contentDetail = function(hash){
       table.push(
         {HASH: clc.yellow(body.hash)},
         {'File Extension': clc.cyan(body.mimeExtension)},
-        {'Relative Path':
-          clc.yellow(relativePath(body.hash,body.mimeExtension))},
+        {'Relative Path': clc.yellow(
+          relativePath(body.hash,body.mimeExtension.replace(',','')))},
         {Exists: body.exists ? clc.green('Yes') : clc.red('No')},
         {'Clone Count': clc.green(body.count)}
       )
