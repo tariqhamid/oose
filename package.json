@@ -53,7 +53,7 @@
     "oose-sdk": "nullivex/oose-sdk",
     "pretty-bytes": "^4.0.2",
     "progress": "nullivex/node-progress",
-    "promisepipe": "^2.0.0",
+    "promisepipe": "1.x",
     "random-js": "^1.0.8",
     "readdirp": "^2.1.0",
     "readdirp-walk": "^1.6.0",
