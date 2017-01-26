@@ -70,7 +70,7 @@ From there follow the debug filtering rules defined
 * Purchases are now stored in couch but in sharded databases
 * This drops the entire symlink functionality from the stores
 * Stores now rely on a lua shim to validate purchases
-* Store hook has been added to validate purchases and return valid URIs to Nginx
+* Store hook has been added to validate purchases and return valid URIs to NGINX
 
 ### 2.2.0
 
