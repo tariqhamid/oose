@@ -8,5 +8,5 @@ folder="$prefix/$store/store/content"
 echo "Locating store at $folder"
 cd $folder
 echo "Beginning inventory dump"
-find . -type t | xargs -I {} node /opt/oose/bin/pathToSha1.js {} > inventory-`date +%Y%m%d`-$store.txt
+time find . -type f | xargs -I {} node /opt/oose/bin/pathToSha1.js {} > inventory-`date +%Y%m%d`-$store.txt
 echo "Inventory dump complete"
