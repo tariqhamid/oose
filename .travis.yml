@@ -14,6 +14,7 @@ services:
   - redis
 env:
   - TRAVIS=travis CXX=g++-4.8
+before_install: if [[ `npm -v` != 4* ]]; then npm i -g npm@4; fi
 before_script:
   - curl -X PUT http://localhost:5984/_config/admins/root -d '"blah1234"'
   - curl -X PUT http://root:blah1234@localhost:5984/oose
