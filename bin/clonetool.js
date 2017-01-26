@@ -280,26 +280,22 @@ var contentDetail = function(hash){
       var table = new Table()
       table.push(
         {HASH: clc.yellow(body.hash)},
-        {'File Extension': clc.cyan(body.ext)},
-        {'Relative Path': clc.yellow(relativePath(body.hash,body.ext))},
+        {'File Extension': clc.cyan(body.mimeExtension)},
+        {'Relative Path': clc.yellow(relativePath(body.hash,body.mimeExtension))},
         {Exists: body.exists ? clc.green('Yes') : clc.red('No')},
         {'Clone Count': clc.green(body.count)}
       )
       console.log(table.toString())
-      var prisms = Object.keys(body.map)
-      prisms.forEach(function(prismName){
-        console.log(' ' + clc.cyan(prismName))
-        var stores = Object.keys(body.map[prismName].map)
-        var existsLine = '  '
-        stores.forEach(function(store){
-          if(body.map[prismName].map[store])
-            existsLine += clc.green(store) + '  '
-          else existsLine += clc.red(store) + '  '
-        })
-        console.log('\n' + existsLine + '\n')
-        console.log(' Total: ' +
-          clc.yellow(body.map[prismName].count) + ' clone(s)\n')
+      console.log('Storage Map')
+      console.log('--------------------')
+      body.map.forEach(function(entry){
+        var parts = entry.split(':')
+        var prismName = parts[0]
+	var storeName = parts[1]
+        console.log('    ' + clc.cyan(prismName) + ':' + clc.green(storeName))
       })
+      console.log('\n Total: ' +
+        clc.yellow(body.count) + ' clone(s)\n')
       process.exit()
     })
 }
