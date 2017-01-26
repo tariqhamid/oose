@@ -16,6 +16,8 @@ var random = require('random-js')()
 
 var UserError = oose.UserError
 
+var couchdb = require('../helpers/couchdb')
+
 var hasher = require('../helpers/hasher')
 var prismBalance = require('../helpers/prismBalance')
 
@@ -65,6 +67,13 @@ var analyzeFiles = function(progress,fileList){
   var blockSize = program.blockSize || 100
   var blockCount = Math.ceil(fileCount / blockSize)
   var analyzeBlock = function(fileBlock){
+    //this is the part that needs modified, so i would like to directly query
+    //couch db for this information and skip talking to the prisms at all
+    //this would allow for the system to run independent inventory analysis
+    //without worrying about production load, it would probably be good to run
+    //this tool away from the cluster anyway
+    //so to accomplish this we need to be able to to replicate the output of the
+    //prism contentExists
     return prismBalance.contentExists(fileBlock)
       .map(function(record){
         //do clone math now
