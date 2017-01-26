@@ -67,7 +67,7 @@ From there follow the debug filtering rules defined
 ### 2.3.0
 
 * Final revision to purchase system
-* Purchases are now stored in couch but in sharded databases
+* Purchases are now stored in couch but in shard friendly databases
 * This drops the entire symlink functionality from the stores
 * Stores now rely on a lua shim to validate purchases
 * Store hook has been added to validate purchases and return valid URIs to NGINX
