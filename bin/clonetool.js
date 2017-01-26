@@ -27,6 +27,9 @@ var prism = oose.api.prism(config.prism)
 //setup a connection to the master
 var master = oose.api.master(config.master)
 
+//store our master peerList
+var peerList = {}
+
 //setup cli parsing
 program
   .version(config.version)
@@ -117,42 +120,33 @@ var addClones = function(file,storeList){
     var storeFromList =[]
     var storeToList = []
     //iteration vars
-    var prismNameList = Object.keys(file.map)
+    var prismNameList = []
     var storeNameList = []
-    var storeName = ''
-    var prismName = ''
-    var i, j
-    // figure out a source store
-    for(i = 0; i < prismNameList.length; i++){
-      prismName = prismNameList[i]
-      storeNameList = Object.keys(file.map[prismName].map)
-      for(j = 0; j < storeNameList.length; j++){
-        storeName = storeNameList[j]
-        if(file.map[prismName].map[storeName]){
-          storeFromList.push({prism: prismName, store: storeName})
-        }
-      }
-    }
-    // now we know possible source stores, randomly select one
+    file.map.forEach(function(entry){
+      var parts = entry.split(':')
+      var prismName = parts[0]
+      var storeName = parts[1]
+      prismNameList.push(prismName)
+      storeNameList.push(storeName)
+      storeFromList.push({prism: prismName, store: storeName})
+    })
+    // randomly select one source store
     storeFromWinner = storeFromList[
       random.integer(0,(storeFromList.length - 1))]
     prismFromWinner = storeFromWinner.prism
     // figure out a destination store
-    for(i = 0; i < prismNameList.length; i++){
-      prismName = prismNameList[i]
-      storeNameList = Object.keys(file.map[prismName].map)
-      for(j = 0; j < storeNameList.length; j++){
-        storeName = storeNameList[j]
-        if(
-          -1 === storeWinnerList.indexOf(storeName) &&
-          prismName !== prismFromWinner &&
-          !file.map[prismName].map[storeName] &&
-          !storeList[storeName].full
-        ){
-          storeToList.push({prism: prismName, store: storeName})
-        }
+    peerList.forEach(function(peer){
+      //skip prisms and whatever else
+      if('store' !== peer.type) return
+      if(
+        peer.prism !== prismFromWinner &&
+        -1 === storeWinnerList.indexOf(peer.name) &&
+        -1 === file.map.indexOf(peer.prism + ':' + peer.name) &&
+        true === peer.writable
+      ){
+        storeToList.push({prism: peer.prism, store: peer.name})
       }
-    }
+    })
     //make sure there is a possibility of a winner
     if(!storeToList.length){
       console.log(file.hash,
@@ -172,7 +166,7 @@ var addClones = function(file,storeList){
       return sendClient.postAsync({
         url: sendClient.url('/content/send'),
         json: {
-          file: file.hash + '.' + file.ext,
+          file: file.hash + '.' + file.mimeExtension,
           store: storeList[storeToWinner.store]
         }
       })
@@ -193,25 +187,18 @@ var removeClones = function(file,storeList){
     var storeRemoveWinner
     var storeRemoveList = []
     //iteration vars
-    var prismNameList = Object.keys(file.map)
+    var prismNameList = []
     var storeNameList = []
-    var storeName = ''
-    var prismName = ''
-    var i, j
-    // figure out a source store
-    for(i = 0; i < prismNameList.length; i++){
-      prismName = prismNameList[i]
-      storeNameList = Object.keys(file.map[prismName].map)
-      for(j = 0; j < storeNameList.length; j++){
-        storeName = storeNameList[j]
-        if(
-          -1 === storeWinnerList.indexOf(storeName) &&
-          file.map[prismName].map[storeName]
-        ){
-          storeRemoveList.push({prism: prismName, store: storeName})
-        }
+    file.map.forEach(function(entry){
+      var parts = entry.split(':')
+      var prismName = parts[0]
+      var storeName = parts[1]
+      prismNameList.push(prismName)
+      storeNameList.push(storeName)
+      if(-1 === storeWinnerList.indexOf(storeName)){
+        storeRemoveList.push({prism: prismName,store: storeName})
       }
-    }
+    })
     //make sure there is a possibility of a winner
     if(!storeRemoveList.length){
       console.log(file.hash,
@@ -220,6 +207,7 @@ var removeClones = function(file,storeList){
       // now we know possible source stores, randomly select one
       storeRemoveWinner = storeRemoveList[
         random.integer(0,(storeRemoveList.length - 1))]
+      storeWinnerList.push(storeRemoveWinner.store)
       //inform of our decision
       console.log(file.hash,
         'Removing from ' + storeRemoveWinner.store +
@@ -228,7 +216,7 @@ var removeClones = function(file,storeList){
       return storeClient.postAsync({
         url: storeClient.url('/content/remove'),
         json: {
-          hash: file.hash + '.' + file.ext
+          hash: file.hash + '.' + file.mimeExtension
         }
       })
         .spread(storeClient.validateResponse())
@@ -280,26 +268,22 @@ var contentDetail = function(hash){
       var table = new Table()
       table.push(
         {HASH: clc.yellow(body.hash)},
-        {'File Extension': clc.cyan(body.ext)},
-        {'Relative Path': clc.yellow(relativePath(body.hash,body.ext))},
+        {'File Extension': clc.cyan(body.mimeExtension)},
+        {'Relative Path':
+          clc.yellow(relativePath(body.hash,body.mimeExtension))},
         {Exists: body.exists ? clc.green('Yes') : clc.red('No')},
         {'Clone Count': clc.green(body.count)}
       )
       console.log(table.toString())
-      var prisms = Object.keys(body.map)
-      prisms.forEach(function(prismName){
-        console.log(' ' + clc.cyan(prismName))
-        var stores = Object.keys(body.map[prismName].map)
-        var existsLine = '  '
-        stores.forEach(function(store){
-          if(body.map[prismName].map[store])
-            existsLine += clc.green(store) + '  '
-          else existsLine += clc.red(store) + '  '
-        })
-        console.log('\n' + existsLine + '\n')
-        console.log(' Total: ' +
-          clc.yellow(body.map[prismName].count) + ' clone(s)\n')
+      console.log('Storage Map')
+      console.log('--------------------')
+      body.map.forEach(function(entry){
+        var parts = entry.split(':')
+        var prismName = parts[0]
+        var storeName = parts[1]
+        console.log('    ' + clc.cyan(prismName) + ':' + clc.green(storeName))
       })
+      console.log('\n Total: ' + clc.yellow(body.count) + ' clone(s)\n')
       process.exit()
     })
 }
@@ -449,17 +433,24 @@ P.try(function(){
     ' clone(s) of each file ' + changeVerb +
     ' ' + program[changeVerb] + ' clone(s)')
   console.log('--------------------')
-  //get file list together
-  if(program.hash){
-    fileStream.write(program.hash)
-  } else if(program.folder){
-    return folderScan(program.folder,fileStream)
-  } else if('-' === program.input){
-    return promisePipe(process.stdin,fileStream)
-  } else {
-    return promisePipe(fs.createReadStream(program.input),fileStream)
-  }
+  //obtain peer list
+  console.log('Obtaining peer list')
+  return prismBalance.peerList()
 })
+  .then(function(result){
+    peerList = result
+    console.log('Peer list obtained!')
+    //get file list together
+    if(program.hash){
+      fileStream.write(program.hash)
+    } else if(program.folder){
+      return folderScan(program.folder,fileStream)
+    } else if('-' === program.input){
+      return promisePipe(process.stdin,fileStream)
+    } else {
+      return promisePipe(fs.createReadStream(program.input),fileStream)
+    }
+  })
   .then(function(){
     fileList = fileStream.toString().split('\n')
     fileList = fileList.filter(function(a){
