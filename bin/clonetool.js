@@ -16,10 +16,13 @@ var random = require('random-js')()
 
 var UserError = oose.UserError
 
+var couchdb = require('../helpers/couchdb')
 var hasher = require('../helpers/hasher')
 var prismBalance = require('../helpers/prismBalance')
 
 var config = require('../config')
+
+var cacheKeyTempFile = '/tmp/oosectkeycache'
 
 //setup a connection to our prism
 var prism = oose.api.prism(config.prism)
@@ -45,6 +48,9 @@ program
   .option('-r, --remove','Remove target files')
   .option('-H, --hash <hash>','Hash of file to check')
   .option('-f, --folder <folder>','Folder to scan')
+  .option('-S, --store <store>','Use file list from this store')
+  .option('-P, --prism <prism>','Use file list from this prism')
+  .option('-X, --all-files','Use all files')
   .parse(process.argv)
 
 //existence options
@@ -402,6 +408,46 @@ var folderScan = function(folderPath,fileStream){
   })
 }
 
+
+/**
+ * Scan inventory keys and return filtered hashes to the file stream
+ * @param {string} type type of key either prism or store
+ * @param {string} key the key itself such as om101
+ * @param {object} fileStream the file stream to write results to
+ * @return {P}
+ */
+var keyScan = function(type,key,fileStream){
+  var cacheKeyDownload = function(){
+    return new P(function(resolve,reject){
+      if(!fs.existsSync(cacheKeyTempFile)){
+        return couchdb.inventory.allAsync()
+          .then(function(result){
+            fs.writeFileSync(cacheKeyTempFile,result.toJSON())
+            resolve(result)
+            resolve(fs.createReadStream(cacheKeyTempFile))
+          })
+      } else {
+        var result = fs.readFileSync(cacheKeyTempFile)
+        try {
+          result = JSON.parse(result)
+          resolve(result)
+        } catch(e){
+          reject(e)
+        }
+      }
+    })
+
+  }
+  return cacheKeyDownload()
+    .map(function(inventoryKey){
+      var parts = inventoryKey.split(':')
+      if(!parts || 3 !== parts.length) return
+      if('prism' === type && parts[1] !== key) return
+      if('store' === type && parts[2] !== key) return
+      fileStream.write(parts[0] + '\n')
+    })
+}
+
 var files = {}
 var fileStream = new MemoryStream()
 var fileList = []
@@ -443,6 +489,10 @@ P.try(function(){
     //get file list together
     if(program.hash){
       fileStream.write(program.hash)
+    } else if(program.store){
+      return keyScan('store',program.store,fileStream)
+    } else if(program.prism){
+      return keyScan('prism',program.prism,fileStream)
     } else if(program.folder){
       return folderScan(program.folder,fileStream)
     } else if('-' === program.input){
