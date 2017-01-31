@@ -417,11 +417,25 @@ var folderScan = function(folderPath,fileStream){
  * @return {P}
  */
 var keyScan = function(type,key,fileStream){
+  var inventoryKeyDownload = function(skip){
+    var keyList = []
+    var keyBlockSize = 1000
+    return couchdb.inventory.allAsync({limit: keyBlockSize, skip: skip || 0})
+      .then(function(result){
+        console.log(result.total_rows,result.offset,result.rows.count,result.rows[0])
+        keyList = keyList.concat(result.rows)
+        if(result.total_rows > (keyBlockSize + skip)){
+          return inventoryKeyDownload(skip + keyBlockSize)
+        } else {
+          return keyList
+        }
+      })
+  }
   var cacheKeyDownload = function(){
     return new P(function(resolve,reject){
       if(!fs.existsSync(cacheKeyTempFile)){
       	console.log('Starting to download a fresh copy of inventory keys, stand by.')
-        return couchdb.inventory.allAsync()
+        return inventoryKeyDownload()
           .then(function(result){
             fs.writeFileSync(cacheKeyTempFile,result.toJSON())
             resolve(result)
