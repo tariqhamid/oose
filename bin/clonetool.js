@@ -420,6 +420,7 @@ var keyScan = function(type,key,fileStream){
   var cacheKeyDownload = function(){
     return new P(function(resolve,reject){
       if(!fs.existsSync(cacheKeyTempFile)){
+      	console.log('Starting to download a fresh copy of inventory keys, stand by.')
         return couchdb.inventory.allAsync()
           .then(function(result){
             fs.writeFileSync(cacheKeyTempFile,result.toJSON())
@@ -427,6 +428,7 @@ var keyScan = function(type,key,fileStream){
             resolve(fs.createReadStream(cacheKeyTempFile))
           })
       } else {
+	console.log('Reading inventory keys from cache')
         var result = fs.readFileSync(cacheKeyTempFile)
         try {
           result = JSON.parse(result)
@@ -442,8 +444,8 @@ var keyScan = function(type,key,fileStream){
     .map(function(inventoryKey){
       var parts = inventoryKey.split(':')
       if(!parts || 3 !== parts.length) return
-      if('prism' === type && parts[1] !== key) return
-      if('store' === type && parts[2] !== key) return
+      if(!program.allfiles && 'prism' === type && parts[1] !== key) return
+      if(!program.allfiles && 'store' === type && parts[2] !== key) return
       fileStream.write(parts[0] + '\n')
     })
 }
@@ -461,7 +463,7 @@ P.try(function(){
     return contentDetail(program.detail)
   }
   //do some validation
-  if(!program.hash && !program.input && !program.folder){
+  if(!program.hash && !program.input && !program.folder && !program.store && !program.prism && !program.allfiles){
     throw new UserError('No file list or file provided')
   }
   //set the desired to the default of 2 if not set
