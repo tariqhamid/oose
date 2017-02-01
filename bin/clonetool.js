@@ -598,17 +598,7 @@ P.try(function(){
       console.log('Pretend mode selected, taking no action, bye!')
       process.exit()
     }
-    console.log('Retrieving store list from master')
-    return master.postAsync({
-      url: master.url('/store/list')
-    })
-      .spread(master.validateResponse())
-      .spread(function(res,body){
-        body.store.forEach(function(store){
-          storeList[store.name] = store
-        })
-        return Object.keys(files)
-      })
+    return Object.keys(files)
   })
   .each(function(hash){
     var file = files[hash]
