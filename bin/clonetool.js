@@ -74,7 +74,22 @@ var analyzeFiles = function(progress,fileList){
   var blockSize = program.blockSize || 100
   var blockCount = Math.ceil(fileCount / blockSize)
   var analyzeBlock = function(fileBlock){
-    return prismBalance.contentExists(fileBlock)
+    return prism.postAsync({
+      url: prism.url('/content/exists'),
+      json: {
+        hash: fileList,
+        tryCount: existsTryCount,
+        timeout: existsTimeout
+      }
+    })
+      .spread(prism.validateResponse())
+      .spread(function(res,body){
+        var result = []
+	for(var i=0; i < body.length; i++){
+          result.push(body)
+        }
+	return result
+      })
       .map(function(record){
         //do clone math now
         record.add = 0
@@ -417,15 +432,30 @@ var folderScan = function(folderPath,fileStream){
  * @return {P}
  */
 var keyScan = function(type,key,fileStream){
-  var inventoryKeyDownload = function(skip){
-    var keyList = []
-    var keyBlockSize = 1000
-    return couchdb.inventory.allAsync({limit: keyBlockSize, skip: skip || 0})
+  var progress = null
+  var keyBlockSize = 100000
+  var keyList = []
+  var pointer = 0
+  var inventoryKeyDownload = function(){
+    return couchdb.inventory.allAsync({limit: keyBlockSize, skip: pointer})
       .then(function(result){
-        console.log(result.total_rows,result.offset,result.rows.count,result.rows[0])
-        keyList = keyList.concat(result.rows)
-        if(result.total_rows > (keyBlockSize + skip)){
-          return inventoryKeyDownload(skip + keyBlockSize)
+	var totalRows = result.total_rows
+	//totalRows = 50000
+        if(!progress){
+          progress = new ProgressBar(' downloading [:bar] :current/:total :percent :rate/ks :etas',{
+            complete: '=',
+            incomplete: ' ',
+            width: 20,
+            total: totalRows
+          })
+	}
+	progress.tick(keyBlockSize)
+	result.rows.forEach(function(row){
+          keyList.push(row.key)
+        })
+	pointer = pointer + keyBlockSize
+        if(totalRows > pointer){
+          return inventoryKeyDownload()
         } else {
           return keyList
         }
@@ -437,9 +467,8 @@ var keyScan = function(type,key,fileStream){
       	console.log('Starting to download a fresh copy of inventory keys, stand by.')
         return inventoryKeyDownload()
           .then(function(result){
-            fs.writeFileSync(cacheKeyTempFile,result.toJSON())
+            fs.writeFileSync(cacheKeyTempFile,JSON.stringify(result))
             resolve(result)
-            resolve(fs.createReadStream(cacheKeyTempFile))
           })
       } else {
 	console.log('Reading inventory keys from cache')
@@ -533,7 +562,7 @@ P.try(function(){
       }
     )
     console.log('Found ' + fileCount + ' file(s) to be analyzed')
-    console.log(fileList)
+    //console.log(fileList)
     return analyzeFiles(progress,fileList)
   })
   .then(function(result){
