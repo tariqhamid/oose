@@ -72,7 +72,7 @@ var analyzeFiles = function(progress,fileList){
   var desired = false !== program.desired ? + program.desired : 2
   var files = {}
   var fileCount = fileList.length
-  var blockSize = program.blockSize || 100
+  var blockSize = program.blockSize || 500
   var blockCount = Math.ceil(fileCount / blockSize)
   var analyzeBlock = function(fileBlock){
     return P.try(function(){
