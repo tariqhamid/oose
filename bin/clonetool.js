@@ -27,9 +27,6 @@ var cacheKeyTempFile = '/tmp/oosectkeycache'
 //setup a connection to our prism
 var prism = oose.api.prism(config.prism)
 
-//setup a connection to the master
-var master = oose.api.master(config.master)
-
 //store our master peerList
 var peerList = {}
 
