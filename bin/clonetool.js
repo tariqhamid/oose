@@ -24,9 +24,6 @@ var config = require('../config')
 
 var cacheKeyTempFile = '/tmp/oosectkeycache'
 
-//setup a connection to our prism
-var prism = oose.api.prism(config.prism)
-
 //store our master peerList
 var peerList = {}
 
@@ -50,11 +47,22 @@ program
   .option('-X, --all-files','Use all files')
   .parse(process.argv)
 
-//existence options
-var existsTryCount = 10
-var existsTimeout = 60000
+var selectPeer = function(type,peerName){
+  if(!type) type = 'store'
+  var result = {}
+  peerList.forEach(function(peer){
+    if(peer.type !== type || peer.name !== peerName) return
+    result = peer
+  })
+  return result
+}
 
-var setupStore = function(store){
+var setupStore = function(peerList,storeName){
+  var store = {}
+  peerList.forEach(function(peer){
+    if(peer.name !== storeName) return
+    store = peer
+  })
   var opts = new ObjectManage()
   opts.$load(config.store)
   opts.$load(store)
@@ -117,7 +125,7 @@ var analyzeFiles = function(progress,fileList){
     })
 }
 
-var addClones = function(file,storeList){
+var addClones = function(file){
   var promises = []
   var storeWinnerList = []
   var addClone = function(file){
@@ -171,12 +179,14 @@ var addClones = function(file,storeList){
         'Sending from ' + storeFromWinner.store +
         ' on prism ' + prismFromWinner +
         ' to ' + storeToWinner.store + ' on prism ' + prismToWinner)
-      var sendClient = setupStore(storeList[storeFromWinner.store])
+      var storeFromInfo = selectPeer(peerList,storeFromWinner.store)
+      var storeToInfo = selectPeer(peerList,storeToWinner.store)
+      var sendClient = setupStore(storeFromInfo)
       return sendClient.postAsync({
         url: sendClient.url('/content/send'),
         json: {
           file: file.hash + '.' + file.mimeExtension,
-          store: storeList[storeToWinner.store]
+          store: storeToInfo
         }
       })
         .spread(sendClient.validateResponse())
@@ -188,7 +198,7 @@ var addClones = function(file,storeList){
   return P.all(promises)
 }
 
-var removeClones = function(file,storeList){
+var removeClones = function(file){
   var promises = []
   var storeWinnerList = []
   var removeClone = function(file){
@@ -221,7 +231,8 @@ var removeClones = function(file,storeList){
       console.log(file.hash,
         'Removing from ' + storeRemoveWinner.store +
         ' on prism ' + storeRemoveWinner.prism)
-      var storeClient = setupStore(storeList[storeRemoveWinner.store])
+      var selectedStoreInfo = selectPeer(peerList,storeRemoveWinner.store)
+      var storeClient = setupStore(selectedStoreInfo)
       return storeClient.postAsync({
         url: storeClient.url('/content/remove'),
         json: {
@@ -237,15 +248,15 @@ var removeClones = function(file,storeList){
   return P.all(promises)
 }
 
-var processFile = function(file,storeList){
+var processFile = function(file){
   return P.try(function(){
     if(file.add > 0){
-      return addClones(file,storeList)
+      return addClones(file)
     }
   })
     .then(function(){
       if(file.remove > 0){
-        return removeClones(file,storeList)
+        return removeClones(file)
       }
     })
     .then(function(){
@@ -264,35 +275,27 @@ var relativePath = function(hash,ext){
 }
 
 var contentDetail = function(hash){
-  return prism.postAsync({
-    url: prism.url('/content/exists'),
-    json: {
-      hash: hash,
-      tryCount: existsTryCount,
-      timeout: existsTimeout
-    }
-  })
-    .spread(prism.validateResponse())
-    .spread(function(res,body){
+  return prismBalance.contentExists(hash)
+    .then(function(result){
       var table = new Table()
       table.push(
-        {HASH: clc.yellow(body.hash)},
-        {'File Extension': clc.cyan(body.mimeExtension)},
+        {HASH: clc.yellow(result.hash)},
+        {'File Extension': clc.cyan(result.mimeExtension)},
         {'Relative Path': clc.yellow(
-          relativePath(body.hash,body.mimeExtension.replace(',','')))},
-        {Exists: body.exists ? clc.green('Yes') : clc.red('No')},
-        {'Clone Count': clc.green(body.count)}
+          relativePath(result.hash,result.mimeExtension.replace(',','')))},
+        {Exists: result.exists ? clc.green('Yes') : clc.red('No')},
+        {'Clone Count': clc.green(result.count)}
       )
       console.log(table.toString())
       console.log('Storage Map')
       console.log('--------------------')
-      body.map.forEach(function(entry){
+      result.map.forEach(function(entry){
         var parts = entry.split(':')
         var prismName = parts[0]
         var storeName = parts[1]
         console.log('    ' + clc.cyan(prismName) + ':' + clc.green(storeName))
       })
-      console.log('\n Total: ' + clc.yellow(body.count) + ' clone(s)\n')
+      console.log('\n Total: ' + clc.yellow(result.count) + ' clone(s)\n')
       process.exit()
     })
 }
@@ -489,7 +492,6 @@ var files = {}
 var fileStream = new MemoryStream()
 var fileList = []
 var fileCount = 0
-var storeList = {}
 P.try(function(){
   var welcomeMessage = 'Welcome to the OOSE v' + config.version + ' clonetool!'
   console.log(welcomeMessage)
@@ -602,7 +604,7 @@ P.try(function(){
     if(file.add > 0 || file.remove > 0){
       console.log('--------------------')
       console.log(file.hash + ' starting to process changes')
-      return processFile(file,storeList)
+      return processFile(file)
     }
   })
   .catch(UserError,function(err){
