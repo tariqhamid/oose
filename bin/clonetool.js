@@ -64,6 +64,7 @@ var setupStore = function(store){
   return oose.api.store(opts.$strip())
 }
 
+
 var analyzeFiles = function(progress,fileList){
   var above = false !== program.above ? +program.above : null
   var at = false !== program.at ? +program.at : null
@@ -74,41 +75,31 @@ var analyzeFiles = function(progress,fileList){
   var blockSize = program.blockSize || 100
   var blockCount = Math.ceil(fileCount / blockSize)
   var analyzeBlock = function(fileBlock){
-    return prism.postAsync({
-      url: prism.url('/content/exists'),
-      json: {
-        hash: fileList,
-        tryCount: existsTryCount,
-        timeout: existsTimeout
-      }
+    return P.try(function(){
+      return fileBlock
     })
-      .spread(prism.validateResponse())
-      .spread(function(res,body){
-        var result = []
-	for(var i=0; i < body.length; i++){
-          result.push(body)
-        }
-	return result
-      })
-      .map(function(record){
-        //do clone math now
-        record.add = 0
-        record.remove = 0
-        if(
-          (null !== above && record.count > above) ||
-          (null !== below && record.count < below) ||
-          (null !== at && record.count === at)
-        )
-        {
-          if(desired > record.count){
-            record.add = desired - record.count
-          }
-          else if(desired < record.count){
-            record.remove = record.count - desired
-          }
-        }
-        //compile our record
-        return record
+      .map(function(file){
+        return prismBalance.contentExists(file)
+          .then(function(record){
+            //do clone math now
+            record.add = 0
+            record.remove = 0
+            if(
+              (null !== above && record.count > above) ||
+              (null !== below && record.count < below) ||
+              (null !== at && record.count === at)
+            )
+            {
+              if(desired > record.count){
+                record.add = desired - record.count
+              }
+              else if(desired < record.count){
+                record.remove = record.count - desired
+              }
+            }
+            //compile our record
+            return record
+          })
       })
       .finally(function(){
         progress.tick(fileBlock.length)
@@ -439,21 +430,24 @@ var keyScan = function(type,key,fileStream){
   var inventoryKeyDownload = function(){
     return couchdb.inventory.allAsync({limit: keyBlockSize, skip: pointer})
       .then(function(result){
-	var totalRows = result.total_rows
-	//totalRows = 50000
+        var totalRows = result.total_rows
+        //totalRows = 50000
         if(!progress){
-          progress = new ProgressBar(' downloading [:bar] :current/:total :percent :rate/ks :etas',{
-            complete: '=',
-            incomplete: ' ',
-            width: 20,
-            total: totalRows
-          })
-	}
-	progress.tick(keyBlockSize)
-	result.rows.forEach(function(row){
+          progress = new ProgressBar(
+            ' downloading [:bar] :current/:total :percent :rate/ks :etas',
+            {
+              complete: '=',
+              incomplete: ' ',
+              width: 20,
+              total: totalRows
+            }
+          )
+        }
+        progress.tick(keyBlockSize)
+        result.rows.forEach(function(row){
           keyList.push(row.key)
         })
-	pointer = pointer + keyBlockSize
+        pointer = pointer + keyBlockSize
         if(totalRows > pointer){
           return inventoryKeyDownload()
         } else {
@@ -464,14 +458,15 @@ var keyScan = function(type,key,fileStream){
   var cacheKeyDownload = function(){
     return new P(function(resolve,reject){
       if(!fs.existsSync(cacheKeyTempFile)){
-      	console.log('Starting to download a fresh copy of inventory keys, stand by.')
+        console.log('Starting to download a fresh copy ' +
+          'of inventory keys, stand by.')
         return inventoryKeyDownload()
           .then(function(result){
             fs.writeFileSync(cacheKeyTempFile,JSON.stringify(result))
             resolve(result)
           })
       } else {
-	console.log('Reading inventory keys from cache')
+        console.log('Reading inventory keys from cache')
         var result = fs.readFileSync(cacheKeyTempFile)
         try {
           result = JSON.parse(result)
@@ -506,7 +501,8 @@ P.try(function(){
     return contentDetail(program.detail)
   }
   //do some validation
-  if(!program.hash && !program.input && !program.folder && !program.store && !program.prism && !program.allfiles){
+  if(!program.hash && !program.input && !program.folder &&
+    !program.store && !program.prism && !program.allfiles){
     throw new UserError('No file list or file provided')
   }
   //set the desired to the default of 2 if not set

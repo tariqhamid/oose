@@ -100,10 +100,10 @@ if(require.main === module){
             done(err)
           })
       } else {
-	cluster.stopAsync().then(function(){
-	  console.log('Prism shutdown complete, in ghost mode')
+        cluster.stopAsync().then(function(){
+          console.log('Prism shutdown complete, in ghost mode')
           done()
-	})
+        })
       }
     }
   )
