@@ -550,12 +550,12 @@ P.try(function(){
     })
     fileCount = fileList.length
     var progress = new ProgressBar(
-      '  analyzing [:bar] :current/:total :percent :etas',
+      '  analyzing [:bar] :current/:total :percent :rate :etas',
       {
         total: fileCount,
-        width: 50,
+        width: 20,
         complete: '=',
-        incomplete: '-'
+        incomplete: ' '
       }
     )
     console.log('Found ' + fileCount + ' file(s) to be analyzed')
