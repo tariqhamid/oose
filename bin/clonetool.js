@@ -16,16 +16,13 @@ var random = require('random-js')()
 
 var UserError = oose.UserError
 
+var couchdb = require('../helpers/couchdb')
 var hasher = require('../helpers/hasher')
 var prismBalance = require('../helpers/prismBalance')
 
 var config = require('../config')
 
-//setup a connection to our prism
-var prism = oose.api.prism(config.prism)
-
-//setup a connection to the master
-var master = oose.api.master(config.master)
+var cacheKeyTempFile = '/tmp/oosectkeycache'
 
 //store our master peerList
 var peerList = {}
@@ -45,18 +42,33 @@ program
   .option('-r, --remove','Remove target files')
   .option('-H, --hash <hash>','Hash of file to check')
   .option('-f, --folder <folder>','Folder to scan')
+  .option('-S, --store <store>','Use file list from this store')
+  .option('-P, --prism <prism>','Use file list from this prism')
+  .option('-X, --allfiles','Use all files')
   .parse(process.argv)
 
-//existence options
-var existsTryCount = 10
-var existsTimeout = 60000
+var selectPeer = function(type,peerName){
+  if(!type) type = 'store'
+  var result = {}
+  peerList.forEach(function(peer){
+    if(peer.type !== type || peer.name !== peerName) return
+    result = peer
+  })
+  return result
+}
 
-var setupStore = function(store){
+var setupStore = function(peerList,storeName){
+  var store = {}
+  peerList.forEach(function(peer){
+    if(peer.name !== storeName) return
+    store = peer
+  })
   var opts = new ObjectManage()
   opts.$load(config.store)
   opts.$load(store)
   return oose.api.store(opts.$strip())
 }
+
 
 var analyzeFiles = function(progress,fileList){
   var above = false !== program.above ? +program.above : null
@@ -65,29 +77,34 @@ var analyzeFiles = function(progress,fileList){
   var desired = false !== program.desired ? + program.desired : 2
   var files = {}
   var fileCount = fileList.length
-  var blockSize = program.blockSize || 100
+  var blockSize = program.blockSize || 250
   var blockCount = Math.ceil(fileCount / blockSize)
   var analyzeBlock = function(fileBlock){
-    return prismBalance.contentExists(fileBlock)
-      .map(function(record){
-        //do clone math now
-        record.add = 0
-        record.remove = 0
-        if(
-          (null !== above && record.count > above) ||
-          (null !== below && record.count < below) ||
-          (null !== at && record.count === at)
-        )
-        {
-          if(desired > record.count){
-            record.add = desired - record.count
-          }
-          else if(desired < record.count){
-            record.remove = record.count - desired
-          }
-        }
-        //compile our record
-        return record
+    return P.try(function(){
+      return fileBlock
+    })
+      .map(function(file){
+        return prismBalance.contentExists(file)
+          .then(function(record){
+            //do clone math now
+            record.add = 0
+            record.remove = 0
+            if(
+              (null !== above && record.count > above) ||
+              (null !== below && record.count < below) ||
+              (null !== at && record.count === at)
+            )
+            {
+              if(desired > record.count){
+                record.add = desired - record.count
+              }
+              else if(desired < record.count){
+                record.remove = record.count - desired
+              }
+            }
+            //compile our record
+            return record
+          })
       })
       .finally(function(){
         progress.tick(fileBlock.length)
@@ -108,7 +125,7 @@ var analyzeFiles = function(progress,fileList){
     })
 }
 
-var addClones = function(file,storeList){
+var addClones = function(file){
   var promises = []
   var storeWinnerList = []
   var addClone = function(file){
@@ -162,12 +179,14 @@ var addClones = function(file,storeList){
         'Sending from ' + storeFromWinner.store +
         ' on prism ' + prismFromWinner +
         ' to ' + storeToWinner.store + ' on prism ' + prismToWinner)
-      var sendClient = setupStore(storeList[storeFromWinner.store])
+      var storeFromInfo = selectPeer(peerList,storeFromWinner.store)
+      var storeToInfo = selectPeer(peerList,storeToWinner.store)
+      var sendClient = setupStore(storeFromInfo)
       return sendClient.postAsync({
         url: sendClient.url('/content/send'),
         json: {
           file: file.hash + '.' + file.mimeExtension,
-          store: storeList[storeToWinner.store]
+          store: storeToInfo
         }
       })
         .spread(sendClient.validateResponse())
@@ -179,7 +198,7 @@ var addClones = function(file,storeList){
   return P.all(promises)
 }
 
-var removeClones = function(file,storeList){
+var removeClones = function(file){
   var promises = []
   var storeWinnerList = []
   var removeClone = function(file){
@@ -212,7 +231,8 @@ var removeClones = function(file,storeList){
       console.log(file.hash,
         'Removing from ' + storeRemoveWinner.store +
         ' on prism ' + storeRemoveWinner.prism)
-      var storeClient = setupStore(storeList[storeRemoveWinner.store])
+      var selectedStoreInfo = selectPeer(peerList,storeRemoveWinner.store)
+      var storeClient = setupStore(selectedStoreInfo)
       return storeClient.postAsync({
         url: storeClient.url('/content/remove'),
         json: {
@@ -228,15 +248,15 @@ var removeClones = function(file,storeList){
   return P.all(promises)
 }
 
-var processFile = function(file,storeList){
+var processFile = function(file){
   return P.try(function(){
     if(file.add > 0){
-      return addClones(file,storeList)
+      return addClones(file)
     }
   })
     .then(function(){
       if(file.remove > 0){
-        return removeClones(file,storeList)
+        return removeClones(file)
       }
     })
     .then(function(){
@@ -255,35 +275,27 @@ var relativePath = function(hash,ext){
 }
 
 var contentDetail = function(hash){
-  return prism.postAsync({
-    url: prism.url('/content/exists'),
-    json: {
-      hash: hash,
-      tryCount: existsTryCount,
-      timeout: existsTimeout
-    }
-  })
-    .spread(prism.validateResponse())
-    .spread(function(res,body){
+  return prismBalance.contentExists(hash)
+    .then(function(result){
       var table = new Table()
       table.push(
-        {HASH: clc.yellow(body.hash)},
-        {'File Extension': clc.cyan(body.mimeExtension)},
+        {HASH: clc.yellow(result.hash)},
+        {'File Extension': clc.cyan(result.mimeExtension)},
         {'Relative Path': clc.yellow(
-          relativePath(body.hash,body.mimeExtension.replace(',','')))},
-        {Exists: body.exists ? clc.green('Yes') : clc.red('No')},
-        {'Clone Count': clc.green(body.count)}
+          relativePath(result.hash,result.mimeExtension.replace(',','')))},
+        {Exists: result.exists ? clc.green('Yes') : clc.red('No')},
+        {'Clone Count': clc.green(result.count)}
       )
       console.log(table.toString())
       console.log('Storage Map')
       console.log('--------------------')
-      body.map.forEach(function(entry){
+      result.map.forEach(function(entry){
         var parts = entry.split(':')
         var prismName = parts[0]
         var storeName = parts[1]
         console.log('    ' + clc.cyan(prismName) + ':' + clc.green(storeName))
       })
-      console.log('\n Total: ' + clc.yellow(body.count) + ' clone(s)\n')
+      console.log('\n Total: ' + clc.yellow(result.count) + ' clone(s)\n')
       process.exit()
     })
 }
@@ -402,11 +414,84 @@ var folderScan = function(folderPath,fileStream){
   })
 }
 
+
+/**
+ * Scan inventory keys and return filtered hashes to the file stream
+ * @param {string} type type of key either prism or store
+ * @param {string} key the key itself such as om101
+ * @param {object} fileStream the file stream to write results to
+ * @return {P}
+ */
+var keyScan = function(type,key,fileStream){
+  var progress = null
+  var keyBlockSize = 100000
+  var keyList = []
+  var pointer = 0
+  var inventoryKeyDownload = function(){
+    return couchdb.inventory.allAsync({limit: keyBlockSize, skip: pointer})
+      .then(function(result){
+        var totalRows = result.total_rows
+        //totalRows = 50000
+        if(!progress){
+          progress = new ProgressBar(
+            ' downloading [:bar] :current/:total :percent :rate/ks :etas',
+            {
+              complete: '=',
+              incomplete: ' ',
+              width: 20,
+              total: totalRows
+            }
+          )
+        }
+        progress.tick(keyBlockSize)
+        result.rows.forEach(function(row){
+          keyList.push(row.key)
+        })
+        pointer = pointer + keyBlockSize
+        if(totalRows > pointer){
+          return inventoryKeyDownload()
+        } else {
+          return keyList
+        }
+      })
+  }
+  var cacheKeyDownload = function(){
+    return new P(function(resolve,reject){
+      if(!fs.existsSync(cacheKeyTempFile)){
+        console.log('Starting to download a fresh copy ' +
+          'of inventory keys, stand by.')
+        return inventoryKeyDownload()
+          .then(function(result){
+            fs.writeFileSync(cacheKeyTempFile,JSON.stringify(result))
+            resolve(result)
+          })
+      } else {
+        console.log('Reading inventory keys from cache')
+        var result = fs.readFileSync(cacheKeyTempFile)
+        try {
+          result = JSON.parse(result)
+          resolve(result)
+        } catch(e){
+          reject(e)
+        }
+      }
+    })
+
+  }
+  return cacheKeyDownload()
+    .map(function(inventoryKey){
+      var parts = inventoryKey.split(':')
+      if(!parts || 3 !== parts.length) return
+      if(!program.allfiles && 'prism' === type && parts[1] !== key) return
+      if(!program.allfiles && 'store' === type && parts[2] !== key) return
+      fileStream.write(parts[0] + '\n')
+    })
+}
+
 var files = {}
 var fileStream = new MemoryStream()
 var fileList = []
 var fileCount = 0
-var storeList = {}
 P.try(function(){
   var welcomeMessage = 'Welcome to the OOSE v' + config.version + ' clonetool!'
   console.log(welcomeMessage)
@@ -415,7 +500,8 @@ P.try(function(){
     return contentDetail(program.detail)
   }
   //do some validation
-  if(!program.hash && !program.input && !program.folder){
+  if(!program.hash && !program.input && !program.folder &&
+    !program.store && !program.prism && !program.allfiles){
     throw new UserError('No file list or file provided')
   }
   //set the desired to the default of 2 if not set
@@ -443,6 +529,10 @@ P.try(function(){
     //get file list together
     if(program.hash){
       fileStream.write(program.hash)
+    } else if(program.store){
+      return keyScan('store',program.store,fileStream)
+    } else if(program.prism){
+      return keyScan('prism',program.prism,fileStream)
     } else if(program.folder){
       return folderScan(program.folder,fileStream)
     } else if('-' === program.input){
@@ -467,7 +557,7 @@ P.try(function(){
       }
     )
     console.log('Found ' + fileCount + ' file(s) to be analyzed')
-    console.log(fileList)
+    //console.log(fileList)
     return analyzeFiles(progress,fileList)
   })
   .then(function(result){
@@ -507,24 +597,14 @@ P.try(function(){
       console.log('Pretend mode selected, taking no action, bye!')
       process.exit()
     }
-    console.log('Retrieving store list from master')
-    return master.postAsync({
-      url: master.url('/store/list')
-    })
-      .spread(master.validateResponse())
-      .spread(function(res,body){
-        body.store.forEach(function(store){
-          storeList[store.name] = store
-        })
-        return Object.keys(files)
-      })
+    return Object.keys(files)
   })
   .each(function(hash){
     var file = files[hash]
     if(file.add > 0 || file.remove > 0){
       console.log('--------------------')
       console.log(file.hash + ' starting to process changes')
-      return processFile(file,storeList)
+      return processFile(file)
     }
   })
   .catch(UserError,function(err){

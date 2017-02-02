@@ -89,6 +89,7 @@ config.$load({
   //prism
   prism: {
     enabled: false,
+    ghost: false, //when enabled will not register to peer db
     name: 'prism1',
     port: 5971,
     host: null,
