@@ -424,14 +424,14 @@ var folderScan = function(folderPath,fileStream){
  */
 var keyScan = function(type,key,fileStream){
   var progress = null
-  var keyBlockSize = 100000
+  var keyBlockSize = 10000
   var keyList = []
   var pointer = 0
+  var totalRows = 0
   var inventoryKeyDownload = function(){
     return couchdb.inventory.allAsync({limit: keyBlockSize, skip: pointer})
       .then(function(result){
-        var totalRows = result.total_rows
-        //totalRows = 50000
+        if(!totalRows) totalRows = result.total_rows
         if(!progress){
           progress = new ProgressBar(
             ' downloading [:bar] :current/:total :percent :rate/ks :etas',
