@@ -482,8 +482,8 @@ var keyScan = function(type,key,fileStream){
     .map(function(inventoryKey){
       var parts = inventoryKey.split(':')
       if(!parts || 3 !== parts.length) return
-      if(!program.allfiles && 'prism' === type && parts[1] !== key) return
-      if(!program.allfiles && 'store' === type && parts[2] !== key) return
+      if('allfiles' !== type && 'prism' === type && parts[1] !== key) return
+      if('allfiles' !== type && 'store' === type && parts[2] !== key) return
       fileStream.write(parts[0] + '\n')
     })
 }
@@ -533,6 +533,8 @@ P.try(function(){
       return keyScan('store',program.store,fileStream)
     } else if(program.prism){
       return keyScan('prism',program.prism,fileStream)
+    } else if(program.allfiles){
+      keyScan('allfiles',null,fileStream)
     } else if(program.folder){
       return folderScan(program.folder,fileStream)
     } else if('-' === program.input){
