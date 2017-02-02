@@ -550,7 +550,7 @@ P.try(function(){
     })
     fileCount = fileList.length
     var progress = new ProgressBar(
-      '  analyzing [:bar] :current/:total :percent :rate :etas',
+      '  analyzing [:bar] :current/:total :percent :rate/fs :etas',
       {
         total: fileCount,
         width: 20,
