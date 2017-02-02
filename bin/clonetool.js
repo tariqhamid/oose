@@ -424,7 +424,7 @@ var folderScan = function(folderPath,fileStream){
  */
 var keyScan = function(type,key,fileStream){
   var progress = null
-  var keyBlockSize = 10000
+  var keyBlockSize = 250000
   var keyList = []
   var pointer = 0
   var totalRows = 0
