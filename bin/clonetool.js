@@ -44,7 +44,7 @@ program
   .option('-f, --folder <folder>','Folder to scan')
   .option('-S, --store <store>','Use file list from this store')
   .option('-P, --prism <prism>','Use file list from this prism')
-  .option('-X, --all-files','Use all files')
+  .option('-X, --allfiles','Use all files')
   .parse(process.argv)
 
 var selectPeer = function(type,peerName){
