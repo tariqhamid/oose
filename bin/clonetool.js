@@ -534,7 +534,7 @@ P.try(function(){
     } else if(program.prism){
       return keyScan('prism',program.prism,fileStream)
     } else if(program.allfiles){
-      keyScan('allfiles',null,fileStream)
+      return keyScan('allfiles',null,fileStream)
     } else if(program.folder){
       return folderScan(program.folder,fileStream)
     } else if('-' === program.input){
