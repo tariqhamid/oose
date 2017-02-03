@@ -181,19 +181,23 @@ var addClones = function(file){
       var storeFromInfo = selectPeer('store',storeFromWinner.store)
       var storeToInfo = selectPeer('store',storeToWinner.store)
       var sendClient = setupStore(storeFromInfo)
+      var sendOptions = {
+        file: file.hash + '.' + file.mimeExtension.replace('.',''),
+        store: storeToWinner.prism + ':' + storeToWinner.store
+      }
       return sendClient.postAsync({
         url: sendClient.url('/content/send'),
-        json: {
-          file: file.hash + '.' + file.mimeExtension,
-          store: storeToWinner.prism + ':' + storeToWinner.store
-        }
+        json: sendOptions
       })
-        .spread(sendClient.validateResponse())
-        .then(function(){
-          console.log(file.hash,'Send to ' + storeToWinner.store + ' complete')
+        .spread(function(res,body){
+          if(body.error){
+            var err = new Error(body.error)
+            err.stack = body.stack
+            throw err
+          } else console.log(file.hash,'Send to ' + storeToWinner.store + ' complete')
         })
         .catch(function(err){
-          console.log(file.hash,'Failed to send clone to ' + storeToWinner.store,err.message)
+          console.log(file.hash,'Failed to send clone to ' + storeToWinner.store,err.message,err.stack)
         })
     }
   }
