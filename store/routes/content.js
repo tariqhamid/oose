@@ -249,7 +249,7 @@ exports.detail = function(req,res){
       detail.mimeType = record.mimeType
       detail.relativePath = record.relativePath
       detail.prism = record.prism
-      detail.sotre = record.store
+      detail.store = record.store
       return hashFile.details(
         record.hash + '.' + record.mimeExtension.replace('.',''))
     })
