@@ -194,6 +194,76 @@ exports.remove = function(req,res){
 
 
 /**
+ * Get detail about a hash
+ * @param {object} req
+ * @param {object} res
+ */
+exports.detail = function(req,res){
+  var detail = {
+    hash: '',
+    mimeExtension: '.bin',
+    mimeType: 'application/octet-stream',
+    relativePath: '',
+    prism: '',
+    store: '',
+    size: 0,
+    hashDetail: {
+      hash: '',
+      ext: '',
+      type: '',
+      exists: false,
+      stat: {
+        dev: 0,
+        mode: 0,
+        nlink: 0,
+        uid: 0,
+        gid: 0,
+        rdev: 0,
+        blksize: 0,
+        ino: 0,
+        size: 0,
+        blocks: 0,
+        atime: null,
+        mtime: null,
+        ctime: null,
+        birthtime: null
+      }
+    }
+  }
+  var hash = req.body.hash
+  var inventoryKey = cradle.schema.inventory(
+    hash,config.store.prism,config.store.name)
+  cradle.inventory.removeAsync(inventoryKey)
+    .then(function(record){
+      if(!record) throw new Error('File not found')
+      detail.hash = record.hash
+      detail.mimeExtension = record.mimeExtension
+      detail.mimeType = record.mimeType
+      detail.relativePath = record.relativePath
+      detail.prism = record.prism
+      detail.sotre = record.store
+      return hashFile.details(
+        record.hash + '.' + record.mimeExtension.replace('.',''))
+    })
+    .then(function(result){
+      detail.hashDetail = result
+      detail.size = detail.hashDetail.stat.size
+      res.json(detail)
+    })
+    .catch(function(err){
+      if('File not found' === err.message){
+        res.status(404)
+        res.json({error: 'File not status', code: 404})
+      } else{
+        res.status(500)
+        res.json({error: 'An uknown error occurred',message: err.message})
+        console.log(err.message,err.stack)
+      }
+    })
+}
+
+
+/**
  * Content send (to another store)
  * @param {object} req
  * @param {object} res

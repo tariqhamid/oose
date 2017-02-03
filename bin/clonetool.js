@@ -44,6 +44,8 @@ program
   .option('-f, --folder <folder>','Folder to scan')
   .option('-S, --store <store>','Use file list from this store')
   .option('-P, --prism <prism>','Use file list from this prism')
+  .option('-u, --update','Update file(s) by getting their details from a store')
+  .option('-v, --verbose','Be verbose and show hash list before processing')
   .option('-X, --allfiles','Use all files')
   .parse(process.argv)
 
@@ -61,9 +63,8 @@ var setupStore = function(store){
   var opts = new ObjectManage()
   opts.$load(config.store)
   opts.$load(store)
-  var opts = opts.$strip()
-  var cfg = oose.api.store(opts)
-  return cfg
+  opts = opts.$strip()
+  return oose.api.store(opts)
 }
 
 
@@ -179,7 +180,6 @@ var addClones = function(file){
         ' on prism ' + prismFromWinner +
         ' to ' + storeToWinner.store + ' on prism ' + prismToWinner)
       var storeFromInfo = selectPeer('store',storeFromWinner.store)
-      var storeToInfo = selectPeer('store',storeToWinner.store)
       var sendClient = setupStore(storeFromInfo)
       var sendOptions = {
         file: file.hash + '.' + file.mimeExtension.replace('.',''),
@@ -197,7 +197,8 @@ var addClones = function(file){
           } else console.log(file.hash,'Send to ' + storeToWinner.store + ' complete')
         })
         .catch(function(err){
-          console.log(file.hash,'Failed to send clone to ' + storeToWinner.store,err.message,err.stack)
+          console.log(file.hash,
+            'Failed to send clone to ' + storeToWinner.store,err.message)
         })
     }
   }
@@ -224,7 +225,7 @@ var removeClones = function(file){
       var peer = selectPeer('store',storeName)
       prismNameList.push(prismName)
       storeNameList.push(storeName)
-      if(-1 === storeWinnerList.indexOf(storeName) && true == peer.available){
+      if(-1 === storeWinnerList.indexOf(storeName) && true === peer.available){
         storeRemoveList.push({prism: prismName,store: storeName})
       }
     })
@@ -258,6 +259,52 @@ var removeClones = function(file){
   return P.all(promises)
 }
 
+var updateFile = function(file){
+  //first grab a store to ask for info
+  if(!file.count || !file.exists || !(file.map instanceof Array)){
+    console.log(file.hash,'Doesnt exist, cant update')
+    return
+  }
+  return P.try(function(){
+    return file.map
+  })
+    .each(function(storeKey){
+      var keyParts = storeKey.split(':')
+      var storeInfo = selectPeer('store',keyParts[1])
+      var storeClient = setupStore(storeInfo)
+      return P.all([
+        storeClient.postAsync({
+          url: storeClient.url('/content/detail'),
+          json: {
+            hash: file.hash
+          }
+        }),
+        couchdb.inventory.getAsync(
+          couchdb.schema.inventory(file.hash,file.prism,file.store))
+      ])
+        .then(function(result){
+          //now we have a fresh detail record and a fresh inventory
+          //record sync it and update
+          if(!result[0] || !result[0][1] || !result[1]){
+            console.log(file.hash,'Failed to update, bad inventory',result)
+          } else {
+            var detail = result[0][1]
+            var inv = result[1]
+            inv.mimeExtension = detail.mimeExtension || inv.mimeExtension
+            inv.mimeType = detail.mimeType || inv.mimeType
+            inv.relativePath = detail.relativePath || inv.relativePath
+            inv.prism = detail.prism || inv.prism
+            inv.store = detail.store || inv.store
+            inv.size = detail.size || inv.size || 0
+            return couchdb.inventory.saveAsync(inv._id,inv._rev,inv)
+          }
+        })
+        .then(function(){
+          console.log(file.hash,'Inventory update complete')
+        })
+    })
+}
+
 var processFile = function(file){
   return P.try(function(){
     if(file.add > 0){
@@ -267,6 +314,11 @@ var processFile = function(file){
     .then(function(){
       if(file.remove > 0){
         return removeClones(file)
+      }
+    })
+    .then(function(){
+      if(program.update){
+        return updateFile(file)
       }
     })
     .then(function(){
@@ -589,10 +641,18 @@ P.try(function(){
       else if(file.add > 0){
         addTotal = addTotal + (+file.add)
         add++
+        if(program.verbose){
+          console.log(file.hash + ' has ' + file.count +
+            ' clones and needs ' + file.add + ' more')
+        }
       }
       else if(file.remove > 0){
         removeTotal = removeTotal + (+file.remove)
         remove++
+        if(program.verbose){
+          console.log(file.hash + ' has ' + file.count +
+            ' clones and needs ' + file.remove + ' less')
+        }
       }
       else unchanged++
     })

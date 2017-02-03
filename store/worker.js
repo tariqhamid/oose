@@ -53,6 +53,7 @@ app.post('/content/download',routes.content.download)
 app.post('/content/exists',routes.content.exists)
 app.post('/content/remove',routes.content.remove)
 app.post('/content/send',routes.content.send)
+app.post('/content/detail',routes.content.detail)
 
 
 /**
