@@ -194,7 +194,10 @@ var addClones = function(file){
             var err = new Error(body.error)
             err.stack = body.stack
             throw err
-          } else console.log(file.hash,'Send to ' + storeToWinner.store + ' complete')
+          } else {
+            console.log(file.hash,
+              'Send to ' + storeToWinner.store + ' complete')
+          }
         })
         .catch(function(err){
           console.log(file.hash,
@@ -674,7 +677,7 @@ P.try(function(){
   })
   .each(function(hash){
     var file = files[hash]
-    if(file.add > 0 || file.remove > 0){
+    if(file.add > 0 || file.remove > 0 || program.update){
       console.log('--------------------')
       console.log(file.hash + ' starting to process changes')
       return processFile(file)
