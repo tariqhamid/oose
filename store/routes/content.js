@@ -240,6 +240,7 @@ exports.send = function(req,res){
       res.json({
         error: 'Failed to send clone ' + err.message,
         err: err,
+        stack: err.stack,
         file: file,
         store: store,
         details: details
