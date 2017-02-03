@@ -235,4 +235,15 @@ exports.send = function(req,res){
         details: details
       })
     })
+    .catch(function(err){
+      console.log(err.message,err.stack)
+      res.json({
+        error: 'Failed to send clone ' + err.message,
+        err: err,
+        stack: err.stack,
+        file: file,
+        store: store,
+        details: details
+      })
+    })
 }
