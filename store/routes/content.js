@@ -91,7 +91,8 @@ exports.put = function(req,res){
           mimeType: mime.lookup(fileDetails.ext),
           relativePath: hashFile.toRelativePath(
             fileDetails.hash,fileDetails.ext
-          )
+          ),
+          size: fileDetails.stat.size
         }
         debug(inventoryKey,'creating inventory record',inventory)
         return cradle.inventory.saveAsync(inventoryKey,inventory)
