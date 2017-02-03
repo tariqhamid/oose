@@ -57,16 +57,13 @@ var selectPeer = function(type,peerName){
   return result
 }
 
-var setupStore = function(peerList,storeName){
-  var store = {}
-  peerList.forEach(function(peer){
-    if(peer.name !== storeName) return
-    store = peer
-  })
+var setupStore = function(store){
   var opts = new ObjectManage()
   opts.$load(config.store)
   opts.$load(store)
-  return oose.api.store(opts.$strip())
+  var opts = opts.$strip()
+  var cfg = oose.api.store(opts)
+  return cfg
 }
 
 
@@ -103,6 +100,7 @@ var analyzeFiles = function(progress,fileList){
               }
             }
             //compile our record
+            files[record.hash] = record
             return record
           })
       })
@@ -159,6 +157,7 @@ var addClones = function(file){
         peer.prism !== prismFromWinner &&
         -1 === storeWinnerList.indexOf(peer.name) &&
         -1 === file.map.indexOf(peer.prism + ':' + peer.name) &&
+        true === peer.available &&
         true === peer.writable
       ){
         storeToList.push({prism: peer.prism, store: peer.name})
@@ -179,17 +178,23 @@ var addClones = function(file){
         'Sending from ' + storeFromWinner.store +
         ' on prism ' + prismFromWinner +
         ' to ' + storeToWinner.store + ' on prism ' + prismToWinner)
-      var storeFromInfo = selectPeer(peerList,storeFromWinner.store)
-      var storeToInfo = selectPeer(peerList,storeToWinner.store)
+      var storeFromInfo = selectPeer('store',storeFromWinner.store)
+      var storeToInfo = selectPeer('store',storeToWinner.store)
       var sendClient = setupStore(storeFromInfo)
       return sendClient.postAsync({
         url: sendClient.url('/content/send'),
         json: {
           file: file.hash + '.' + file.mimeExtension,
-          store: storeToInfo
+          store: storeToWinner.prism + ':' + storeToWinner.store
         }
       })
         .spread(sendClient.validateResponse())
+        .then(function(){
+          console.log(file.hash,'Send to ' + storeToWinner.store + ' complete')
+        })
+        .catch(function(err){
+          console.log(file.hash,'Failed to send clone to ' + storeToWinner.store,err.message)
+        })
     }
   }
   for(var i = 0; i < file.add; i++){
@@ -212,9 +217,10 @@ var removeClones = function(file){
       var parts = entry.split(':')
       var prismName = parts[0]
       var storeName = parts[1]
+      var peer = selectPeer('store',storeName)
       prismNameList.push(prismName)
       storeNameList.push(storeName)
-      if(-1 === storeWinnerList.indexOf(storeName)){
+      if(-1 === storeWinnerList.indexOf(storeName) && true == peer.available){
         storeRemoveList.push({prism: prismName,store: storeName})
       }
     })
@@ -231,12 +237,12 @@ var removeClones = function(file){
       console.log(file.hash,
         'Removing from ' + storeRemoveWinner.store +
         ' on prism ' + storeRemoveWinner.prism)
-      var selectedStoreInfo = selectPeer(peerList,storeRemoveWinner.store)
+      var selectedStoreInfo = selectPeer('store',storeRemoveWinner.store)
       var storeClient = setupStore(selectedStoreInfo)
       return storeClient.postAsync({
         url: storeClient.url('/content/remove'),
         json: {
-          hash: file.hash + '.' + file.mimeExtension
+          hash: file.hash
         }
       })
         .spread(storeClient.validateResponse())
@@ -265,6 +271,7 @@ var processFile = function(file){
 }
 
 var relativePath = function(hash,ext){
+  ext = ext.replace('.','')
   var result = ''
   for(var i = 0; i < hash.length; i++){
     if(0 === i % 2) result = result + '/'
@@ -275,14 +282,14 @@ var relativePath = function(hash,ext){
 }
 
 var contentDetail = function(hash){
-  return prismBalance.contentExists(hash)
+  return prismBalance.contentExists(hash,false)
     .then(function(result){
       var table = new Table()
       table.push(
         {HASH: clc.yellow(result.hash)},
         {'File Extension': clc.cyan(result.mimeExtension)},
         {'Relative Path': clc.yellow(
-          relativePath(result.hash,result.mimeExtension.replace(',','')))},
+          relativePath(result.hash,result.mimeExtension))},
         {Exists: result.exists ? clc.green('Yes') : clc.red('No')},
         {'Clone Count': clc.green(result.count)}
       )
@@ -572,19 +579,19 @@ P.try(function(){
     var remove = 0
     var removeTotal = 0
     var unchanged = 0
-    for(var i = 0; i < keys.length; i++){
-      file = files[keys[i]]
+    keys.forEach(function(hash){
+      file = files[hash]
       if(!file.exists) doesntExist++
       else if(file.add > 0){
-        addTotal += file.add
+        addTotal = addTotal + (+file.add)
         add++
       }
       else if(file.remove > 0){
-        removeTotal += file.remove
+        removeTotal = removeTotal + (+file.remove)
         remove++
       }
       else unchanged++
-    }
+    })
     console.log('Analysis complete...')
     console.log('--------------------')
     console.log(fileCount + ' total file(s)')
@@ -608,6 +615,10 @@ P.try(function(){
       console.log(file.hash + ' starting to process changes')
       return processFile(file)
     }
+  })
+  .then(function(){
+    console.log('Operations complete, bye!')
+    process.exit()
   })
   .catch(UserError,function(err){
     console.log('Oh no! An error has occurred :(')
