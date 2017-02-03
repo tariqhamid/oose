@@ -161,9 +161,12 @@ exports.winner = function(token,prismList,skip,allowFull){
 /**
  * Check existence of a hash (cached)
  * @param {string} hash
+ * @param {boolean} cacheEnable
  * @return {P}
  */
-exports.contentExists = function(hash){
+exports.contentExists = function(hash,cacheEnable){
+  if('undefined' === typeof cacheEnable) cacheEnable = true
+  else cacheEnable = !!cacheEnable
   redis.incr(redis.schema.counter('prism','prismBalance:contentExists'))
   var existsKey = cradle.schema.inventory(hash)
   var existsRecord = {}
@@ -189,7 +192,7 @@ exports.contentExists = function(hash){
           cacheValid = false
         }
       }
-      if(cacheValid){
+      if(cacheEnable && cacheValid){
         return result
       } else {
         return cradle.inventory.allAsync({

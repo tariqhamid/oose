@@ -26,73 +26,85 @@ if(require.main === module){
         }
       )
       heartbeat = infant.parent('../helpers/heartbeat')
-      cradle.peer.getAsync(prismKey)
-        .then(
-          //if we exist lets mark ourselves available
-          function(doc){
-            doc.name = config.prism.name
-            doc.host = config.prism.host
-            doc.port = config.prism.port
-            doc.available = true
-            doc.active = true
-            return cradle.peer.saveAsync(prismKey,doc)
-          },
-          //if we dont exist lets make sure thats why and create ourselves
-          function(err){
-            if(404 !== err.headers.status) throw err
-            //now register ourselves or mark ourselves available
-            return cradle.peer.saveAsync(prismKey,{
-              name: config.prism.name,
-              host: config.prism.host,
-              port: config.prism.port,
-              writable: true,
-              available: true,
-              active: true,
-              createdAt: new Date().toJSON()
-            })
-          }
-        )
-        .then(function(){
-          return P.all([
-            cluster.startAsync(),
-            heartbeat.startAsync()
-          ])
-        })
-        .then(function(){
-          console.log('Prism startup complete')
-          done()
+      if(!config.prism.ghost){
+        cradle.peer.getAsync(prismKey)
+          .then(
+            //if we exist lets mark ourselves available
+            function(doc){
+              doc.name = config.prism.name
+              doc.host = config.prism.host
+              doc.port = config.prism.port
+              doc.available = true
+              doc.active = true
+              return cradle.peer.saveAsync(prismKey,doc)
+            },
+            //if we dont exist lets make sure thats why and create ourselves
+            function(err){
+              if(404 !== err.headers.status) throw err
+              //now register ourselves or mark ourselves available
+              return cradle.peer.saveAsync(prismKey,{
+                name: config.prism.name,
+                host: config.prism.host,
+                port: config.prism.port,
+                writable: true,
+                available: true,
+                active: true,
+                createdAt: new Date().toJSON()
+              })
+            }
+          )
+          .then(function(){
+            return P.all([cluster.startAsync(),heartbeat.startAsync()])
+          })
+          .then(function(){
+            console.log('Prism startup complete')
+            done()
         })
         .catch(function(err){
           console.log(err.stack)
           console.log(err)
           done(err)
         })
+      } else {
+        cluster.startAsync()
+         .then(function(){
+           console.log('Prism startup complete, in ghost mode')
+           done()
+         })
+      }
     },
     function(done){
       console.log('Beginning prism shutdown')
-      //mark ourselves as down
-      cradle.peer.getAsync(prismKey)
-        .then(function(doc){
-          doc.available = false
-          return cradle.peer.saveAsync(prismKey,doc)
-        })
-        .then(function(){
-          if(!cluster) return
-          return P.all([
-            cluster.stopAsync(),
-            heartbeat.stopAsync()
-          ])
-        })
-        .then(function(){
-          heartbeat.cp.kill('SIGKILL')
-          console.log('Prism shutdown complete')
+      if(!config.prism.ghost){
+        //mark ourselves as down
+        cradle.peer.getAsync(prismKey)
+          .then(function(doc){
+            doc.available = false
+            return cradle.peer.saveAsync(prismKey,doc)
+          })
+          .then(function(){
+            if(!cluster) return
+            return P.all([
+              cluster.stopAsync(),
+              heartbeat.stopAsync()
+            ])
+          })
+          .then(function(){
+            heartbeat.cp.kill('SIGKILL')
+            console.log('Prism shutdown complete')
+            done()
+          })
+          .catch(function(err){
+            console.log(err.stack)
+            console.log(err)
+            done(err)
+          })
+      } else {
+        cluster.stopAsync().then(function(){
+          console.log('Prism shutdown complete, in ghost mode')
           done()
         })
-        .catch(function(err){
-          console.log(err.stack)
-          console.log(err)
-          done(err)
-        })
+      }
     }
   )
 }
