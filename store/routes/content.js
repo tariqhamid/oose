@@ -79,6 +79,13 @@ exports.put = function(req,res){
       //record exists, extend it
       function(doc){
         debug(inventoryKey,'got inventory record',doc)
+        doc.mimeExtension = fileDetails.ext
+        doc.mimeType = mime.lookup(fileDetails.ext)
+        doc.relativePath = hashFile.toRelativePath(
+          fileDetails.hash,fileDetails.ext
+        )
+        doc.size = fileDetails.stat.size
+        return cradle.inventory.saveAsync(doc._id,doc._rev,doc)
       },
       //record does not exist, create it
       function(err){
