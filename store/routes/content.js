@@ -23,7 +23,8 @@ var UserError = oose.UserError
 //make some promises
 P.promisifyAll(fs)
 
-var createInventory = function(fileDetail){
+var createInventory = function(fileDetail,verified){
+  if('undefined' === typeof verified) verified = false
   var inventoryKey = cradle.schema.inventory(
     fileDetail.hash,
     config.store.prism,
@@ -40,18 +41,29 @@ var createInventory = function(fileDetail){
     ),
     size: fileDetail.stat.size
   }
+  if(verified) inventory.verifiedAt = verified
   debug(inventoryKey,'creating inventory record',inventory)
   return cradle.inventory.saveAsync(inventoryKey,inventory)
+    .then(function(result){
+      inventory._rev = result.rev
+      return inventory
+    })
 }
 
-var updateInventory = function(fileDetail,doc){
+var updateInventory = function(fileDetail,doc,verified){
+  if('undefined' === typeof verified) verified = false
   doc.mimeExtension = fileDetail.ext
   doc.mimeType = mime.lookup(fileDetail.ext)
   doc.relativePath = hashFile.toRelativePath(
     fileDetail.hash,fileDetail.ext
   )
   doc.size = fileDetail.stat.size
+  if(verified) doc.verifiedAt = verified
   return cradle.inventory.saveAsync(doc._id,doc._rev,doc)
+    .then(function(result){
+      doc._rev = result.rev
+      return doc
+    })
 }
 
 
@@ -308,9 +320,13 @@ exports.detail = function(req,res){
  */
 exports.verify = function(req,res){
   var file = req.body.file
+  var force = req.body.force || false
   var sniffStream = {}
   var fileDetail = {}
   var inventoryKey = ''
+  var inventory = {}
+  var verifySkipped = false
+  var verifiedAt = +new Date()
   hashFile.details(file)
     .then(function(result){
       fileDetail = result
@@ -319,7 +335,20 @@ exports.verify = function(req,res){
         config.store.prism,
         config.store.name
       )
+      return cradle.inventory.getAsync(inventoryKey)
+        .catch(function(){})
+    })
+    .then(function(result){
+      inventory = result
+      //skip reading the file if possible
       if(!fileDetail.exists) return
+      if(inventory && inventory.verifiedAt && false === force && (
+        inventory.verifiedAt > (+new Date() - config.store.verifyExpiration)
+      )){
+        verifySkipped = true
+        return
+      }
+      //at this point read the file and verify
       var readStream = fs.createReadStream(fileDetail.path)
       sniffStream = hashStream.createStream(fileDetail.type)
       var writeStream = devNullStream()
@@ -340,33 +369,23 @@ exports.verify = function(req,res){
               throw new Error('File not found')
             }
           })
-      } else if(sniffStream.hash !== fileDetail.hash){
+      } else if(!verifySkipped && sniffStream.hash !== fileDetail.hash){
         return hashFile.remove(fileDetail.hash)
           .then(function(){
-            return cradle.inventory.getAsync(inventoryKey)
+            return cradle.inventory.removeAsync(inventory._id,inventory._rev)
           })
-          .then(function(result){
-            return cradle.inventory.removeAsync(result._id,result._rev)
-          })
-          .catch(function(err){
-            if(!err || !err.headers || 404 !== err.headers.status){
-              console.log('Failed to delete inventory record for invalid file',
-                err.message,err.stack)
-            } else {
-              throw new Error('File not found')
-            }
-          })
-      } else {
+          .catch(function(){})
+      } else if(!verifySkipped) {
         //here we should get the inventory record, update it or create it
         return cradle.inventory.getAsync(inventoryKey)
           .then(
             function(result){
-              return updateInventory(fileDetail,result)
+              return updateInventory(fileDetail,result,verifiedAt)
             },
             //record does not exist, create it
             function(err){
               if(!err || !err.headers || 404 !== err.headers.status) throw err
-              return createInventory(fileDetail)
+              return createInventory(fileDetail,verifiedAt)
             }
           )
       }
@@ -374,10 +393,13 @@ exports.verify = function(req,res){
     .then(function(){
       res.json({
         success: 'Verification complete',
-        status: sniffStream.hash === fileDetail.hash ? 'ok' : 'fail',
+        status: verifySkipped ? 'ok' :
+          (sniffStream.hash === fileDetail.hash ? 'ok' : 'fail'),
         expectedHash: fileDetail.hash,
-        actualHash: sniffStream.hash,
-        verified: sniffStream.hash === fileDetail.hash
+        actualHash: verifySkipped ? fileDetail.hash : sniffStream.hash,
+        verifySkipped: verifySkipped,
+        verified: verifySkipped || sniffStream.hash === fileDetail.hash,
+        verifiedAt: verifiedAt
       })
     })
     .catch(function(err){

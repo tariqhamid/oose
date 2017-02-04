@@ -261,6 +261,9 @@ var removeClones = function(file){
         }
       })
         .spread(storeClient.validateResponse())
+        .catch(function(err){
+          console.log(file.hash,'Failed to remove clone',err.message)
+        })
     }
   }
   for(var i = 0; i < file.remove; i++){
@@ -300,6 +303,9 @@ var verifyFile = function(file){
           } else {
             console.log(file.hash,'Unknown issue',body)
           }
+        })
+        .catch(function(err){
+          console.log(file.hash,'Failed to verify inventory',err.message)
         })
     })
 }

@@ -145,10 +145,28 @@ describe('store',function(){
         })
         .spread(function(res,body){
           expect(body.verified).to.equal(true)
+          expect(body.verifySkipped).to.equal(false)
           expect(body.expectedHash).to.equal(content.sha1)
           expect(body.actualHash).to.equal(content.sha1)
           expect(body.success).to.equal('Verification complete')
           expect(body.status).to.equal('ok')
+          expect(body.verifiedAt).to.be.a('number')
+        })
+    })
+    it('should cache content verifications',function(){
+      return client
+        .postAsync({
+          url: client.url('/content/verify'),
+          json: {file: content.sha1 + '.' + content.ext}
+        })
+        .spread(function(res,body){
+          expect(body.verified).to.equal(true)
+          expect(body.verifySkipped).to.equal(true)
+          expect(body.expectedHash).to.equal(content.sha1)
+          expect(body.actualHash).to.equal(content.sha1)
+          expect(body.success).to.equal('Verification complete')
+          expect(body.status).to.equal('ok')
+          expect(body.verifiedAt).to.be.a('number')
         })
     })
     it('should fail to verify missing content',function(){
@@ -170,15 +188,17 @@ describe('store',function(){
       return client
         .postAsync({
           url: client.url('/content/verify'),
-          json: {file: content.sha1 + '.' + content.ext}
+          json: {file: content.sha1 + '.' + content.ext, force: true}
         })
         .spread(function(res,body){
           expect(body.verified).to.equal(false)
+          expect(body.verifySkipped).to.equal(false)
           expect(body.expectedHash).to.equal(content.sha1)
           expect(body.actualHash)
             .to.equal('4820c2195b35ad725c41c500176fe7be8b903d78')
           expect(body.success).to.equal('Verification complete')
           expect(body.status).to.equal('fail')
+          expect(body.verifiedAt).to.be.a('number')
         })
     })
   })

@@ -166,7 +166,8 @@ config.$load({
     },
     inventoryConcurrency: 64,
     inventoryThrottle: 100, //ms between requests
-    purchasePruneConcurrency: 512
+    purchasePruneConcurrency: 512,
+    verifyExpiration: 15552000000//ms  (180 days = 7776000000)
   }
 })
 
