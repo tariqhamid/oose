@@ -311,23 +311,33 @@ var verifyFile = function(file){
 }
 
 var processFile = function(file){
+  var printHeader = function(){
+    console.log('--------------------')
+    console.log(file.hash + ' starting to process changes')
+  }
+  var printFooter = function(){
+    console.log(file.hash,'Processing complete')
+  }
   return P.try(function(){
     if(!program.verify && file.add > 0){
+      printHeader()
       return addClones(file)
+        .then(printFooter)
     }
   })
     .then(function(){
       if(!program.verify && file.remove > 0){
+        printHeader()
         return removeClones(file)
+          .then(printFooter)
       }
     })
     .then(function(){
       if(program.verify && (file.add > 0 || file.remove > 0)){
+        printHeader()
         return verifyFile(file)
+          .then(printFooter)
       }
-    })
-    .then(function(){
-      console.log(file.hash,'Processing complete')
     })
 }
 
@@ -694,8 +704,6 @@ P.try(function(){
   .each(function(hash){
     var file = files[hash]
     if(file.add > 0 || file.remove > 0 || program.verify){
-      console.log('--------------------')
-      console.log(file.hash + ' starting to process changes')
       return processFile(file)
     }
   })
