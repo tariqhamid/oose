@@ -166,7 +166,7 @@ exports.winner = function(token,prismList,skip,allowFull){
  */
 exports.contentExists = function(hash,cacheEnable){
   if('undefined' === typeof cacheEnable) cacheEnable = true
-  else cacheEnable = !!cacheEnable
+  else cacheEnable = (cacheEnable)
   redis.incr(redis.schema.counter('prism','prismBalance:contentExists'))
   var existsKey = cradle.schema.inventory(hash)
   var existsRecord = {}
@@ -180,6 +180,7 @@ exports.contentExists = function(hash,cacheEnable){
     relativePath: null,
     exists: false,
     count: 0,
+    size: 0,
     map: []
   }
   return redis.getAsync(existsKey)
@@ -237,6 +238,7 @@ exports.contentExists = function(hash,cacheEnable){
                     mimeType: inventoryList[0].mimeType,
                     mimeExtension: inventoryList[0].mimeExtension,
                     relativePath: inventoryList[0].relativePath,
+                    size: inventoryList[0].size,
                     count: map.length,
                     exists: true,
                     map: map
