@@ -23,6 +23,37 @@ var UserError = oose.UserError
 //make some promises
 P.promisifyAll(fs)
 
+var createInventory = function(fileDetail){
+  var inventoryKey = cradle.schema.inventory(
+    fileDetail.hash,
+    config.store.prism,
+    config.store.name
+  )
+  var inventory = {
+    prism: config.store.prism,
+    store: config.store.name,
+    hash: fileDetail.hash,
+    mimeExtension: fileDetail.ext,
+    mimeType: mime.lookup(fileDetail.ext),
+    relativePath: hashFile.toRelativePath(
+      fileDetail.hash,fileDetail.ext
+    ),
+    size: fileDetail.stat.size
+  }
+  debug(inventoryKey,'creating inventory record',inventory)
+  return cradle.inventory.saveAsync(inventoryKey,inventory)
+}
+
+var updateInventory = function(fileDetail,doc){
+  doc.mimeExtension = fileDetail.ext
+  doc.mimeType = mime.lookup(fileDetail.ext)
+  doc.relativePath = hashFile.toRelativePath(
+    fileDetail.hash,fileDetail.ext
+  )
+  doc.size = fileDetail.stat.size
+  return cradle.inventory.saveAsync(doc._id,doc._rev,doc)
+}
+
 
 /**
  * Put file
@@ -34,7 +65,7 @@ exports.put = function(req,res){
   redis.incr(redis.schema.counter('store','content:filesUploaded'))
   var file = req.params.file
   var hashType = req.params.hashType || config.defaultHashType || 'sha1'
-  var fileDetails
+  var fileDetail
   debug('got new put',file)
   var sniff = hashStream.createStream(hashType)
   var inventoryKey
@@ -46,11 +77,11 @@ exports.put = function(req,res){
   hashFile.details(file)
     .then(function(result){
       if(!result) throw new UserError('Could not parse filename')
-      fileDetails = result
+      fileDetail = result
       inventoryKey = cradle.schema.inventory(
-        fileDetails.hash,config.store.prism,config.store.name)
-      dest = hashFile.toPath(fileDetails.hash,fileDetails.ext)
-      debug(fileDetails.hash,dest)
+        fileDetail.hash,config.store.prism,config.store.name)
+      dest = hashFile.toPath(fileDetail.hash,fileDetail.ext)
+      debug(fileDetail.hash,dest)
       return mkdirp(path.dirname(dest))
     })
     .then(function(){
@@ -63,13 +94,13 @@ exports.put = function(req,res){
         )
     })
     .then(function(){
-      if(sniff.hash !== fileDetails.hash){
+      if(sniff.hash !== fileDetail.hash){
         fs.unlinkSync(dest)
         throw new UserError('Checksum mismatch')
       }
       //setup symlink to new file
       debug(inventoryKey,'linking')
-      return hashFile.linkPath(fileDetails.hash,fileDetails.ext)
+      return hashFile.linkPath(fileDetail.hash,fileDetail.ext)
     })
     .then(function(){
       //get existing existence record and add to it or create one
@@ -80,30 +111,12 @@ exports.put = function(req,res){
       //record exists, extend it
       function(doc){
         debug(inventoryKey,'got inventory record',doc)
-        doc.mimeExtension = fileDetails.ext
-        doc.mimeType = mime.lookup(fileDetails.ext)
-        doc.relativePath = hashFile.toRelativePath(
-          fileDetails.hash,fileDetails.ext
-        )
-        doc.size = fileDetails.stat.size
-        return cradle.inventory.saveAsync(doc._id,doc._rev,doc)
+        return updateInventory(fileDetail,doc)
       },
       //record does not exist, create it
       function(err){
         if(!err || !err.headers || 404 !== err.headers.status) throw err
-        var inventory = {
-          prism: config.store.prism,
-          store: config.store.name,
-          hash: sniff.hash,
-          mimeExtension: fileDetails.ext,
-          mimeType: mime.lookup(fileDetails.ext),
-          relativePath: hashFile.toRelativePath(
-            fileDetails.hash,fileDetails.ext
-          ),
-          size: fileDetails.stat.size
-        }
-        debug(inventoryKey,'creating inventory record',inventory)
-        return cradle.inventory.saveAsync(inventoryKey,inventory)
+        return createInventory(fileDetail)
       }
     )
     .then(function(){
@@ -296,26 +309,28 @@ exports.detail = function(req,res){
 exports.verify = function(req,res){
   var file = req.body.file
   var sniffStream = {}
-  var detail = {}
+  var fileDetail = {}
+  var inventoryKey = ''
   hashFile.details(file)
     .then(function(result){
-      detail = result
-      if(!detail.exists) throw new Error('File not found')
-      var readStream = fs.createReadStream(detail.path)
-      sniffStream = hashStream.createStream(detail.type)
+      fileDetail = result
+      inventoryKey = cradle.schema.inventory(
+        fileDetail.hash,
+        config.store.prism,
+        config.store.name
+      )
+      if(!fileDetail.exists) throw new Error('File not found')
+      var readStream = fs.createReadStream(fileDetail.path)
+      sniffStream = hashStream.createStream(fileDetail.type)
       var writeStream = devNullStream()
       return promisePipe(readStream,sniffStream,writeStream)
     })
     .then(function(){
       //validate the file, if it doesnt match remove it
-      if(sniffStream.hash !== detail.hash){
-        hashFile.remove(detail.hash)
+      if(sniffStream.hash !== fileDetail.hash){
+        return hashFile.remove(fileDetail.hash)
           .then(function(){
-            return cradle.inventory.getAsync(cradle.schema.inventory(
-              detail.hash,
-              config.store.prism,
-              config.store.name
-            ))
+            return cradle.inventory.getAsync(inventoryKey)
           })
           .then(function(result){
             return cradle.inventory.removeAsync(result._id,result._rev)
@@ -327,12 +342,26 @@ exports.verify = function(req,res){
       }
     })
     .then(function(){
+      //here we should get the inventory record, update it or create it
+      return cradle.inventory.getAsync(inventoryKey)
+        .then(
+          function(result){
+            return updateInventory(fileDetail,result)
+          },
+          //record does not exist, create it
+          function(err){
+            if(!err || !err.headers || 404 !== err.headers.status) throw err
+            return createInventory(fileDetail)
+          }
+        )
+    })
+    .then(function(){
       res.json({
         success: 'Verification complete',
-        status: sniffStream.hash === detail.hash ? 'ok' : 'fail',
-        expectedHash: detail.hash,
+        status: sniffStream.hash === fileDetail.hash ? 'ok' : 'fail',
+        expectedHash: fileDetail.hash,
         actualHash: sniffStream.hash,
-        verified: sniffStream.hash === detail.hash
+        verified: sniffStream.hash === fileDetail.hash
       })
     })
     .catch(function(err){

@@ -50,7 +50,7 @@ program
   .option('-f, --folder <folder>','Folder to scan')
   .option('-S, --store <store>','Use file list from this store')
   .option('-P, --prism <prism>','Use file list from this prism')
-  .option('-u, --update','Update file(s) by getting their details from a store')
+  .option('-V, --verify','Verify file(s) by having stores verify integrity')
   .option('-v, --verbose','Be verbose and show hash list before processing')
   .option('-X, --allfiles','Use all files')
   .parse(process.argv)
@@ -268,10 +268,10 @@ var removeClones = function(file){
   return P.all(promises)
 }
 
-var updateFile = function(file){
+var verifyFile = function(file){
   //first grab a store to ask for info
   if(!file.count || !file.exists || !(file.map instanceof Array)){
-    console.log(file.hash,'Doesnt exist, cant update')
+    console.log(file.hash,'Doesnt exist, cant verify')
     return
   }
   return P.try(function(){
@@ -281,36 +281,24 @@ var updateFile = function(file){
       var keyParts = storeKey.split(':')
       var storeInfo = selectPeer('store',keyParts[1])
       var storeClient = setupStore(storeInfo)
-      var inventoryKey = couchdb.schema.inventory(file.hash,keyParts[0],keyParts[1])
-      return P.all([
-        storeClient.postAsync({
-          url: storeClient.url('/content/detail'),
-          json: {
-            hash: file.hash
-          }
-        }),
-        couchdb.inventory.getAsync(inventoryKey)
-      ])
-        .then(function(result){
-          //now we have a fresh detail record and a fresh inventory
-          //record sync it and update
-          console.log(result[0][1])
-          if(!result[0] || !result[0][1] || !result[1]){
-            console.log(file.hash,'Failed to update, bad inventory',result)
+      return storeClient.postAsync({
+        url: storeClient.url('/content/verify'),
+        json: {
+          file: file.hash + '.' + ('' + file.mimeExtension).replace('.','')
+        }
+      })
+        .spread(function(res,body){
+          if(body && body.error){
+            console.log(file.hash,'Verify failed',body.error,body)
+          } else if(body && 'ok' === body.status){
+            console.log(file.hash,
+              'Inventory verification complete on ' + keyParts[1])
+          } else if(body && 'fail' === body.status){
+            console.log(file.hash,
+              'Invalid content on ' + keyParts[1] + ' clone removed')
           } else {
-            var detail = result[0][1]
-            var inv = result[1]
-            inv.mimeExtension = detail.mimeExtension || inv.mimeExtension
-            inv.mimeType = detail.mimeType || inv.mimeType
-            inv.relativePath = detail.relativePath || inv.relativePath
-            inv.prism = detail.prism || inv.prism
-            inv.store = detail.store || inv.store
-            inv.size = detail.size || inv.size || 0
-            return couchdb.inventory.saveAsync(inv._id,inv._rev,inv)
+            console.log(file.hash,'Unknown issue',body)
           }
-        })
-        .then(function(){
-          console.log(file.hash,'Inventory update complete')
         })
     })
 }
@@ -327,8 +315,8 @@ var processFile = function(file){
       }
     })
     .then(function(){
-      if(program.update){
-        return updateFile(file)
+      if(program.verify){
+        return verifyFile(file)
       }
     })
     .then(function(){
@@ -624,7 +612,8 @@ P.try(function(){
     if(!program.force){
       fileList.forEach(function(file,i){
         if(hashWhitelist.indexOf(file) >= 0){
-          console.log(file,'Is whitelisted and will not be analyzed, use -f to force')
+          console.log(file,
+            'Is whitelisted and will not be analyzed, use -f to force')
           fileList.splice(i,1)
         }
       })
@@ -696,7 +685,7 @@ P.try(function(){
   })
   .each(function(hash){
     var file = files[hash]
-    if(file.add > 0 || file.remove > 0 || program.update){
+    if(file.add > 0 || file.remove > 0 || program.verify){
       console.log('--------------------')
       console.log(file.hash + ' starting to process changes')
       return processFile(file)
