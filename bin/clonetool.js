@@ -343,7 +343,7 @@ var contentDetail = function(hash){
       table.push(
         {HASH: clc.yellow(result.hash)},
         {'File Extension': clc.cyan(result.mimeExtension)},
-        {'Size': clc.cyan(prettyBytes(result.size))},
+        {'Size': clc.cyan(prettyBytes(+(result.size || 0)))},
         {'Relative Path': clc.yellow(
           relativePath(result.hash,result.mimeExtension))},
         {Exists: result.exists ? clc.green('Yes') : clc.red('No')},
