@@ -319,7 +319,7 @@ exports.verify = function(req,res){
         config.store.prism,
         config.store.name
       )
-      if(!fileDetail.exists) throw new Error('File not found')
+      if(!fileDetail.exists) return
       var readStream = fs.createReadStream(fileDetail.path)
       sniffStream = hashStream.createStream(fileDetail.type)
       var writeStream = devNullStream()
@@ -327,7 +327,20 @@ exports.verify = function(req,res){
     })
     .then(function(){
       //validate the file, if it doesnt match remove it
-      if(sniffStream.hash !== fileDetail.hash){
+      if(!fileDetail.exists){
+        return cradle.inventory.getAsync(inventoryKey)
+          .then(function(result){
+            return cradle.inventory.removeAsync(result._id,result._rev)
+          })
+          .catch(function(err){
+            if(!err || !err.headers || 404 !== err.headers.status){
+              console.log('Failed to delete inventory record for missing file',
+                err.message,err.stack)
+            } else {
+              throw new Error('File not found')
+            }
+          })
+      } else if(sniffStream.hash !== fileDetail.hash){
         return hashFile.remove(fileDetail.hash)
           .then(function(){
             return cradle.inventory.getAsync(inventoryKey)
@@ -336,8 +349,12 @@ exports.verify = function(req,res){
             return cradle.inventory.removeAsync(result._id,result._rev)
           })
           .catch(function(err){
-            console.log('Failed to delete inventory record for invalid file',
-              err.message,err.stack)
+            if(!err || !err.headers || 404 !== err.headers.status){
+              console.log('Failed to delete inventory record for invalid file',
+                err.message,err.stack)
+            } else {
+              throw new Error('File not found')
+            }
           })
       } else {
         //here we should get the inventory record, update it or create it
