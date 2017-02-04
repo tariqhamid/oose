@@ -325,7 +325,7 @@ var processFile = function(file){
 }
 
 var relativePath = function(hash,ext){
-  ext = ext.replace('.','')
+  ext = ('' + ext).replace('.','')
   var result = ''
   for(var i = 0; i < hash.length; i++){
     if(0 === i % 2) result = result + '/'
