@@ -293,7 +293,8 @@ var verifyFile = function(file){
       })
         .spread(function(res,body){
           if(body && body.error){
-            console.log(file.hash,'Verify failed',body.error,body)
+            console.log(file.hash,'Verify failed ' + body.error +
+              ' on ' + keyParts[1] + ' inventory purged')
           } else if(body && 'ok' === body.status){
             console.log(file.hash,
               'Inventory verification complete on ' + keyParts[1])
