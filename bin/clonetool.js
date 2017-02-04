@@ -27,6 +27,11 @@ var cacheKeyTempFile = '/tmp/oosectkeycache'
 //store our master peerList
 var peerList = {}
 
+//hashes in this list will never be modified without force action
+var hashWhitelist = [
+  'a03f181dc7dedcfb577511149b8844711efdb04f'
+]
+
 //setup cli parsing
 program
   .version(config.version)
@@ -36,6 +41,7 @@ program
   .option('-B, --block-size <n>','Number of files to analyze at once')
   .option('-d, --desired <n>','Desired clone count')
   .option('-D, --detail <s>','Hash of file to get details about')
+  .option('-f, --force','Force the operation even on protected hashes')
   .option('-i, --input <s>','List of Hashes line separated ' +
   'to analyze, use - for stdin')
   .option('-p, --pretend','Dont actually make and clones just analyze')
@@ -275,6 +281,7 @@ var updateFile = function(file){
       var keyParts = storeKey.split(':')
       var storeInfo = selectPeer('store',keyParts[1])
       var storeClient = setupStore(storeInfo)
+      var inventoryKey = couchdb.schema.inventory(file.hash,keyParts[0],keyParts[1])
       return P.all([
         storeClient.postAsync({
           url: storeClient.url('/content/detail'),
@@ -282,12 +289,12 @@ var updateFile = function(file){
             hash: file.hash
           }
         }),
-        couchdb.inventory.getAsync(
-          couchdb.schema.inventory(file.hash,file.prism,file.store))
+        couchdb.inventory.getAsync(inventoryKey)
       ])
         .then(function(result){
           //now we have a fresh detail record and a fresh inventory
           //record sync it and update
+          console.log(result[0][1])
           if(!result[0] || !result[0][1] || !result[1]){
             console.log(file.hash,'Failed to update, bad inventory',result)
           } else {
@@ -614,7 +621,19 @@ P.try(function(){
     fileList = fileList.filter(function(a){
       return a.match(hasher.hashExpressions[hasher.identify(a)])
     })
+    if(!program.force){
+      fileList.forEach(function(file,i){
+        if(hashWhitelist.indexOf(file) >= 0){
+          console.log(file,'Is whitelisted and will not be analyzed, use -f to force')
+          fileList.splice(i,1)
+        }
+      })
+    }
     fileCount = fileList.length
+    if(0 === fileCount){
+      console.log('No files left to analyze, bye')
+      process.exit()
+    }
     var progress = new ProgressBar(
       '  analyzing [:bar] :current/:total :percent :rate/fs :etas',
       {
