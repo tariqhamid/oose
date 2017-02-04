@@ -10,6 +10,7 @@ var MemoryStream = require('memory-stream')
 var ObjectManage = require('object-manage')
 var oose = require('oose-sdk')
 var path = require('path')
+var prettyBytes = require('pretty-bytes')
 var ProgressBar = require('progress')
 var promisePipe = require('promisepipe')
 var random = require('random-js')()
@@ -342,6 +343,7 @@ var contentDetail = function(hash){
       table.push(
         {HASH: clc.yellow(result.hash)},
         {'File Extension': clc.cyan(result.mimeExtension)},
+        {'Size': clc.cyan(prettyBytes(result.size))},
         {'Relative Path': clc.yellow(
           relativePath(result.hash,result.mimeExtension))},
         {Exists: result.exists ? clc.green('Yes') : clc.red('No')},
