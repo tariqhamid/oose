@@ -339,21 +339,20 @@ exports.verify = function(req,res){
             console.log('Failed to delete inventory record for invalid file',
               err.message,err.stack)
           })
+      } else {
+        //here we should get the inventory record, update it or create it
+        return cradle.inventory.getAsync(inventoryKey)
+          .then(
+            function(result){
+              return updateInventory(fileDetail,result)
+            },
+            //record does not exist, create it
+            function(err){
+              if(!err || !err.headers || 404 !== err.headers.status) throw err
+              return createInventory(fileDetail)
+            }
+          )
       }
-    })
-    .then(function(){
-      //here we should get the inventory record, update it or create it
-      return cradle.inventory.getAsync(inventoryKey)
-        .then(
-          function(result){
-            return updateInventory(fileDetail,result)
-          },
-          //record does not exist, create it
-          function(err){
-            if(!err || !err.headers || 404 !== err.headers.status) throw err
-            return createInventory(fileDetail)
-          }
-        )
     })
     .then(function(){
       res.json({
