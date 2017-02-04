@@ -50,7 +50,7 @@ program
   .option('-f, --folder <folder>','Folder to scan')
   .option('-S, --store <store>','Use file list from this store')
   .option('-P, --prism <prism>','Use file list from this prism')
-  .option('-V, --verify','Verify file(s) by having stores verify integrity')
+  .option('-u, --verify','Verify file(s) by having stores verify integrity')
   .option('-v, --verbose','Be verbose and show hash list before processing')
   .option('-X, --allfiles','Use all files')
   .parse(process.argv)
