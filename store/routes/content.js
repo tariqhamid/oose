@@ -241,7 +241,7 @@ exports.detail = function(req,res){
   var hash = req.body.hash
   var inventoryKey = cradle.schema.inventory(
     hash,config.store.prism,config.store.name)
-  cradle.inventory.removeAsync(inventoryKey)
+  cradle.inventory.getAsync(inventoryKey)
     .then(function(record){
       if(!record) throw new Error('File not found')
       detail.hash = record.hash
@@ -249,7 +249,7 @@ exports.detail = function(req,res){
       detail.mimeType = record.mimeType
       detail.relativePath = record.relativePath
       detail.prism = record.prism
-      detail.sotre = record.store
+      detail.store = record.store
       return hashFile.details(
         record.hash + '.' + record.mimeExtension.replace('.',''))
     })
