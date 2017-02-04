@@ -177,13 +177,34 @@ exports.details = function(file){
  * @return {P}
  */
 exports.remove = function(hash){
-  var link = exports.toPath(hash)
+  //this function is so lame
+  return P.try(function(){
+    var link = exports.toPath(hash)
+    var file = fs.readlinkSync(link)
+    if(file && fs.existsSync(file)){
+      try {
+        fs.unlinkSync(file)
+      } catch(e){
+        //nothing
+      }
+    }
+    if(link && fs.existsSync(link)){
+      try {
+        fs.unlinkSync(link)
+      } catch(e){
+        //nothing
+      }
+    }
+    return true
+  })
+  /*
   return exports.fsExists(link)
     .then(function(result){
       if(!result) return true
       return fs.readlinkAsync(link)
     })
     .then(function(file){
+      if(!file || 'string' !== typeof file) return fs.unlinkAsync(link)
       return P.all([
         fs.unlinkAsync(link),
         fs.unlinkAsync(file)
@@ -192,4 +213,9 @@ exports.remove = function(hash){
     .then(function(){
       return true
     })
+    .catch(function(err){
+      console.log('Failed to remove file or link',err.message,err.stack)
+      return true
+    })
+  */
 }

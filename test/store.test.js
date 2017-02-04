@@ -137,5 +137,49 @@ describe('store',function(){
           expect(sniff.hash).to.equal(content.hash)
         })
     })
+    it('should verify content',function(){
+      return client
+        .postAsync({
+          url: client.url('/content/verify'),
+          json: {file: content.sha1 + '.' + content.ext}
+        })
+        .spread(function(res,body){
+          expect(body.verified).to.equal(true)
+          expect(body.expectedHash).to.equal(content.sha1)
+          expect(body.actualHash).to.equal(content.sha1)
+          expect(body.success).to.equal('Verification complete')
+          expect(body.status).to.equal('ok')
+        })
+    })
+    it('should fail to verify missing content',function(){
+      return client
+        .postAsync({
+          url: client.url('/content/verify'),
+          json: {file: content.sha1Bogus + '.' + content.ext}
+        })
+        .spread(function(res,body){
+          expect(body.error).to.equal('File not found')
+          expect(res.statusCode).to.equal(404)
+        })
+    })
+    it('should verify and remove invalid content',function(){
+      var testFile = './test/assets/data/test/store1/content/' +
+        content.relativePath
+      //first we need to modify our file
+      fs.writeFileSync(testFile,'bah humbug')
+      return client
+        .postAsync({
+          url: client.url('/content/verify'),
+          json: {file: content.sha1 + '.' + content.ext}
+        })
+        .spread(function(res,body){
+          expect(body.verified).to.equal(false)
+          expect(body.expectedHash).to.equal(content.sha1)
+          expect(body.actualHash)
+            .to.equal('4820c2195b35ad725c41c500176fe7be8b903d78')
+          expect(body.success).to.equal('Verification complete')
+          expect(body.status).to.equal('fail')
+        })
+    })
   })
 })

@@ -1,6 +1,7 @@
 'use strict';
 var P = require('bluebird')
 var debug = require('debug')('oose:store:content')
+var devNullStream = require('dev-null')
 var fs = require('graceful-fs')
 var mime = require('mime')
 var mkdirp = require('mkdirp-then')
@@ -110,6 +111,16 @@ exports.put = function(req,res){
       res.json({hash: sniff.hash})
     })
     .catch(UserError,function(err){
+      console.log('Failed to upload content',err.message,err.stack)
+      fs.unlinkSync(dest)
+      cradle.inventory.getAsync(inventoryKey)
+        .then(function(result){
+          return cradle.inventory.removeAsync(result._id,result._rev)
+        })
+        .catch(function(err){
+          console.log('Failed to clean up broken inventory record',
+            err.message,err.stack)
+        })
       redis.incr(redis.schema.counterError('store','content:put'))
       res.status(500)
       res.json({error: err})
@@ -183,8 +194,14 @@ exports.remove = function(req,res){
   var inventoryKey = cradle.schema.inventory(
     req.body.hash,config.store.prism,config.store.name)
   P.all([
-      hashFile.remove(req.body.hash),
-      cradle.inventory.removeAsync(inventoryKey)
+    hashFile.remove(req.body.hash),
+    cradle.inventory.getAsync(inventoryKey)
+      .then(function(result){
+        return cradle.inventory.removeAsync(result._id,result._rev)
+      })
+      .catch(function(){
+        //nothing
+      })
   ])
     .then(function(){
       res.json({success: 'File removed'})
@@ -266,6 +283,71 @@ exports.detail = function(req,res){
         res.status(500)
         res.json({error: 'An uknown error occurred',message: err.message})
         console.log(err.message,err.stack)
+      }
+    })
+}
+
+
+/**
+ * Verify the integrity of a file, invalids are removed immediately
+ * @param {object} req
+ * @param {object} res
+ */
+exports.verify = function(req,res){
+  var file = req.body.file
+  var sniffStream = {}
+  var detail = {}
+  hashFile.details(file)
+    .then(function(result){
+      detail = result
+      if(!detail.exists) throw new Error('File not found')
+      var readStream = fs.createReadStream(detail.path)
+      sniffStream = hashStream.createStream(detail.type)
+      var writeStream = devNullStream()
+      return promisePipe(readStream,sniffStream,writeStream)
+    })
+    .then(function(){
+      //validate the file, if it doesnt match remove it
+      if(sniffStream.hash !== detail.hash){
+        hashFile.remove(detail.hash)
+          .then(function(){
+            return cradle.inventory.getAsync(cradle.schema.inventory(
+              detail.hash,
+              config.store.prism,
+              config.store.name
+            ))
+          })
+          .then(function(result){
+            return cradle.inventory.removeAsync(result._id,result._rev)
+          })
+          .catch(function(err){
+            console.log('Failed to delete inventory record for invalid file',
+              err.message,err.stack)
+          })
+      }
+    })
+    .then(function(){
+      res.json({
+        success: 'Verification complete',
+        status: sniffStream.hash === detail.hash ? 'ok' : 'fail',
+        expectedHash: detail.hash,
+        actualHash: sniffStream.hash,
+        verified: sniffStream.hash === detail.hash
+      })
+    })
+    .catch(function(err){
+      if('File not found' === err.message){
+        res.status(404)
+        res.json({
+          error: 'File not found'
+        })
+      } else {
+        console.log('File verification failed',err.message,err.stack)
+        res.status(500)
+        res.json({
+          error: err.message,
+          stack: err.stack
+        })
       }
     })
 }
