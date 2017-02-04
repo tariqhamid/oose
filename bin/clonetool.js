@@ -312,17 +312,17 @@ var verifyFile = function(file){
 
 var processFile = function(file){
   return P.try(function(){
-    if(file.add > 0){
+    if(!program.verify && file.add > 0){
       return addClones(file)
     }
   })
     .then(function(){
-      if(file.remove > 0){
+      if(!program.verify && file.remove > 0){
         return removeClones(file)
       }
     })
     .then(function(){
-      if(program.verify){
+      if(program.verify && (file.add > 0 || file.remove > 0)){
         return verifyFile(file)
       }
     })
