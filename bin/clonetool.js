@@ -20,6 +20,7 @@ var UserError = oose.UserError
 var couchdb = require('../helpers/couchdb')
 var hasher = require('../helpers/hasher')
 var prismBalance = require('../helpers/prismBalance')
+var redis = require('../helpers/redis')
 
 var config = require('../config')
 
@@ -42,7 +43,7 @@ program
   .option('-B, --block-size <n>','Number of files to analyze at once')
   .option('-d, --desired <n>','Desired clone count')
   .option('-D, --detail <s>','Hash of file to get details about')
-  .option('-f, --force','Force the operation even on protected hashes')
+  .option('-f, --force <s>','Force the operation even on this hash')
   .option('-i, --input <s>','List of Hashes line separated ' +
   'to analyze, use - for stdin')
   .option('-p, --pretend','Dont actually make and clones just analyze')
@@ -89,6 +90,9 @@ var analyzeFiles = function(progress,fileList){
       return fileBlock
     })
       .map(function(file){
+        if(program.force){
+          redis.del(redis.schema.inventory(file))
+        }
         return prismBalance.contentExists(file)
           .then(function(record){
             //do clone math now
@@ -609,6 +613,8 @@ P.try(function(){
     //get file list together
     if(program.hash){
       fileStream.write(program.hash)
+    } else if(program.force){
+      fileStream.write(program.force)
     } else if(program.store){
       return keyScan('store',program.store,fileStream)
     } else if(program.prism){
