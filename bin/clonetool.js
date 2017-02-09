@@ -281,7 +281,7 @@ var verifyFile = function(file){
   return P.try(function(){
     return file.map
   })
-    .each(function(storeKey){
+    .map(function(storeKey){
       var keyParts = storeKey.split(':')
       var storeInfo = selectPeer('store',keyParts[1])
       var storeClient = setupStore(storeInfo)
