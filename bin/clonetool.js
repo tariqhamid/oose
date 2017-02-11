@@ -223,6 +223,10 @@ var addClones = function(file){
           console.error(file.hash,
             'Failed to send clone to ' + storeToWinner.store,err.message)
         })
+        .finally(function(){
+          var existsKey = couchdb.schema.inventory(file.hash)
+          redis.del(existsKey)
+        })
     }
   }
   for(var i = 0; i < file.add; i++){
@@ -277,6 +281,10 @@ var removeClones = function(file){
         .catch(function(err){
           console.error(file.hash,'Failed to remove clone',err.message)
         })
+        .finally(function(){
+          var existsKey = couchdb.schema.inventory(file.hash)
+          redis.del(existsKey)
+        })
     }
   }
   for(var i = 0; i < file.remove; i++){
@@ -320,6 +328,10 @@ var verifyFile = function(file){
         })
         .catch(function(err){
           console.error(file.hash,'Failed to verify inventory',err.message)
+        })
+        .finally(function(){
+          var existsKey = couchdb.schema.inventory(file.hash)
+          redis.del(existsKey)
         })
     })
 }
@@ -372,6 +384,8 @@ var cloneFile = function(file){
             'Failed to send clone to ' + storeToInfo.store,err.message)
         })
         .finally(function(){
+          var existsKey = couchdb.schema.inventory(file.hash)
+          redis.del(existsKey)
           printFooter(file)
         })
     })
@@ -407,6 +421,8 @@ var removeFile = function(file){
           'Failed to remove clone from ' + storeInfo.store,err.message)
       })
       .finally(function(){
+        var existsKey = couchdb.schema.inventory(file.hash)
+        redis.del(existsKey)
         printFooter(file)
       })
   })
