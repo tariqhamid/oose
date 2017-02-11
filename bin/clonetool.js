@@ -724,11 +724,21 @@ P.try(function(){
   if(!program.below && !program.above){
     program.below = 2
     program.above = false
+    program.at = false
   }
   //qualify all hashes passed to verify directly
   if(program.verify && program.hash){
     program.below = false
+    program.at = false
     program.above = 0
+  }
+  if(program.below){
+    program.at = false
+    program.above = false
+  }
+  if(program.at){
+    program.above = false
+    program.below = false
   }
   //print rule changes
   var changeVerb = 'below'
