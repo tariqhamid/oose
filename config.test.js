@@ -7,11 +7,11 @@
  */
 module.exports = {
   couchdb: {
-    host: 'localhost',
+    host: '127.0.0.1',
     port: 5984,
     options: {
       auth: {
-        username: 'root',
+        username: 'oose',
         password: 'blah1234'
       }
     }
