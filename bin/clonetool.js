@@ -220,11 +220,12 @@ var addClones = function(file){
           } else {
             var endStamp = +new Date()
             var fileSize = 1024
-            if(body && body.fileDetail && body.fileDetail.size){
-              fileSize = body.fileDetail.size
+            if(body && body.fileDetail &&
+              body.fileDetail.stat && body.fileDetail.stat.size){
+              fileSize = body.fileDetail.stat.size
             }
             var duration = (endStamp - startStamp) / 1000
-            var rate = ((fileSize) / duration) / 1024
+            var rate = (((fileSize) / duration) / 1024).toFixed(2)
             console.log(file.hash,
               'Sent ' + prettyBytes(fileSize) + ' to ' + storeToWinner.store +
               ' taking ' + duration +
@@ -712,11 +713,13 @@ P.try(function(){
   //do some validation
   if(!program.hash && !program.input && !program.folder &&
     !program.store && !program.prism && !program.allfiles){
-    throw new UserError('No file list or file provided')
+    throw new UserError('No hash list or hash provided')
   }
   if(program.drop && !program.force){
     throw new UserError('Clone removal operation called without -f, bye.')
   }
+  //qualify all hashes passed to verify directly
+  if(program.verify && program.hash) program.above = 0
   //set the desired to the default of 2 if not set
   if(!program.desired) program.desired = 2
   //if no other target information provided look for files below the default
@@ -847,5 +850,6 @@ P.try(function(){
   })
   .catch(UserError,function(err){
     console.error('Oh no! An error has occurred :(')
-    console.error(err.stack)
+    console.error(err.message)
+    process.exit()
   })
