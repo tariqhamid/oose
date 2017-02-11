@@ -23,6 +23,20 @@ module.exports = {
     enabled: true
   },
   prism: {
-    enabled: true
+    enabled: true,
+    purchaseZoneCouch: {
+      'a': [
+        {
+          host: '127.0.0.1',
+          port: '5984',
+          options: {
+            auth: {
+              username: 'oose',
+              password: 'blah1234'
+            }
+          }
+        }
+      ]
+    }
   }
 }
