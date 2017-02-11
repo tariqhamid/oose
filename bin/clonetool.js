@@ -732,8 +732,8 @@ P.try(function(){
   }
   //print rule changes
   var changeVerb = 'below'
-  if(program.above) changeVerb = 'above'
-  if(program.at) changeVerb = 'at'
+  if(false !== program.above) changeVerb = 'above'
+  if(false !== program.at) changeVerb = 'at'
   console.log('You have asked for ' + program.desired +
     ' clone(s) of each file ' + changeVerb +
     ' ' + program[changeVerb] + ' clone(s)')
