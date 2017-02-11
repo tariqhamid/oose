@@ -219,8 +219,10 @@ var addClones = function(file){
             throw err
           } else {
             var endStamp = +new Date()
-            var fileSize = body.fileDetail.size ||
-              body.fileDetail.stat.size || 1024
+            var fileSize = 1024
+            if(body && body.fileDetail && body.fileDetail.size){
+              fileSize = body.fileDetail.size
+            }
             var duration = (endStamp - startStamp) / 1000
             var rate = ((fileSize) / duration) / 1024
             console.log(file.hash,
