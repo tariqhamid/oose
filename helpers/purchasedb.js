@@ -287,6 +287,7 @@ var couchWrap = function(token){
   //configured couchdb object that can be used to work with the purchases as
   //if they were local
   //so first things first lets see if we have a connection to this zoned server
+  console.log(token)
   if(!token.match(/^[a-z]{1}[0-9]{8}/))
     return null
   var now = new Date()
