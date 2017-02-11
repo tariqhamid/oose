@@ -73,6 +73,8 @@ From there follow the debug filtering rules defined
 * Fixing travis builds
 * Clonetool now offers manual clone and removal of hash lists to stores
 * Clonetool has been fixed and upgraded to support its original specs plus more
+* Store send now verifies content before sending to ensure cloning valid content
+* Clonetool now reports transfer stats on clone sends
 
 ### 2.3.0
 

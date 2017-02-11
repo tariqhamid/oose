@@ -151,6 +151,7 @@ var addClones = function(file){
   var storeWinnerList = []
   var addClone = function(file){
     // so to create a clone we need to figure out a source store
+    var startStamp = +new Date()
     var prismFromWinner
     var storeFromWinner
     var prismToWinner
@@ -217,8 +218,15 @@ var addClones = function(file){
             err.stack = body.stack
             throw err
           } else {
+            var endStamp = +new Date()
+            var fileSize = body.fileDetail.size ||
+              body.fileDetail.stat.size || 1024
+            var duration = (endStamp - startStamp) / 1000
+            var rate = ((fileSize) / duration) / 1024
             console.log(file.hash,
-              'Send to ' + storeToWinner.store + ' complete')
+              'Sent ' + prettyBytes(fileSize) + ' to ' + storeToWinner.store +
+              ' taking ' + duration +
+              ' seconds averaging ' + rate + '/KBs, success!')
           }
         })
         .catch(function(err){

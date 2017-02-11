@@ -141,7 +141,7 @@ describe('store',function(){
       return client
         .postAsync({
           url: client.url('/content/verify'),
-          json: {file: content.sha1 + '.' + content.ext}
+          json: {file: content.sha1 + '.' + content.ext, force: true}
         })
         .spread(function(res,body){
           expect(body.verified).to.equal(true)

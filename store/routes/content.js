@@ -208,6 +208,11 @@ exports.put = function(req,res){
         fs.unlinkSync(dest)
         throw new Error('Checksum mismatch')
       }
+      //get updated file details
+      return hashFile.details(sniff.hash)
+    })
+    .then(function(result){
+      fileDetail = result
       //get existing existence record and add to it or create one
       debug(inventoryKey,'getting inventory record')
       return cradle.inventory.getAsync(inventoryKey)
@@ -486,7 +491,8 @@ exports.send = function(req,res){
   var storeKey = cradle.schema.store(nameParts[0],nameParts[1])
   var storeClient = null
   var store = {}
-  var details = {}
+  var fileDetail = {}
+  var verifyDetail = {}
   cradle.peer.getAsync(storeKey)
     .then(
       function(result){
@@ -502,8 +508,14 @@ exports.send = function(req,res){
       return hashFile.details(hash)
     })
     .then(function(result){
-      details = result
-      var rs = fs.createReadStream(hashFile.toPath(details.hash,details.ext))
+      fileDetail = result
+      return verifyFile(fileDetail)
+    })
+    .then(function(result){
+      verifyDetail = result
+      if('ok' !== result.status) throw new Error('Verify failed')
+      var rs = fs.createReadStream(
+        hashFile.toPath(fileDetail.hash,fileDetail.ext))
       return promisePipe(
         rs,
         storeClient.put({url: storeClient.url('/content/put/' + file)})
@@ -514,7 +526,8 @@ exports.send = function(req,res){
         success: 'Clone sent',
         file: file,
         store: store,
-        details: details
+        fileDetail: fileDetail,
+        verifyDetail: verifyDetail
       })
     })
     .catch(function(err){
@@ -525,7 +538,7 @@ exports.send = function(req,res){
         stack: err.stack,
         file: file,
         store: store,
-        details: details
+        details: fileDetail
       })
     })
 }

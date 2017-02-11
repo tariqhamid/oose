@@ -503,14 +503,14 @@ exports.contentSend = function(prism){
       .spread(client.validateResponse())
       .spread(function(res,body){
         expect(body.success).to.equal('Clone sent')
-        expect(body.details.hash).to.equal(content.hash)
-        expect(body.details.ext).to.equal(content.ext)
+        expect(body.fileDetail.hash).to.equal(content.hash)
+        expect(body.fileDetail.ext).to.equal(content.ext)
         var storeShortname = storeTo.split(':')[1]
         storeClient = api.store(exports.clconf[storeShortname].store)
         return storeClient.postAsync({
           url: storeClient.url('/content/remove'),
           json: {
-            hash: body.details.hash
+            hash: body.fileDetail.hash
           }
         })
       })
