@@ -100,9 +100,11 @@ var analyzeFiles = function(program,progress,fileList){
             record.add = 0
             record.remove = 0
             if(
+              (0 !== record.count) && (
               (null !== above && record.count > above) ||
               (null !== below && record.count < below) ||
               (null !== at && record.count === at)
+              )
             )
             {
               if(desired > record.count){
