@@ -718,14 +718,17 @@ P.try(function(){
   if(program.drop && !program.force){
     throw new UserError('Clone removal operation called without -f, bye.')
   }
-  //qualify all hashes passed to verify directly
-  if(program.verify && program.hash) program.above = 0
   //set the desired to the default of 2 if not set
   if(!program.desired) program.desired = 2
   //if no other target information provided look for files below the default
   if(!program.below && !program.above){
     program.below = 2
     program.above = false
+  }
+  //qualify all hashes passed to verify directly
+  if(program.verify && program.hash){
+    program.below = false
+    program.above = 0
   }
   //print rule changes
   var changeVerb = 'below'
