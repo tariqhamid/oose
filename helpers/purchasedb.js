@@ -297,6 +297,7 @@ var couchWrap = function(token){
   var zone = getZone(token)
   var databaseName = getDatabaseName(token)
   var couchConfig = pickCouchConfig(zone)
+  console.log(zone,databaseName,couchConfig)
   if(!couchConfig) return null
   couchPool[zone] = new (cradle.Connection)(
     couchConfig.host,
