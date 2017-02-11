@@ -2,7 +2,7 @@
   "author": "Bryan Tong <contact@nullivex.com>",
   "name": "oose",
   "description": "Object Oriented Storage Engine",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "homepage": "http://www.oose.io/",
   "repository": {
     "type": "git",
@@ -39,6 +39,7 @@
     "event-stream": "^3.3.4",
     "express": "^4.14.0",
     "express-session": "^1.15.0",
+    "globby": "^6.1.0",
     "graceful-fs": "^4.1.11",
     "infant": "^0.12.1",
     "json-stream": "^1.0.0",

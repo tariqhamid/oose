@@ -200,6 +200,9 @@ describe('store',function(){
           expect(body.status).to.equal('fail')
           expect(body.verifiedAt).to.be.a('number')
         })
+        .finally(function(){
+          fs.writeFileSync(testFile,'The fox is brown')
+        })
     })
   })
 })

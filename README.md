@@ -64,6 +64,13 @@ From there follow the debug filtering rules defined
 
 ## Changelog
 
+### 2.4.0
+
+* Removal of the idea of keeping symlinks for reverse lookups, uses globby
+* Store removal function upgraded
+* Adds content verification to verify integrity of content on disk
+* Upgrades hashFile.find and hashFile.details to be more thorough
+
 ### 2.3.0
 
 * Final revision to purchase system

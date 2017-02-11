@@ -52,9 +52,6 @@ describe('hashFile',function(){
         .then(function(){
           return fs.writeFileAsync(destination,content.data)
         })
-        .then(function(){
-          return hashFile.linkPath(content.hash,content.ext)
-        })
     })
     afterEach(function(){
       return hashFile.remove(content.hash)
@@ -62,11 +59,13 @@ describe('hashFile',function(){
     it('should find a file by hash',function(){
       return hashFile.find(content.hash)
         .then(function(file){
-          expect(file).to.equal(destination)
+          expect(file.hash).to.equal(content.hash)
+          expect(file.ext.replace('.','')).to.equal(content.ext)
+          expect(file.path).to.equal(destination)
         })
     })
     it('should have details for a file',function(){
-      return hashFile.details(content.hash + '.' + content.ext)
+      return hashFile.details(content.hash)
         .then(function(details){
           expect(details.hash).to.equal(content.hash)
           expect(details.ext).to.equal(content.ext)
@@ -76,11 +75,11 @@ describe('hashFile',function(){
         })
     })
     it('should have details for a bogus file',function(){
-      return hashFile.details(content.sha1Bogus + '.' + content.ext)
+      return hashFile.details(content.sha1Bogus)
         .then(function(details){
           expect(details.hash).to.equal(content.sha1Bogus)
-          expect(details.ext).to.equal(content.ext)
-          expect(details.path).to.be.a('string')
+          expect(details.ext).to.equal('')
+          expect(details.path).to.equal('')
           expect(details.stat).to.be.an('object')
           expect(Object.keys(details.stat).length).to.equal(0)
           expect(details.exists).to.equal(false)

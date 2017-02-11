@@ -1,10 +1,8 @@
 'use strict';
 var P = require('bluebird')
 var fs = require('graceful-fs')
-var oose = require('oose-sdk')
+var globby = require('globby')
 var path = require('path')
-
-var UserError = oose.UserError
 
 var config = require('../config')
 var hasher = require('./hasher')
@@ -46,20 +44,6 @@ exports.toPath = function(hash,ext){
 
 
 /**
- * Make a symlink to the real path with the extension for quicker lookup
- * @param {string} hash
- * @param {string} ext
- * @return {P}
- */
-exports.linkPath = function(hash,ext){
-  var target = exports.toPath(hash,ext)
-  var link = exports.toPath(hash)
-  return fs.symlinkAsync(target,link,'file')
-    .catch(function(){})
-}
-
-
-/**
  * Convert a path back to a hash
  * @param {string} file
  * @return {string}
@@ -71,6 +55,22 @@ exports.fromPath = function(file){
   file = file.replace(/\.\w+$/,'')
   //filter out to hash
   return file.replace(/[^a-f0-9]+/gi,'')
+}
+
+
+/**
+ * Convert full path to fileName = <hash>.<ext>
+ * @param {string} fullPath
+ * @return {string}
+ */
+exports.fromPathToFile = function(fullPath){
+  var file = '' + fullPath
+  var ext = path.extname(file)
+  //remove root
+  file = file.replace(basePath,'')
+  //filter out to hash
+  file = file.replace(/[^a-f0-9]+/gi,'')
+  return file + ext
 }
 
 
@@ -101,29 +101,13 @@ exports.fsExists = function(file){
 
 
 /**
- * Find a file based on hash
- * @param {string} hash
- * @return {P}
- */
-exports.find = function(hash){
-  var file = exports.toPath(hash)
-  return fs.readlinkAsync(file)
-    .then(function(result){
-      return result
-    },function(){
-      return false
-    })
-}
-
-
-/**
  * Extract hash and extension from filename
  * @param {string} file
  * @return {object}
  */
 exports.hashFromFilename = function(file){
   var match = file.match(/^([a-f0-9]+)\.(\w+)$/i)
-  if(3 !== match.length) throw new UserError('Failed to parse file name')
+  if(3 !== match.length) throw new Error('Failed to parse file name')
   var hash = match[1]
   var type = hasher.identify(hash)
   var ext = match[2]
@@ -136,38 +120,95 @@ exports.hashFromFilename = function(file){
 
 
 /**
- * Get details from a filename with extension
- * @param {file} file
+ * Find a file based on hash
+ * @param {string} hash
  * @return {P}
  */
-exports.details = function(file){
-  var details
-  return P.try(function(){
-    details = exports.hashFromFilename(file)
-    if(!exports.validate(details.hash))
-      throw new UserError('Invalid hash passed')
-    details.path = exports.toPath(details.hash,details.ext)
-    return fs.statAsync(details.path)
-      .then(function(stat){
-        return stat
-      })
-      .catch(function(){
-        return false
-      })
-  })
+exports.find = function(hash){
+  var file = exports.toPath(hash)
+  var folder = path.dirname(file)
+  var basename = path.basename(file)
+  return globby([basename + '.*'],{cwd: folder})
+    .then(function(paths){
+      if(paths && paths instanceof Array && paths.length){
+        var filePath = path.join(folder,paths[0])
+        var fileHash = exports.fromPath(filePath)
+        return {
+          exists: true,
+          path: filePath,
+          folder: path.dirname(filePath),
+          basename: path.basename(filePath),
+          fileName: exports.fromPathToFile(filePath),
+          hash: fileHash,
+          hashType: hasher.identify(fileHash),
+          ext: path.extname(filePath).replace('.','')
+        }
+      } else {
+        return {
+          exists: false,
+          path: file,
+          folder: folder,
+          basename: basename,
+          fileName: '',
+          hash: hash,
+          hashType: hasher.identify(hash),
+          ext: ''
+        }
+      }
+    })
+}
+
+
+/**
+ * Get details from a filename with extension
+ * @param {string} hash
+ * @return {P}
+ */
+exports.details = function(hash){
+  var findDetail = {}
+  var details = {}
+  return exports.find(hash)
+    .then(function(result){
+      if(false === result.exists){
+        throw new Error('File not found')
+      }
+      findDetail = result
+      return fs.statAsync(findDetail.path)
+        .then(function(stat){
+          return stat
+        })
+        .catch(function(){
+          return false
+        })
+    })
     .then(
       function(result){
+        details = findDetail
         if(!result){
           details.stat = {}
           details.exists = false
-        }
-        else{
+        } else {
           details.stat = result
           details.exists = true
         }
         return details
       }
     )
+    .catch(function(err){
+      if('File not found' === err.message){
+        return {
+          hash: hash,
+          ext: '',
+          path: '',
+          stat: {},
+          exists: false,
+          err: err
+        }
+      } else {
+        console.log(err,err.stack)
+        return false
+      }
+    })
 }
 
 
@@ -179,43 +220,19 @@ exports.details = function(file){
 exports.remove = function(hash){
   //this function is so lame
   return P.try(function(){
-    var link = exports.toPath(hash)
-    var file = fs.readlinkSync(link)
-    if(file && fs.existsSync(file)){
-      try {
-        fs.unlinkSync(file)
-      } catch(e){
-        //nothing
-      }
-    }
-    if(link && fs.existsSync(link)){
-      try {
-        fs.unlinkSync(link)
-      } catch(e){
-        //nothing
-      }
-    }
-    return true
+    return exports.find(hash)
   })
-  /*
-  return exports.fsExists(link)
     .then(function(result){
-      if(!result) return true
-      return fs.readlinkAsync(link)
+      if(false === result.exists){
+        //not found no need to remove
+        return true
+      } else {
+        try {
+          fs.unlinkSync(result.path)
+        } catch(e){
+          //nothing
+        }
+        return true
+      }
     })
-    .then(function(file){
-      if(!file || 'string' !== typeof file) return fs.unlinkAsync(link)
-      return P.all([
-        fs.unlinkAsync(link),
-        fs.unlinkAsync(file)
-      ])
-    })
-    .then(function(){
-      return true
-    })
-    .catch(function(err){
-      console.log('Failed to remove file or link',err.message,err.stack)
-      return true
-    })
-  */
 }

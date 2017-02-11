@@ -5,7 +5,6 @@ var devNullStream = require('dev-null')
 var fs = require('graceful-fs')
 var mime = require('mime')
 var mkdirp = require('mkdirp-then')
-var oose = require('oose-sdk')
 var path = require('path')
 var promisePipe = require('promisepipe')
 var hashStream = require('sha1-stream')
@@ -16,9 +15,6 @@ var redis = require('../../helpers/redis')
 var hashFile = require('../../helpers/hashFile')
 
 var config = require('../../config')
-
-var NotFoundError = oose.NotFoundError
-var UserError = oose.UserError
 
 //make some promises
 P.promisifyAll(fs)
@@ -66,6 +62,105 @@ var updateInventory = function(fileDetail,doc,verified){
     })
 }
 
+var verifyFile = function(fileDetail,force){
+  var sniffStream = {}
+  var inventoryKey = ''
+  var inventory = {}
+  var verifySkipped = false
+  var verifiedAt = +new Date()
+  inventoryKey = cradle.schema.inventory(
+    fileDetail.hash,
+    config.store.prism,
+    config.store.name
+  )
+  return cradle.inventory.getAsync(inventoryKey)
+    .then(
+      function(result){
+        inventory = result
+      },
+      function(){}
+    )
+    .then(function(){
+      //skip reading the file if possible
+      if(!fileDetail.exists) return
+      if(inventory && inventory.verifiedAt && false === force && (
+          inventory.verifiedAt > (+new Date() - config.store.verifyExpiration)
+        )){
+        verifySkipped = true
+        return
+      }
+      //at this point read the file and verify
+      var readStream = fs.createReadStream(fileDetail.path)
+      sniffStream = hashStream.createStream(fileDetail.type)
+      var writeStream = devNullStream()
+      return promisePipe(readStream,sniffStream,writeStream)
+    })
+    .then(function(){
+      //validate the file, if it doesnt match remove it
+      if(!fileDetail.exists){
+        return cradle.inventory.getAsync(inventoryKey)
+          .then(function(result){
+            return cradle.inventory.removeAsync(result._id,result._rev)
+          })
+          .catch(function(err){
+            if(!err || !err.headers || 404 !== err.headers.status){
+              console.log('Failed to delete inventory record for missing file',
+                err.message,err.stack)
+            } else {
+              throw new Error('File not found')
+            }
+          })
+      } else if(!verifySkipped && sniffStream.hash !== fileDetail.hash){
+        return hashFile.remove(fileDetail.hash)
+          .then(function(){
+            return cradle.inventory.removeAsync(inventory._id,inventory._rev)
+          })
+          .catch(function(){})
+      } else if(!verifySkipped) {
+        //here we should get the inventory record, update it or create it
+        return cradle.inventory.getAsync(inventoryKey)
+          .then(
+            function(result){
+              return updateInventory(fileDetail,result,verifiedAt)
+            },
+            //record does not exist, create it
+            function(err){
+              if(!err || !err.headers || 404 !== err.headers.status) throw err
+              return createInventory(fileDetail,verifiedAt)
+            }
+          )
+      }
+    })
+    .then(function(){
+      return {
+        success: 'Verification complete',
+        code: 200,
+        status: verifySkipped ? 'ok' :
+          (sniffStream.hash === fileDetail.hash ? 'ok' : 'fail'),
+        expectedHash: fileDetail.hash,
+        actualHash: verifySkipped ? fileDetail.hash : sniffStream.hash,
+        verifySkipped: verifySkipped,
+        verified: verifySkipped || sniffStream.hash === fileDetail.hash,
+        verifiedAt: verifiedAt
+      }
+    })
+    .catch(function(err){
+      return {
+        error: err.message || 'Verification failed',
+        code: 'File not found' === err.message ? 404 : 500,
+        message: err.message,
+        err: err,
+        status: verifySkipped ? 'ok' :
+          (sniffStream.hash === fileDetail.hash ? 'ok' : 'fail'),
+        expectedHash: fileDetail.hash,
+        actualHash: verifySkipped ? fileDetail.hash : sniffStream.hash,
+        verifySkipped: verifySkipped,
+        verified: verifySkipped || sniffStream.hash === fileDetail.hash,
+        verifiedAt: verifiedAt
+      }
+    })
+}
+
 
 /**
  * Put file
@@ -76,8 +171,11 @@ exports.put = function(req,res){
   redis.incr(redis.schema.counter('store','content:put'))
   redis.incr(redis.schema.counter('store','content:filesUploaded'))
   var file = req.params.file
+  var ext = path.extname(req.params.file)
+  var expectedHash = path.basename(req.params.file,ext)
+  ext = ext.replace('.','')
   var hashType = req.params.hashType || config.defaultHashType || 'sha1'
-  var fileDetail
+  var fileDetail = {}
   debug('got new put',file)
   var sniff = hashStream.createStream(hashType)
   var inventoryKey
@@ -86,10 +184,10 @@ exports.put = function(req,res){
       redis.schema.counter('store','content:bytesUploaded'),chunk.length)
   })
   var dest
-  hashFile.details(file)
+  hashFile.details(expectedHash)
     .then(function(result){
-      if(!result) throw new UserError('Could not parse filename')
       fileDetail = result
+      fileDetail.ext = ext
       inventoryKey = cradle.schema.inventory(
         fileDetail.hash,config.store.prism,config.store.name)
       dest = hashFile.toPath(fileDetail.hash,fileDetail.ext)
@@ -102,19 +200,14 @@ exports.put = function(req,res){
       return promisePipe(req,sniff,writeStream)
         .then(
           function(val){return val},
-          function(err){throw new UserError(err.message)}
+          function(err){throw new Error(err.message)}
         )
     })
     .then(function(){
       if(sniff.hash !== fileDetail.hash){
         fs.unlinkSync(dest)
-        throw new UserError('Checksum mismatch')
+        throw new Error('Checksum mismatch')
       }
-      //setup symlink to new file
-      debug(inventoryKey,'linking')
-      return hashFile.linkPath(fileDetail.hash,fileDetail.ext)
-    })
-    .then(function(){
       //get existing existence record and add to it or create one
       debug(inventoryKey,'getting inventory record')
       return cradle.inventory.getAsync(inventoryKey)
@@ -135,7 +228,7 @@ exports.put = function(req,res){
       res.status(201)
       res.json({hash: sniff.hash})
     })
-    .catch(UserError,function(err){
+    .catch(function(err){
       console.log('Failed to upload content',err.message,err.stack)
       fs.unlinkSync(dest)
       cradle.inventory.getAsync(inventoryKey)
@@ -162,17 +255,20 @@ exports.download = function(req,res){
   redis.incr(redis.schema.counter('store','content:download'))
   hashFile.find(req.body.hash)
     .then(function(file){
-      if(!file) throw new NotFoundError('File not found')
-      res.sendFile(file)
+      if(!file) throw new Error('File not found')
+      res.sendFile(file.path)
     })
-    .catch(NotFoundError,function(err){
-      redis.incr(redis.schema.counterError('store','content:download:notFound'))
-      res.status(404)
-      res.json({error: err.message})
-    })
-    .catch(UserError,function(err){
-      redis.incr(redis.schema.counterError('store','content:download'))
-      res.json({error: err.message})
+    .catch(function(err){
+      if('File not found' === err.message){
+        redis.incr(
+          redis.schema.counterError('store','content:download:notFound'))
+        res.status(404)
+        res.json({error: err.message})
+      } else {
+        res.status(500)
+        redis.incr(redis.schema.counterError('store','content:download'))
+        res.json({error: err.message})
+      }
     })
 }
 
@@ -196,8 +292,8 @@ exports.exists = function(req,res){
       var exists = {}
       for(var i = 0; i < hash.length; i++){
         exists[hash[i]] = {
-          exists: !!result[i],
-          ext: !!result[i] ? path.extname(result[i]).replace('.','') : ''
+          exists: result[i].exists,
+          ext: result[i].ext
         }
       }
       if(singular){
@@ -218,27 +314,56 @@ exports.remove = function(req,res){
   redis.incr(redis.schema.counter('store','content:remove'))
   var inventoryKey = cradle.schema.inventory(
     req.body.hash,config.store.prism,config.store.name)
-  P.all([
-    hashFile.remove(req.body.hash),
-    cradle.inventory.getAsync(inventoryKey)
-      .then(function(result){
-        return cradle.inventory.removeAsync(result._id,result._rev)
-      })
-      .catch(function(){
-        //nothing
-      })
-  ])
+  var fileDetail = {}
+  var verifyDetail = {}
+  hashFile.details(req.body.hash)
+    .then(function(result){
+      fileDetail = result
+      if(false === fileDetail.exists) throw new Error('File not found')
+      return verifyFile(fileDetail,false)
+    })
+    .then(function(result){
+      verifyDetail = result
+      //make sure the file is valid before removing
+      if(verifyDetail.error || 'ok' !== verifyDetail.status){
+        var err = new Error('Verify failed')
+        err.verifyDetail = verifyDetail
+        throw err
+      }
+      //now remove the file
+      return P.all([
+        hashFile.remove(fileDetail.hash),
+        cradle.inventory.getAsync(inventoryKey)
+          .then(function(result){
+            return cradle.inventory.removeAsync(result._id,result._rev)
+          })
+          .catch(function(){
+            //nothing
+          })
+      ])
+    })
     .then(function(){
-      res.json({success: 'File removed'})
+      res.json({
+        success: 'File removed',
+        fileDetail: fileDetail,
+        verifyDetail: verifyDetail
+      })
     })
-    .catch(NotFoundError,function(err){
-      redis.incr(redis.schema.counterError('store','content:remove:notFound'))
-      res.status(404)
-      res.json({error: err.message})
-    })
-    .catch(UserError,function(err){
-      redis.incr(redis.schema.counterError('store','content:remove'))
-      res.json({error: err.message})
+    .catch(function(err){
+      if('File not found' === err.message){
+        redis.incr(redis.schema.counterError('store','content:remove:notFound'))
+        res.status(404)
+        res.json({error: err.message})
+      } else if('Verify failed' === err.message){
+        res.json({
+          error: 'File verify failed',
+          fileDetail: fileDetail,
+          verifyDetail: verifyDetail
+        })
+      } else {
+        redis.incr(redis.schema.counterError('store','content:remove'))
+        res.json({error: err.message, err: err})
+      }
     })
 }
 
@@ -292,8 +417,7 @@ exports.detail = function(req,res){
       detail.relativePath = record.relativePath
       detail.prism = record.prism
       detail.store = record.store
-      return hashFile.details(
-        record.hash + '.' + record.mimeExtension.replace('.',''))
+      return hashFile.details(record.hash)
     })
     .then(function(result){
       detail.hashDetail = result
@@ -320,87 +444,17 @@ exports.detail = function(req,res){
  */
 exports.verify = function(req,res){
   var file = req.body.file
+  var hash = hashFile.fromPath(file)
   var force = req.body.force || false
-  var sniffStream = {}
   var fileDetail = {}
-  var inventoryKey = ''
-  var inventory = {}
-  var verifySkipped = false
-  var verifiedAt = +new Date()
-  hashFile.details(file)
+  hashFile.details(hash)
     .then(function(result){
       fileDetail = result
-      inventoryKey = cradle.schema.inventory(
-        fileDetail.hash,
-        config.store.prism,
-        config.store.name
-      )
-      return cradle.inventory.getAsync(inventoryKey)
-        .catch(function(){})
+      return verifyFile(fileDetail,force)
     })
-    .then(function(result){
-      inventory = result
-      //skip reading the file if possible
-      if(!fileDetail.exists) return
-      if(inventory && inventory.verifiedAt && false === force && (
-        inventory.verifiedAt > (+new Date() - config.store.verifyExpiration)
-      )){
-        verifySkipped = true
-        return
-      }
-      //at this point read the file and verify
-      var readStream = fs.createReadStream(fileDetail.path)
-      sniffStream = hashStream.createStream(fileDetail.type)
-      var writeStream = devNullStream()
-      return promisePipe(readStream,sniffStream,writeStream)
-    })
-    .then(function(){
-      //validate the file, if it doesnt match remove it
-      if(!fileDetail.exists){
-        return cradle.inventory.getAsync(inventoryKey)
-          .then(function(result){
-            return cradle.inventory.removeAsync(result._id,result._rev)
-          })
-          .catch(function(err){
-            if(!err || !err.headers || 404 !== err.headers.status){
-              console.log('Failed to delete inventory record for missing file',
-                err.message,err.stack)
-            } else {
-              throw new Error('File not found')
-            }
-          })
-      } else if(!verifySkipped && sniffStream.hash !== fileDetail.hash){
-        return hashFile.remove(fileDetail.hash)
-          .then(function(){
-            return cradle.inventory.removeAsync(inventory._id,inventory._rev)
-          })
-          .catch(function(){})
-      } else if(!verifySkipped) {
-        //here we should get the inventory record, update it or create it
-        return cradle.inventory.getAsync(inventoryKey)
-          .then(
-            function(result){
-              return updateInventory(fileDetail,result,verifiedAt)
-            },
-            //record does not exist, create it
-            function(err){
-              if(!err || !err.headers || 404 !== err.headers.status) throw err
-              return createInventory(fileDetail,verifiedAt)
-            }
-          )
-      }
-    })
-    .then(function(){
-      res.json({
-        success: 'Verification complete',
-        status: verifySkipped ? 'ok' :
-          (sniffStream.hash === fileDetail.hash ? 'ok' : 'fail'),
-        expectedHash: fileDetail.hash,
-        actualHash: verifySkipped ? fileDetail.hash : sniffStream.hash,
-        verifySkipped: verifySkipped,
-        verified: verifySkipped || sniffStream.hash === fileDetail.hash,
-        verifiedAt: verifiedAt
-      })
+    .then(function(data){
+      res.status(data.code || 200)
+      res.json(data)
     })
     .catch(function(err){
       if('File not found' === err.message){
@@ -427,6 +481,7 @@ exports.verify = function(req,res){
  */
 exports.send = function(req,res){
   var file = req.body.file
+  var hash = hashFile.fromPath(file)
   var nameParts = req.body.store.split(':')
   var storeKey = cradle.schema.store(nameParts[0],nameParts[1])
   var storeClient = null
@@ -444,7 +499,7 @@ exports.send = function(req,res){
       }
     )
     .then(function(){
-      return hashFile.details(file)
+      return hashFile.details(hash)
     })
     .then(function(result){
       details = result

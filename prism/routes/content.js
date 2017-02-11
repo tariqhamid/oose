@@ -66,13 +66,12 @@ var sendToPrism = function(tmpfile,hash,extension){
       var readStream = fs.createReadStream(tmpfile)
       var promises = []
       var client
+      var url
       for(var i = 0; i < winners.length; i++){
         client = api.prism(winners[i])
+        url = client.url('/content/put/' + hash + '.' + extension)
         promises.push(
-          promisePipe(
-            readStream,
-            client.put(client.url('/content/put/' + hash + '.' + extension))
-          )
+          promisePipe(readStream,client.put(url))
             .then(thenReturn,handleError)
         )
       }

@@ -186,7 +186,7 @@ var addClones = function(file){
     })
     //make sure there is a possibility of a winner
     if(!storeToList.length){
-      console.log(file.hash,
+      console.error(file.hash,
         'Sorry! No more available stores to send this to :(')
     } else {
       //figure out a dest winner
@@ -220,7 +220,7 @@ var addClones = function(file){
           }
         })
         .catch(function(err){
-          console.log(file.hash,
+          console.error(file.hash,
             'Failed to send clone to ' + storeToWinner.store,err.message)
         })
     }
@@ -254,7 +254,7 @@ var removeClones = function(file){
     })
     //make sure there is a possibility of a winner
     if(!storeRemoveList.length){
-      console.log(file.hash,
+      console.error(file.hash,
         'Sorry! No more available stores to remove this from, it is gone. :(')
     } else {
       // now we know possible source stores, randomly select one
@@ -275,7 +275,7 @@ var removeClones = function(file){
       })
         .spread(storeClient.validateResponse())
         .catch(function(err){
-          console.log(file.hash,'Failed to remove clone',err.message)
+          console.error(file.hash,'Failed to remove clone',err.message)
         })
     }
   }
@@ -288,7 +288,7 @@ var removeClones = function(file){
 var verifyFile = function(file){
   //first grab a store to ask for info
   if(!file.count || !file.exists || !(file.map instanceof Array)){
-    console.log(file.hash,'Doesnt exist, cant verify')
+    console.error(file.hash,'Doesnt exist, cant verify')
     return
   }
   return P.try(function(){
@@ -306,20 +306,20 @@ var verifyFile = function(file){
       })
         .spread(function(res,body){
           if(body && body.error){
-            console.log(file.hash,'Verify failed ' + body.error +
+            console.error(file.hash,'Verify failed ' + body.error +
               ' on ' + keyParts[1] + ' inventory purged')
           } else if(body && 'ok' === body.status){
             console.log(file.hash,
               'Inventory verification complete on ' + keyParts[1])
           } else if(body && 'fail' === body.status){
-            console.log(file.hash,
+            console.error(file.hash,
               'Invalid content on ' + keyParts[1] + ' clone removed')
           } else {
-            console.log(file.hash,'Unknown issue',body)
+            console.error(file.hash,'Unknown issue',body)
           }
         })
         .catch(function(err){
-          console.log(file.hash,'Failed to verify inventory',err.message)
+          console.error(file.hash,'Failed to verify inventory',err.message)
         })
     })
 }
@@ -336,7 +336,7 @@ var printFooter = function(file){
 var cloneFile = function(file){
   //first grab a store to ask for info
   if(!file.count || !file.exists || !(file.map instanceof Array)){
-    console.log(file.hash,'Doesnt exist, cannot clone')
+    console.error(file.hash,'Doesnt exist, cannot clone')
     return
   }
   return P.try(function(){
@@ -368,8 +368,8 @@ var cloneFile = function(file){
           }
         })
         .catch(function(err){
-          console.log(file.hash,
-            'Failed to send clone to ' + storeToInfo.name,err.message)
+          console.error(file.hash,
+            'Failed to send clone to ' + storeToInfo.store,err.message)
         })
         .finally(function(){
           printFooter(file)
@@ -380,7 +380,7 @@ var cloneFile = function(file){
 var removeFile = function(file){
   //first grab a store to ask for info
   if(!file.count || !file.exists || !(file.map instanceof Array)){
-    console.log(file.hash,'Doesnt exist, cannot remove')
+    console.error(file.hash,'Doesnt exist, cannot remove')
     return
   }
   return P.try(function(){
@@ -403,8 +403,8 @@ var removeFile = function(file){
         }
       })
       .catch(function(err){
-        console.log(file.hash,
-          'Failed to remove clone from ' + storeInfo.name,err.message)
+        console.error(file.hash,
+          'Failed to remove clone from ' + storeInfo.store,err.message)
       })
       .finally(function(){
         printFooter(file)
@@ -587,7 +587,7 @@ var folderScan = function(folderPath,fileStream){
           resolve(counter,hashList)
         })
         .catch(function(err){
-          console.log('file process error',err)
+          console.error('file process error',err)
           reject(err)
         })
     })
@@ -822,6 +822,6 @@ P.try(function(){
     process.exit()
   })
   .catch(UserError,function(err){
-    console.log('Oh no! An error has occurred :(')
-    console.log(err.stack)
+    console.error('Oh no! An error has occurred :(')
+    console.error(err.stack)
   })

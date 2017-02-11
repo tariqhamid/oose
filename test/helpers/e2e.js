@@ -13,7 +13,7 @@ var url = require('url')
 var api = require('../../helpers/api')
 var cradle = require('../../helpers/couchdb')
 var content = oose.mock.content
-var purchasedb = require('../../helpers/purchasedb')
+//var purchasedb = require('../../helpers/purchasedb')
 var redis = require('../../helpers/redis')
 var hashFile = require('../../helpers/hashFile')
 
@@ -765,7 +765,6 @@ exports.contentDownload = function(prism){
       localAddress: '127.0.0.1'
     })
       .spread(function(res,body){
-        console.log(res.headers,body)
         expect(body).to.equal(content.data)
       })
   }
