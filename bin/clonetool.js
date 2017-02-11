@@ -43,11 +43,10 @@ program
   .option('-B, --block-size <n>','Number of files to analyze at once')
   .option('-d, --desired <n>','Desired clone count')
   .option('-D, --detail <s>','Hash of file to get details about')
-  .option('-f, --force <s>','Force the operation even on this hash')
+  .option('-f, --force','Force the operation even on this hash')
   .option('-i, --input <s>','List of Hashes line separated ' +
   'to analyze, use - for stdin')
   .option('-p, --pretend','Dont actually make and clones just analyze')
-  .option('-r, --remove','Remove target files')
   .option('-H, --hash <hash>','Hash of file to check')
   .option('-f, --folder <folder>','Folder to scan')
   .option('-S, --store <store>','Use file list from this store')
@@ -56,7 +55,7 @@ program
   .option('-v, --verbose','Be verbose and show hash list before processing')
   .option('-X, --allfiles','Use all files')
   .option('--clone <s>','Name of direct store for clones to be sent')
-  .option('--remove <s>','Name of direct store to remove clones from')
+  .option('--drop <s>','Name of direct store to remove clones from')
   .parse(process.argv)
 
 var selectPeer = function(type,peerName){
@@ -78,7 +77,7 @@ var setupStore = function(store){
 }
 
 
-var analyzeFiles = function(progress,fileList){
+var analyzeFiles = function(program,progress,fileList){
   var above = false !== program.above ? +program.above : null
   var at = false !== program.at ? +program.at : null
   var below = false !== program.below ? +program.below : null
@@ -112,6 +111,14 @@ var analyzeFiles = function(progress,fileList){
               else if(desired < record.count){
                 record.remove = record.count - desired
               }
+            }
+            if(program.clone){
+              record.add = 1
+              record.remove = 0
+            }
+            if(program.drop){
+              record.add = 0
+              record.remove = 1
             }
             //compile our record
             files[record.hash] = record
@@ -317,6 +324,15 @@ var verifyFile = function(file){
     })
 }
 
+var printHeader = function(file){
+  console.log('--------------------')
+  console.log(file.hash + ' starting to process changes')
+}
+
+var printFooter = function(file){
+  console.log(file.hash,'Processing complete')
+}
+
 var cloneFile = function(file){
   //first grab a store to ask for info
   if(!file.count || !file.exists || !(file.map instanceof Array)){
@@ -324,6 +340,7 @@ var cloneFile = function(file){
     return
   }
   return P.try(function(){
+    printHeader(file)
     return file.map[random.integer(0,file.map.length - 1)]
   })
     .then(function(storeKey){
@@ -333,7 +350,7 @@ var cloneFile = function(file){
       var storeFromClient = setupStore(storeFromInfo)
       var sendOptions = {
         file: file.hash + '.' + file.mimeExtension.replace('.',''),
-        store: storeToInfo.prism + ':' + storeToInfo.store
+        store: storeToInfo.prism + ':' + storeToInfo.name
       }
       return storeFromClient.postAsync({
         url: storeFromClient.url('/content/send'),
@@ -346,13 +363,16 @@ var cloneFile = function(file){
             throw err
           } else {
             console.log(file.hash,
-              'Send from ' + storeFromInfo.store +
-              ' to ' + storeToInfo.store + ' complete')
+              'Send from ' + storeFromInfo.name +
+              ' to ' + storeToInfo.name + ' complete')
           }
         })
         .catch(function(err){
           console.log(file.hash,
-            'Failed to send clone to ' + storeToInfo.store,err.message)
+            'Failed to send clone to ' + storeToInfo.name,err.message)
+        })
+        .finally(function(){
+          printFooter(file)
         })
     })
 }
@@ -364,7 +384,8 @@ var removeFile = function(file){
     return
   }
   return P.try(function(){
-    var storeInfo = selectPeer('store',program.remove)
+    printHeader(file)
+    var storeInfo = selectPeer('store',program.drop)
     var storeClient = setupStore(storeInfo)
     return storeClient.postAsync({
       url: storeClient.url('/content/remove'),
@@ -378,43 +399,45 @@ var removeFile = function(file){
           err.stack = body.stack
           throw err
         } else {
-          console.log(file.hash,'Remove from ' + storeInfo.store + ' complete')
+          console.log(file.hash,'Remove from ' + storeInfo.name + ' complete')
         }
       })
       .catch(function(err){
         console.log(file.hash,
-          'Failed to remove clone from ' + storeInfo.store,err.message)
+          'Failed to remove clone from ' + storeInfo.name,err.message)
+      })
+      .finally(function(){
+        printFooter(file)
       })
   })
 }
 
 var processFile = function(file){
-  var printHeader = function(){
-    console.log('--------------------')
-    console.log(file.hash + ' starting to process changes')
-  }
-  var printFooter = function(){
-    console.log(file.hash,'Processing complete')
-  }
   return P.try(function(){
     if(!program.verify && file.add > 0){
-      printHeader()
+      printHeader(file)
       return addClones(file)
-        .then(printFooter)
+        .then(function(){
+          printFooter(file)
+        })
     }
   })
     .then(function(){
       if(!program.verify && file.remove > 0){
-        printHeader()
+        printHeader(file)
         return removeClones(file)
-          .then(printFooter)
+          .then(function(){
+            printFooter(file)
+          })
       }
     })
     .then(function(){
       if(program.verify && (file.add > 0 || file.remove > 0)){
-        printHeader()
+        printHeader(file)
         return verifyFile(file)
-          .then(printFooter)
+          .then(function(){
+            printFooter(file)
+          })
       }
     })
 }
@@ -661,7 +684,7 @@ P.try(function(){
     !program.store && !program.prism && !program.allfiles){
     throw new UserError('No file list or file provided')
   }
-  if(program.remove && !program.force){
+  if(program.drop && !program.force){
     throw new UserError('Clone removal operation called without -f, bye.')
   }
   //set the desired to the default of 2 if not set
@@ -735,7 +758,7 @@ P.try(function(){
     )
     console.log('Found ' + fileCount + ' file(s) to be analyzed')
     //console.log(fileList)
-    return analyzeFiles(progress,fileList)
+    return analyzeFiles(program,progress,fileList)
   })
   .then(function(result){
     files = result
@@ -788,7 +811,7 @@ P.try(function(){
     var file = files[hash]
     if(program.clone){
       return cloneFile(file)
-    } else if(program.remove){
+    } else if(program.drop){
       return removeFile(file)
     } else if(file.add > 0 || file.remove > 0 || program.verify){
       return processFile(file)
