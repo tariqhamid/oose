@@ -354,7 +354,6 @@ var cloneFile = function(file){
     return
   }
   return P.try(function(){
-    printHeader(file)
     return file.map[random.integer(0,file.map.length - 1)]
   })
     .then(function(storeKey){
@@ -388,7 +387,6 @@ var cloneFile = function(file){
         .finally(function(){
           var existsKey = couchdb.schema.inventory(file.hash)
           redis.del(existsKey)
-          printFooter(file)
         })
     })
 }
@@ -400,7 +398,6 @@ var removeFile = function(file){
     return
   }
   return P.try(function(){
-    printHeader(file)
     var storeInfo = selectPeer('store',program.drop)
     var storeClient = setupStore(storeInfo)
     return storeClient.postAsync({
@@ -425,39 +422,44 @@ var removeFile = function(file){
       .finally(function(){
         var existsKey = couchdb.schema.inventory(file.hash)
         redis.del(existsKey)
-        printFooter(file)
       })
   })
 }
 
 var processFile = function(file){
   return P.try(function(){
-    if(!program.verify && file.add > 0){
+    //manual processing
+    if(program.clone){
       printHeader(file)
-      return addClones(file)
-        .then(function(){
-          printFooter(file)
-        })
-    }
-  })
-    .then(function(){
-      if(!program.verify && file.remove > 0){
+      return cloneFile(file)
+        .then(function(){printFooter(file)})
+    } else if(program.drop){
+      printHeader(file)
+      return removeFile(file)
+        .then(function(){printFooter(file)})
+    } else if(file.add > 0 || file.remove > 0 || program.verify){
+      //normal processing
+      if(!program.verify && file.add > 0){
+        printHeader(file)
+        return addClones(file)
+          .then(function(){
+            printFooter(file)
+          })
+      } else if(!program.verify && file.remove > 0){
         printHeader(file)
         return removeClones(file)
           .then(function(){
             printFooter(file)
           })
-      }
-    })
-    .then(function(){
-      if(program.verify && (file.add > 0 || file.remove > 0)){
+      } else if(program.verify && (file.add > 0 || file.remove > 0)){
         printHeader(file)
         return verifyFile(file)
           .then(function(){
             printFooter(file)
           })
       }
-    })
+    }
+  })
 }
 
 var relativePath = function(hash,ext){
@@ -827,13 +829,7 @@ P.try(function(){
   })
   .each(function(hash){
     var file = files[hash]
-    if(program.clone){
-      return cloneFile(file)
-    } else if(program.drop){
-      return removeFile(file)
-    } else if(file.add > 0 || file.remove > 0 || program.verify){
-      return processFile(file)
-    }
+    return processFile(file)
   })
   .then(function(){
     console.log('Operations complete, bye!')
