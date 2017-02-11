@@ -55,6 +55,8 @@ program
   .option('-u, --verify','Verify file(s) by having stores verify integrity')
   .option('-v, --verbose','Be verbose and show hash list before processing')
   .option('-X, --allfiles','Use all files')
+  .option('--clone <s>','Name of direct store for clones to be sent')
+  .option('--remove <s>','Name of direct store to remove clones from')
   .parse(process.argv)
 
 var selectPeer = function(type,peerName){
@@ -313,6 +315,77 @@ var verifyFile = function(file){
           console.log(file.hash,'Failed to verify inventory',err.message)
         })
     })
+}
+
+var cloneFile = function(file){
+  //first grab a store to ask for info
+  if(!file.count || !file.exists || !(file.map instanceof Array)){
+    console.log(file.hash,'Doesnt exist, cannot clone')
+    return
+  }
+  return P.try(function(){
+    return file.map[random.integer(0,file.map.length - 1)]
+  })
+    .then(function(storeKey){
+      var keyParts = storeKey.split(':')
+      var storeFromInfo = selectPeer('store',keyParts[1])
+      var storeToInfo = selectPeer('store',program.clone)
+      var storeFromClient = setupStore(storeFromInfo)
+      var sendOptions = {
+        file: file.hash + '.' + file.mimeExtension.replace('.',''),
+        store: storeToInfo.prism + ':' + storeToInfo.store
+      }
+      return storeFromClient.postAsync({
+        url: storeFromClient.url('/content/send'),
+        json: sendOptions
+      })
+        .spread(function(res,body){
+          if(body.error){
+            var err = new Error(body.error)
+            err.stack = body.stack
+            throw err
+          } else {
+            console.log(file.hash,
+              'Send from ' + storeFromInfo.store +
+              ' to ' + storeToInfo.store + ' complete')
+          }
+        })
+        .catch(function(err){
+          console.log(file.hash,
+            'Failed to send clone to ' + storeToInfo.store,err.message)
+        })
+    })
+}
+
+var removeFile = function(file){
+  //first grab a store to ask for info
+  if(!file.count || !file.exists || !(file.map instanceof Array)){
+    console.log(file.hash,'Doesnt exist, cannot remove')
+    return
+  }
+  return P.try(function(){
+    var storeInfo = selectPeer('store',program.remove)
+    var storeClient = setupStore(storeInfo)
+    return storeClient.postAsync({
+      url: storeClient.url('/content/remove'),
+      json: {
+        hash: file.hash
+      }
+    })
+      .spread(function(res,body){
+        if(body.error){
+          var err = new Error(body.error)
+          err.stack = body.stack
+          throw err
+        } else {
+          console.log(file.hash,'Remove from ' + storeInfo.store + ' complete')
+        }
+      })
+      .catch(function(err){
+        console.log(file.hash,
+          'Failed to remove clone from ' + storeInfo.store,err.message)
+      })
+  })
 }
 
 var processFile = function(file){
@@ -588,6 +661,9 @@ P.try(function(){
     !program.store && !program.prism && !program.allfiles){
     throw new UserError('No file list or file provided')
   }
+  if(program.remove && !program.force){
+    throw new UserError('Clone removal operation called without -f, bye.')
+  }
   //set the desired to the default of 2 if not set
   if(!program.desired) program.desired = 2
   //if no other target information provided look for files below the default
@@ -710,7 +786,11 @@ P.try(function(){
   })
   .each(function(hash){
     var file = files[hash]
-    if(file.add > 0 || file.remove > 0 || program.verify){
+    if(program.clone){
+      return cloneFile(file)
+    } else if(program.remove){
+      return removeFile(file)
+    } else if(file.add > 0 || file.remove > 0 || program.verify){
       return processFile(file)
     }
   })
