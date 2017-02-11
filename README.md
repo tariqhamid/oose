@@ -70,6 +70,7 @@ From there follow the debug filtering rules defined
 * Store removal function upgraded
 * Adds content verification to verify integrity of content on disk
 * Upgrades hashFile.find and hashFile.details to be more thorough
+* Fixing travis builds 1
 
 ### 2.3.0
 
