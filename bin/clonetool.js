@@ -21,6 +21,7 @@ var couchdb = require('../helpers/couchdb')
 var hasher = require('../helpers/hasher')
 var prismBalance = require('../helpers/prismBalance')
 var redis = require('../helpers/redis')
+var dns = require('../helpers/dns')
 
 var config = require('../config')
 
@@ -28,11 +29,6 @@ var cacheKeyTempFile = '/tmp/oosectkeycache'
 
 //store our master peerList
 var peerList = {}
-
-//hashes in this list will never be modified without force action
-var hashWhitelist = [
-  'a03f181dc7dedcfb577511149b8844711efdb04f'
-]
 
 //setup cli parsing
 program
@@ -100,11 +96,9 @@ var analyzeFiles = function(program,progress,fileList){
             record.add = 0
             record.remove = 0
             if(
-              (0 !== record.count) && (
               (null !== above && record.count > above) ||
               (null !== below && record.count < below) ||
               (null !== at && record.count === at)
-              )
             )
             {
               if(desired > record.count){
@@ -114,6 +108,9 @@ var analyzeFiles = function(program,progress,fileList){
                 record.remove = record.count - desired
               }
             }
+            if(program.verify && program.hash){
+              record.add = 1
+            }
             if(program.clone){
               record.add = 1
               record.remove = 0
@@ -122,15 +119,18 @@ var analyzeFiles = function(program,progress,fileList){
               record.add = 0
               record.remove = 1
             }
+            if(0 === record.count && record.add){
+              //can't clone/verify a file, when we don't have any copies
+              record.add = 0
+            }
             //compile our record
             files[record.hash] = record
+            progress.tick()
             return record
           })
       })
-      .finally(function(){
-        progress.tick(fileBlock.length)
-      })
   }
+  progress.update(0)
   return P.try(function(){
     var blockList = []
     for(var i = 0; i < blockCount; i++){
@@ -262,11 +262,13 @@ var removeClones = function(file){
       var parts = entry.split(':')
       var prismName = parts[0]
       var storeName = parts[1]
-      var peer = selectPeer('store',storeName)
-      prismNameList.push(prismName)
-      storeNameList.push(storeName)
-      if(-1 === storeWinnerList.indexOf(storeName) && true === peer.available){
-        storeRemoveList.push({prism: prismName,store: storeName})
+      if(-1 === config.clonetool.storeProtected.indexOf(storeName)){
+        var peer = selectPeer('store',storeName)
+        prismNameList.push(prismName)
+        storeNameList.push(storeName)
+        if(-1 === storeWinnerList.indexOf(storeName) && true === peer.available){
+          storeRemoveList.push({prism: prismName,store: storeName})
+        }
       }
     })
     //make sure there is a possibility of a winner
@@ -453,21 +455,15 @@ var processFile = function(file){
       if(!program.verify && file.add > 0){
         printHeader(file)
         return addClones(file)
-          .then(function(){
-            printFooter(file)
-          })
+          .then(function(){printFooter(file)})
       } else if(!program.verify && file.remove > 0){
         printHeader(file)
         return removeClones(file)
-          .then(function(){
-            printFooter(file)
-          })
+          .then(function(){printFooter(file)})
       } else if(program.verify && (file.add > 0 || file.remove > 0)){
         printHeader(file)
         return verifyFile(file)
-          .then(function(){
-            printFooter(file)
-          })
+          .then(function(){printFooter(file)})
       }
     }
   })
@@ -576,6 +572,7 @@ var folderScan = function(folderPath,fileStream){
         progress = new ProgressBar(
           '  scanning [:bar] :current/:total :percent :rate/fps :etas',
           {
+            renderThrottle: 1000,
             total: fileCount,
             width: 50,
             complete: '=',
@@ -634,32 +631,33 @@ var folderScan = function(folderPath,fileStream){
  * @return {P}
  */
 var keyScan = function(type,key,fileStream){
-  var progress = null
   var keyBlockSize = 250000
   var keyList = []
-  var pointer = 0
-  var totalRows = 0
-  var inventoryKeyDownload = function(){
-    return couchdb.inventory.allAsync({limit: keyBlockSize, skip: pointer})
-      .then(function(result){
-        if(!totalRows) totalRows = result.total_rows
-        if(!progress){
-          progress = new ProgressBar(
-            ' downloading [:bar] :current/:total :percent :rate/ks :etas',
-            {
-              complete: '=',
-              incomplete: ' ',
-              width: 20,
-              total: totalRows
-            }
-          )
+  var totalRows = 1
+  var progress = new ProgressBar(
+        ' downloading [:bar] :current/:total :percent :rate/ks :etas',
+        {
+          renderThrottle: 1000,
+          complete: '=',
+          incomplete: ' ',
+          width: 20,
+          total: totalRows
         }
-        progress.tick(keyBlockSize)
+      )
+  var inventoryKeyDownload = function(){
+    // use a view to only transfer keys (no _rev or junk since we don't use it here)
+    // _design/inventory/keyList: { map: function(doc){emit(null,doc._id)} }
+    return couchdb.inventory.viewAsync('inventory/keyList',{limit: keyBlockSize, skip: keyList.length})
+      .then(function(result){
+        totalRows = result.total_rows
+        if(totalRows !== progress.total){
+          progress.total = totalRows
+        }
         result.rows.forEach(function(row){
-          keyList.push(row.key)
+          keyList.push(row.id)
+          progress.tick()
         })
-        pointer = pointer + keyBlockSize
-        if(totalRows > pointer){
+        if(!progress.complete){
           return inventoryKeyDownload()
         } else {
           return keyList
@@ -671,6 +669,7 @@ var keyScan = function(type,key,fileStream){
       if(!fs.existsSync(cacheKeyTempFile)){
         console.log('Starting to download a fresh copy ' +
           'of inventory keys, stand by.')
+        progress.update(0)
         return inventoryKeyDownload()
           .then(function(result){
             fs.writeFileSync(cacheKeyTempFile,JSON.stringify(result))
@@ -687,7 +686,6 @@ var keyScan = function(type,key,fileStream){
         }
       }
     })
-
   }
   return cacheKeyDownload()
     .map(function(inventoryKey){
@@ -718,25 +716,23 @@ P.try(function(){
   if(program.drop && !program.force){
     throw new UserError('Clone removal operation called without -f, bye.')
   }
-  //set the desired to the default of 2 if not set
-  if(!program.desired) program.desired = 2
+  //set the desired to the default from config if not set
+  if(!program.desired) program.desired = config.clonetool.desired
+  //validate some logic states into booleans once, here
+  var validAt    = (-1<program.at)
+  var validAbove = ( 0<program.above)
+  var validBelow = ( 0<program.below)
   //if no other target information provided look for files below the default
-  if(!program.below && !program.above){
-    program.below = 2
+  if(!validBelow && !validAbove && !validAt){
+    program.below = program.desired
     program.above = false
     program.at = false
   }
-  //qualify all hashes passed to verify directly
-  if(program.verify && program.hash){
-    program.below = false
-    program.at = false
-    program.above = 0
-  }
-  if(program.below){
+  if(validBelow){
     program.at = false
     program.above = false
   }
-  if(program.at){
+  if(validAt){
     program.above = false
     program.below = false
   }
@@ -754,6 +750,48 @@ P.try(function(){
 })
   .then(function(result){
     peerList = result
+    //post-process peerList
+    console.log('Resolving location information from DNS')
+    var promises = []
+    var progress = new ProgressBar(
+      '  resolving [:bar] :current/:total :percent :rate/s :etas',
+      {
+        total: peerList.length,
+        width: 20,
+        complete: '=',
+        incomplete: ' '
+      }
+    )
+    progress.update(0)
+    for(var i=0; i<peerList.length; i++){
+      var peer = peerList[i]
+      //overlay any tagged 'protected' into config list
+      if(true === peerList[i].protected && -1 === config.clonetool.storeProtected.indexOf(peerList[i].name)){
+        config.clonetool.storeProtected.push(peerList[i].name)
+      }
+      //load location info from DNS PTRs
+      var dnsReverse = function(peerList,i){
+        return dns.reverseAsync(peerList[i].host)
+        .spread(function(res,err){
+          progress.tick()
+          if(err){ throw err } else {
+            var parts = res.split('-')
+            if(peerList[i].name === parts[0]){
+              peerList[i].machine = parts[1]
+              peerList[i].zone    = parts[2]
+              peerList[i].domain  = parts[3]
+            }
+          }
+        })
+        .catch(function(err){
+          console.error('Failed to lookup reverse DNS for ' + peerList[i].host,err)
+        })
+      }
+      promises.push(dnsReverse(peerList,i))
+    }
+    return P.all(promises)
+  })
+  .then(function(){
     console.log('Peer list obtained!')
     //get file list together
     if(program.hash){
@@ -781,7 +819,7 @@ P.try(function(){
     })
     if(!program.force){
       fileList.forEach(function(file,i){
-        if(hashWhitelist.indexOf(file) >= 0){
+        if(config.clonetool.hashWhitelist.indexOf(file) >= 0){
           console.log(file,
             'Is whitelisted and will not be analyzed, use -f to force')
           fileList.splice(i,1)
@@ -796,6 +834,7 @@ P.try(function(){
     var progress = new ProgressBar(
       '  analyzing [:bar] :current/:total :percent :rate/fs :etas',
       {
+        renderThrottle: 1000,
         total: fileCount,
         width: 20,
         complete: '=',

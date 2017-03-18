@@ -168,6 +168,16 @@ config.$load({
     inventoryThrottle: 100, //ms between requests
     purchasePruneConcurrency: 512,
     verifyExpiration: 15552000000//ms  (180 days = 7776000000)
+  },
+  //clonetool utility
+  clonetool: {
+    //desired is the default desired number of copies
+    desired: 2,
+    //hashes in this list will never be modified without force action
+    hashWhitelist: [],
+    //stores in this list will never have any hashes deleted in automodes
+    //  NOTE: --drop WILL STILL WORK as it is forced
+    storeProtected: []
   }
 })
 

@@ -36,6 +36,7 @@
     "cradle": "^0.7.1",
     "debug": "^2.6.0",
     "dev-null": "^0.1.1",
+    "dnscache": "^1.0.1",
     "event-stream": "^3.3.4",
     "express": "^4.14.0",
     "express-session": "^1.15.0",
@@ -54,7 +55,7 @@
     "oose-sdk": "nullivex/oose-sdk",
     "pretty-bytes": "^4.0.2",
     "progress": "nullivex/node-progress",
-    "promisepipe": "1.x",
+    "promisepipe": "2.x",
     "pug": "^2.0.0-beta9",
     "random-js": "^1.0.8",
     "readdirp": "^2.1.0",
@@ -66,7 +67,7 @@
     "sha1-stream": "^0.2.1",
     "string": "^3.3.3",
     "temp": "^0.8.3",
-    "validator": "^6.2.1"
+    "validator": "^7.0.0"
   },
   "scripts": {
     "start": "node app",

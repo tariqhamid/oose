@@ -6,6 +6,11 @@ var config = require('../config')
 var cradle = require('../helpers/couchdb')
 var redis = require('../helpers/redis')
 
+var peerGetRows = function(rows){
+  var ids = []
+  for(var i=0; i < rows.length; i++) ids.push(rows[i].id)
+  return cradle.peer.getAsync(ids)
+}
 
 /**
  * Get list of prisms and cache the result
@@ -23,9 +28,7 @@ exports.peerList = function(){
           endkey: prismKey + '\uffff'
         })
         .then(function(rows){
-          var ids = []
-          for(var i=0; i < rows.length;i++) ids.push(rows[i].id)
-          return cradle.peer.getAsync(ids)
+          return peerGetRows(rows)
         })
         .map(function(row){
           row.doc.type = 'prism'
@@ -38,9 +41,7 @@ exports.peerList = function(){
         endkey: storeKey + '\uffff'
       })
         .then(function(rows){
-          var ids = []
-          for(var i=0; i < rows.length;i++) ids.push(rows[i].id)
-          return cradle.peer.getAsync(ids)
+          return peerGetRows(rows)
         })
         .map(function(row){
           row.doc.type = 'store'
@@ -68,9 +69,7 @@ exports.prismList = function(){
   var prismKey = cradle.schema.prism()
   return cradle.peer.allAsync({startkey: prismKey, endkey: prismKey + '\uffff'})
     .then(function(rows){
-      var ids = []
-      for(var i=0; i < rows.length;i++) ids.push(rows[i].id)
-      return cradle.peer.getAsync(ids)
+      return peerGetRows(rows)
     })
     .map(function(row){
       return row.doc
