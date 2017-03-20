@@ -719,27 +719,29 @@ P.try(function(){
   //set the desired to the default from config if not set
   if(!program.desired) program.desired = config.clonetool.desired
   //validate some logic states into booleans once, here
-  var validAt    = (-1<program.at)
-  var validAbove = ( 0<program.above)
-  var validBelow = ( 0<program.below)
+  program.at    = parseInt(program.at,10)
+  program.above = parseInt(program.above,10)
+  program.below = parseInt(program.below,10)
+  var validAt    = function(){return (('number' === typeof program.at   ) && (-1<program.at   ))}
+  var validAbove = function(){return (('number' === typeof program.above) && ( 0<program.above))}
+  var validBelow = function(){return (('number' === typeof program.below) && ( 0<program.below))}
   //if no other target information provided look for files below the default
-  if(!validBelow && !validAbove && !validAt){
-    program.below = program.desired
-    program.above = false
-    program.at = false
+  if(!validBelow() && !validAbove() && !validAt()){
+    program.below = +program.desired
   }
-  if(validBelow){
+  if(validBelow()){
     program.at = false
     program.above = false
   }
-  if(validAt){
+  if(validAt()){
     program.above = false
     program.below = false
   }
   //print rule changes
-  var changeVerb = 'below'
-  if(false !== program.above) changeVerb = 'above'
-  if(false !== program.at) changeVerb = 'at'
+  var changeVerb = 'somewhat near'
+  if(validBelow()) changeVerb = 'below'
+  if(validAbove()) changeVerb = 'above'
+  if(validAt())    changeVerb = 'at'
   console.log('You have asked for ' + program.desired +
     ' clone(s) of each file ' + changeVerb +
     ' ' + program[changeVerb] + ' clone(s)')
