@@ -42,7 +42,7 @@ var procFD   = {}
 P.try(function(){
   console.log('Welcome to the OOSE v' + config.version + ' statTrack!')
   console.log('--------------------')
-  if(!procfs.works) { throw new Error('procfs does not exist?') }
+  if(!procfs.works) { throw new UserError('procfs does not exist?') }
   var ndt = require('/etc/ndt/ndt.json')
   return ndt.apps
 })
@@ -62,10 +62,7 @@ P.try(function(){
     var r = result[x]
     if(r.store && r.store.name) statUpdate(r.store.name,'cfg',r)
   }
-  if(!storeList.length){
-    console.error('No stores configured here?')
-    process.exit()
-  }
+  if(!storeList.length) throw new UserError('No stores configured here?')
   return new Promise(function(resolve){procfs.disk(function(a,b,c){resolve(b)})})
 })
 .then(function(result){
