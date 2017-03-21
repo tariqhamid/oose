@@ -54,6 +54,7 @@
     "object-manage": "^0.8.1",
     "oose-sdk": "nullivex/oose-sdk",
     "pretty-bytes": "^4.0.2",
+    "procfs-stats": "^1.0.2",
     "progress": "nullivex/node-progress",
     "promisepipe": "2.x",
     "pug": "^2.0.0-beta9",
@@ -66,6 +67,7 @@
     "rimraf-promise": "^2.0.0",
     "sha1-stream": "^0.2.1",
     "string": "^3.3.3",
+    "systeminformation": "^3.17.0",
     "temp": "^0.8.3",
     "validator": "^7.0.0"
   },
