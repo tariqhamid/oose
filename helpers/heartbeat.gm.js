@@ -8,7 +8,7 @@ var NetworkError = oose.NetworkError
 var api = require('../helpers/api')
 var cradle = require('../helpers/couchdb')
 var prismBalance = require('../helpers/prismBalance')
-var redis = require('../helpers/redis')
+var redis = require('../helpers/redis')()
 var storeBalance = require('../helpers/storeBalance')
 
 var config = require('../config')

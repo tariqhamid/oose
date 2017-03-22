@@ -3,7 +3,7 @@ var P = require('bluebird')
 var oose = require('oose-sdk')
 var request = require('request-promise')
 
-var redis = require('../../helpers/redis')
+var redis = require('../../helpers/redis')()
 
 var config = require('../../config')
 var couchLoginUrl =

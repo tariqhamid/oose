@@ -1,7 +1,7 @@
 'use strict';
 var cradle = require('../../helpers/couchdb')
 var purchasedb = require('../../helpers/purchasedb')
-var redis = require('../../helpers/redis.js')
+var redis = require('../../helpers/redis.js')()
 
 var config = require('../../config')
 

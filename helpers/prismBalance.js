@@ -4,7 +4,7 @@ var debug = require('debug')('oose:prismBalance')
 
 var config = require('../config')
 var cradle = require('../helpers/couchdb')
-var redis = require('../helpers/redis')
+var redis = require('../helpers/redis')()
 
 var peerGetRows = function(rows){
   var ids = []

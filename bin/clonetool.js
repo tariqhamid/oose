@@ -20,8 +20,7 @@ var UserError = oose.UserError
 var couchdb = require('../helpers/couchdb')
 var hasher = require('../helpers/hasher')
 var prismBalance = require('../helpers/prismBalance')
-var redis = require('../helpers/redis')
-var dns = require('../helpers/dns')
+var redis = require('../helpers/redis')()
 
 var config = require('../config')
 
@@ -752,48 +751,6 @@ P.try(function(){
 })
   .then(function(result){
     peerList = result
-    //post-process peerList
-    console.log('Resolving location information from DNS')
-    var promises = []
-    var progress = new ProgressBar(
-      '  resolving [:bar] :current/:total :percent :rate/s :etas',
-      {
-        total: peerList.length,
-        width: 20,
-        complete: '=',
-        incomplete: ' '
-      }
-    )
-    progress.update(0)
-    for(var i=0; i<peerList.length; i++){
-      var peer = peerList[i]
-      //overlay any tagged 'protected' into config list
-      if(true === peerList[i].protected && -1 === config.clonetool.storeProtected.indexOf(peerList[i].name)){
-        config.clonetool.storeProtected.push(peerList[i].name)
-      }
-      //load location info from DNS PTRs
-      var dnsReverse = function(peerList,i){
-        return dns.reverseAsync(peerList[i].host)
-        .spread(function(res,err){
-          progress.tick()
-          if(err){ throw err } else {
-            var parts = res.split('-')
-            if(peerList[i].name === parts[0]){
-              peerList[i].machine = parts[1]
-              peerList[i].zone    = parts[2]
-              peerList[i].domain  = parts[3]
-            }
-          }
-        })
-        .catch(function(err){
-          console.error('Failed to lookup reverse DNS for ' + peerList[i].host,err)
-        })
-      }
-      promises.push(dnsReverse(peerList,i))
-    }
-    return P.all(promises)
-  })
-  .then(function(){
     console.log('Peer list obtained!')
     //get file list together
     if(program.hash){

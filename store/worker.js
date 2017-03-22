@@ -7,7 +7,7 @@ var fs = require('graceful-fs')
 var https = require('https')
 var worker = require('infant').worker
 
-var redis = require('../helpers/redis')
+var redis = require('../helpers/redis')()
 
 var app = express()
 var config = require('../config')

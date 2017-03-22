@@ -14,7 +14,7 @@ var api = require('../../helpers/api')
 var cradle = require('../../helpers/couchdb')
 var content = oose.mock.content
 //var purchasedb = require('../../helpers/purchasedb')
-var redis = require('../../helpers/redis')
+var redis = require('../../helpers/redis')()
 var hashFile = require('../../helpers/hashFile')
 
 var NetworkError = oose.NetworkError

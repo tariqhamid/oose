@@ -1,5 +1,5 @@
 'use strict';
-var redis = require('../../helpers/redis')
+var redis = require('../../helpers/redis')()
 
 
 /**

@@ -5,7 +5,7 @@ var oose = require('oose-sdk')
 
 var NotFoundError = oose.NotFoundError
 var cradle = require('../helpers/couchdb')
-var redis = require('../helpers/redis')
+var redis = require('../helpers/redis')()
 
 
 /**

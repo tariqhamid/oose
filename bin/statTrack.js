@@ -10,7 +10,7 @@ var procfs = require('procfs-stats')
 
 var UserError = oose.UserError
 
-var redis = require('../helpers/redis')
+var redis = require('../helpers/redis')()
 var lsof = require('../helpers/lsof')
 
 var config = require('../config')

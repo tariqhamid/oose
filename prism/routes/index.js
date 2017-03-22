@@ -1,7 +1,7 @@
 'use strict';
 var ObjectManage = require('object-manage')
 
-var redis = require('../../helpers/redis')
+var redis = require('../../helpers/redis')()
 
 var config = require('../../config')
 

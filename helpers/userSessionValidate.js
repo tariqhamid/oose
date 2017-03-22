@@ -4,7 +4,7 @@ var basicAuth = require('basic-auth-connect')
 var debug = require('debug')('oose:userSessionValidate')
 var request = require('request-promise')
 
-var redis = require('../helpers/redis')
+var redis = require('../helpers/redis')()
 
 var config = require('../config')
 var couchLoginUrl =

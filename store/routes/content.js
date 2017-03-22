@@ -11,7 +11,7 @@ var hashStream = require('sha1-stream')
 
 var api = require('../../helpers/api')
 var cradle = require('../../helpers/couchdb')
-var redis = require('../../helpers/redis')
+var redis = require('../../helpers/redis')()
 var hashFile = require('../../helpers/hashFile')
 
 var config = require('../../config')
