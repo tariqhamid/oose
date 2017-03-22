@@ -1,20 +1,22 @@
 language: node_js
 sudo: false
 node_js:
-  - "7.4"
+  - "7"
+  - "6"
+  - "5"
 addons:
   apt:
     sources:
     - ubuntu-toolchain-r-test
     packages:
-    - gcc-4.8
-    - g++-4.8
+    - gcc-4.9
+    - g++-4.9
 services:
   - couchdb
   - redis
 env:
-  - TRAVIS=travis CXX=g++-4.8
-before_install: if [[ `npm -v` != 4* ]]; then npm i -g npm@4; fi
+  - TRAVIS=travis CXX=g++-4.9
+before_install: npm i -g npm@4.4.4
 before_script:
   - curl -X PUT http://localhost:5984/_config/admins/root -d '"blah1234"'
   - curl -X PUT http://root:blah1234@localhost:5984/oose-peer
