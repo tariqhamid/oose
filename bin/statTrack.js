@@ -10,10 +10,10 @@ var procfs = require('procfs-stats')
 
 var UserError = oose.UserError
 
-var redis = require('../helpers/redis')()
-var lsof = require('../helpers/lsof')
-
 var config = require('../config')
+
+var redis = require('../helpers/redis')(config.stats.redis)
+var lsof = require('../helpers/lsof')
 
 //setup cli parsing
 program
@@ -25,12 +25,14 @@ program
   .parse(process.argv)
 
 var storeList = []
+var storeCount = +(storeList.length)
 // stats Object.keys are storeName with sub-Object.keys as section, then user-defined data
 var stats = {}
 var statUpdate = function(store,section,data){
   if(!(store in stats)){
     stats[store] = {}
     storeList = (Object.keys(stats)).sort()
+    storeCount = +(storeList.length)
   }
   if(!(section in stats[store])){
     stats[store][section] = null
@@ -96,7 +98,6 @@ P.try(function(){
   var sortReversed = function(a,b){if(a>b)return -1;if(a<b)return 1;return 0}
   var mounts = Object.keys(statByMount).sort(sortReversed)
   var mountCount = +(mounts.length)
-  var storeCount = +(storeList.length)
   for(var x=0;x<mountCount;x++){
     var m = mounts[x]
     for(var y=0;y<storeCount;y++){
@@ -123,7 +124,6 @@ P.try(function(){
 })
 .then(function(result){
   console.log('FS: lsof data obtained!')
-  var storeCount = +(storeList.length)
   for(var x=0;x<storeCount;x++){
     var s = storeList[x]
     var r = result.shift()
@@ -138,12 +138,64 @@ P.try(function(){
     }
     statUpdate(s,'hashUsage',hashUsage)
   }
-  return null
 })
 .then(function(){
-  console.log('Operations complete, bye!')
-  console.log(stats)
   //jam shit in redis here
+  var tstamp = ((+new Date())/1000) | 0
+  return redis.selectAsync(('number' === typeof config.stats.redis.db)?config.stats.redis.db:15)
+    .then(function(rv){
+      //console.log('redis_select',('number' === typeof config.stats.redis.db)?config.stats.redis.db:15,rv)
+      //console.log(stats)
+      //FS section: stack the args for HMSET (convert hash to array)
+      var fsData = {}
+      for(var x=0;x<storeCount;x++){
+        var s = storeList[x]
+        var key = [s,'fs',tstamp].join(':')
+        fsData[key] = []
+        var fsKey = Object.keys(stats[s].fs)
+        var fsKeyCount = fsKey.length
+        for(var y=0;y<fsKeyCount;y++){
+          var k = fsKey[y]
+          fsData[key].push(k,stats[s].fs[k])
+        }
+      }
+      //HASH section: stack the args for ZADD (convert hash to array)
+      var hashData = {}
+      for(var x=0;x<storeCount;x++){
+        var s = storeList[x]
+        var key = [s,'hU',tstamp].join(':')
+        hashData[key] = []
+        var hashKey = Object.keys(stats[s].hashUsage).sort()
+        var hashKeyCount = hashKey.length
+        for(var y=0;y<hashKeyCount;y++){
+          var k = hashKey[y]
+          hashData[key].push(stats[s].hashUsage[k],k) // ZADD takes things 'backwards'
+        }
+      }
+      //build and run the actual batch of redis promises
+      var batch = []
+      var dKey = Object.keys(fsData).sort()
+      var dKeyCount = dKey.length
+      for(var x=0;x<dKeyCount;x++){
+        batch.push(redis.hmsetAsync(dKey[x],fsData[dKey[x]]))
+        batch.push(redis.expireAsync(dKey[x],86400))
+      }
+      var dKey = Object.keys(hashData).sort()
+      var dKeyCount = dKey.length
+      for(var x=0;x<dKeyCount;x++){
+        batch.push(redis.zaddAsync(dKey[x],hashData[dKey[x]]))
+        batch.push(redis.expireAsync(dKey[x],86400))
+      }
+      return P.all(batch)
+    })
+})
+.then(function(result){
+  //console.log(result)
+  return redis.keysAsync('*')
+})
+.then(function(result){
+  console.log(result.sort())
+  console.log('Operations complete, bye!')
   process.exit()
 })
 .catch(UserError,function(err){

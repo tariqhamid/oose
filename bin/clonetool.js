@@ -633,17 +633,7 @@ var keyScan = function(type,key,fileStream){
   var keyBlockSize = 250000
   var keyList = []
   var totalRows = 1
-  var progress = new ProgressBar(
-        ' downloading [:bar] :current/:total :percent :rate/ks :etas',
-        {
-          renderThrottle: 1000,
-          complete: '=',
-          incomplete: ' ',
-          width: 20,
-          total: totalRows
-        }
-      )
-  var inventoryKeyDownload = function(){
+  var inventoryKeyDownload = function(progress){
     // use a view to only transfer keys (no _rev or junk since we don't use it here)
     // _design/inventory/keyList: { map: function(doc){emit(null,doc._id)} }
     return couchdb.inventory.viewAsync('inventory/keyList',{limit: keyBlockSize, skip: keyList.length})
@@ -668,8 +658,18 @@ var keyScan = function(type,key,fileStream){
       if(!fs.existsSync(cacheKeyTempFile)){
         console.log('Starting to download a fresh copy ' +
           'of inventory keys, stand by.')
+        var progress = new ProgressBar(
+            ' downloading [:bar] :current/:total :percent :rate/ks :etas',
+            {
+              renderThrottle: 1000,
+              complete: '=',
+              incomplete: ' ',
+              width: 20,
+              total: totalRows
+            }
+        )
         progress.update(0)
-        return inventoryKeyDownload()
+        return inventoryKeyDownload(progress)
           .then(function(result){
             result = result.sort()
             fs.writeFileSync(cacheKeyTempFile,JSON.stringify(result))
@@ -686,13 +686,16 @@ var keyScan = function(type,key,fileStream){
       }
     })
   }
+  var prevHash = ''
   return cacheKeyDownload()
     .map(function(inventoryKey){
       var parts = inventoryKey.split(':')
-      if(!parts || 3 !== parts.length) return
-      if('allfiles' !== type && 'prism' === type && parts[1] !== key) return
-      if('allfiles' !== type && 'store' === type && parts[2] !== key) return
+      if(!parts || 3 !== parts.length) return;
+      if(prevHash === parts[0]) return; // skip dupes of previous winners
+      if('allfiles' !== type && 'prism' === type && parts[1] !== key) return;
+      if('allfiles' !== type && 'store' === type && parts[2] !== key) return;
       fileStream.write(parts[0] + '\n')
+      prevHash = parts[0]
     })
 }
 
@@ -767,6 +770,8 @@ P.try(function(){
 })
   .then(function(){
     fileList = fileStream.toString().split('\n')
+    var blankline = ''
+    while(-1 !== (blankline = fileList.indexOf(''))) fileList.splice(blankline,1)
     console.log('Input ' + fileList.length + ' files, filtering')
     var pruned = {}
     fileList = fileList.filter(function(a){
