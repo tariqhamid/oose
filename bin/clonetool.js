@@ -43,7 +43,7 @@ program
   'to analyze, use - for stdin')
   .option('-p, --pretend','Dont actually make and clones just analyze')
   .option('-H, --hash <hash>','Hash of file to check')
-  .option('-f, --folder <folder>','Folder to scan')
+  .option('-F, --folder <folder>','Folder to scan')
   .option('-S, --store <store>','Use file list from this store')
   .option('-P, --prism <prism>','Use file list from this prism')
   .option('-u, --verify','Verify file(s) by having stores verify integrity')
@@ -671,15 +671,15 @@ var keyScan = function(type,key,fileStream){
         progress.update(0)
         return inventoryKeyDownload()
           .then(function(result){
+            result = result.sort()
             fs.writeFileSync(cacheKeyTempFile,JSON.stringify(result))
             resolve(result)
           })
       } else {
         console.log('Reading inventory keys from cache')
-        var result = fs.readFileSync(cacheKeyTempFile)
         try {
-          result = JSON.parse(result)
-          resolve(result)
+          var result = JSON.parse(fs.readFileSync(cacheKeyTempFile))
+          resolve(result.sort())
         } catch(e){
           reject(e)
         }
@@ -745,51 +745,49 @@ P.try(function(){
     ' clone(s) of each file ' + changeVerb +
     ' ' + program[changeVerb] + ' clone(s)')
   console.log('--------------------')
-  //obtain peer list
-  console.log('Obtaining peer list')
-  return prismBalance.peerList()
+
+  //get file list together
+  if(program.hash){
+    fileStream.write(program.hash)
+  } else if(program.force){
+    fileStream.write(program.force)
+  } else if(program.store){
+    return keyScan('store',program.store,fileStream)
+  } else if(program.prism){
+    return keyScan('prism',program.prism,fileStream)
+  } else if(program.allfiles){
+    return keyScan('allfiles',null,fileStream)
+  } else if(program.folder){
+    return folderScan(program.folder,fileStream)
+  } else if('-' === program.input){
+    return promisePipe(process.stdin,fileStream)
+  } else {
+    return promisePipe(fs.createReadStream(program.input),fileStream)
+  }
 })
-  .then(function(result){
-    peerList = result
-    console.log('Peer list obtained!')
-    //get file list together
-    if(program.hash){
-      fileStream.write(program.hash)
-    } else if(program.force){
-      fileStream.write(program.force)
-    } else if(program.store){
-      return keyScan('store',program.store,fileStream)
-    } else if(program.prism){
-      return keyScan('prism',program.prism,fileStream)
-    } else if(program.allfiles){
-      return keyScan('allfiles',null,fileStream)
-    } else if(program.folder){
-      return folderScan(program.folder,fileStream)
-    } else if('-' === program.input){
-      return promisePipe(process.stdin,fileStream)
-    } else {
-      return promisePipe(fs.createReadStream(program.input),fileStream)
-    }
-  })
   .then(function(){
     fileList = fileStream.toString().split('\n')
+    console.log('Input ' + fileList.length + ' files, filtering')
+    var pruned = {}
     fileList = fileList.filter(function(a){
-      return a.match(hasher.hashExpressions[hasher.identify(a)])
+      var rv = !!(a.match(hasher.hashExpressions[hasher.identify(a)]))
+      if(rv && (!program.force) && (-1 !== config.clonetool.hashWhitelist.indexOf(a))){
+        pruned[a] = true
+        rv = false
+      }
+      return rv
     })
-    if(!program.force){
-      fileList.forEach(function(file,i){
-        if(config.clonetool.hashWhitelist.indexOf(file) >= 0){
-          console.log(file,
-            'Is whitelisted and will not be analyzed, use -f to force')
-          fileList.splice(i,1)
-        }
-      })
-    }
+    Object.keys(pruned).forEach(function(k){
+      console.log(k,'is whitelisted and will not be analyzed, use -f to force')
+    })
     fileCount = fileList.length
     if(0 === fileCount){
       console.log('No files left to analyze, bye')
       process.exit()
     }
+    console.log('Found ' + fileCount + ' file(s) to be analyzed')
+    //console.log(fileList)
+
     var progress = new ProgressBar(
       '  analyzing [:bar] :current/:total :percent :rate/fs :etas',
       {
@@ -800,8 +798,6 @@ P.try(function(){
         incomplete: ' '
       }
     )
-    console.log('Found ' + fileCount + ' file(s) to be analyzed')
-    //console.log(fileList)
     return analyzeFiles(program,progress,fileList)
   })
   .then(function(result){
@@ -849,6 +845,16 @@ P.try(function(){
       console.log('Pretend mode selected, taking no action, bye!')
       process.exit()
     }
+
+    //obtain peer list
+    console.log('Obtaining peer list')
+    return prismBalance.peerList()
+  })
+  .then(function(result){
+    peerList = result
+    console.log('Peer list obtained!')
+
+    //process the files
     return Object.keys(files)
   })
   .each(function(hash){
