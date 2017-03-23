@@ -178,6 +178,21 @@ config.$load({
     //stores in this list will never have any hashes deleted in automodes
     //  NOTE: --drop WILL STILL WORK as it is forced
     storeProtected: []
+  },
+  //stats utility
+  stats: {
+    //stats can/should use a different db than the core services
+    //TODO: make this completely override main redis settings,
+    //      in use cases where the stats redis is not the local one
+    redis: {
+      host: '127.0.0.1',
+      port: 6379,
+      db: 15,
+      prefix: 'oose',
+      options: {}
+    },
+    life:       86400, //1 day
+    afterlife: 604800  //1 week
   }
 })
 

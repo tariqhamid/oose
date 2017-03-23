@@ -686,7 +686,7 @@ var keyScan = function(type,key,fileStream){
       }
     })
   }
-  var prevHash = ''
+  var prevHash = 8675309
   return cacheKeyDownload()
     .map(function(inventoryKey){
       var parts = inventoryKey.split(':')
@@ -694,8 +694,8 @@ var keyScan = function(type,key,fileStream){
       if(prevHash === parts[0]) return; // skip dupes of previous winners
       if('allfiles' !== type && 'prism' === type && parts[1] !== key) return;
       if('allfiles' !== type && 'store' === type && parts[2] !== key) return;
-      fileStream.write(parts[0] + '\n')
-      prevHash = parts[0]
+      if(8675309 !== prevHash) fileStream.write('\n')
+      fileStream.write(prevHash = parts[0])
     })
 }
 
@@ -770,9 +770,7 @@ P.try(function(){
 })
   .then(function(){
     fileList = fileStream.toString().split('\n')
-    var blankline = ''
-    while(-1 !== (blankline = fileList.indexOf(''))) fileList.splice(blankline,1)
-    console.log('Input ' + fileList.length + ' files, filtering')
+    console.log('Input ' + fileList.length + ' entries, filtering')
     var pruned = {}
     fileList = fileList.filter(function(a){
       var rv = !!(a.match(hasher.hashExpressions[hasher.identify(a)]))
