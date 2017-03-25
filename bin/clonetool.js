@@ -634,9 +634,9 @@ var keyScan = function(type,key,fileStream){
   var keyList = []
   var totalRows = 1
   var inventoryKeyDownload = function(progress){
-    // use a view to only transfer keys (no _rev or junk since we don't use it here)
-    // _design/inventory/keyList: { map: function(doc){emit(null,doc._id)} }
-    return couchdb.inventory.viewAsync('inventory/keyList',{limit: keyBlockSize, skip: keyList.length})
+    // use a view to only transfer _id (no data since we don't use it here)
+    // _design/keyList/all: { map: function(doc){emit(null,'')} }
+    return couchdb.inventory.viewAsync('keyList/all',{limit: keyBlockSize, skip: keyList.length})
       .then(function(result){
         totalRows = result.total_rows
         if(totalRows !== progress.total){
@@ -647,7 +647,7 @@ var keyScan = function(type,key,fileStream){
           progress.tick()
         })
         if(!progress.complete){
-          return inventoryKeyDownload()
+          return inventoryKeyDownload(progress)
         } else {
           return keyList
         }
