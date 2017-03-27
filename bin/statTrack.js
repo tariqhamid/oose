@@ -12,8 +12,12 @@ var UserError = oose.UserError
 
 var config = require('../config')
 
-var redis = require('../helpers/redis')(config.stats.redis)
 var lsof = require('../helpers/lsof')
+var redisHelper = require('../helpers/redis')
+var redis = {
+  'local': redisHelper(config.redis),
+  'remote': redisHelper(config.stats.redis)
+}
 
 //setup cli parsing
 program
@@ -46,14 +50,14 @@ var buildBatch = function(fsData,hashData){
   var fKey = Object.keys(fsData).sort()
   var fKeyCount = fKey.length
   for(var e=0;e<fKeyCount;e++){
-    batch.push(redis.hmsetAsync(fKey[e],fsData[fKey[e]]))
-    batch.push(redis.expireAsync(fKey[e],86400))
+    batch.push(redis.remote.hmsetAsync(fKey[e],fsData[fKey[e]]))
+    batch.push(redis.remote.expireAsync(fKey[e],86400))
   }
   var hKey = Object.keys(hashData).sort()
   var hKeyCount = hKey.length
   for(var f=0;f<hKeyCount;f++){
-    batch.push(redis.zaddAsync(hKey[f],hashData[hKey[f]]))
-    batch.push(redis.expireAsync(hKey[f],86400))
+    batch.push(redis.remote.zaddAsync(hKey[f],hashData[hKey[f]]))
+    batch.push(redis.remote.expireAsync(hKey[f],86400))
   }
 }
 var procDisk = {}
@@ -165,14 +169,7 @@ P.try(function(){
 .then(function(){
   //jam shit in redis here
   var timeStamp = ((+new Date())/1000) | 0
-  return redis.selectAsync(
-    ('number' === typeof config.stats.redis.db)?config.stats.redis.db:15
-  )
-    .then(function(rv){
-      debug('redis_select',
-       ('number' === typeof config.stats.redis.db)?config.stats.redis.db:15,
-       rv)
-      //debug(stats)
+  return P.try(function(){
       var fsData = {}
       var hashData = {}
       for(var a=0;a<storeCount;a++){
@@ -203,10 +200,11 @@ P.try(function(){
 })
 .then(function(result){
   debug(result)
-  return redis.keysAsync('*')
+  return P.all([redis.local.keysAsync('oose:counter:*'),redis.remote.keysAsync('*')])
 })
 .then(function(result){
-  debug(result.sort())
+  debug('local:\n',result[0].sort())
+  debug('remote:\n',result[1].sort())
   console.log('Operations complete, bye!')
   process.exit()
 })

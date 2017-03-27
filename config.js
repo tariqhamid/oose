@@ -181,9 +181,7 @@ config.$load({
   },
   //stats utility
   stats: {
-    //stats can/should use a different db than the core services
-    //TODO: make this completely override main redis settings,
-    //      in use cases where the stats redis is not the local one
+    //stats can/should use a different db+server than the core services
     redis: {
       host: '127.0.0.1',
       port: 6379,
