@@ -266,7 +266,9 @@ var removeClones = function(file){
         var peer = selectPeer('store',storeName)
         prismNameList.push(prismName)
         storeNameList.push(storeName)
-        if(-1 === storeWinnerList.indexOf(storeName) && true === peer.available){
+        if((true === peer.available) &&
+          (-1 === storeWinnerList.indexOf(storeName))
+        ){
           storeRemoveList.push({prism: prismName,store: storeName})
         }
       }
@@ -637,7 +639,9 @@ var keyScan = function(type,key,fileStream){
   var inventoryKeyDownload = function(progress){
     // use a view to only transfer _id (no data since we don't use it here)
     // _design/keyList/all: { map: function(doc){emit(null,'')} }
-    return couchdb.inventory.viewAsync('keyList/all',{limit: keyBlockSize, skip: keyList.length})
+    return couchdb.inventory.viewAsync('keyList/all',
+      {limit: keyBlockSize, skip: keyList.length}
+    )
       .then(function(result){
         totalRows = result.total_rows
         if(totalRows !== progress.total){
@@ -722,12 +726,18 @@ P.try(function(){
   //set the desired to the default from config if not set
   if(!program.desired) program.desired = config.clonetool.desired
   //validate some logic states into booleans once, here
-  program.at    = parseInt(program.at,10)
+  program.at = parseInt(program.at,10)
   program.above = parseInt(program.above,10)
   program.below = parseInt(program.below,10)
-  var validAt    = function(){return (('number' === typeof program.at   ) && (-1<program.at   ))}
-  var validAbove = function(){return (('number' === typeof program.above) && ( 0<program.above))}
-  var validBelow = function(){return (('number' === typeof program.below) && ( 0<program.below))}
+  var validAt = function(){
+    return (('number' === typeof program.at) && (-1<program.at))
+  }
+  var validAbove = function(){
+    return (('number' === typeof program.above) && (0<program.above))
+  }
+  var validBelow = function(){
+    return (('number' === typeof program.below) && (0<program.below))
+  }
   //if no other target information provided look for files below the default
   if(!validBelow() && !validAbove() && !validAt()){
     program.below = +program.desired
@@ -744,7 +754,7 @@ P.try(function(){
   var changeVerb = 'somewhat near'
   if(validBelow()) changeVerb = 'below'
   if(validAbove()) changeVerb = 'above'
-  if(validAt())    changeVerb = 'at'
+  if(validAt()) changeVerb = 'at'
   console.log('You have asked for ' + program.desired +
     ' clone(s) of each file ' + changeVerb +
     ' ' + program[changeVerb] + ' clone(s)')
@@ -775,7 +785,9 @@ P.try(function(){
     var pruned = {}
     fileList = fileList.filter(function(a){
       var rv = !!(a.match(hasher.hashExpressions[hasher.identify(a)]))
-      if(rv && (!program.force) && (-1 !== config.clonetool.hashWhitelist.indexOf(a))){
+      if(rv && (!program.force) &&
+        (-1 !== config.clonetool.hashWhitelist.indexOf(a))
+      ){
         pruned[a] = true
         rv = false
       }

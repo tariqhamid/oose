@@ -1,7 +1,7 @@
 #!/usr/bin/node
 'use strict';
 var P = require('bluebird')
-var debug = require('debug')('clonetool')
+var debug = require('debug')('stats')
 var program = require('commander')
 var oose = require('oose-sdk')
 var path = require('path')
@@ -26,7 +26,8 @@ program
 
 var storeList = []
 var storeCount = +(storeList.length)
-// stats Object.keys are storeName with sub-Object.keys as section, then user-defined data
+// stats Object.keys are storeName
+//  with sub-Object.keys as section, then user-defined data
 var stats = {}
 var statUpdate = function(store,section,data){
   if(!(store in stats)){
@@ -39,8 +40,23 @@ var statUpdate = function(store,section,data){
   }
   stats[store][section] = data
 }
+var buildBatch = function(fsData,hashData){
+  //build batch of redis promises
+  var batch = []
+  var fKey = Object.keys(fsData).sort()
+  var fKeyCount = fKey.length
+  for(var e=0;e<fKeyCount;e++){
+    batch.push(redis.hmsetAsync(fKey[e],fsData[fKey[e]]))
+    batch.push(redis.expireAsync(fKey[e],86400))
+  }
+  var hKey = Object.keys(hashData).sort()
+  var hKeyCount = hKey.length
+  for(var f=0;f<hKeyCount;f++){
+    batch.push(redis.zaddAsync(hKey[f],hashData[hKey[f]]))
+    batch.push(redis.expireAsync(hKey[f],86400))
+  }
+}
 var procDisk = {}
-var procFD   = {}
 P.try(function(){
   console.log('Welcome to the OOSE v' + config.version + ' statTrack!')
   console.log('--------------------')
@@ -52,9 +68,12 @@ P.try(function(){
   var sL = Object.keys(result)
   var resultCount = +(sL.length)
   console.log('Loaded '+resultCount+' apps from NDT database')
+  var _loadAppCfg = function(x){
+    return new Promise(function(r){r(require(result[sL[x]].env.OOSE_CONFIG))})
+  }
   var loadConfigs = []
   for(var x=0;x<resultCount;x++){
-    loadConfigs.push(new Promise(function(resolve){resolve(require(result[sL[x]].env.OOSE_CONFIG))}))
+    loadConfigs.push(_loadAppCfg(x))
   }
   return P.all(loadConfigs)
 })
@@ -65,7 +84,9 @@ P.try(function(){
     if(r.store && r.store.name) statUpdate(r.store.name,'cfg',r)
   }
   if(!storeList.length) throw new UserError('No stores configured here?')
-  return new Promise(function(resolve){procfs.disk(function(a,b,c){resolve(b)})})
+  return new Promise(function(r){
+    procfs.disk(function(a,b){r(b)})
+  })
 })
 .then(function(result){
   console.log('FS: procfs disk data obtained!')
@@ -83,7 +104,7 @@ P.try(function(){
           ms_writing: +r.ms_writing,
           ios_pending: +r.ios_pending,
           ms_io: +r.ms_io,
-          ms_weighted_io: +r.ms_weighted_io,
+          ms_weighted_io: +r.ms_weighted_io
       }
     }
   }
@@ -92,8 +113,8 @@ P.try(function(){
 .then(function(result){
   console.log('FS: sizes obtained!')
   var statByMount = {}
-  for(var x=0;x<result.length;x++){
-    statByMount[result[x].mount] = result[x]
+  for(var i=0;i<result.length;i++){
+    statByMount[result[i].mount] = result[i]
   }
   var sortReversed = function(a,b){if(a>b)return -1;if(a<b)return 1;return 0}
   var mounts = Object.keys(statByMount).sort(sortReversed)
@@ -116,9 +137,8 @@ P.try(function(){
     }
   }
   var lsofTargets = []
-  for(var x=0;x<storeCount;x++){
-    var s = storeList[x]
-    lsofTargets.push(lsof.exec('-anc nginx '+stats[s].fs.mount))
+  for(var z=0;z<storeCount;z++){
+    lsofTargets.push(lsof.exec('-anc nginx '+stats[storeList[z]].fs.mount))
   }
   return P.all(lsofTargets)
 })
@@ -132,7 +152,10 @@ P.try(function(){
     for(var y=0;y<r.length;y++){
       var pathHit = r[y].name.match('^'+contentDir)
       if(pathHit){
-        var hash = pathHit.input.replace(pathHit[0],'').replace(/\//g,'').replace(/\..*$/,'')
+        var hash = pathHit.input
+          .replace(pathHit[0],'')
+          .replace(/\//g,'')
+          .replace(/\..*$/,'')
         hashUsage[hash] = (hashUsage[hash])?hashUsage[hash]+1:1
       }
     }
@@ -141,66 +164,55 @@ P.try(function(){
 })
 .then(function(){
   //jam shit in redis here
-  var tstamp = ((+new Date())/1000) | 0
-  return redis.selectAsync(('number' === typeof config.stats.redis.db)?config.stats.redis.db:15)
+  var timeStamp = ((+new Date())/1000) | 0
+  return redis.selectAsync(
+    ('number' === typeof config.stats.redis.db)?config.stats.redis.db:15
+  )
     .then(function(rv){
-      //console.log('redis_select',('number' === typeof config.stats.redis.db)?config.stats.redis.db:15,rv)
-      //console.log(stats)
-      //FS section: stack the args for HMSET (convert hash to array)
+      debug('redis_select',
+       ('number' === typeof config.stats.redis.db)?config.stats.redis.db:15,
+       rv)
+      //debug(stats)
       var fsData = {}
-      for(var x=0;x<storeCount;x++){
-        var s = storeList[x]
-        var key = [s,'fs',tstamp].join(':')
-        fsData[key] = []
-        var fsKey = Object.keys(stats[s].fs)
-        var fsKeyCount = fsKey.length
-        for(var y=0;y<fsKeyCount;y++){
-          var k = fsKey[y]
-          fsData[key].push(k,stats[s].fs[k])
-        }
-      }
-      //HASH section: stack the args for ZADD (convert hash to array)
       var hashData = {}
-      for(var x=0;x<storeCount;x++){
-        var s = storeList[x]
-        var key = [s,'hU',tstamp].join(':')
-        hashData[key] = []
-        var hashKey = Object.keys(stats[s].hashUsage).sort()
+      for(var a=0;a<storeCount;a++){
+        var sLa = storeList[a]
+        //FS section: stack the args for HMSET (convert hash to array)
+        var fsDataKey = [sLa,'fs',timeStamp].join(':')
+        fsData[fsDataKey] = []
+        var fsKey = Object.keys(stats[sLa].fs)
+        var fsKeyCount = fsKey.length
+        for(var b=0;b<fsKeyCount;b++){
+          var fKb = fsKey[b]
+          fsData[fsDataKey].push(fKb,stats[sLa].fs[fKb])
+        }
+        //HASH section: stack the args for ZADD (convert hash to array)
+        var hashDataKey = [sLa,'hU',timeStamp].join(':')
+        hashData[hashDataKey] = []
+        var hashKey = Object.keys(stats[sLa].hashUsage).sort()
         var hashKeyCount = hashKey.length
-        for(var y=0;y<hashKeyCount;y++){
-          var k = hashKey[y]
-          hashData[key].push(stats[s].hashUsage[k],k) // ZADD takes things 'backwards'
+        for(var d=0;d<hashKeyCount;d++){
+          var hKd = hashKey[d]
+          // ZADD takes things 'backwards', below uses val,key
+          hashData[hashDataKey].push(stats[sLa].hashUsage[hKd],hKd)
         }
       }
       //build and run the actual batch of redis promises
-      var batch = []
-      var dKey = Object.keys(fsData).sort()
-      var dKeyCount = dKey.length
-      for(var x=0;x<dKeyCount;x++){
-        batch.push(redis.hmsetAsync(dKey[x],fsData[dKey[x]]))
-        batch.push(redis.expireAsync(dKey[x],86400))
-      }
-      var dKey = Object.keys(hashData).sort()
-      var dKeyCount = dKey.length
-      for(var x=0;x<dKeyCount;x++){
-        batch.push(redis.zaddAsync(dKey[x],hashData[dKey[x]]))
-        batch.push(redis.expireAsync(dKey[x],86400))
-      }
-      return P.all(batch)
+      return P.all(buildBatch(fsData,hashData))
     })
 })
 .then(function(result){
-  //console.log(result)
+  debug(result)
   return redis.keysAsync('*')
 })
 .then(function(result){
-  console.log(result.sort())
+  debug(result.sort())
   console.log('Operations complete, bye!')
   process.exit()
 })
 .catch(UserError,function(err){
   console.error('Oh no! An error has occurred :(')
   console.error(err.message)
-  console.log(stats)
+  debug.log(stats)
   process.exit()
 })
