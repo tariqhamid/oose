@@ -1,5 +1,5 @@
 'use strict';
-var P = require('bluebird')
+//var P = require('bluebird')
 var debug = require('debug')('helper:stat')
 
 var config = require('../config')
@@ -13,6 +13,7 @@ var config = require('../config')
 module.exports = function(options){
   var s = {}
   s.config = ('object' === typeof options) ? options : config.stats
+  /*jshint bitwise: false*/
   s.timeStamp = ((+new Date())/1000) | 0
   s.refList = []
   s.refCount = 0
@@ -23,7 +24,7 @@ module.exports = function(options){
 
   s.keyGen = function(ref,section){
     var rv = [ref,section,s.timeStamp].join(':')
-    debug('_keyGen(',ref,',',section,')=',rv)
+    debug('keyGen(',ref,',',section,') =',rv)
     return rv
   }
 
@@ -41,11 +42,11 @@ module.exports = function(options){
   }
 
   s.get = function(ref,section){
-    var rv = undefined
-    debug('get(',ref,',',section,')')
+    var rv = false
     if((ref in s.stats) && (section in s.stats[ref])){
       rv = s.stats[ref][section]
     }
+    debug('get(',ref,',',section,') =',rv)
     return rv
   }
 

@@ -38,26 +38,25 @@ var buildBatch = function(datas){
   debug('buildBatch:stats',stats)
   //build batch of redis promises
   var batch = []
-  var fKey = Object.keys(stats).sort()
-  var fKeyCount = fKey.length
-  for(var e=0;e<fKeyCount;e++){
-    var p = fKey[e].split(':')
+  Object.keys(stats).sort().forEach(function(fKey){
+    var p = fKey.split(':')
     switch(p[1]){
     case 'fs':
     case 'oD':
-      batch.push(redis.remote.hmsetAsync(fKey[e],stats[fKey[e]]))
-      batch.push(redis.remote.expireAsync(fKey[e],86400))
+      batch.push(redis.remote.hmsetAsync(fKey,stats[fKey]))
+      batch.push(redis.remote.expireAsync(fKey,86400))
       break
     case 'hU':
-      batch.push(redis.remote.zaddAsync(fKey[e],stats[fKey[e]]))
-      batch.push(redis.remote.expireAsync(fKey[e],86400))
+      batch.push(redis.remote.zaddAsync(fKey,stats[fKey]))
+      batch.push(redis.remote.expireAsync(fKey,86400))
       break
     default:
-      console.error('buildBatch: stats contained unhandled section:',p)
+      console.error('buildBatch: stats contained unhandled section:',fKey,p)
     }
-  }
+  })
   return batch
 }
+
 var procDisk = {}
 var counterKeys = []
 var redisKeys = []
@@ -73,22 +72,23 @@ P.try(function(){
     var resultCount = +(sL.length)
     console.log('Loaded '+resultCount+' apps from NDT database')
     debug(sL)
-    var _loadAppCfg = function(x){
-      return new Promise(function(r){r(require(result[sL[x]].env.OOSE_CONFIG))})
+    var _loadAppCfg = function(sLx){
+      return new Promise(function(r){
+        r(require(result[sLx].env.OOSE_CONFIG))
+      })
     }
     var loadConfigs = []
-    for(var x=0;x<resultCount;x++){
-      loadConfigs.push(_loadAppCfg(x))
-    }
+    sL.forEach(function(sLx){
+      loadConfigs.push(_loadAppCfg(sLx))
+    })
     return P.all(loadConfigs)
   })
   .then(function(result){
     console.log('Loaded instance config files')
     debug(result)
-    for(var x=0;x<result.length;x++){
-      var r = result[x]
+    result.forEach(function(r){
       if(r.store && r.store.name) stats.set(r.store.name,'cfg',r)
-    }
+    })
     if(!stats.refList.length)
       throw new UserError('No stores configured here?')
     return new Promise(function(r){
@@ -98,8 +98,7 @@ P.try(function(){
   .then(function(result){
     console.log('fs: procfs disk data obtained!')
     debug(result)
-    for(var x=0;x<result.length;x++){
-      var r = result[x]
+    result.forEach(function(r){
       if(r.device){
         procDisk[r.device] = {
           reads_completed: +r.reads_completed,
@@ -115,22 +114,19 @@ P.try(function(){
           ms_weighted_io: +r.ms_weighted_io
         }
       }
-    }
+    })
     return si.fsSize()
   })
   .then(function(result){
     console.log('fs: sizes obtained!')
     var statByMount = {}
-    for(var i=0;i<result.length;i++){
-      statByMount[result[i].mount] = result[i]
-    }
+    result.forEach(function(r){
+      statByMount[r.mount] = r
+    })
     var sortReversed = function(a,b){if(a>b)return -1;if(a<b)return 1;return 0}
     var mounts = Object.keys(statByMount).sort(sortReversed)
-    var mountCount = +(mounts.length)
-    for(var x=0;x<mountCount;x++){
-      var m = mounts[x]
-      for(var y=0;y<stats.refCount;y++){
-        var s = stats.refList[y]
+    mounts.forEach(function(m){
+      stats.refList.forEach(function(s){
         var pathHit = path.dirname(stats.get(s,'cfg').root).match('^'+m)
         if(pathHit && (!stats.get(s,'fs'))){
           var r = statByMount[m]
@@ -142,8 +138,8 @@ P.try(function(){
           data.used = r.used
           stats.set(s,'fs',data)
         }
-      }
-    }
+      })
+    })
     var lsofTargets = []
     stats.refList.forEach(function(ref){
       debug('Executing lsof -anc nginx '+stats.get(ref,'fs').mount)
@@ -156,13 +152,11 @@ P.try(function(){
   .then(function(result){
     console.log('hashUsage: lsof data obtained!')
     debug(result)
-    for(var x=0;x<stats.refCount;x++){
-      var s = stats.refList[x]
-      var r = result.shift()
+    stats.refList.forEach(function(s){
       var contentDir = stats.get(s,'cfg').root+'/content/'
       var hashUsage = {}
-      for(var y=0;y<r.length;y++){
-        var pathHit = r[y].name.match('^'+contentDir)
+      result.shift().forEach(function(r){
+        var pathHit = r.name.match('^'+contentDir)
         if(pathHit){
           var hash = pathHit.input
             .replace(pathHit[0],'')
@@ -170,9 +164,9 @@ P.try(function(){
             .replace(/\..*$/,'')
           hashUsage[hash] = (hashUsage[hash])?hashUsage[hash]+1:1
         }
-      }
+      })
       stats.set(s,'hashUsage',hashUsage)
-    }
+    })
     return redis.local.keysAsync('oose:counter:*')
   })
   .then(function(result){
@@ -204,34 +198,25 @@ P.try(function(){
           var ooseDataKey = stats.keyGen(sLa,'oD')
           statData[ooseDataKey] = []
           var ooseData = stats.get(sLa,'ooseData')
-          var ooseKey = Object.keys(ooseData).sort()
-          var ooseKeyCount = ooseKey.length
-          for(var c=0;c<ooseKeyCount;c++){
-            var oKc = ooseKey[c]
+          Object.keys(ooseData).sort().forEach(function(oKc){
             statData[ooseDataKey].push(oKc,ooseData[oKc])
-          }
+          })
         } else { //Store Specific stat
           //FS section: stack the args for HMSET (convert hash to array)
           var fsDataKey = stats.keyGen(sLa,'fs')
           statData[fsDataKey] = []
           var fs = stats.get(sLa,'fs')
-          var fsKey = Object.keys(fs)
-          var fsKeyCount = fsKey.length
-          for(var b=0;b<fsKeyCount;b++){
-            var fKb = fsKey[b]
+          Object.keys(fs).forEach(function(fKb){
             statData[fsDataKey].push(fKb,fs[fKb])
-          }
+          })
           //HASH section: stack the args for ZADD (convert hash to array)
           var hashUsageKey = stats.keyGen(sLa,'hU')
           statData[hashUsageKey] = []
           var hashUsage = stats.get(sLa,'hashUsage')
-          var hashKey = Object.keys(hashUsage).sort()
-          var hashKeyCount = hashKey.length
-          for(var d=0;d<hashKeyCount;d++){
-            var hKd = hashKey[d]
+          Object.keys(hashUsage).sort().forEach(function(hKd){
             // ZADD takes things 'backwards', below uses val,key
             statData[hashUsageKey].push(hashUsage[hKd],hKd)
-          }
+          })
         }
       })
       //build and run the actual batch of redis promises
