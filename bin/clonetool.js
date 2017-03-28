@@ -41,7 +41,7 @@ program
   .option('-D, --detail <s>','Hash of file to get details about')
   .option('-f, --force','Force the operation even on this hash')
   .option('-i, --input <s>','List of Hashes line separated ' +
-  'to analyze, use - for stdin')
+    'to analyze, use - for stdin')
   .option('-p, --pretend','Dont actually make and clones just analyze')
   .option('-H, --hash <hash>','Hash of file to check')
   .option('-F, --folder <folder>','Folder to scan')
@@ -664,14 +664,14 @@ var keyScan = function(type,key,fileStream){
         console.log('Starting to download a fresh copy ' +
           'of inventory keys, stand by.')
         var progress = new ProgressBar(
-            ' downloading [:bar] :current/:total :percent :rate/ks :etas',
-            {
-              renderThrottle: 1000,
-              complete: '=',
-              incomplete: ' ',
-              width: 20,
-              total: totalRows
-            }
+          ' downloading [:bar] :current/:total :percent :rate/ks :etas',
+          {
+            renderThrottle: 1000,
+            complete: '=',
+            incomplete: ' ',
+            width: 20,
+            total: totalRows
+          }
         )
         progress.update(0)
         return inventoryKeyDownload(progress)
