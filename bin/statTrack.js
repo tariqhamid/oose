@@ -1,7 +1,7 @@
 #!/usr/bin/node
 'use strict';
 var P = require('bluebird')
-var debug = require('debug')('stats')
+var debug = require('debug')('statTrack')
 var program = require('commander')
 var ObjectManage = require('object-manage')
 var oose = require('oose-sdk')
@@ -13,11 +13,12 @@ var UserError = oose.UserError
 
 var config = require('../config')
 
+var stats = require('../helpers/stats')()
 var lsof = require('../helpers/lsof')
 var redisHelper = require('../helpers/redis')
 var redis = {
   'local': redisHelper(config.redis),
-  'remote': redisHelper(config.stats.redis)
+  'remote': redisHelper(stats.config.redis)
 }
 
 //setup cli parsing
@@ -29,29 +30,6 @@ program
   .option('-v, --verbose','Be verbose and show hash list before processing')
   .parse(process.argv)
 
-var timeStamp = ((+new Date())/1000) | 0
-var storeList = []
-var storeCount = +(storeList.length)
-// stats Object.keys are storeName
-//  with sub-Object.keys as section, then user-defined data
-var stats = {}
-var _keyGen = function(storeName,section){
-  var rv = [storeName,section,timeStamp].join(':')
-  debug('_keyGen(',storeName,',',section,')=',rv)
-  return rv
-}
-var statUpdate = function(store,section,data){
-  debug('statUpdate(',store,section,data,')')
-  if(!(store in stats)){
-    stats[store] = {}
-    storeList = (Object.keys(stats)).sort()
-    storeCount = +(storeList.length)
-  }
-  if(!(section in stats[store])){
-    stats[store][section] = null
-  }
-  stats[store][section] = data
-}
 var buildBatch = function(datas){
   debug('buildBatch:datas',datas)
   var stats = new ObjectManage()
@@ -109,9 +87,10 @@ P.try(function(){
     debug(result)
     for(var x=0;x<result.length;x++){
       var r = result[x]
-      if(r.store && r.store.name) statUpdate(r.store.name,'cfg',r)
+      if(r.store && r.store.name) stats.set(r.store.name,'cfg',r)
     }
-    if(!storeList.length) throw new UserError('No stores configured here?')
+    if(!stats.refList.length)
+      throw new UserError('No stores configured here?')
     return new Promise(function(r){
       procfs.disk(function(a,b){r(b)})
     })
@@ -150,10 +129,10 @@ P.try(function(){
     var mountCount = +(mounts.length)
     for(var x=0;x<mountCount;x++){
       var m = mounts[x]
-      for(var y=0;y<storeCount;y++){
-        var s = storeList[y]
-        var pathHit = path.dirname(stats[s].cfg.root).match('^'+m)
-        if(pathHit && (!stats[s].fs)){
+      for(var y=0;y<stats.refCount;y++){
+        var s = stats.refList[y]
+        var pathHit = path.dirname(stats.get(s,'cfg').root).match('^'+m)
+        if(pathHit && (!stats.get(s,'fs'))){
           var r = statByMount[m]
           var devName = r.fs.match(/^\/dev\/(.+)$/)
           var data = procDisk[devName[1]]
@@ -161,23 +140,26 @@ P.try(function(){
           data.mount = m
           data.size = r.size
           data.used = r.used
-          statUpdate(s,'fs',data)
+          stats.set(s,'fs',data)
         }
       }
     }
     var lsofTargets = []
-    for(var z=0;z<storeCount;z++){
-      lsofTargets.push(lsof.exec('-anc nginx '+stats[storeList[z]].fs.mount))
-    }
+    stats.refList.forEach(function(ref){
+      debug('Executing lsof -anc nginx '+stats.get(ref,'fs').mount)
+      lsofTargets.push(
+        lsof.exec('-anc nginx '+stats.get(ref,'fs').mount)
+      )
+    })
     return P.all(lsofTargets)
   })
   .then(function(result){
     console.log('hashUsage: lsof data obtained!')
     debug(result)
-    for(var x=0;x<storeCount;x++){
-      var s = storeList[x]
+    for(var x=0;x<stats.refCount;x++){
+      var s = stats.refList[x]
       var r = result.shift()
-      var contentDir = stats[s].cfg.root+'/content/'
+      var contentDir = stats.get(s,'cfg').root+'/content/'
       var hashUsage = {}
       for(var y=0;y<r.length;y++){
         var pathHit = r[y].name.match('^'+contentDir)
@@ -189,7 +171,7 @@ P.try(function(){
           hashUsage[hash] = (hashUsage[hash])?hashUsage[hash]+1:1
         }
       }
-      statUpdate(s,'hashUsage',hashUsage)
+      stats.set(s,'hashUsage',hashUsage)
     }
     return redis.local.keysAsync('oose:counter:*')
   })
@@ -210,46 +192,48 @@ P.try(function(){
     counterKeys.sort().forEach(function(k){
       ooseData[k]=result[i++]
     })
-    statUpdate('API','ooseData',ooseData)
+    stats.set('API','ooseData',ooseData)
   })
   .then(function(){
     //jam shit in redis here
     return P.try(function(){
       var statData = {}
-      for(var a=0;a<storeCount;a++){
-        var sLa = storeList[a]
+      stats.refList.forEach(function(sLa){
         if('API' === sLa){ //API Global stat
           //OOSE section: stack the args for HMSET (convert hash to array)
-          var ooseDataKey = _keyGen(sLa,'oD')
+          var ooseDataKey = stats.keyGen(sLa,'oD')
           statData[ooseDataKey] = []
-          var ooseKey = Object.keys(stats[sLa].ooseData).sort()
+          var ooseData = stats.get(sLa,'ooseData')
+          var ooseKey = Object.keys(ooseData).sort()
           var ooseKeyCount = ooseKey.length
           for(var c=0;c<ooseKeyCount;c++){
             var oKc = ooseKey[c]
-            statData[ooseDataKey].push(oKc,stats[sLa].ooseData[oKc])
+            statData[ooseDataKey].push(oKc,ooseData[oKc])
           }
         } else { //Store Specific stat
           //FS section: stack the args for HMSET (convert hash to array)
-          var fsDataKey = _keyGen(sLa,'fs')
+          var fsDataKey = stats.keyGen(sLa,'fs')
           statData[fsDataKey] = []
-          var fsKey = Object.keys(stats[sLa].fs)
+          var fs = stats.get(sLa,'fs')
+          var fsKey = Object.keys(fs)
           var fsKeyCount = fsKey.length
           for(var b=0;b<fsKeyCount;b++){
             var fKb = fsKey[b]
-            statData[fsDataKey].push(fKb,stats[sLa].fs[fKb])
+            statData[fsDataKey].push(fKb,fs[fKb])
           }
           //HASH section: stack the args for ZADD (convert hash to array)
-          var hashDataKey = _keyGen(sLa,'hU')
-          statData[hashDataKey] = []
-          var hashKey = Object.keys(stats[sLa].hashUsage).sort()
+          var hashUsageKey = stats.keyGen(sLa,'hU')
+          statData[hashUsageKey] = []
+          var hashUsage = stats.get(sLa,'hashUsage')
+          var hashKey = Object.keys(hashUsage).sort()
           var hashKeyCount = hashKey.length
           for(var d=0;d<hashKeyCount;d++){
             var hKd = hashKey[d]
             // ZADD takes things 'backwards', below uses val,key
-            statData[hashDataKey].push(stats[sLa].hashUsage[hKd],hKd)
+            statData[hashUsageKey].push(hashUsage[hKd],hKd)
           }
         }
-      }
+      })
       //build and run the actual batch of redis promises
       return P.all(buildBatch([statData]))
     })
@@ -257,7 +241,7 @@ P.try(function(){
   .then(function(result){
     debug(result)
     console.log('Redis content sent to remote')
-    return redis.remote.keysAsync(_keyGen('*','*'))
+    return redis.remote.keysAsync(stats.keyGen('*','*'))
   })
   .then(function(result){
     var batch = []
