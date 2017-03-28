@@ -3,7 +3,6 @@
 var P = require('bluebird')
 var debug = require('debug')('statTrack')
 var program = require('commander')
-var ObjectManage = require('object-manage')
 var oose = require('oose-sdk')
 var path = require('path')
 var si = require('systeminformation')
@@ -29,33 +28,6 @@ program
   .option('-S, --store <store>','Use file list from this store')
   .option('-v, --verbose','Be verbose and show hash list before processing')
   .parse(process.argv)
-
-var buildBatch = function(datas){
-  debug('buildBatch:datas',datas)
-  var stats = new ObjectManage()
-  datas.forEach(function(i){stats.$load(i)})
-  stats = stats.$strip()
-  debug('buildBatch:stats',stats)
-  //build batch of redis promises
-  var batch = []
-  Object.keys(stats).sort().forEach(function(fKey){
-    var p = fKey.split(':')
-    switch(p[1]){
-    case 'fs':
-    case 'oD':
-      batch.push(redis.remote.hmsetAsync(fKey,stats[fKey]))
-      batch.push(redis.remote.expireAsync(fKey,86400))
-      break
-    case 'hU':
-      batch.push(redis.remote.zaddAsync(fKey,stats[fKey]))
-      batch.push(redis.remote.expireAsync(fKey,86400))
-      break
-    default:
-      console.error('buildBatch: stats contained unhandled section:',fKey,p)
-    }
-  })
-  return batch
-}
 
 var procDisk = {}
 var counterKeys = []
@@ -89,7 +61,7 @@ P.try(function(){
     result.forEach(function(r){
       if(r.store && r.store.name) stats.set(r.store.name,'cfg',r)
     })
-    if(!stats.refList.length)
+    if(!stats.refCount)
       throw new UserError('No stores configured here?')
     return new Promise(function(r){
       procfs.disk(function(a,b){r(b)})
@@ -152,10 +124,11 @@ P.try(function(){
   .then(function(result){
     console.log('hashUsage: lsof data obtained!')
     debug(result)
+    var i = 0
     stats.refList.forEach(function(s){
       var contentDir = stats.get(s,'cfg').root+'/content/'
       var hashUsage = {}
-      result.shift().forEach(function(r){
+      result[i++].forEach(function(r){
         var pathHit = r.name.match('^'+contentDir)
         if(pathHit){
           var hash = pathHit.input
@@ -189,39 +162,7 @@ P.try(function(){
     stats.set('API','ooseData',ooseData)
   })
   .then(function(){
-    //jam shit in redis here
-    return P.try(function(){
-      var statData = {}
-      stats.refList.forEach(function(sLa){
-        if('API' === sLa){ //API Global stat
-          //OOSE section: stack the args for HMSET (convert hash to array)
-          var ooseDataKey = stats.keyGen(sLa,'oD')
-          statData[ooseDataKey] = []
-          var ooseData = stats.get(sLa,'ooseData')
-          Object.keys(ooseData).sort().forEach(function(oKc){
-            statData[ooseDataKey].push(oKc,ooseData[oKc])
-          })
-        } else { //Store Specific stat
-          //FS section: stack the args for HMSET (convert hash to array)
-          var fsDataKey = stats.keyGen(sLa,'fs')
-          statData[fsDataKey] = []
-          var fs = stats.get(sLa,'fs')
-          Object.keys(fs).forEach(function(fKb){
-            statData[fsDataKey].push(fKb,fs[fKb])
-          })
-          //HASH section: stack the args for ZADD (convert hash to array)
-          var hashUsageKey = stats.keyGen(sLa,'hU')
-          statData[hashUsageKey] = []
-          var hashUsage = stats.get(sLa,'hashUsage')
-          Object.keys(hashUsage).sort().forEach(function(hKd){
-            // ZADD takes things 'backwards', below uses val,key
-            statData[hashUsageKey].push(hashUsage[hKd],hKd)
-          })
-        }
-      })
-      //build and run the actual batch of redis promises
-      return P.all(buildBatch([statData]))
-    })
+    return stats.push()
   })
   .then(function(result){
     debug(result)
@@ -249,13 +190,13 @@ P.try(function(){
     return P.all(batch)
   })
   .then(function(result){
-    console.log('Redis content readback:')
+    console.log('Redis content read back from remote:')
+    var i = 0
     redisKeys.forEach(function(k){
-      var v = result.shift()
       var kk = ''
       var vv = ''
       var sync = false
-      v[1].forEach(function(j){
+      result[i++][1].forEach(function(j){
         switch(sync){
         case false:
           kk = j
@@ -264,8 +205,6 @@ P.try(function(){
           vv = j
           console.log([k,kk].join('.'),'=',vv)
           break
-        default:
-          console.error('Hit switch default in binary case?')
         }
         sync = !sync
       })
