@@ -55,19 +55,19 @@ module.exports = function(options){
     return rv
   }
 
-  var redisData = {}
+  var redisOut = {}
   var redisDataH = function(redisKey,data,key){
-    redisData[redisKey].push(key,data[key])
+    redisOut[redisKey].push(key,data[key])
   }
   var redisDataZ = function(redisKey,data,key){
     // ZADD takes things 'backwards', below uses val,key
-    redisData[redisKey].push(data[key],key)
+    redisOut[redisKey].push(data[key],key)
   }
   var prep = function(ref,section,redisSection,pusher){
     //convert hash to redis-acceptable array
     if('string' !== typeof redisSection) redisSection = section
     var k = s.keyGen(ref,redisSection)
-    redisData[k] = []
+    redisOut[k] = []
     var d = s.get(ref,section)
     Object.keys(d).sort().forEach(function(l){
       pusher(k,d,l)
@@ -82,34 +82,34 @@ module.exports = function(options){
     prep(ref,section,redisSection,redisDataZ)
   }
   var redisPushPromises = function(){
-    debug('redisPushPromises:redisData',redisData)
+    debug('redisPushPromises:redisOut',redisOut)
     //build batch of redis promises
     var batch = []
-    Object.keys(redisData).sort().forEach(function(fKey){
+    Object.keys(redisOut).sort().forEach(function(fKey){
       var p = fKey.split(':')
       switch(p[1]){
       case 'fs':
       case 'oD':
-        batch.push(redis.remote.hmsetAsync(fKey,redisData[fKey]))
+        batch.push(redis.remote.hmsetAsync(fKey,redisOut[fKey]))
         batch.push(redis.remote.expireAsync(fKey,86400))
         break
       case 'hU':
-        batch.push(redis.remote.zaddAsync(fKey,redisData[fKey]))
+        batch.push(redis.remote.zaddAsync(fKey,redisOut[fKey]))
         batch.push(redis.remote.expireAsync(fKey,86400))
         break
       default:
         console.error(
-          'redisPushPromises: redisData contained unhandled section:',fKey,p
+          'redisPushPromises: redisOut contained unhandled section:',fKey,p
         )
       }
     })
     return batch
   }
 
-  s.push = function(){
-    //jam shit in redis here
+  s.push = function(refs){
+    if(!refs) refs = s.refList
     return P.try(function(){
-      s.refList.forEach(function(ref){
+      refs.forEach(function(ref){
         if('API' === ref){ //API Global stat
           //OOSE section
           prepHMSET(ref,'ooseData','oD')
@@ -123,6 +123,75 @@ module.exports = function(options){
       //build and run the actual batch of redis promises
       return P.all(redisPushPromises())
     })
+  }
+
+  var redisIn = {}
+  var pullKeys = []
+  var pullPromise = function(redisKey){
+    var rv = false
+    var p = redisKey.split(':')
+    switch(p[1]){
+    case 'fs':
+    case 'oD':
+      rv = redis.remote.hscanAsync(redisKey,0)
+      pullKeys.push(redisKey)
+      break
+    case 'hU':
+      rv = redis.remote.zscanAsync(redisKey,0)
+      pullKeys.push(redisKey)
+      break
+    default:
+      console.error(
+        'pullPromise: redisKey contained unhandled section:',redisKey,p
+      )
+    }
+    return rv
+  }
+  var redisPullPromises = function(refs){
+    if(!refs) refs = s.refList
+    debug('redisPullPromises(',refs,')')
+    //build batch of redis promises
+    var batch = []
+    refs.forEach(function(redisKey){
+      batch.push(pullPromise(redisKey))
+    })
+    return batch
+  }
+
+  s.pull = function(refs){
+    var pullChain = {}
+    if(!refs){
+      pullChain = P.try(function(){
+          return redis.remote.keysAsync(s.keyGen('*','*'))
+        })
+          .then(function(result){
+            debug('pullChain:',result)
+            refs = result
+            return P.all(redisPullPromises(refs))
+          })
+    } else pullChain = P.all(redisPullPromises(refs))
+    return pullChain.then(function(result){
+        //result = result[0]
+        debug('pull(',refs,') =',result)
+        var i = 0
+        pullKeys.forEach(function(redisKey){
+          if(!redisIn[redisKey]) redisIn[redisKey] = {}
+          var subKey = ''
+          var sync = false
+          result[i++][1].forEach(function(j){
+            switch(sync){
+            case false:
+              subKey = j
+              break
+            case true:
+              redisIn[redisKey][subKey] = j
+              break
+            }
+            sync = !sync
+          })
+        })
+        return redisIn
+      })
   }
 
   return s

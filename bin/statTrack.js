@@ -31,7 +31,6 @@ program
 
 var procDisk = {}
 var counterKeys = []
-var redisKeys = []
 P.try(function(){
   console.log('Welcome to the OOSE v' + config.version + ' statTrack!')
   console.log('--------------------')
@@ -160,55 +159,17 @@ P.try(function(){
       ooseData[k]=result[i++]
     })
     stats.set('API','ooseData',ooseData)
-  })
-  .then(function(){
+    //jam shit in redis here
     return stats.push()
   })
   .then(function(result){
     debug(result)
     console.log('Redis content sent to remote')
-    return redis.remote.keysAsync(stats.keyGen('*','*'))
-  })
-  .then(function(result){
-    var batch = []
-    result.sort().forEach(function(i){
-      var p = i.split(':')
-      switch(p[1]){
-      case 'fs':
-      case 'oD':
-        batch.push(redis.remote.hscanAsync(i,0))
-        redisKeys.push(i)
-        break
-      case 'hU':
-        batch.push(redis.remote.zscanAsync(i,0))
-        redisKeys.push(i)
-        break
-      default:
-        console.error('redisDump: stats contained unhandled section:',p)
-      }
-    })
-    return P.all(batch)
+    return stats.pull()
   })
   .then(function(result){
     console.log('Redis content read back from remote:')
-    var i = 0
-    redisKeys.forEach(function(k){
-      var kk = ''
-      var vv = ''
-      var sync = false
-      result[i++][1].forEach(function(j){
-        switch(sync){
-        case false:
-          kk = j
-          break
-        case true:
-          vv = j
-          console.log([k,kk].join('.'),'=',vv)
-          break
-        }
-        sync = !sync
-      })
-    })
+    console.log(result)
     console.log('Operations complete, bye!')
     process.exit()
   })
