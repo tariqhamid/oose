@@ -22,6 +22,7 @@ var couchdb = require('../helpers/couchdb')
 var hasher = require('../helpers/hasher')
 var prismBalance = require('../helpers/prismBalance')
 var redis = require('../helpers/redis')()
+var FileOp = require('../helpers/fileOp')
 
 var config = require('../config')
 
@@ -42,7 +43,7 @@ program
   .option('-f, --force','Force the operation even on this hash')
   .option('-i, --input <s>','List of Hashes line separated ' +
     'to analyze, use - for stdin')
-  .option('-p, --pretend','Dont actually make and clones just analyze')
+  .option('-p, --pretend','Don\'t actually make any clones just analyze')
   .option('-H, --hash <hash>','Hash of file to check')
   .option('-F, --folder <folder>','Folder to scan')
   .option('-S, --store <store>','Use file list from this store')
@@ -72,13 +73,36 @@ var setupStore = function(store){
   return oose.api.store(opts)
 }
 
+var pluralize = function(a,b,c,d,e){
+  var number,printNumber,string,appendSingular,appendMultiple
+  if('function' === typeof a){
+    //usage case: pluralize(printCb,number,string,appendSingular,appendMultiple)
+    number = b
+    string = c
+    appendSingular = d
+    appendMultiple = e
+    printNumber = a(number)
+  } else {
+    //usage case: pluralize(number,string,appendSingular,appendMultiple)
+    number = a
+    string = b
+    appendSingular = c
+    appendMultiple = d
+    printNumber = ''
+  }
+  appendSingular = ('string' === typeof appendSingular) ? appendSingular : ''
+  appendMultiple = ('string' === typeof appendMultiple) ? appendMultiple : 's'
+  return printNumber + string +
+    ((1 === (+number)) ? appendSingular : appendMultiple)
+}
+
 
 var analyzeFiles = function(program,progress,fileList){
   var above = false !== program.above ? +program.above : null
   var at = false !== program.at ? +program.at : null
   var below = false !== program.below ? +program.below : null
   var desired = false !== program.desired ? + program.desired : 2
-  var files = {}
+  var ops = {}
   var fileCount = fileList.length
   var blockSize = program.blockSize || 250
   var blockCount = Math.ceil(fileCount / blockSize)
@@ -92,9 +116,10 @@ var analyzeFiles = function(program,progress,fileList){
         }
         return prismBalance.contentExists(file)
           .then(function(record){
+            var op = new FileOp(record)
             //do clone math now
-            record.add = 0
-            record.remove = 0
+            var add = 0
+            var remove = 0
             if(
               (null !== above && record.count > above) ||
               (null !== below && record.count < below) ||
@@ -102,51 +127,62 @@ var analyzeFiles = function(program,progress,fileList){
             )
             {
               if(desired > record.count){
-                record.add = desired - record.count
+                add = desired - record.count
               }
               else if(desired < record.count){
-                record.remove = record.count - desired
+                remove = record.count - desired
               }
             }
-            if(program.verify && program.hash){
-              record.add = 1
-            }
             if(program.clone){
-              record.add = 1
-              record.remove = 0
+              add = 1
+              remove = 0
             }
             if(program.drop){
-              record.add = 0
-              record.remove = 1
+              add = 0
+              remove = 1
             }
-            if(0 === record.count && record.add){
+            if(0 === record.count && add){
               //can't clone/verify a file, when we don't have any copies
-              record.add = 0
+              add = 0
+            }
+            if(program.verify){
+              op.action = op.fileActions.verify
+              op.repeat = (add + remove) || 1
+              add = 0
+              remove = 0
+            }
+            if(0 < add){
+              op.action = op.fileActions.copy
+              op.repeat = add
+            }
+            if(0 < remove){
+              op.action = op.fileActions.unlink
+              op.repeat = remove
             }
             //compile our record
-            files[record.hash] = record
+            ops[record.hash] = op
             progress.tick()
-            return record
+            return op
           })
       })
   }
-  progress.update(0)
   return P.try(function(){
     var blockList = []
     for(var i = 0; i < blockCount; i++){
       blockList.push(fileList.slice(i * blockSize,(i + 1) * blockSize))
     }
+    progress.update(0)
     return blockList
   })
     .each(function(block){
       return analyzeBlock(block)
     })
     .then(function(){
-      return files
+      return ops
     })
 }
 
-var addClones = function(file){
+var addClones = function(op){
   var promises = []
   var storeWinnerList = []
   var addClone = function(file){
@@ -242,13 +278,13 @@ var addClones = function(file){
         })
     }
   }
-  for(var i = 0; i < file.add; i++){
-    promises.push(addClone(file))
+  for(var i = 0; i < op.repeat; i++){
+    promises.push(addClone(op.file))
   }
   return P.all(promises)
 }
 
-var removeClones = function(file){
+var removeClones = function(op){
   var promises = []
   var storeWinnerList = []
   var removeClone = function(file){
@@ -304,8 +340,8 @@ var removeClones = function(file){
         })
     }
   }
-  for(var i = 0; i < file.remove; i++){
-    promises.push(removeClone(file))
+  for(var i = 0; i < op.repeat; i++){
+    promises.push(removeClone(op.file))
   }
   return P.all(promises)
 }
@@ -313,7 +349,7 @@ var removeClones = function(file){
 var verifyFile = function(file){
   //first grab a store to ask for info
   if(!file.count || !file.exists || !(file.map instanceof Array)){
-    console.error(file.hash,'Doesnt exist, cant verify')
+    console.error(file.hash,'Doesn\'t exist, can\'t verify')
     return
   }
   return P.try(function(){
@@ -353,19 +389,19 @@ var verifyFile = function(file){
     })
 }
 
-var printHeader = function(file){
+var printHeader = function(op){
   console.log('--------------------')
-  console.log(file.hash + ' starting to process changes')
+  console.log(op.file.hash + ' starting to process changes')
 }
 
-var printFooter = function(file){
-  console.log(file.hash,'Processing complete')
+var printFooter = function(op){
+  console.log(op.file.hash,'Processing complete')
 }
 
 var cloneFile = function(file){
   //first grab a store to ask for info
   if(!file.count || !file.exists || !(file.map instanceof Array)){
-    console.error(file.hash,'Doesnt exist, cannot clone')
+    console.error(file.hash,'Doesn\'t exist, cannot clone')
     return
   }
   return P.try(function(){
@@ -409,7 +445,7 @@ var cloneFile = function(file){
 var removeFile = function(file){
   //first grab a store to ask for info
   if(!file.count || !file.exists || !(file.map instanceof Array)){
-    console.error(file.hash,'Doesnt exist, cannot remove')
+    console.error(file.hash,'Doesn\'t exist, cannot remove')
     return
   }
   return P.try(function(){
@@ -441,31 +477,40 @@ var removeFile = function(file){
   })
 }
 
-var processFile = function(file){
+var processOp = function(op){
   return P.try(function(){
+    if(program.clone || program.drop || op.fileActions.nop < op.action)
+      printHeader(op)
     //manual processing
     if(program.clone){
-      printHeader(file)
-      return cloneFile(file)
-        .then(function(){printFooter(file)})
+      return cloneFile(op.file)
+        .then(function(){printFooter(op)})
     } else if(program.drop){
-      printHeader(file)
-      return removeFile(file)
-        .then(function(){printFooter(file)})
-    } else if(file.add > 0 || file.remove > 0 || program.verify){
+      return removeFile(op.file)
+        .then(function(){printFooter(op)})
+    } else if(0 < op.repeat &&
+      -1 < [
+        op.fileActions.copy,
+        op.fileActions.unlink,
+        op.fileActions.verify
+      ].indexOf(op.action)
+    ){
       //normal processing
-      if(!program.verify && file.add > 0){
-        printHeader(file)
-        return addClones(file)
-          .then(function(){printFooter(file)})
-      } else if(!program.verify && file.remove > 0){
-        printHeader(file)
-        return removeClones(file)
-          .then(function(){printFooter(file)})
-      } else if(program.verify && (file.add > 0 || file.remove > 0)){
-        printHeader(file)
-        return verifyFile(file)
-          .then(function(){printFooter(file)})
+      switch(op.action){
+      case op.fileActions.copy:
+        return addClones(op)
+          .then(function(){printFooter(op)})
+        break
+      case op.fileActions.unlink:
+        return removeClones(op)
+          .then(function(){printFooter(op)})
+        break
+      case op.fileActions.verify:
+        return verifyFile(op.file)
+          .then(function(){printFooter(op)})
+        break
+      default:
+        return P.try(function(){console.log('processOp hit default case??',op)})
       }
     }
   })
@@ -504,7 +549,9 @@ var contentDetail = function(hash){
         var storeName = parts[1]
         console.log('    ' + clc.cyan(prismName) + ':' + clc.green(storeName))
       })
-      console.log('\n Total: ' + clc.yellow(result.count) + ' clone(s)\n')
+      console.log('\n Total: ' +
+        pluralize(clc.yellow,result.count,' clone') + '\n'
+      )
       process.exit()
     })
 }
@@ -704,7 +751,7 @@ var keyScan = function(type,key,fileStream){
     })
 }
 
-var files = {}
+var ops = {}
 var fileStream = new MemoryStream()
 var fileList = []
 var fileCount = 0
@@ -756,8 +803,11 @@ P.try(function(){
   if(validAbove()) changeVerb = 'above'
   if(validAt()) changeVerb = 'at'
   console.log('You have asked for ' + program.desired +
-    ' clone(s) of each file ' + changeVerb +
-    ' ' + program[changeVerb] + ' clone(s)')
+    pluralize(program.desired,' clone') +
+    ' of each file ' + changeVerb +
+    ' ' + program[changeVerb] +
+    pluralize(program[changeVerb],' clone')
+  )
   console.log('--------------------')
 
   //get file list together
@@ -781,7 +831,9 @@ P.try(function(){
 })
   .then(function(){
     fileList = fileStream.toString().split('\n')
-    console.log('Input ' + fileList.length + ' entries, filtering')
+    console.log('Input ' + fileList.length +
+      pluralize(fileList.length,' entr','y','ies') + ', filtering'
+    )
     var pruned = {}
     fileList = fileList.filter(function(a){
       var rv = !!(a.match(hasher.hashExpressions[hasher.identify(a)]))
@@ -801,7 +853,10 @@ P.try(function(){
       console.log('No files left to analyze, bye')
       process.exit()
     }
-    console.log('Found ' + fileCount + ' file(s) to be analyzed')
+    console.log('Found ' + fileCount +
+      pluralize(fileCount,' file') +
+      ' to be analyzed'
+    )
     //console.log(fileList)
 
     var progress = new ProgressBar(
@@ -817,9 +872,9 @@ P.try(function(){
     return analyzeFiles(program,progress,fileList)
   })
   .then(function(result){
-    files = result
-    var keys = Object.keys(files)
-    var file
+    ops = result
+    var keys = Object.keys(ops)
+    var op,file
     var doesntExist = 0
     var add = 0
     var addTotal = 0
@@ -827,35 +882,47 @@ P.try(function(){
     var removeTotal = 0
     var unchanged = 0
     keys.forEach(function(hash){
-      file = files[hash]
-      if(!file.exists) doesntExist++
-      else if(file.add > 0){
-        addTotal = addTotal + (+file.add)
-        add++
+      op = ops[hash]
+      file = op.file
+      if(!op.file.exists){
+        doesntExist++
         if(program.verbose){
-          console.log(file.hash + ' has ' + file.count +
-            ' clones and needs ' + file.add + ' more')
+          console.log(op.file.hash + ' doesn\'t exist. :(')
         }
       }
-      else if(file.remove > 0){
-        removeTotal = removeTotal + (+file.remove)
+      else if(op.fileActions.copy === op.action && op.repeat > 0){
+        addTotal = addTotal + (+op.repeat)
+        add++
+        if(program.verbose){
+          console.log(op.file.hash + ' has ' + op.file.count +
+            ' clones and needs ' + op.repeat + ' more')
+        }
+      }
+      else if(op.fileActions.unlink === op.action && op.repeat > 0){
+        removeTotal = removeTotal + (+op.repeat)
         remove++
         if(program.verbose){
-          console.log(file.hash + ' has ' + file.count +
-            ' clones and needs ' + file.remove + ' less')
+          console.log(op.file.hash + ' has ' + op.file.count +
+            ' clones and needs ' + op.remove + ' less')
         }
       }
       else unchanged++
     })
     console.log('Analysis complete...')
     console.log('--------------------')
-    console.log(fileCount + ' total file(s)')
-    console.log(add + ' file(s) want clones totalling ' +
-      addTotal + ' new clone(s)')
-    console.log(remove + ' file(s) dont need as many clones totalling ' +
-      removeTotal + ' fewer clones')
-    console.log(unchanged + ' file(s) will not be changed')
-    console.log(doesntExist + ' file(s) dont exist')
+    console.log(fileCount + ' total ' + pluralize(fileCount,'file'))
+    console.log(add + pluralize(add,' file') +
+      pluralize(add,' want','s','') + ' clones' +
+      ' totalling ' + addTotal + ' new ' + pluralize(addTotal,'clone')
+    )
+    console.log(remove + pluralize(remove,' file') +
+      pluralize(remove,' want','s','') + ' less clones' +
+      ' totalling ' + removeTotal + ' fewer ' + pluralize(removeTotal,'clone')
+    )
+    console.log(unchanged + pluralize(unchanged,' file') +
+      ' will not be changed'
+    )
+    console.log(doesntExist + pluralize(doesntExist,' file') + ' don\'t exist')
     console.log('--------------------')
     if(program.pretend){
       console.log('Pretend mode selected, taking no action, bye!')
@@ -871,11 +938,10 @@ P.try(function(){
     console.log('Peer list obtained!')
 
     //process the files
-    return Object.keys(files)
+    return Object.keys(ops)
   })
   .each(function(hash){
-    var file = files[hash]
-    return processFile(file)
+    return processOp(ops[hash])
   })
   .then(function(){
     console.log('Operations complete, bye!')
