@@ -1,6 +1,6 @@
 'use strict';
 var P = require('bluebird')
-var debug = require('debug')('helper:fileOp')
+//var debug = require('debug')('helper:fileOp')
 var ObjectManage = require('object-manage')
 var oose = require('oose-sdk')
 var random = require('random-js')()
@@ -49,7 +49,7 @@ fileOp.setupStore = function(store){
   return oose.api.store(opts)
 }
 
-fileOp.addClones = function(file){
+fileOp.addClones = function(op){
   var promises = []
   var storeWinnerList = []
   var addClone = function(file){
@@ -145,13 +145,13 @@ fileOp.addClones = function(file){
         })
     }
   }
-  for(var i = 0; i < file.add; i++){
-    promises.push(addClone(file))
+  for(var i = 0; i < op.repeat; i++){
+    promises.push(addClone(op.file))
   }
   return P.all(promises)
 }
 
-fileOp.removeClones = function(file){
+fileOp.removeClones = function(op){
   var promises = []
   var storeWinnerList = []
   var removeClone = function(file){
@@ -207,13 +207,14 @@ fileOp.removeClones = function(file){
         })
     }
   }
-  for(var i = 0; i < file.remove; i++){
-    promises.push(removeClone(file))
+  for(var i = 0; i < op.repeat; i++){
+    promises.push(removeClone(op.file))
   }
   return P.all(promises)
 }
 
-fileOp.verifyFile = function(file){
+fileOp.verifyFile = function(op){
+  var file = op.file
   //first grab a store to ask for info
   if(!file.count || !file.exists || !(file.map instanceof Array)){
     console.error(file.hash,'Doesn\'t exist, can\'t verify')
@@ -254,6 +255,87 @@ fileOp.verifyFile = function(file){
           redis.del(existsKey)
         })
     })
+}
+
+fileOp.cloneFile = function(op){
+  var file = op.file
+  //first grab a store to ask for info
+  if(!file.count || !file.exists || !(file.map instanceof Array)){
+    console.error(file.hash,'Doesn\'t exist, cannot clone')
+    return
+  }
+  return P.try(function(){
+    return file.map[random.integer(0,file.map.length - 1)]
+  })
+    .then(function(storeKey){
+      var keyParts = storeKey.split(':')
+      var storeFromInfo = fileOp.selectPeer('store',keyParts[1])
+      var storeToInfo = fileOp.selectPeer('store',op.destination)
+      var storeFromClient = fileOp.setupStore(storeFromInfo)
+      var sendOptions = {
+        file: file.hash + '.' + file.mimeExtension.replace('.',''),
+        store: storeToInfo.prism + ':' + storeToInfo.name
+      }
+      return storeFromClient.postAsync({
+        url: storeFromClient.url('/content/send'),
+        json: sendOptions
+      })
+        .spread(function(res,body){
+          if(body.error){
+            var err = new Error(body.error)
+            err.stack = body.stack
+            throw err
+          } else {
+            console.log(file.hash,
+              'Send from ' + storeFromInfo.name +
+              ' to ' + storeToInfo.name + ' complete')
+          }
+        })
+        .catch(function(err){
+          console.error(file.hash,
+            'Failed to send clone to ' + storeToInfo.store,err.message)
+        })
+        .finally(function(){
+          var existsKey = couchdb.schema.inventory(file.hash)
+          redis.del(existsKey)
+        })
+    })
+}
+
+fileOp.removeFile = function(op){
+  var file = op.file
+  //first grab a store to ask for info
+  if(!file.count || !file.exists || !(file.map instanceof Array)){
+    console.error(file.hash,'Doesn\'t exist, cannot remove')
+    return
+  }
+  return P.try(function(){
+    var storeInfo = op.selectPeer('store',op.source)
+    var storeClient = op.setupStore(storeInfo)
+    return storeClient.postAsync({
+      url: storeClient.url('/content/remove'),
+      json: {
+        hash: file.hash
+      }
+    })
+      .spread(function(res,body){
+        if(body.error){
+          var err = new Error(body.error)
+          err.stack = body.stack
+          throw err
+        } else {
+          console.log(file.hash,'Remove from ' + storeInfo.name + ' complete')
+        }
+      })
+      .catch(function(err){
+        console.error(file.hash,
+          'Failed to remove clone from ' + storeInfo.store,err.message)
+      })
+      .finally(function(){
+        var existsKey = couchdb.schema.inventory(file.hash)
+        redis.del(existsKey)
+      })
+  })
 }
 
 
