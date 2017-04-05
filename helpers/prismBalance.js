@@ -12,6 +12,7 @@ var peerGetRows = function(rows){
   return cradle.peer.getAsync(ids)
 }
 
+
 /**
  * Get list of prisms and cache the result
  * @return {P}

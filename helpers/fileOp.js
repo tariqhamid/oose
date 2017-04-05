@@ -77,7 +77,7 @@ fileOp.addClones = function(op){
       random.integer(0,(storeFromList.length - 1))]
     prismFromWinner = storeFromWinner.prism
     // figure out a destination store
-    fileOp.peerList.forEach(function(peer){
+    op.peerList.forEach(function(peer){
       //skip prisms and whatever else
       if('store' !== peer.type) return
       if(
@@ -105,8 +105,8 @@ fileOp.addClones = function(op){
         'Sending from ' + storeFromWinner.store +
         ' on prism ' + prismFromWinner +
         ' to ' + storeToWinner.store + ' on prism ' + prismToWinner)
-      var storeFromInfo = fileOp.selectPeer('store',storeFromWinner.store)
-      var sendClient = fileOp.setupStore(storeFromInfo)
+      var storeFromInfo = op.selectPeer('store',storeFromWinner.store)
+      var sendClient = op.setupStore(storeFromInfo)
       var sendOptions = {
         file: file.hash + '.' + file.mimeExtension.replace('.',''),
         store: storeToWinner.prism + ':' + storeToWinner.store
@@ -166,7 +166,7 @@ fileOp.removeClones = function(op){
       var prismName = parts[0]
       var storeName = parts[1]
       if(-1 === config.clonetool.storeProtected.indexOf(storeName)){
-        var peer = fileOp.selectPeer('store',storeName)
+        var peer = op.selectPeer('store',storeName)
         prismNameList.push(prismName)
         storeNameList.push(storeName)
         if((true === peer.available) &&
@@ -189,8 +189,8 @@ fileOp.removeClones = function(op){
       console.log(file.hash,
         'Removing from ' + storeRemoveWinner.store +
         ' on prism ' + storeRemoveWinner.prism)
-      var selectedStoreInfo = fileOp.selectPeer('store',storeRemoveWinner.store)
-      var storeClient = fileOp.setupStore(selectedStoreInfo)
+      var selectedStoreInfo = op.selectPeer('store',storeRemoveWinner.store)
+      var storeClient = op.setupStore(selectedStoreInfo)
       return storeClient.postAsync({
         url: storeClient.url('/content/remove'),
         json: {
@@ -225,8 +225,8 @@ fileOp.verifyFile = function(op){
   })
     .map(function(storeKey){
       var keyParts = storeKey.split(':')
-      var storeInfo = fileOp.selectPeer('store',keyParts[1])
-      var storeClient = fileOp.setupStore(storeInfo)
+      var storeInfo = op.selectPeer('store',keyParts[1])
+      var storeClient = op.setupStore(storeInfo)
       return storeClient.postAsync({
         url: storeClient.url('/content/verify'),
         json: {
@@ -269,9 +269,9 @@ fileOp.cloneFile = function(op){
   })
     .then(function(storeKey){
       var keyParts = storeKey.split(':')
-      var storeFromInfo = fileOp.selectPeer('store',keyParts[1])
-      var storeToInfo = fileOp.selectPeer('store',op.destination)
-      var storeFromClient = fileOp.setupStore(storeFromInfo)
+      var storeFromInfo = op.selectPeer('store',keyParts[1])
+      var storeToInfo = op.selectPeer('store',op.destination)
+      var storeFromClient = op.setupStore(storeFromInfo)
       var sendOptions = {
         file: file.hash + '.' + file.mimeExtension.replace('.',''),
         store: storeToInfo.prism + ':' + storeToInfo.name
