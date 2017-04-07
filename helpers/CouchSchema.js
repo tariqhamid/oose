@@ -14,6 +14,50 @@ var CouchSchema = function(prefix){
 
 
 /**
+ * Valid peer types
+ * @enum {string} PEER_TYPES
+ */
+CouchSchema.prototype.PEER_TYPES = {
+  'prism': 'prism',
+  'store': 'store'
+}
+
+
+/**
+ * Peer record structure
+ * @typedef {Object} PEER_RECORD {{
+ * _id:string,
+ * _rev:string,
+ * name:string,
+ * createdAt:string,
+ * host:string,
+ * port:number,
+ * prism:string,
+ * type:PEER_TYPES,
+ * existingDownVote:boolean,
+ * active:boolean,
+ * available:boolean,
+ * writable:boolean
+ * }}
+ */
+
+
+/**
+ * Inventory/file record structure
+ * @typedef {Object} FILE_RECORD {{
+ * hash:string,
+ * mimeType:string,
+ * mimeExtension:string,
+ * relativePath:string,
+ * size:number,
+ * count:number,
+ * exists:boolean,
+ * map: array
+ * }}
+ */
+
+
+/**
  * Apply Key Prefix
  * @param {string} key
  * @return {string}
@@ -30,7 +74,10 @@ CouchSchema.prototype.applyPrefix = function(key){
  * @return {string}
  */
 CouchSchema.prototype.prism = function(name){
-  return this.applyPrefix('prism:' + (name || ''))
+  return this.applyPrefix(
+    this.PEER_TYPES.prism + ':' +
+    (name || '')
+  )
 }
 
 
@@ -41,7 +88,11 @@ CouchSchema.prototype.prism = function(name){
  * @return {string}
  */
 CouchSchema.prototype.store = function(prism,name){
-  return this.applyPrefix('store:' + (prism || '') + (name ? ':' + name : ''))
+  return this.applyPrefix(
+    this.PEER_TYPES.store + ':' +
+    (prism || '') +
+    (name ? ':' + name : '')
+  )
 }
 
 

@@ -32,7 +32,7 @@ exports.peerList = function(){
           return peerGetRows(rows)
         })
         .map(function(row){
-          row.doc.type = 'prism'
+          row.doc.type = cradle.schema.PEER_TYPES.prism
           return row.doc
         })
     }()),
@@ -45,7 +45,7 @@ exports.peerList = function(){
           return peerGetRows(rows)
         })
         .map(function(row){
-          row.doc.type = 'store'
+          row.doc.type = cradle.schema.PEER_TYPES.store
           return row.doc
         })
     }())

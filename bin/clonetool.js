@@ -20,7 +20,7 @@ var couchdb = require('../helpers/couchdb')
 var hasher = require('../helpers/hasher')
 var prismBalance = require('../helpers/prismBalance')
 var redis = require('../helpers/redis')()
-var FileOp = require('../helpers/fileOp')
+var FileOp = require('../helpers/FileOp')
 
 var config = require('../config')
 
@@ -137,23 +137,22 @@ var analyzeFiles = function(program,progress,fileList){
               add = 0
             }
             if(program.verify){
-              op.action = op.fileActions.verify
+              op.action = op.FILE_ACTIONS.verify
               op.repeat = (add + remove) || 1
               add = 0
               remove = 0
             }
             if(0 < add){
-              op.action = op.fileActions.copy
+              op.action = op.FILE_ACTIONS.copy
               op.repeat = add
             }
             if(0 < remove){
-              op.action = op.fileActions.unlink
+              op.action = op.FILE_ACTIONS.unlink
               op.repeat = remove
             }
             //compile our record
             ops[record.hash] = op
             progress.tick()
-            return op
           })
       })
   }
@@ -175,7 +174,7 @@ var analyzeFiles = function(program,progress,fileList){
 
 var processOp = function(op){
   return P.try(function(){
-    if(program.clone || program.drop || op.fileActions.nop < op.action)
+    if(program.clone || program.drop || op.FILE_ACTIONS.nop < op.action)
       printHeader(op)
     //manual processing
     if(program.clone){
@@ -186,22 +185,22 @@ var processOp = function(op){
         .then(function(){printFooter(op)})
     } else if(0 < op.repeat &&
       -1 < [
-        op.fileActions.copy,
-        op.fileActions.unlink,
-        op.fileActions.verify
+        op.FILE_ACTIONS.copy,
+        op.FILE_ACTIONS.unlink,
+        op.FILE_ACTIONS.verify
       ].indexOf(op.action)
     ){
       //normal processing
       switch(op.action){
-      case op.fileActions.copy:
+      case op.FILE_ACTIONS.copy:
         return op.addClones(op)
           .then(function(){printFooter(op)})
         break
-      case op.fileActions.unlink:
+      case op.FILE_ACTIONS.unlink:
         return op.removeClones(op)
           .then(function(){printFooter(op)})
         break
-      case op.fileActions.verify:
+      case op.FILE_ACTIONS.verify:
         return op.verifyFile(op)
           .then(function(){printFooter(op)})
         break
@@ -585,7 +584,7 @@ P.try(function(){
           console.log(op.file.hash + ' doesn\'t exist. :(')
         }
       }
-      else if(op.fileActions.copy === op.action && op.repeat > 0){
+      else if(op.FILE_ACTIONS.copy === op.action && op.repeat > 0){
         addTotal = addTotal + (+op.repeat)
         add++
         if(program.verbose){
@@ -593,12 +592,12 @@ P.try(function(){
             ' clones and needs ' + op.repeat + ' more')
         }
       }
-      else if(op.fileActions.unlink === op.action && op.repeat > 0){
+      else if(op.FILE_ACTIONS.unlink === op.action && op.repeat > 0){
         removeTotal = removeTotal + (+op.repeat)
         remove++
         if(program.verbose){
           console.log(op.file.hash + ' has ' + op.file.count +
-            ' clones and needs ' + op.remove + ' less')
+            ' clones and needs ' + op.repeat + ' less')
         }
       }
       else unchanged++
@@ -635,7 +634,7 @@ P.try(function(){
     return Object.keys(ops)
   })
   .each(function(hash){
-    ops[hash].peerList = peerList
+    ops[hash].setPeerList(peerList)
     return processOp(ops[hash])
   })
   .then(function(){
