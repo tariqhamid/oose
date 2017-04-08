@@ -7,7 +7,7 @@ var infant = require('infant')
 var ObjectManage = require('object-manage')
 var oose = require('oose-sdk')
 var path = require('path')
-var rimraf = require('rimraf-promise')
+var rmfr = require('rmfr')
 var url = require('url')
 
 var api = require('../../helpers/api')
@@ -156,7 +156,7 @@ exports.before = function(that){
   that.timeout(80000)
   console.log('Starting mock cluster....')
   return P.try(function(){
-    return rimraf(__dirname + '/../assets/data')
+    return rmfr(__dirname + '/../assets/data')
   })
     .then(function(){
       return redis.removeKeysPattern(redis.schema.flushKeys())

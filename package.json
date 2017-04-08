@@ -63,7 +63,6 @@
     "redis": "^2.6.5",
     "request": "^2.79.0",
     "request-promise": "^4.1.1",
-    "rimraf-promise": "^2.0.0",
     "sha1-stream": "^0.2.1",
     "string": "^3.3.3",
     "systeminformation": "^3.17.0",
@@ -79,6 +78,6 @@
     "mocha": "^3.2.0",
     "numeral": "^2.0.4",
     "promiseq": "^0.1.0",
-    "rimraf-promise": "^2.0.0"
+    "rmfr": "^1.0.2"
   }
 }

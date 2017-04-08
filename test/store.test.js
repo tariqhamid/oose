@@ -7,7 +7,7 @@ var ObjectManage = require('object-manage')
 var oose = require('oose-sdk')
 var path = require('path')
 var promisePipe = require('promisepipe')
-var rimrafPromise = require('rimraf-promise')
+var rmfr = require('rmfr')
 var hashStream = require('sha1-stream')
 
 var api = require('../helpers/api')
@@ -37,7 +37,7 @@ describe('store',function(){
   //start servers and create a user
   before(function(){
     client = api.store(config.store)
-    return rimrafPromise(config.root)
+    return rmfr(config.root)
       .then(function(){
         return storeServer.startAsync()
       })
