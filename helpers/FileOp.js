@@ -25,6 +25,7 @@ var FileOp = function(file,opt_peerList){
   this.peerList = opt_peerList || []
   //populate properties
   this.action = this.FILE_ACTIONS.nop
+  this.repeat = 0
   this.source = ''
   this.destination = ''
   return this

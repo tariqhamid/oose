@@ -132,16 +132,6 @@ var analyzeFiles = function(program,progress,fileList){
               remove = 1
               op.source = program.drop
             }
-            if(0 === record.count && add){
-              //can't clone/verify a file, when we don't have any copies
-              add = 0
-            }
-            if(program.verify){
-              op.action = op.FILE_ACTIONS.verify
-              op.repeat = (add + remove) || 1
-              add = 0
-              remove = 0
-            }
             if(0 < add){
               op.action = op.FILE_ACTIONS.copy
               op.repeat = add
@@ -149,6 +139,16 @@ var analyzeFiles = function(program,progress,fileList){
             if(0 < remove){
               op.action = op.FILE_ACTIONS.unlink
               op.repeat = remove
+            }
+            if(program.verify){
+              op.action = op.FILE_ACTIONS.verify
+            } else if(0 === record.count && 0 < op.repeat){
+              //can't clone/verify a file, when we don't have any copies
+              op.repeat = 0
+            }
+            if(0 === op.repeat){
+              //operation should be NOP if there is zero repeat
+              op.action = op.FILE_ACTIONS.nop
             }
             //compile our record
             ops[record.hash] = op
@@ -575,6 +575,7 @@ P.try(function(){
     var addTotal = 0
     var remove = 0
     var removeTotal = 0
+    var verify = 0
     var unchanged = 0
     keys.forEach(function(hash){
       op = ops[hash]
@@ -600,6 +601,13 @@ P.try(function(){
             ' clones and needs ' + op.repeat + ' less')
         }
       }
+      else if(op.FILE_ACTIONS.verify === op.action && op.repeat > 0){
+        verify++
+        if(program.verbose){
+          console.log(op.file.hash + ' has ' + op.file.count +
+            ' clones to be verified')
+        }
+      }
       else unchanged++
     })
     console.log('Analysis complete...')
@@ -612,6 +620,9 @@ P.try(function(){
     console.log(remove + pluralize(remove,' file') +
       pluralize(remove,' want','s','') + ' less clones' +
       ' totalling ' + removeTotal + ' fewer ' + pluralize(removeTotal,'clone')
+    )
+    console.log(verify + pluralize(verify,' file') +
+      ' will be verified'
     )
     console.log(unchanged + pluralize(unchanged,' file') +
       ' will not be changed'
