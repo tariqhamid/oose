@@ -292,7 +292,7 @@ FileOp.prototype.verifyFile = function(){
   //first grab a store to ask for info
   if(!file.count || !file.exists || !(file.map instanceof Array)){
     console.error(file.hash,'Doesn\'t exist, can\'t verify')
-    return
+    return P.try(function(){})
   }
   return P.try(function(){
     return file.map
@@ -345,7 +345,7 @@ FileOp.prototype.cloneFile = function(){
   //first grab a store to ask for info
   if(!file.count || !file.exists || !(file.map instanceof Array)){
     console.error(file.hash,'Doesn\'t exist, cannot clone')
-    return
+    return P.try(function(){})
   }
   return P.try(function(){
     return file.map[random.integer(0,file.map.length - 1)]
@@ -402,7 +402,7 @@ FileOp.prototype.removeFile = function(){
   //first grab a store to ask for info
   if(!file.count || !file.exists || !(file.map instanceof Array)){
     console.error(file.hash,'Doesn\'t exist, cannot remove')
-    return
+    return P.try(function(){})
   }
   return P.try(function(){
     var storeInfo = that.selectPeer(
