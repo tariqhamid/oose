@@ -627,7 +627,9 @@ P.try(function(){
     console.log(unchanged + pluralize(unchanged,' file') +
       ' will not be changed'
     )
-    console.log(doesntExist + pluralize(doesntExist,' file') + ' don\'t exist')
+    console.log(doesntExist + pluralize(doesntExist,' file') +
+      pluralize(doesntExist,' ','does','do') + 'n\'t exist'
+    )
     console.log('--------------------')
     if(program.pretend){
       console.log('Pretend mode selected, taking no action, bye!')
